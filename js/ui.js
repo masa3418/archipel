@@ -127,6 +127,7 @@ hooks.combat = (a, d, x, y, won) => {
 };
 hooks.capture = (c, owner) => {
   if (!anim.rec) return;
+  if (owner === 0) captureQueue.push({ game: S, id: c.id });
   if (owner !== 0 && !seenByHuman(c.x, c.y)) return;
   recCam(c.x, c.y);
   anim.events.push({ type: 'capture', x: c.x, y: c.y, owner, t0: anim.cursor, dur: 900 });
@@ -478,6 +479,7 @@ function playAnimSounds(now) {
     else if (e.type === 'capture') Sfx.play(e.owner === 0 ? 'capture' : 'cityLost');
   }
   if (anim.after && now >= anim.end) { const f = anim.after; anim.after = null; f(); }
+  if (captureQueue.length && now >= anim.end && !anyModalOpen()) showCaptureDialog();
 }
 
 // Wiedergabe der Gegnerzüge: Tempo und Überspringen
@@ -1089,6 +1091,58 @@ function updateHover() {
 }
 
 // ------------------------------------------------------------------ Dialoge
+function anyModalOpen() { return [...document.querySelectorAll('.modal')].some(m => !m.hidden); }
+
+// ------------------------------------------------------------------ Eroberungs-Dialog
+// Nach jeder eigenen Eroberung (sobald die Animation vorbei ist) gleich die
+// Produktion der neuen Stadt wählen lassen – mit etwas Jubel.
+const captureQueue = [];
+const UNIT_ROLE = {
+  inf: 'Erobert Städte · schnell gebaut', tank: 'Erobert Städte · 2 Felder pro Zug',
+  ftr: 'Fliegt weit · späht und jagt', trn: 'Bringt 6 Landeinheiten übers Meer',
+  dst: 'Schneller Späher · jagt U-Boote', sub: 'Torpedo gegen große Schiffe',
+  crs: 'Robust und vielseitig', car: 'Schwimmende Basis für Jäger', bat: 'Das stärkste Schiff',
+};
+const CAPTURE_CHEERS = [
+  'Die Bevölkerung jubelt – deine Fahne weht über der Stadt!',
+  'Ein großer Schritt zur Herrschaft über das Archipel!',
+  'Dein Reich wächst. Der Gegner wird das zu spüren bekommen.',
+  'Glänzend erobert! Jetzt die neue Stadt für dich arbeiten lassen.',
+  'Ein Sieg, über den man noch lange sprechen wird.',
+];
+function showCaptureDialog() {
+  const q = captureQueue.shift();
+  if (!S || S.over || q.game !== S) { captureQueue.length = 0; return; }
+  const c = S.cities[q.id];
+  if (!c || c.owner !== 0) return;
+  cancelAutoEnd();
+  const mine = S.cities.filter(o => o.owner === 0).length, total = S.cities.length;
+  const a = strength(0).total, b = strength(1).total;
+  const pct = Math.round(a / Math.max(1, a + b) * 100);
+  $('capTitle').textContent = `${c.name} ist erobert!`;
+  $('capCheer').textContent = CAPTURE_CHEERS[(S.turn + c.id) % CAPTURE_CHEERS.length];
+  $('capFacts').innerHTML = `<span><b>${mine}</b> von ${total} Städten gehören dir</span><span>Kräfteverhältnis <b>${pct} %</b></span>`
+    + (c.coastal ? '<span>⚓ Hafenstadt – baut auch Schiffe</span>' : '');
+  $('capBar').style.width = Math.round(mine / total * 100) + '%';
+  let h = '';
+  for (const k of UNIT_ORDER) {
+    const ut = UT[k], dis = ut.domain === 'sea' && !c.coastal;
+    h += `<button class="cap-unit${c.prod === k ? ' cur' : ''}" data-prod="${k}" ${dis ? 'disabled title="Nur in Hafenstädten"' : ''}>
+      <img src="${iconUrl('u', k)}" alt=""><b>${ut.name}</b><small>${ut.cost} Runden</small><em>${UNIT_ROLE[k] || ''}</em></button>`;
+  }
+  $('capUnits').innerHTML = h;
+  $('capUnits').onclick = e => {
+    const btn = e.target.closest('[data-prod]');
+    if (!btn || btn.disabled) return;
+    if (c.prod !== btn.dataset.prod) { c.prod = btn.dataset.prod; c.progress = 0; }
+    Sfx.play('select');
+    closeModals();
+    addLog(`${c.name} baut jetzt ${UT[c.prod].name}.`, '', c.x, c.y);
+    saveGame(); refresh(); scheduleAutoEnd();
+  };
+  openModal('mCapture');
+}
+
 function openModal(id) { $(id).hidden = false; }
 function closeModals() { document.querySelectorAll('.modal').forEach(m => m.hidden = true); Sfx.preview(null); }
 
