@@ -1095,9 +1095,9 @@ function updateHover() {
       s += ` · Siegchance: ${Math.round(attackOdds(su, d, x, y) * 100)} %`;
       const cs = combatSpec(su, d, x, y);
       if (cs.notes.length) s += ' (' + cs.notes.join(', ') + ')';
-      if (c && c.owner !== 0 && T(su).capture) s += ` · danach 50 % Eroberung, dabei fällt die Besatzung (${us.length})`;
+      if (c && c.owner !== 0 && T(su).capture) s += ` · danach 50 % Eroberung: Besatzung (${us.length}) fällt, deine Einheit geht in der Stadt auf`;
     } else if (su && c && c.owner !== 0 && P.knownOwner[c.id] !== 0 && T(su).capture && !en.length) {
-      s += ' · Eroberungschance: 50 %';
+      s += ' · Eroberungschance: 50 % (deine Einheit geht dabei in der Stadt auf)';
     }
   }
   $('hover').textContent = s;

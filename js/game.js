@@ -174,11 +174,14 @@ function winProb(ahp, astr, dhp, dstr, p = 0.5, first = null) {
   return f(ahp, dhp);
 }
 
-function captureCity(c, owner) {
+// by: die erobernde Einheit – sie geht in der Stadt auf (wird verbraucht).
+// Das bremst den Vormarsch: Jede Eroberung kostet eine Einheit.
+function captureCity(c, owner, by = null) {
   const prev = c.owner;
   c.owner = owner; c.prod = 'inf'; c.progress = 0;
   if (hooks.capture) hooks.capture(c, owner, prev);
-  if (owner === 0) addLog(`Du hast ${c.name} erobert!`, 'good', c.x, c.y);
+  if (by) killUnit(by);
+  if (owner === 0) addLog(`Du hast ${c.name} erobert!` + (by ? ` ${{ m: 'Der', f: 'Die', n: 'Das' }[T(by).g]} ${T(by).name} geht in der Stadt auf.` : ''), 'good', c.x, c.y);
   else if (prev === 0) addLog(`${c.name} ist an den Gegner gefallen!`, 'bad', c.x, c.y);
   if (owner === 1 && typeof aiChooseProduction === 'function') aiChooseProduction(c);
 }
@@ -212,10 +215,10 @@ function attack(u, nx, ny, enemies, city) {
     let lost = 0;
     for (const o of garrison) { lost += 1 + cargoOf(o).length; killUnit(o); }
     relocate(u, nx, ny); u.carrier = null; u.order = null; u.moves = 0;
-    captureCity(city, u.owner);
+    captureCity(city, u.owner, u);
     if (lost && involved) addLog(`Mit ${city.name} ${lost === 1 ? 'ging 1 weitere Einheit' : `gingen ${lost} weitere Einheiten`} unter.`,
       u.owner === 0 ? 'good' : 'bad', nx, ny);
-    return { ok: true, combat: true, captured: city };
+    return { ok: true, combat: true, captured: city, died: true, consumed: true };
   }
   if (storm === false && involved) addLog(`${city.name} hält dem Sturm stand.`, u.owner === 0 ? 'bad' : 'good', nx, ny);
   const rest = topUnitsAt(nx, ny);
@@ -243,8 +246,8 @@ function moveStep(u, nx, ny) {
     u.moves = 0;
     if (rng() < 0.5) {
       relocate(u, nx, ny); u.carrier = null; u.order = null;
-      captureCity(city, u.owner);
-      return { ok: true, captured: city };
+      captureCity(city, u.owner, u);
+      return { ok: true, captured: city, died: true, consumed: true };
     }
     if (hooks.combat) hooks.combat(u, null, nx, ny, false);
     if (u.owner === 0) addLog(`Angriff auf ${city.name} abgewehrt – ${t.name} verloren.`, 'bad', nx, ny);

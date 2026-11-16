@@ -20,7 +20,7 @@ exportieren. Hilfe und Tastenbelegung: Knopf **Hilfe** oder Taste `H`.
 ## Inhalt
 
 - Zufällige Karten in drei Größen mit Kontinenten, Inseln, Wäldern und Bergen
-- Nebel des Krieges, Städte erobern (50 % Chance) und Produktion wählen
+- Nebel des Krieges, Städte erobern (50 % Chance, der Eroberer geht in der Stadt auf) und Produktion wählen
 - Neun Einheiten: Infanterie, Panzer, Jäger (mit Treibstoff), Transporter, Zerstörer,
   U-Boot, Kreuzer, Träger, Schlachtschiff
 - Stärken und Schwächen (Torpedo, Sonar, Wasserbomben, Küstenbatterien),

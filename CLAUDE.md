@@ -78,9 +78,13 @@ function simGame(size, dk, maxT = 350) {
 }
 ```
 
-Letzte Einmessung (kleine Karte, „Siege“ des KI-Spielers auf Platz 0):
-Leicht 8/8 · Normal 8/16 · Schwer 6/16 · Brutal 0/8 (nach „Besatzung fällt mit“ und ohne Panzer-Kampfbonus). Ein KI-Zug dauert auf der mittleren
-Karte ca. 50 ms.
+Schneller und ohne Browser: `data.js`, `map.js`, `game.js`, `ai.js` mit Node per `vm.runInThisContext`
+laden (`globalThis.localStorage` als Attrappe), dann dieselbe `simGame`-Schleife (ca. 1 s je Partie;
+im ausgeblendeten Browser-Fenster werden Zeitgeber gedrosselt, lange Läufe brechen dort ab).
+
+Letzte Einmessung (kleine Karte, „Siege“ des KI-Spielers auf Platz 0, nach „Eroberer geht in der Stadt auf“):
+Leicht 14/16 · Normal 17/32 · Schwer 8/32 · Brutal 0/16. Partiedauer bis zur Entscheidung (Normal) ca. 224 Runden.
+Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
 
 ## Bekannte Eigenheiten
 
