@@ -1,0 +1,18 @@
+# Dependabot hält Abhängigkeiten aktuell.
+# Archipel selbst hat keine (keine package.json, keine Bibliotheken) – überwacht
+# werden daher nur GitHub Actions, sobald Workflows unter .github/workflows/ liegen.
+# Kommt später z. B. ein npm-basiertes Werkzeug hinzu, hier einen Eintrag mit
+# package-ecosystem: "npm" ergänzen.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      timezone: "Europe/Berlin"
+    commit-message:
+      prefix: "Abhängigkeiten"
+    labels:
+      - "dependencies"
+    open-pull-requests-limit: 5
