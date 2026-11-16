@@ -7,9 +7,11 @@ Truppen per Schiff übersetzen – gegen einen Computergegner.
 Läuft komplett im Browser, ohne Installation und ohne externe Bibliotheken.
 Grafik und Klänge werden im Programm erzeugt, es gibt keine Bild- oder Audiodateien.
 
-## Starten
+## Spielen
 
-`index.html` doppelklicken. Das Spiel speichert nach jeder Runde automatisch im Browser;
+Direkt im Browser: **https://masa3418.github.io/archipel/**
+
+Oder lokal: `index.html` doppelklicken. Das Spiel speichert nach jeder Runde automatisch im Browser;
 über **Spielstände** lassen sich beliebig viele benannte Stände anlegen und als Datei
 exportieren. Hilfe und Tastenbelegung: Knopf **Hilfe** oder Taste `H`.
 
@@ -40,3 +42,7 @@ exportieren. Hilfe und Tastenbelegung: Knopf **Hilfe** oder Taste `H`.
 | `js/sfx.js` | Klänge (Web Audio) |
 | `js/ui.js` | Darstellung, Animationen, Bedienung, Seitenleiste, Dialoge |
 | `tools/serve.js` | Kleiner lokaler Webserver nur für die Entwicklung (`node tools/serve.js .`) |
+
+## Lizenz
+
+MIT – siehe [LICENSE](LICENSE).
