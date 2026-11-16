@@ -1,0 +1,45 @@
+name: Idee oder Wunsch
+description: Ein Vorschlag für eine neue Funktion oder eine Verbesserung.
+title: "[Idee] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idee
+    attributes:
+      label: Was wünschst du dir?
+      placeholder: "Beispiel: Ein Befehl, mit dem eine Einheit selbstständig die Karte erkundet."
+    validations:
+      required: true
+
+  - type: textarea
+    id: warum
+    attributes:
+      label: Warum wäre das gut?
+      description: Welches Problem löst es, oder was macht es besser?
+      placeholder: "Beispiel: Jäger und Zerstörer einzeln durch den Nebel zu steuern ist mühsam."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: bereich
+    attributes:
+      label: Bereich
+      multiple: true
+      options:
+        - Spielregeln / Einheiten
+        - Computergegner
+        - Bedienung
+        - Grafik / Animationen
+        - Klänge
+        - Karte / Spielwelt
+        - Sonstiges
+    validations:
+      required: false
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Weitere Details
+      description: Skizzen, Beispiele aus anderen Spielen, Screenshots …
+    validations:
+      required: false

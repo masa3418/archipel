@@ -1,0 +1,91 @@
+name: Fehler melden
+description: Etwas funktioniert nicht wie erwartet.
+title: "[Fehler] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke, dass du einen Fehler meldest! Je genauer die Beschreibung, desto schneller lässt er sich beheben.
+
+  - type: textarea
+    id: was
+    attributes:
+      label: Was ist passiert?
+      description: Beschreibe kurz, was schiefgelaufen ist.
+      placeholder: "Beispiel: Nach einem Angriff mit Infanterie auf eine Stadt erschien „Sieg!“, obwohl die Einheit verloren hat."
+    validations:
+      required: true
+
+  - type: textarea
+    id: schritte
+    attributes:
+      label: Wie lässt sich der Fehler nachstellen?
+      description: Schritt für Schritt, so weit möglich.
+      placeholder: |
+        1. Neues Spiel, Karte mittel, Schwierigkeit Normal
+        2. Infanterie neben eine feindliche Stadt ziehen
+        3. Angreifen
+        4. …
+    validations:
+      required: false
+
+  - type: textarea
+    id: erwartet
+    attributes:
+      label: Was hättest du erwartet?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: version
+    attributes:
+      label: Wo spielst du?
+      options:
+        - Online (masa3418.github.io/archipel)
+        - Lokal (index.html per Doppelklick)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: schwierigkeit
+    attributes:
+      label: Schwierigkeit
+      options:
+        - Leicht
+        - Normal
+        - Schwer
+        - Brutal
+        - Weiß ich nicht / spielt keine Rolle
+    validations:
+      required: false
+
+  - type: dropdown
+    id: karte
+    attributes:
+      label: Kartengröße
+      options:
+        - Klein
+        - Mittel
+        - Groß
+        - Weiß ich nicht / spielt keine Rolle
+    validations:
+      required: false
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser und Betriebssystem
+      placeholder: "z. B. Chrome 131 unter Windows 11"
+    validations:
+      required: false
+
+  - type: textarea
+    id: anhaenge
+    attributes:
+      label: Screenshot oder Spielstand
+      description: |
+        Ein Screenshot hilft oft sehr. Noch besser ist ein Spielstand kurz vor dem Fehler:
+        **Spielstände → Export** erzeugt eine `.json`-Datei, die du hier hineinziehen kannst.
+    validations:
+      required: false

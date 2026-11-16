@@ -1,0 +1,74 @@
+name: Balancing-Feedback
+description: Zu leicht, zu schwer, eine Einheit zu stark oder zu schwach?
+title: "[Balancing] "
+labels: ["balancing"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Rückmeldungen aus echten Partien helfen am meisten, die Schwierigkeitsstufen und Einheiten richtig einzustellen.
+
+  - type: dropdown
+    id: schwierigkeit
+    attributes:
+      label: Schwierigkeit
+      options:
+        - Leicht
+        - Normal
+        - Schwer
+        - Brutal
+    validations:
+      required: true
+
+  - type: dropdown
+    id: karte
+    attributes:
+      label: Kartengröße
+      options:
+        - Klein
+        - Mittel
+        - Groß
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ausgang
+    attributes:
+      label: Wie ist die Partie ausgegangen?
+      options:
+        - Gewonnen
+        - Verloren
+        - Aufgegeben
+        - Noch nicht zu Ende
+    validations:
+      required: true
+
+  - type: input
+    id: runden
+    attributes:
+      label: Nach wie vielen Runden?
+      placeholder: "z. B. 140"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: gefuehl
+    attributes:
+      label: Wie hat sich die Stufe angefühlt?
+      options:
+        - Viel zu leicht
+        - Etwas zu leicht
+        - Genau richtig
+        - Etwas zu schwer
+        - Viel zu schwer
+    validations:
+      required: true
+
+  - type: textarea
+    id: beobachtung
+    attributes:
+      label: Was ist dir aufgefallen?
+      description: Zum Beispiel eine Einheit, die zu stark oder zu schwach wirkt, oder ein Verhalten des Gegners.
+      placeholder: "Beispiel: Gegnerische U-Boote versenken meine Schlachtschiffe zu leicht."
+    validations:
+      required: false
