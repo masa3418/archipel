@@ -57,8 +57,11 @@ stehen in [CLAUDE.md](CLAUDE.md).
 - **Sicherheit:** Daten aus Spielständen nie ungeprüft per `innerHTML` ausgeben, Texte mit
   `esc()` maskieren. Neue Felder im Spielzustand in `sanitizeState` (`js/game.js`) aufnehmen.
 - **Kampfregeln** nur in `combatSpec` (`js/game.js`) ändern – Kampf, Siegchance-Anzeige und
-  Computergegner nutzen diese eine Funktion. Die Tabelle in der Hilfe (`index.html`)
-  entsprechend anpassen.
+  Computergegner nutzen diese eine Funktion. Die Tabelle „Wer schlägt wen“ im Handbuch berechnet
+  sich daraus selbst; eine neue Sonderregel bekommt eine Zeile im Reiter „Kampf“ (`index.html`)
+  und einen Satz im Einheitentext (`UNIT_INFO` in `js/ui.js`).
+- **Sichtbarkeit:** Ob ein Spieler eine fremde Einheit sieht, entscheidet `canSee` (getarnte U-Boote) –
+  nie nur prüfen, ob das Feld sichtbar ist.
 - Stil: 2 Leerzeichen Einrückung, Semikolons, einfache Anführungszeichen – wie im
   bestehenden Code.
 
@@ -118,7 +121,10 @@ Principles:
   maintainer will take care of it.
 - **Security:** never output saved-game data via `innerHTML` unchecked, escape texts with `esc()`,
   add new state fields to `sanitizeState` (`js/game.js`).
-- **Combat rules** live only in `combatSpec` (`js/game.js`); update the table in the help as well.
+- **Combat rules** live only in `combatSpec` (`js/game.js`). The “Who beats whom” table in the handbook is
+  calculated from it; a new special rule gets a row in the “Combat” tab (`index.html`) and a sentence in the
+  unit text (`UNIT_INFO` in `js/ui.js`). Whether a player sees an enemy unit is decided by `canSee`
+  (hidden submarines) – never just check whether the tile is visible.
 - Style: 2-space indentation, semicolons, single quotes.
 
 Before opening a pull request, check syntax with `for f in js/*.js; do node --check "$f"; done`, try the

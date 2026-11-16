@@ -36,6 +36,6 @@ Behebt / Fixes #<!-- Issue-Nummer, falls vorhanden / issue number, if any -->
 - [ ] Keine neuen Abhängigkeiten, kein Build-Schritt, keine Bild- oder Audiodateien / No new dependencies, no build step, no image or audio files
 - [ ] Neue Texte in beiden Sprachen: `tt('deutsch', 'english')` im Code, `data-en` bzw. `data-lang` in `index.html` / New texts in both languages
 - [ ] Neue Felder im Spielzustand in `sanitizeState` aufgenommen, Ausgaben mit `esc()` maskiert / New state fields added to `sanitizeState`, output escaped with `esc()`
-- [ ] Hilfe (`index.html`) in beiden Sprachen angepasst, falls sich Regeln oder Bedienung ändern / Help updated in both languages if rules or controls change
+- [ ] Handbuch in beiden Sprachen angepasst, falls sich Regeln oder Bedienung ändern (`index.html`, Einheitentexte in `js/ui.js`) / Handbook updated in both languages if rules or controls change
 
 Siehe auch / See also [CONTRIBUTING.md](../CONTRIBUTING.md).

@@ -36,22 +36,22 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 
 | Datei | Inhalt |
 |---|---|
-| `js/data.js` | Einheitentypen `UT`, `UNIT_ORDER`, `DIRS`, Spielerfarben, `MAP_SIZES`, Schwierigkeitsgrade `DIFFICULTY` + `diff()`, `aiKnowsMap(p)`, `aiMistake(p)` |
+| `js/data.js` | Sprache `LANG`/`tt()`, Einheitentypen `UT` (inkl. `stealth`, `sonar`), `UNIT_ORDER`, `DIRS`, Spielerfarben, `MAP_SIZES`, Weltarten `WORLDS`, Schwierigkeitsgrade `DIFFICULTY` (inkl. `skill`) + `diff()`, `aiKnowsMap(p)`, `aiMistake(p)` |
 | `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen, Kontinente aus Value-Noise; Städte, faire Startpositionen |
-| `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung, Produktion, Sicht `computeVision`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
+| `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung `captureChance`/`cityDefenders`, Unterstützung `fireSupport`/`airCover`, Produktion, Sicht `computeVision`/`canSee`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
 | `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
 | `js/gfx.js` | Gelände-Rendering, Einheiten-Abzeichen (SVG-Pfade → Sprites), Stadtgrafik |
 | `js/sfx.js` | Web-Audio-Synthese: Effekte, Klangteppiche je Einheitentyp, Klangtest |
-| `js/ui.js` | Zeichnen, Animationen/Zeitleiste, Kamera, Eingabe, Seitenleiste, alle Dialoge |
-| `index.html` | Layout, CSS, Dialoge (Hilfe, Statistik, Spielstände, Klangtest …) |
+| `js/ui.js` | Zeichnen, Animationen/Zeitleiste, Kamera, Eingabe, Seitenleiste, Kontextmenü, alle Dialoge, Handbuch (`openHelp`, `buildHelp`) |
+| `index.html` | Layout, CSS, Dialoge (Handbuch, Statistik, Spielstände, Klangtest …) |
 | `tools/serve.js` | Mini-Webserver für die Entwicklung |
 
 ## Wichtige Zusammenhänge (beim Ändern beachten)
 
 - **Kampf**: Alle Kampfwerte kommen aus `combatSpec(a, d, x, y)` (Stärken, Trefferchance `p`,
   Erstschlag, Hinweistexte). Kampfablauf, angezeigte Siegchance und KI-Bewertung nutzen
-  diese eine Funktion – neue Boni nur dort eintragen und die Tabelle in der Hilfe (`index.html`)
-  sowie Testwerte nachziehen.
+  diese eine Funktion – neue Boni nur dort eintragen. Die Tabelle „Wer schlägt wen“ im Handbuch rechnet sich
+  daraus selbst; die Sonderregel als Zeile im Reiter „Kampf“ und im Einheitentext ergänzen (siehe „Handbuch“).
 - **Schlachtschiffe**: `fireSupport(owner, x, y)` und `captureChance(owner, c)` (game.js) – Feuerunterstützung/Feuerschutz auf
   Nachbarfelder (Eroberung 75 % / 25 %, Bodentruppen treffen zu 2/3 bzw. werden zu 1/3 getroffen). Eroberungschancen nie fest
   mit 50 % rechnen, immer `captureChance` nehmen. Salven meldet `hooks.salvo`; Markierungen zeichnet `drawSupportMark` (ui.js).
@@ -115,38 +115,53 @@ Schneller und ohne Browser: `data.js`, `map.js`, `game.js`, `ai.js` mit Node per
 laden (`globalThis.localStorage` als Attrappe), dann dieselbe `simGame`-Schleife (ca. 1 s je Partie;
 im ausgeblendeten Browser-Fenster werden Zeitgeber gedrosselt, lange Läufe brechen dort ab).
 
-Letzte Einmessung (kleine Karte, „Siege“ des einfachen KI-Spielers auf Platz 0, je 32 Partien; nach „umsichtiger KI“ auf Schwer/Brutal):
-Inselreich Leicht 32/32 · Normal 16/32 · Schwer 5/32 · Brutal 0/32 · Gemischt 32 · 19 · 9 · 0 · Kontinente 32 · 16 · 9 · 0.
-Schwer über alle Welten 54/240 (23 %), ohne Bau-Bonus; Brutal mit 125 % Bautempo und zweiter Stadt 0/160. Partiedauer (Normal) ca. 220 Runden.
-Nach den getarnten U-Booten (KI baut ein U-Boot je fünf Städte, Geleitschutz ab Können 1, Brutal 115 % Bautempo):
-Leicht 95/96 · Normal 56/96 · Schwer 27/192 (14 %, damit etwas schwerer als zuvor mit 23 %) · Brutal 2/96.
-Auf Schwer wirken die U-Boote, weil der Gegner die Karte kennt und sofort vor den richtigen Häfen lauert; ohne Kartenwissen
-gewänne der Vergleichsspieler 31 % (Kontinente 50 %, Inselreich 10 %) – zu ungleich je Welt, deshalb nicht übernommen.
-Nach Träger (Sichtweite 4, Luftdeckung, KI ab Können 1 und 8 Städten) und der Hafenregel, je 96 Partien:
-Leicht 96 · Normal 56 · Schwer 12 · Brutal 2; unentschieden nach 350 Runden: 0 · 3 · 6 · 2.
-KI mit Träger gegen KI ohne: 57 % (400 Partien).
-Nach Einführung der Schlachtschiff-Regeln (Feuerunterstützung, Luftangriff), je 96 Partien über alle Welten: Leicht 95 · Normal 62 · Schwer 20 · Brutal 0.
-Verzicht auf Schlachtschiffe kostet KI gegen KI jetzt ca. 5 Punkte (vorher nichts); die KI baut sie selten und spät.
+### Stand der Einmessung
 
-**KI-Können messen:** `AI_SKILL[platz] = 0|1` erzwingt das Können je Platz. Für einen fairen Vergleich beide Plätze ohne Fehler
-(`DIFFICULTY.normal.aiMistake = 0`) und je Variante beide Sitzordnungen spielen, mindestens 400 Partien (bei 200 Partien liegt das
-Rauschen bei ±3,5 Punkten; „Variante = Basis“ ergab im Test schon einmal 54 %). Ergebnisse der Messreihe (ca. 10 000 Partien):
-- Umsichtige KI (Können 1) gegen einfache: 57 % Siege.
-- Wirksam: Infanterie statt Panzer als Eroberer (+10 Punkte). Im Rauschen, aber unschädlich: Zielverteilung, Jagd auf
-  Eindringlinge, Jäger-Jagd, vorsichtige Transporter.
-- **Schädlich: Besatzungen** (Frontstädte 42 %, Hinterland 45 %, jede Stadt von Beginn an < 30 %). Grund: Eine Infanterie
-  im Angriff erobert mit 50 % eine Stadt, in der Verteidigung senkt sie die Eroberungschance je Angreifer nur von 50 auf ca. 37 %.
-  Solange die Regeln so sind, lohnt Verteidigung nicht – erst mit einem Verteidigungsbonus würde sich das ändern.
-- Ebenfalls schlechter: keine frühen Kreuzer (34 %), mehr Transporter (42 %), Landung direkt vor der Stadt (47 %), andere Truppgrößen.
-- Auf Schwer im Inselreich baut der Gegner (kennt die Karte, fast nur Küstenstädte) praktisch keine Jäger.
-Inselstatistik je Weltart: `node mapstat.js <repo> <anzahl> <welt>` (Skript im Scratchpad, ggf. neu schreiben) –
-größte Insel ≈ 30–40 % des Landes (Inselreich), ≈ 50–60 % (Gemischt), ≈ 75–85 % (Kontinente).
-Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
+Kleine Karte, „Siege“ des einfachen KI-Spielers auf Platz 0, je 96 Partien über alle drei Welten
+(nach Träger, Hafenregel und getarnten U-Booten):
+
+| Stufe | Siege | unentschieden nach 350 Runden | Bonus des Gegners |
+|---|---|---|---|
+| Leicht | 96 | 0 | 70 % Bautempo, macht Fehler, du +1 Infanterie |
+| Normal | 56 | 3 | keiner, macht gelegentlich Fehler |
+| Schwer | 12 | 6 | kennt die Karte, spielt umsichtig |
+| Brutal | 2 | 2 | wie Schwer, 115 % Bautempo, zweite Stadt |
+
+Partiedauer bis zur Entscheidung (Normal) ca. 210 Runden. Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
+Inselstatistik: größte Insel ≈ 30–40 % des Landes (Inselreich), ≈ 50–60 % (Gemischt), ≈ 75–85 % (Kontinente).
+
+### KI messen
+
+`AI_SKILL[platz] = 0|1` erzwingt das Können je Platz. Für einen fairen Vergleich beide Plätze ohne Fehler
+(`DIFFICULTY.normal.aiMistake = 0`) und je Variante beide Sitzordnungen spielen, mindestens 400 Partien. Bei 200 Partien liegt
+das Rauschen bei ±3,5 Punkten („Variante = Basis“ ergab schon 45 % und 54 %). Neue Verhaltensweisen erst hinter einem
+Schalter je Platz einbauen, messen, dann festschreiben oder wieder entfernen. Immer auch die Zahl der **nicht entschiedenen**
+Partien ansehen: Steigt sie, hat sich etwas festgefahren.
+
+Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
+
+- **Angriff schlägt Verteidigung.** Besatzungen schaden (Frontstädte 42 %, Hinterland 45 %, jede Stadt von Beginn an < 30 %):
+  Eine Infanterie im Angriff erobert mit 50 % eine Stadt, als Besatzung senkt sie die Eroberungschance je Angreifer nur auf ca. 37 %.
+  Das ist gewollt (der aktive Spieler ist im Vorteil) – keine Besatzungs-Logik einbauen.
+- Umsichtige KI (Können 1) gegen einfache: 57 %. Wirksam ist vor allem „Infanterie statt Panzer als Eroberer“ (+10 Punkte).
+  Zielverteilung, Jagd auf Eindringlinge, Jäger-Jagd, vorsichtige Transporter und Geleitschutz liegen einzeln im Rauschen, schaden aber nicht.
+- Flotte: Ohne Kriegsschiffe verliert man im Inselreich fast immer (9 %). Kreuzer sind das beste Allround-Schiff; U-Boote statt
+  Kreuzern verlieren (36–42 %). Verzicht auf Schlachtschiffe kostet ca. 5 Punkte. Träger: KI mit Träger gegen KI ohne 57 %.
+- U-Boote wirken vor allem, wenn der Gegner die Karte kennt (Schwer): Sie lauern sofort vor den richtigen Häfen. Ohne Kartenwissen
+  gewänne der Vergleichsspieler auf Schwer 31 % (Kontinente 50 %, Inselreich 10 %) – zu ungleich je Welt, deshalb nicht übernommen.
+- Schlechter: keine frühen Kreuzer (34 %), mehr Transporter (42 %), Landung direkt vor der Stadt (47 %), andere Truppgrößen.
+- Auf Schwer im Inselreich baut der Gegner (fast nur Küstenstädte) kaum Jäger.
 
 ## Bekannte Eigenheiten
 
-- Das Screenshot-Werkzeug des eingebauten Browsers liefert höchstens 800 px Breite.
-- Lange Ersetzungen lieber als Node-Skript im Scratchpad ausführen statt per `sed`/Heredoc
-  mit Backticks (Quoting-Probleme unter Git Bash).
+- Das Screenshot-Werkzeug des eingebauten Browsers liefert höchstens 800 px Breite. `docs/screenshot.png` entsteht so:
+  Ansicht auf 800×760 stellen, Partie simulieren und Szene aufbauen, Screenshot machen, die abgelegte JPG-Datei mit
+  PowerShell (`System.Drawing`) als PNG speichern.
+- Im Browser-Bereich können mehrere Reiter offen sein. Bei JavaScript-Aufrufen immer die Reiter-Kennung des Spiels angeben
+  und nie `location.href` zurückgeben (ein Reiter kann eine riesige `data:`-Adresse haben).
+- Testspielstände (`archipel-test-*.json` im Projektordner, nicht im Repo) erzeugt ein Node-Skript: Partie simulieren, Einheiten
+  setzen, `serialize()` in eine Datei schreiben; geladen wird über „Spielstände → Aus Datei laden…“.
+- Lange Ersetzungen lieber als Node-Skript im Scratchpad ausführen statt per `sed`/Heredoc oder `node -e`
+  mit Backticks (Git Bash führt den Inhalt als Befehl aus).
 - `localStorage`: Autosave `archipel-save-v1`, Spielstände `archipel-slot-*` mit Index
   `archipel-slots`, Einstellungen `archipel-*` (Ton, Zoom, Schwierigkeit, Rundenende, Sprache, Handbuch-Reiter …).

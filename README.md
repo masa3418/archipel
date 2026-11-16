@@ -11,7 +11,7 @@ Grafik und Klänge werden im Programm erzeugt, es gibt keine Bild- oder Audiodat
 capture cities, build units and ship your troops across the sea against a computer opponent. The game
 is available in English: use the language button in the top bar.
 
-![Archipel: Inselwelt mit Städten, eigenen Einheiten und feindlichen Schiffen vor der Küste; rechts Übersichtskarte, Kräfteverhältnis und Einheiteninfo](docs/screenshot.png)
+![Archipel: Landung an einer feindlichen Küstenstadt – ein Schlachtschiff gibt Feuerunterstützung, daneben Träger und Transporter; rechts Übersichtskarte, Kräfteverhältnis und die Karte der gewählten Einheit](docs/screenshot.png)
 
 ## Spielen
 
@@ -32,9 +32,11 @@ Kampf, Steuerung und den Gegner.
 - Stärken und Schwächen (Torpedo, Sonar, Wasserbomben, Küstenbatterien, Luftangriffe,
   Feuerunterstützung durch Schlachtschiffe, getarnte U-Boote, Luftdeckung durch Träger),
   die angezeigte Siegchance berücksichtigt sie
-- Befehle: Marsch, Wache, Patrouille, Erkunden, Ein-/Ausladen
+- Befehle: Marsch, Wache, Patrouille, Erkunden, Heimkehr, Ein-/Ausladen – auch über ein Rechtsklick-Menü
 - Computergegner in vier Schwierigkeitsstufen; auf Leicht/Normal muss er die Karte
-  wie du erkunden und macht gelegentlich Fehler
+  wie du erkunden und macht gelegentlich Fehler, auf Schwer/Brutal spielt er umsichtiger
+  (Geleitschutz, lauernde U-Boote, Träger)
+- Handbuch im Spiel mit Einheitenkarten und einer Tabelle „Wer schlägt wen“, die sich aus den Regeln selbst berechnet
 - Animationen, Kamerafahrten bei Gegnerzügen, Kräfteverhältnis, Statistik
 - Synthetisierte Soundeffekte und Klangteppiche je Einheitentyp, Klangtest-Fenster
 
@@ -43,13 +45,13 @@ Kampf, Steuerung und den Gegner.
 | Datei | Inhalt |
 |---|---|
 | `index.html` | Seite, Stile, Dialoge |
-| `js/data.js` | Einheitentypen, Schwierigkeitsgrade (hier lässt sich das Balancing ändern) |
+| `js/data.js` | Sprache, Einheitentypen, Weltarten, Schwierigkeitsgrade (hier lässt sich das Balancing ändern) |
 | `js/map.js` | Kartengenerator, Städte, Startpositionen |
 | `js/game.js` | Spielregeln: Bewegung, Kampf, Eroberung, Produktion, Sicht, Wegsuche, Speichern |
 | `js/ai.js` | Computergegner |
 | `js/gfx.js` | Grafik: Gelände, Städte, Einheiten-Symbole |
 | `js/sfx.js` | Klänge (Web Audio) |
-| `js/ui.js` | Darstellung, Animationen, Bedienung, Seitenleiste, Dialoge |
+| `js/ui.js` | Darstellung, Animationen, Bedienung, Seitenleiste, Dialoge, Handbuch |
 | `tools/serve.js` | Kleiner lokaler Webserver nur für die Entwicklung (`node tools/serve.js .`) |
 
 ## Datenschutz

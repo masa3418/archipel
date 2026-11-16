@@ -34,6 +34,17 @@ body:
       required: true
 
   - type: dropdown
+    id: welt
+    attributes:
+      label: Welt / World
+      options:
+        - Inselreich / Archipelago
+        - Gemischt / Mixed
+        - Kontinente / Continents
+    validations:
+      required: true
+
+  - type: dropdown
     id: ausgang
     attributes:
       label: Wie ist die Partie ausgegangen? / How did the game end?
