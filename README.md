@@ -7,6 +7,8 @@ Truppen per Schiff übersetzen – gegen einen Computergegner.
 Läuft komplett im Browser, ohne Installation und ohne externe Bibliotheken.
 Grafik und Klänge werden im Programm erzeugt, es gibt keine Bild- oder Audiodateien.
 
+![Archipel: Inselwelt mit Städten, eigenen Einheiten und feindlichen Schiffen vor der Küste; rechts Übersichtskarte, Kräfteverhältnis und Einheiteninfo](docs/screenshot.png)
+
 ## Spielen
 
 Direkt im Browser: **https://masa3418.github.io/archipel/**
