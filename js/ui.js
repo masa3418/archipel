@@ -778,10 +778,11 @@ function onTileClick(x, y, shift) {
     const adjacent = cheb(u.x, u.y, x, y) === 1;
     const ownCity = city && city.owner === 0;
     const boardable = own.some(o => T(o).carries === T(u).domain && cargoOf(o).length < T(o).capacity);
-    if (!shift && own.length && (!adjacent || (!ownCity && !boardable))) {
+    // Eigene Stadt = Ziel für die gewählte Einheit (auch wenn dort schon Einheiten stehen).
+    // Stadt bearbeiten: erst Auswahl aufheben (Rechtsklick/Esc), dann Stadt anklicken.
+    if (!shift && !ownCity && own.length && (!adjacent || !boardable)) {
       select(own.find(needsOrders) || own[0]); Sfx.play('select'); refresh(); return;
     }
-    if (!shift && !own.length && !adjacent && ownCity) { selCity = city.id; sel = null; refresh(); return; }
     if (adjacent) doMove(u, x, y); else doGoto(u, x, y);
     return;
   }
