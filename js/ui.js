@@ -131,13 +131,15 @@ hooks.combat = (a, d, x, y, won, storm = null) => {
 };
 hooks.capture = (c, owner, prev) => {
   if (!anim.rec) return;
-  if (owner === 0) captureQueue.push({ game: S, id: c.id });
   if (owner !== 0 && !seenByHuman(c.x, c.y)) return;
   recCam(c.x, c.y);
   const lost = prev === 0;
-  anim.events.push({ type: 'capture', x: c.x, y: c.y, owner, lost, t0: anim.cursor, dur: 900 });
-  const text = owner === 0 ? 'Erobert!' : lost ? 'Stadt verloren' : 'Gegner erobert';
-  anim.events.push({ type: 'label', x: c.x, y: c.y, text, tone: owner === 0 ? 'good' : 'bad', t0: anim.cursor + 150, dur: LABEL_MS });
+  const ev = { type: 'capture', x: c.x, y: c.y, owner, lost, t0: anim.cursor, dur: 900 };
+  anim.events.push(ev);
+  // Eigene Eroberung: kein Schriftzug – das Eroberungsfenster folgt gleich nach dem Farbwechsel
+  if (owner === 0) { captureQueue.push({ game: S, id: c.id, ev }); anim.cursor += Math.max(200, anim.speed * 2); return; }
+  const text = lost ? 'Stadt verloren' : 'Gegner erobert';
+  anim.events.push({ type: 'label', x: c.x, y: c.y, text, tone: 'bad', t0: anim.cursor + 150, dur: LABEL_MS });
   anim.cursor += Math.max(200, anim.speed * 2);
 };
 
@@ -485,7 +487,7 @@ function playAnimSounds(now) {
     else if (e.type === 'capture') { if (e.owner === 0) Sfx.play('capture'); else if (e.lost) Sfx.play('cityLost'); else Sfx.play('boom', 80); }
   }
   if (anim.after && now >= anim.end) { const f = anim.after; anim.after = null; f(); }
-  if (captureQueue.length && now >= anim.end && !anyModalOpen()) showCaptureDialog();
+  if (captureQueue.length && !anyModalOpen() && now >= captureReadyAt(captureQueue[0])) showCaptureDialog();
 }
 
 // Wiedergabe der Gegnerzüge: Tempo und Überspringen
@@ -1108,6 +1110,10 @@ function anyModalOpen() { return [...document.querySelectorAll('.modal')].some(m
 // Nach jeder eigenen Eroberung (sobald die Animation vorbei ist) gleich die
 // Produktion der neuen Stadt wählen lassen – mit etwas Jubel.
 const captureQueue = [];
+// Fenster erscheint kurz nachdem die Stadt die Farbe gewechselt hat
+function captureReadyAt(q) {
+  return q.ev && anim.events.includes(q.ev) ? anim.t0 + q.ev.t0 + 450 : anim.end;
+}
 const UNIT_ROLE = {
   inf: 'Erobert Städte · schnell gebaut', tank: 'Erobert Städte · 2 Felder pro Zug',
   ftr: 'Fliegt weit · späht und jagt', trn: 'Bringt 6 Landeinheiten übers Meer',
