@@ -4,7 +4,7 @@ Rundenbasiertes Eroberungsspiel im Stil der klassischen Strategiespiele der 80er
 eine zufällige Inselwelt im Nebel des Krieges, Städte erobern, Einheiten bauen,
 Truppen per Schiff übersetzen – gegen einen Computergegner.
 
-Läuft komplett im Browser, ohne Installation und ohne externe Bibliotheken – online oder als
+Läuft komplett im Browser, ohne Installation und ohne externe Bibliotheken – [online](https://masa3418.github.io/archipel/) oder als
 [einzelne Datei zum Herunterladen](https://github.com/masa3418/archipel/releases/latest) auch ganz ohne Internet.
 Grafik und Klänge werden im Programm erzeugt, es gibt keine Bild- oder Audiodateien.
 
