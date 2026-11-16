@@ -112,7 +112,7 @@ hooks.move = (u, fx, fy, tx, ty) => {
 };
 const LABEL_MS = 1700;
 // won: hat der Angreifer gewonnen? (Verlierer sind beim Aufruf noch nicht entfernt)
-hooks.combat = (a, d, x, y, won) => {
+hooks.combat = (a, d, x, y, won, storm = null) => {
   if (!anim.rec) return;
   if (a.owner !== 0 && !(d && d.owner === 0) && !seenByHuman(x, y)) return;
   recCam(x, y);
@@ -122,8 +122,9 @@ hooks.combat = (a, d, x, y, won) => {
   let label = null;
   // d === null: Eroberungsversuch einer unbesetzten Stadt ist gescheitert
   const city = cityAt(x, y);
-  if (a.owner === 0) label = won ? ['Sieg!', 'good'] : d ? ['Verloren', 'bad'] : ['Gescheitert', 'bad'];
-  else if (d && d.owner === 0) label = won ? ['Verloren', 'bad'] : ['Abgewehrt!', 'good'];
+  if (storm) label = null;   // Stadt fällt: der Schriftzug der Eroberung folgt
+  else if (a.owner === 0) label = won ? (storm === false ? ['Sieg – Stadt hält', 'good'] : ['Sieg!', 'good']) : d ? ['Verloren', 'bad'] : ['Gescheitert', 'bad'];
+  else if (d && d.owner === 0) label = won ? (storm === false ? ['Verloren – Stadt hält', 'bad'] : ['Verloren', 'bad']) : ['Abgewehrt!', 'good'];
   else if (!d && city && city.owner === 0) label = ['Abgewehrt!', 'good'];
   if (label) anim.events.push({ type: 'label', x, y, text: label[0], tone: label[1], t0: anim.cursor + 250, dur: LABEL_MS });
   anim.cursor += Math.max(260, anim.speed * 2.5);
@@ -1088,6 +1089,7 @@ function updateHover() {
       s += ` · Siegchance: ${Math.round(attackOdds(su, d, x, y) * 100)} %`;
       const cs = combatSpec(su, d, x, y);
       if (cs.notes.length) s += ' (' + cs.notes.join(', ') + ')';
+      if (c && c.owner !== 0 && T(su).capture) s += ` · danach 50 % Eroberung, dabei fällt die Besatzung (${us.length})`;
     } else if (su && c && c.owner !== 0 && P.knownOwner[c.id] !== 0 && T(su).capture && !en.length) {
       s += ' · Eroberungschance: 50 %';
     }

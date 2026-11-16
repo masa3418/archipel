@@ -79,7 +79,7 @@ function simGame(size, dk, maxT = 350) {
 ```
 
 Letzte Einmessung (kleine Karte, „Siege“ des KI-Spielers auf Platz 0):
-Leicht 7/8 · Normal 9/16 · Schwer 4/16 · Brutal 0/8. Ein KI-Zug dauert auf der mittleren
+Leicht 8/8 · Normal 6/16 · Schwer 6/16 · Brutal 0/8 (nach der Regel „Besatzung fällt mit“). Ein KI-Zug dauert auf der mittleren
 Karte ca. 50 ms.
 
 ## Bekannte Eigenheiten

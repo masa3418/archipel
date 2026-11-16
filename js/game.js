@@ -197,7 +197,10 @@ function attack(u, nx, ny, enemies, city) {
   while (u.hp > 0 && def.hp > 0) {
     if (rng() < cs.p) def.hp -= cs.as; else u.hp -= cs.ds;
   }
-  if (hooks.combat) hooks.combat(u, def, nx, ny, u.hp > 0);   // won = Angreifer hat gewonnen
+  // Besetzte Stadt: Wer den Verteidiger besiegt und Städte erobern kann, würfelt
+  // sofort die 50 % auf die Stadt. Fällt sie, geht die restliche Besatzung unter.
+  const storm = u.hp > 0 && city && city.owner !== u.owner && a.capture ? rng() < 0.5 : null;
+  if (hooks.combat) hooks.combat(u, def, nx, ny, u.hp > 0, storm);   // won = Angreifer hat gewonnen
   if (u.hp <= 0) {
     if (involved) addLog(`${aName} greift ${dName} an – und wird vernichtet.`, u.owner === 0 ? 'bad' : 'good', nx, ny);
     killUnit(u);
@@ -207,6 +210,17 @@ function attack(u, nx, ny, enemies, city) {
   if (involved) addLog(`${aName} greift ${dName} an – Sieg!` + (cargoLost ? ` (${cargoLost} Einheiten an Bord verloren)` : ''),
     u.owner === 0 ? 'good' : 'bad', nx, ny);
   killUnit(def);
+  if (storm) {
+    const garrison = S.units.filter(o => o.x === nx && o.y === ny && o.owner !== u.owner && o.carrier == null);
+    let lost = 0;
+    for (const o of garrison) { lost += 1 + cargoOf(o).length; killUnit(o); }
+    relocate(u, nx, ny); u.carrier = null; u.order = null; u.moves = 0;
+    captureCity(city, u.owner);
+    if (lost && involved) addLog(`Mit ${city.name} ${lost === 1 ? 'ging 1 weitere Einheit' : `gingen ${lost} weitere Einheiten`} unter.`,
+      u.owner === 0 ? 'good' : 'bad', nx, ny);
+    return { ok: true, combat: true, captured: city };
+  }
+  if (storm === false && involved) addLog(`${city.name} hält dem Sturm stand.`, u.owner === 0 ? 'bad' : 'good', nx, ny);
   const rest = topUnitsAt(nx, ny);
   if (!rest.length && !(city && city.owner !== u.owner) && canEnterTerrain(u, nx, ny)) relocate(u, nx, ny);
   const ok = spendMove(u);
