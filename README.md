@@ -45,6 +45,17 @@ exportieren. Hilfe und Tastenbelegung: Knopf **Hilfe** oder Taste `H`.
 | `js/ui.js` | Darstellung, Animationen, Bedienung, Seitenleiste, Dialoge |
 | `tools/serve.js` | Kleiner lokaler Webserver nur für die Entwicklung (`node tools/serve.js .`) |
 
+## Datenschutz
+
+- **Keine Cookies, kein Tracking, keine Analyse-Dienste.**
+- **Keine externen Inhalte:** Das Spiel lädt nichts von anderen Servern – auch keine Schriften
+  oder Bibliotheken.
+- **Speicherung nur lokal:** Spielstände und Einstellungen liegen im Browser (localStorage) und
+  verlassen den Rechner nicht, außer man exportiert selbst eine Datei.
+- **Hosting:** Die Online-Version liegt auf GitHub Pages. GitHub verarbeitet dabei technisch
+  notwendige Daten wie die IP-Adresse, siehe
+  [Datenschutzerklärung von GitHub](https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement).
+
 ## Mitmachen
 
 Fehler, Ideen und Balancing-Rückmeldungen sind willkommen – siehe
