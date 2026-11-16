@@ -1677,15 +1677,30 @@ try { const m = localStorage.getItem('archipel-wheel'); if (m === 'zoom' || m ==
 function looksLikeTouchpad(e) {
   if (e.deltaMode !== 0) return false;                       // Zeilen/Seiten: Mausrad
   const now = performance.now();
-  const small = Math.abs(e.deltaY) < 40 && Math.abs(e.deltaX) < 40;
-  if (e.deltaX !== 0 || !Number.isInteger(e.deltaY) || (small && (e.deltaY !== 0))) { padUntil = now + 500; return true; }
-  return now < padUntil;                                     // Nachlauf einer Wischbewegung
+  const ay = Math.abs(e.deltaY), ax = Math.abs(e.deltaX);
+  const wd = typeof e.wheelDeltaY === 'number' && e.wheelDeltaY !== 0 ? Math.abs(e.wheelDeltaY) : null;
+  // Bewährt (auf einem echten Notebook geprüft): seitliche, krumme oder kleine Schritte kommen vom Touchpad.
+  let pad = ax > 0 || !Number.isInteger(e.deltaY) || (ay > 0 && ay < 40);
+  // Zusätzlich für schnelle Wischer mit großen Schritten: In Chrome/Edge meldet ein Touchpad wheelDelta = 3 × delta,
+  // ein Mausrad je Raste ein Vielfaches von 120.
+  if (!pad && wd != null) pad = Math.abs(wd - 3 * ay) < 1.5 && wd % 120 !== 0;
+  if (pad) padUntil = now + 500;
+  return pad || now < padUntil;                              // Nachlauf einer Wischbewegung
+}
+// letzte Erkennung, für die Anzeige im Handbuch (hilft beim Einstellen und bei Fehlermeldungen)
+function showWheelInfo(e, pan, pinch) {
+  const el = $('wheelInfo');
+  if (!el) return;
+  const what = pinch ? tt('Spreizgeste → zoomt', 'pinch → zooms') : pan ? tt('Touchpad → verschiebt', 'touchpad → pans') : tt('Mausrad → zoomt', 'mouse wheel → zooms');
+  const r1 = v => Math.round(v * 10) / 10;
+  el.textContent = tt('Zuletzt erkannt: ', 'Last detected: ') + what + ` · Signal ${r1(e.deltaX)} / ${r1(e.deltaY)}${typeof e.wheelDeltaY === 'number' ? ' / ' + e.wheelDeltaY : ''}${e.deltaMode ? ' / ' + tt('Zeilen', 'lines') : ''}`;
 }
 wrap.addEventListener('wheel', e => {
   if (!S) return;
   e.preventDefault();
   const pinch = e.ctrlKey;                                   // Spreizgeste oder Strg + Rad: immer zoomen
   const pan = !pinch && (wheelMode === 'pan' || (wheelMode === 'auto' && looksLikeTouchpad(e)));
+  showWheelInfo(e, pan, pinch);
   if (pan) {
     cam.active = false;
     wrap.scrollLeft += e.deltaX; wrap.scrollTop += e.deltaY;
