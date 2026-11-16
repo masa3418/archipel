@@ -52,6 +52,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Erstschlag, Hinweistexte). Kampfablauf, angezeigte Siegchance und KI-Bewertung nutzen
   diese eine Funktion – neue Boni nur dort eintragen und die Tabelle in der Hilfe (`index.html`)
   sowie Testwerte nachziehen.
+- **Schlachtschiffe**: `fireSupport(owner, x, y)` und `captureChance(owner, c)` (game.js) – Feuerunterstützung/Feuerschutz auf
+  Nachbarfelder (Eroberung 75 % / 25 %, Bodentruppen treffen zu 2/3 bzw. werden zu 1/3 getroffen). Eroberungschancen nie fest
+  mit 50 % rechnen, immer `captureChance` nehmen. Salven meldet `hooks.salvo`; Markierungen zeichnet `drawSupportMark` (ui.js).
 - **Neues Feld im Spielzustand** → in `sanitizeState` (game.js) aufnehmen, sonst wird es beim
   Laden verworfen. Spielstände aus Dateien sind nicht vertrauenswürdig (siehe `SECURITY.md`);
   Werte aus `S` nie ungeprüft per `innerHTML` ausgeben, Texte mit `esc()` maskieren.
@@ -93,6 +96,8 @@ im ausgeblendeten Browser-Fenster werden Zeitgeber gedrosselt, lange Läufe brec
 Letzte Einmessung (kleine Karte, „Siege“ des einfachen KI-Spielers auf Platz 0, je 32 Partien; nach „umsichtiger KI“ auf Schwer/Brutal):
 Inselreich Leicht 32/32 · Normal 16/32 · Schwer 5/32 · Brutal 0/32 · Gemischt 32 · 19 · 9 · 0 · Kontinente 32 · 16 · 9 · 0.
 Schwer über alle Welten 54/240 (23 %), ohne Bau-Bonus; Brutal mit 125 % Bautempo und zweiter Stadt 0/160. Partiedauer (Normal) ca. 220 Runden.
+Nach Einführung der Schlachtschiff-Regeln (Feuerunterstützung, Luftangriff), je 96 Partien über alle Welten: Leicht 95 · Normal 62 · Schwer 20 · Brutal 0.
+Verzicht auf Schlachtschiffe kostet KI gegen KI jetzt ca. 5 Punkte (vorher nichts); die KI baut sie selten und spät.
 
 **KI-Können messen:** `AI_SKILL[platz] = 0|1` erzwingt das Können je Platz. Für einen fairen Vergleich beide Plätze ohne Fehler
 (`DIFFICULTY.normal.aiMistake = 0`) und je Variante beide Sitzordnungen spielen, mindestens 400 Partien (bei 200 Partien liegt das

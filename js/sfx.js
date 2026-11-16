@@ -76,6 +76,13 @@ const Sfx = (() => {
       tone({ f: 90, f2: 32, type: 'sine', dur: 0.7, gain: 0.6, attack: 0.004 });
       noise({ dur: 0.15, filter: 'highpass', f: 2500, gain: 0.25, attack: 0.002 });
     },
+    // Salve eines Schlachtschiffs: drei dumpfe Abschüsse kurz hintereinander
+    salvo: () => {
+      for (let k = 0; k < 3; k++) {
+        noise({ dur: 0.38, f: 1000, f2: 70, gain: 0.55, attack: 0.003, at: k * 0.1 });
+        tone({ f: 72, f2: 28, type: 'sine', dur: 0.5, gain: 0.5, attack: 0.004, at: k * 0.1 });
+      }
+    },
     lost: () => notes([392, 330, 262], 'triangle', 0.09, 0.12, 0.2),
     capture: () => { notes([523, 659, 784, 1047], 'triangle', 0.12, 0.09, 0.22); tone({ f: 1047, type: 'sine', dur: 0.6, gain: 0.06, at: 0.36 }); },
     cityLost: () => { for (let k = 0; k < 2; k++) { tone({ f: 466, type: 'square', dur: 0.16, gain: 0.05, at: k * 0.36 }); tone({ f: 349, type: 'square', dur: 0.16, gain: 0.05, at: k * 0.36 + 0.18 }); } },

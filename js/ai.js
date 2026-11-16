@@ -146,7 +146,7 @@ function aiChooseProduction(c) {
 }
 
 // Flottenmix nach gesichteten Feindtypen: viele große Schiffe -> mehr U-Boote,
-// viele U-Boote -> mehr Zerstörer und Jäger
+// viele U-Boote -> mehr Zerstörer und Jäger, Schlachtschiffe -> zusätzlich Jäger
 function enemySeen(p) {
   const n = {}, intel = S.players[p].intel || {};
   for (const id in intel) n[intel[id]] = (n[intel[id]] || 0) + 1;
@@ -154,7 +154,7 @@ function enemySeen(p) {
 }
 function counterPick(p) {
   const e = enemySeen(p), big = (e.bat || 0) + (e.crs || 0) + (e.car || 0);
-  const w = { dst: 0.3 + 0.08 * (e.sub || 0), ftr: 0.18 + 0.04 * (e.sub || 0) + 0.03 * (e.trn || 0),
+  const w = { dst: 0.3 + 0.08 * (e.sub || 0), ftr: 0.18 + 0.04 * (e.sub || 0) + 0.03 * (e.trn || 0) + 0.08 * (e.bat || 0),
     sub: 0.14 + 0.07 * big, crs: 0.23, bat: 0.15 };
   let sum = 0; for (const k in w) sum += w[k];
   let r = rng() * sum;
@@ -219,6 +219,15 @@ function landingSupport(p, x, y) {
   return S.units.some(o => o.owner === p && T(o).domain === 'land' && cheb(o.x, o.y, x, y) <= 2);
 }
 
+// Nötige Siegchance für einen Angriff. Zwei Konter lohnen sich auch bei geringerer Chance:
+// ein U-Boot gegen ein großes Schiff (halb so teuer, 50 %) und ein Jäger gegen ein Schlachtschiff
+// (versenkt es selten, schlägt ihm aber im Schnitt fast die Hälfte der Trefferpunkte weg).
+function aiNeed(u, d, minProb) {
+  if (u.type === 'sub' && BIG_SHIPS.includes(d.type)) return Math.min(minProb, 0.4);
+  if (u.type === 'ftr' && d.type === 'bat') return Math.min(minProb, 0.15);
+  return minProb;
+}
+
 // Bestes Angriffsziel auf einem Nachbarfeld (oder null)
 function aiAdjTarget(u, minProb) {
   if (u.owner === 1) minProb = Math.min(0.95, minProb + diff().caution);
@@ -239,7 +248,7 @@ function aiAdjTarget(u, minProb) {
       const ship = t.domain === 'sea';
       if (ship && c && !landingSupport(u.owner, nx, ny)) continue;
       const pr = attackOdds(u, d, nx, ny);
-      const need = c && !ship ? minProb - 0.15 : (T(d).str === 0 ? 0.2 : minProb);
+      const need = c && !ship ? minProb - 0.15 : (T(d).str === 0 ? 0.2 : aiNeed(u, d, minProb));
       if (pr < need) continue;
       score = pr + (c && !ship ? 1 : 0) + cargoOf(d).length * 0.3 + T(d).cost / 40;
     } else if (c && c.owner !== u.owner && t.capture) {
@@ -319,7 +328,7 @@ function spreadField(u) {
       const f = cityField(p, c)[ui];
       if (f <= 0) continue;
       const n = st.load.get(c.id) || 0;
-      const cost = f + n * SPREAD + (n >= 2 ? (n - 1) * SPREAD * 2 : 0);
+      const cost = f + n * SPREAD + (n >= 2 ? (n - 1) * SPREAD * 2 : 0) - (fireSupport(p, c.x, c.y) ? 4 : 0);
       if (cost < bs) { bs = cost; tc = c; }
     }
     if (!tc) return null;
@@ -433,7 +442,20 @@ function aiTransport(u) {
     const waiting = waitingLand(p, targets);
     let path = null;
     const goInvade = cargo.length >= Math.min(cap, p === 1 ? diff().invadeAt : 4) || (cargo.length > 0 && (!waiting.length || (u.wait || 0) >= 3));
-    if (goInvade && targets.size) {
+    if (goInvade && targets.size && S.units.some(o => o.owner === p && o.type === 'bat')) {
+      // bevorzugt dort landen, wo ein eigenes Schlachtschiff eine fremde Stadt unter Feuer hält
+      path = bfs(u.x, u.y, pass, (x, y, i) => {
+        if (!pass(x, y, i) || S.terrain[i] !== 0 || !seenBy(p, i)) return false;
+        for (const [dx, dy] of DIRS) {
+          const nx = x + dx, ny = y + dy;
+          if (!inb(nx, ny)) continue;
+          const cc = cityAt(nx, ny);
+          if (cc && isTarget(p, cc) && fireSupport(p, nx, ny)) return true;
+        }
+        return false;
+      }, 25);
+    }
+    if (path) { /* Landung unter Feuerschutz */ } else if (goInvade && targets.size) {
       path = bfs(u.x, u.y, pass, (x, y, i) => {
         if (!pass(x, y, i) || S.terrain[i] !== 0 || !seenBy(p, i)) return false;
         for (const [dx, dy] of DIRS) {
@@ -485,7 +507,7 @@ function aiWarship(u) {
         if (!inb(nx, ny)) continue;
         const e = visibleEnemyAt(p, nx, ny);
         if (!e || (cityAt(nx, ny) && !landingSupport(p, nx, ny))) continue;
-        if (attackOdds(u, e, nx, ny) >= 0.55) return true;
+        if (attackOdds(u, e, nx, ny) >= aiNeed(u, e, 0.55)) return true;
       }
       return false;
     }, 12);
@@ -494,6 +516,22 @@ function aiWarship(u) {
     if (!path && explorer) {
       path = explorePath(u, 60);
       // das unbekannte Ziel selbst ist evtl. Land – ein Schritt dorthin scheitert dann, und das Feld ist danach bekannt
+    }
+    if (!path && u.type === 'bat') {
+      // Feuerunterstützung: direkt vor eine fremde Küstenstadt legen und dort bleiben, bis sie gefallen ist.
+      // Bevorzugt Städte, bei denen schon eigene Bodentruppen stehen.
+      let tc = u.aiTarget != null ? S.cities[u.aiTarget] : null;
+      if (!tc || !isTarget(p, tc) || !tc.coastal) {
+        const opts = knownTargets(p).filter(c => c.coastal);
+        if (!opts.length) break;
+        const score = c => cheb(u.x, u.y, c.x, c.y) - (landingSupport(p, c.x, c.y) ? 8 : 0);
+        opts.sort((a, b) => score(a) - score(b));
+        tc = opts[0];
+        u.aiTarget = tc.id;
+      }
+      if (cheb(u.x, u.y, tc.x, tc.y) <= 1) break;
+      path = bfs(u.x, u.y, pass, (x, y, i) => pass(x, y, i) && S.terrain[i] === 0 && cheb(x, y, tc.x, tc.y) === 1 && !topUnitsAt(x, y).length);
+      if (!path) u.aiTarget = null;
     }
     if (!path) {
       // Patrouille auf See vor einer bekannten fremden Küstenstadt (mit Abstand, nicht direkt vor dem Hafen)
@@ -535,7 +573,7 @@ function aiFighter(u) {
       if (e.owner === p || e.carrier != null || !P.vis[idx(e.x, e.y)] || cityAt(e.x, e.y)) continue;
       const d = cheb(u.x, u.y, e.x, e.y);
       if (d > t.fuel / 2 || u.fuel - d - t.move < distHome(p, e.x, e.y)) continue;
-      if (attackOdds(u, e, e.x, e.y) < 0.6) continue;
+      if (attackOdds(u, e, e.x, e.y) < aiNeed(u, e, 0.6)) continue;
       const v = (T(e).cost + cargoOf(e).length * 6) / (2 + d);
       if (v > bs) { bs = v; best = e; }
     }

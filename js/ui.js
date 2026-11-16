@@ -110,6 +110,14 @@ hooks.move = (u, fx, fy, tx, ty) => {
     vr: u.owner === 0 ? T(u).vision : 0 });
   anim.cursor += anim.speed;
 };
+// Salve eines Schlachtschiffs (Feuerunterstützung): Mündungsfeuer am Schiff, Granaten zum Zielfeld
+hooks.salvo = (b, x, y) => {
+  if (!anim.rec) return;
+  if (b.owner !== 0 && !seenByHuman(x, y) && !seenByHuman(b.x, b.y)) return;
+  recCam(x, y);
+  anim.events.push({ type: 'salvo', fx: b.x, fy: b.y, x, y, t0: anim.cursor, dur: 560 });
+  anim.cursor += 460;
+};
 const LABEL_MS = 1700;
 // won: hat der Angreifer gewonnen? (Verlierer sind beim Aufruf noch nicht entfernt)
 hooks.combat = (a, d, x, y, won, storm = null) => {
@@ -274,6 +282,30 @@ function moveHints(u) {
   return out;
 }
 
+function drawSupportMark(x, y, protect, col) {
+  const x0 = x * TS, y0 = y * TS, lw = Math.max(2, TS / 12);
+  ctx.save();
+  ctx.lineCap = 'round';
+  const stroke = path => {
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = lw + 2; path(); ctx.stroke();
+    ctx.strokeStyle = col; ctx.lineWidth = lw; path(); ctx.stroke();
+  };
+  if (protect) {
+    ctx.setLineDash([TS * 0.16, TS * 0.12]);
+    stroke(() => { ctx.beginPath(); ctx.arc(x0 + TS / 2, y0 + TS / 2, TS * 0.56, 0, 7); });
+  } else {
+    const a = TS * 0.3, m = -TS * 0.06, e = TS - m;
+    stroke(() => {
+      ctx.beginPath();
+      ctx.moveTo(x0 + m, y0 + m + a); ctx.lineTo(x0 + m, y0 + m); ctx.lineTo(x0 + m + a, y0 + m);
+      ctx.moveTo(x0 + e - a, y0 + m); ctx.lineTo(x0 + e, y0 + m); ctx.lineTo(x0 + e, y0 + m + a);
+      ctx.moveTo(x0 + e, y0 + e - a); ctx.lineTo(x0 + e, y0 + e); ctx.lineTo(x0 + e - a, y0 + e);
+      ctx.moveTo(x0 + m + a, y0 + e); ctx.lineTo(x0 + m, y0 + e); ctx.lineTo(x0 + m, y0 + e - a);
+    });
+  }
+  ctx.restore();
+}
+
 function render(now = performance.now()) {
   if (!S || !terrainCache) return;
   const P = S.players[0];
@@ -288,6 +320,20 @@ function render(now = performance.now()) {
 
   const V = viewNow(rel, playing);
   drawFog(V);
+
+  // Feuerunterstützung: Städte neben einem sichtbaren Schlachtschiff markieren.
+  // Eckwinkel = unter Feuer (fällt zu 75 %), gestrichelter Ring = Feuerschutz (fällt nur zu 25 %)
+  for (const b of S.units) {
+    if (b.type !== 'bat' || b.carrier != null) continue;
+    if (b.owner !== 0 && !V.vis[idx(b.x, b.y)] && !S.over) continue;
+    for (const [dx, dy] of [[0, 0], ...DIRS]) {
+      const x = b.x + dx, y = b.y + dy;
+      if (!inb(x, y)) continue;
+      const c = cityAt(x, y);
+      if (!c || !P.seen[idx(x, y)]) continue;
+      drawSupportMark(x, y, (S.over ? c.owner : P.knownOwner[c.id]) === b.owner, PLAYERS[b.owner].light);
+    }
+  }
 
   const su = selUnit();
   // Zugmarker der ausgewählten Einheit
@@ -360,6 +406,27 @@ function render(now = performance.now()) {
         }
         ctx.fillStyle = `rgba(60,60,60,${0.45 * (1 - f)})`;
         ctx.beginPath(); ctx.arc(cx + TS * 0.1, cy - TS * 0.2 - f * TS * 0.4, TS * (0.15 + f * 0.25), 0, 7); ctx.fill();
+      } else if (e.type === 'salvo') {
+        const sx = e.fx * TS + TS / 2, sy = e.fy * TS + TS / 2;
+        const ddx = cx - sx, ddy = cy - sy, len = Math.hypot(ddx, ddy) || 1, nx = -ddy / len, ny = ddx / len;
+        if (f < 0.3) {   // Mündungsfeuer
+          ctx.fillStyle = `rgba(255,238,180,${1 - f / 0.3})`;
+          ctx.beginPath(); ctx.arc(sx + ddx / len * TS * 0.4, sy + ddy / len * TS * 0.4, TS * (0.16 + f * 0.5), 0, 7); ctx.fill();
+        }
+        for (let k = 0; k < 3; k++) {   // drei Granaten mit Leuchtspur, leicht versetzt
+          const g = f * 1.45 - k * 0.14;
+          if (g <= 0 || g >= 1) continue;
+          const at = t => [sx + ddx * t + nx * (k - 1) * TS * 0.12, sy + ddy * t + ny * (k - 1) * TS * 0.12 - Math.sin(Math.PI * t) * TS * 0.3];
+          const [hx, hy] = at(g), [tx, ty] = at(Math.max(0, g - 0.22));
+          ctx.strokeStyle = 'rgba(255,215,140,0.9)'; ctx.lineWidth = Math.max(1.5, TS / 14); ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
+          ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, TS / 12), 0, 7); ctx.fill();
+        }
+        if (f > 0.62) {   // Einschläge
+          const a = (1 - f) / 0.38;
+          ctx.fillStyle = `rgba(255,190,90,${0.85 * a})`;
+          ctx.beginPath(); ctx.arc(cx, cy, TS * (0.2 + (1 - a) * 0.35), 0, 7); ctx.fill();
+        }
       } else if (e.type === 'label') {
         // steigt leicht auf, blendet am Ende aus
         const alpha = f < 0.12 ? f / 0.12 : f > 0.75 ? (1 - f) / 0.25 : 1;
@@ -483,6 +550,7 @@ function playAnimSounds(now) {
         Sfx.move(e.utype, dur, e.owner === 0 ? 1 : 0.7);
       }
     }
+    else if (e.type === 'salvo') Sfx.play('salvo', 60);
     else if (e.type === 'boom') { Sfx.play('boom', 80); if (e.hl) setTimeout(() => Sfx.play('lost', 300), 380); }
     else if (e.type === 'capture') { if (e.owner === 0) Sfx.play('capture'); else if (e.lost) Sfx.play('cityLost'); else Sfx.play('boom', 80); }
   }
@@ -944,6 +1012,13 @@ function updatePanel() {
       h += `<span>${tt('Treibstoff', 'Fuel')}</span><b class="${warn ? 'warn' : ''}">${u.fuel} / ${t.fuel}${warn ? tt(' ⚠ zurückfliegen!', ' ⚠ fly back!') : ''}</b>
             <span>${tt('Nächste Basis', 'Nearest base')}</span><b>${dh} ${tt('Felder', 'tiles')}</b>`;
     }
+    if (u.type === 'bat' && u.carrier == null) {
+      // Städte im Feuerbereich: fremde fallen leichter, eigene sind geschützt
+      const near = S.cities.filter(c => cheb(c.x, c.y, u.x, u.y) <= 1 && S.players[0].seen[idx(c.x, c.y)]);
+      const foe = near.filter(c => S.players[0].knownOwner[c.id] !== 0).map(c => esc(c.name)), own = near.filter(c => S.players[0].knownOwner[c.id] === 0).map(c => esc(c.name));
+      h += `<span>${tt('Unter Feuer', 'Under fire')}</span><b>${foe.length ? foe.join(', ') + tt(' (fällt zu 75 %)', ' (falls 75 %)') : '–'}</b>`;
+      if (own.length) h += `<span>${tt('Feuerschutz', 'Covering')}</span><b>${own.join(', ')}${tt(' (fällt nur zu 25 %)', ' (falls only 25 %)')}</b>`;
+    }
     if (t.carries) h += `<span>${tt('An Bord', 'On board')}</span><b>${cargo.length} / ${t.capacity}</b>`;
     if (u.carrier != null) h += `<span>${tt('Ort', 'Location')}</span><b>${tt('an Bord', 'on board')}</b>`;
     h += `<span>${tt('Befehl', 'Order')}</span><b>${orderTxt}</b></div>`;
@@ -1091,7 +1166,19 @@ function updateHover() {
   if (c) {
     const o = P.knownOwner[c.id];
     s += tt(` · Stadt ${c.name} (${o === 0 ? 'deine' : o === 1 ? 'feindlich' : 'neutral'})`, ` · city ${c.name} (${o === 0 ? 'yours' : o === 1 ? 'enemy' : 'neutral'})`);
+    if (P.vis[i] && c.owner === 0) {
+      // eigene Stadt: wirkt ein Schlachtschiff auf sie?
+      const pc = Math.round(captureChance(1, c) * 100);
+      if (pc > 50) s += tt(` · unter Feuer eines feindlichen Schlachtschiffs: fällt zu ${pc} %`, ` · under fire from an enemy battleship: falls ${pc} % of the time`);
+      if (pc < 50) s += tt(` · Feuerschutz durch dein Schlachtschiff: fällt nur zu ${pc} %`, ` · covered by your battleship: falls only ${pc} % of the time`);
+    }
   }
+  // Eroberungschance der eigenen Einheit samt Grund (Schlachtschiffe)
+  const capInfo = cc => {
+    const pc = Math.round(captureChance(0, cc) * 100);
+    return [pc, pc > 50 ? tt(' dank Feuerunterstützung durch dein Schlachtschiff', ' thanks to fire support from your battleship')
+      : pc < 50 ? tt(' wegen Feuerschutz durch ein feindliches Schlachtschiff', ' because of covering fire from an enemy battleship') : ''];
+  };
   if (P.vis[i]) {
     const us = topUnitsAt(x, y);
     if (us.length) s += ' · ' + us.map(o => `${o.owner === 0 ? '' : tt('Feind: ', 'Enemy: ')}${T(o).name} ${o.hp}/${T(o).hp}`).join(', ');
@@ -1102,9 +1189,13 @@ function updateHover() {
       s += ` · ${tt('Siegchance', 'Win chance')}: ${Math.round(attackOdds(su, d, x, y) * 100)} %`;
       const cs = combatSpec(su, d, x, y);
       if (cs.notes.length) s += ' (' + cs.notes.join(', ') + ')';
-      if (c && c.owner !== 0 && T(su).capture) s += tt(` · danach 50 % Eroberung: Besatzung (${us.length}) fällt, deine Einheit geht in der Stadt auf`, ` · then 50 % capture: garrison (${us.length}) falls, your unit merges into the city`);
+      if (c && c.owner !== 0 && T(su).capture) {
+        const [pc, why] = capInfo(c);
+        s += tt(` · danach ${pc} % Eroberung${why}: Besatzung (${us.length}) fällt, deine Einheit geht in der Stadt auf`, ` · then ${pc} % capture${why}: garrison (${us.length}) falls, your unit merges into the city`);
+      }
     } else if (su && c && c.owner !== 0 && P.knownOwner[c.id] !== 0 && T(su).capture && !en.length) {
-      s += tt(' · Eroberungschance: 50 % (deine Einheit geht dabei in der Stadt auf)', ' · Capture chance: 50 % (your unit merges into the city)');
+      const [pc, why] = capInfo(c);
+      s += tt(` · Eroberungschance: ${pc} %${why} (deine Einheit geht dabei in der Stadt auf)`, ` · Capture chance: ${pc} %${why} (your unit merges into the city)`);
     }
   }
   $('hover').textContent = s;
@@ -1125,12 +1216,12 @@ const UNIT_ROLE = EN ? {
   inf: 'Captures cities · quick to build', tank: 'Captures cities · 2 tiles per turn',
   ftr: 'Flies far · scouts and hunts', trn: 'Carries 6 land units across the sea',
   dst: 'Fast scout · hunts submarines', sub: 'Torpedoes big ships',
-  crs: 'Sturdy and versatile', car: 'Floating base for fighters', bat: 'The strongest ship',
+  crs: 'Sturdy and versatile', car: 'Floating base for fighters', bat: 'Fire support for landings',
 } : {
   inf: 'Erobert Städte · schnell gebaut', tank: 'Erobert Städte · 2 Felder pro Zug',
   ftr: 'Fliegt weit · späht und jagt', trn: 'Bringt 6 Landeinheiten übers Meer',
   dst: 'Schneller Späher · jagt U-Boote', sub: 'Torpedo gegen große Schiffe',
-  crs: 'Robust und vielseitig', car: 'Schwimmende Basis für Jäger', bat: 'Das stärkste Schiff',
+  crs: 'Robust und vielseitig', car: 'Schwimmende Basis für Jäger', bat: 'Feuerunterstützung für Landungen',
 };
 const CAPTURE_CHEERS = EN ? [
   'The people cheer – your flag flies over the city!',
@@ -1628,9 +1719,9 @@ $('mStats').addEventListener('change', e => {
 });
 
 // ------------------------------------------------------------------ Klangtest
-const FX_NAMES = EN ? { select: 'Select', tick: 'Click', error: 'Invalid', boom: 'Explosion', lost: 'Unit lost', capture: 'City captured',
+const FX_NAMES = EN ? { select: 'Select', tick: 'Click', error: 'Invalid', boom: 'Explosion', salvo: 'Battleship salvo', lost: 'Unit lost', capture: 'City captured',
   cityLost: 'City lost', built: 'Unit ready', clank: 'Load/unload', endTurn: 'End of turn', alarm: 'Enemy contact', victory: 'Victory', defeat: 'Defeat' }
-  : { select: 'Auswahl', tick: 'Klick', error: 'Ungültig', boom: 'Explosion', lost: 'Einheit verloren', capture: 'Stadt erobert',
+  : { select: 'Auswahl', tick: 'Klick', error: 'Ungültig', boom: 'Explosion', salvo: 'Schlachtschiff-Salve', lost: 'Einheit verloren', capture: 'Stadt erobert',
   cityLost: 'Stadt verloren', built: 'Einheit fertig', clank: 'Ein-/Ausladen', endTurn: 'Rundenende', alarm: 'Feindkontakt', victory: 'Sieg', defeat: 'Niederlage' };
 
 function renderSoundTest() {

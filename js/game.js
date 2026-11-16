@@ -102,7 +102,7 @@ function canEnterTerrain(u, x, y) {
 }
 
 // Haken für die Oberfläche (Animationen); die Regeln funktionieren auch ohne
-const hooks = { move: null, combat: null, capture: null };
+const hooks = { move: null, combat: null, capture: null, salvo: null };
 
 function relocate(u, x, y) {
   if (hooks.move && (u.x !== x || u.y !== y)) hooks.move(u, u.x, u.y, x, y);
@@ -143,9 +143,32 @@ function pickDefender(list) {
 //   Sonar            – Zerstörer greift U-Boot an: Erstschlag, trifft danach zu 2/3
 //   Wasserbomben     – U-Boot greift Zerstörer an: Zerstörer verteidigt doppelt stark
 //   Luftangriff      – Jäger gegen U-Boot (an der Oberfläche): Jäger trifft zu 2/3
+//   Luftangriff      – Jäger gegen Schlachtschiff: trifft zu 2/3 mit dreifachem Schaden
+//                      (versenkt es selten allein, aber der Schaden bleibt – Schwärme lohnen sich)
+// Feuerunterstützung – Schlachtschiffe wirken auf die acht Nachbarfelder (und das eigene Feld):
+//   Angriff:      Bodentruppen, die ein solches Feld angreifen, treffen zu 2/3; eine Stadt dort fällt zu 75 %
+//   Verteidigung: Bodentruppen auf einem solchen Feld werden nur zu 1/3 getroffen; eine eigene Stadt fällt nur zu 25 %
+//   Haben beide Seiten ein Schlachtschiff am Feld, hebt es sich auf.
 // ---------------------------------------------------------------------------
 const BATTERY = 2;
 const BIG_SHIPS = ['bat', 'crs', 'car'];
+const SUPPORT_HIT = 2 / 3, SUPPORT_CAPTURE = 0.25;
+
+// Schlachtschiff des Spielers, das auf das Feld (x, y) wirkt – oder null
+function fireSupport(owner, x, y) {
+  if (owner < 0) return null;
+  for (const u of S.units) {
+    if (u.type === 'bat' && u.owner === owner && u.carrier == null && u.hp > 0 && cheb(u.x, u.y, x, y) <= 1) return u;
+  }
+  return null;
+}
+// Erfolgschance, mit der Spieler `owner` die Stadt c erobert
+function captureChance(owner, c) {
+  let p = 0.5;
+  if (fireSupport(owner, c.x, c.y)) p += SUPPORT_CAPTURE;
+  if (fireSupport(c.owner, c.x, c.y)) p -= SUPPORT_CAPTURE;
+  return p;
+}
 function combatSpec(a, d, x, y) {
   const ta = a.type, td = d.type;
   let as = T(a).str, ds = T(d).str, p = 0.5, first = null;
@@ -155,6 +178,14 @@ function combatSpec(a, d, x, y) {
   if (ta === 'dst' && td === 'sub') { first = 'att'; p = 2 / 3; notes.push(tt('Sonar: Zerstörer trifft zuerst und öfter', 'sonar: destroyer strikes first and more often')); }
   if (ta === 'sub' && td === 'dst') { ds *= 2; notes.push(tt('Wasserbomben', 'depth charges')); }
   if (ta === 'ftr' && td === 'sub') { p = 2 / 3; notes.push(tt('Luftangriff auf U-Boot', 'air strike on submarine')); }
+  if (ta === 'ftr' && td === 'bat') { as *= 3; p = 2 / 3; notes.push(tt('Luftangriff auf Schlachtschiff', 'air strike on battleship')); }
+  // Feuerunterstützung/Feuerschutz betreffen nur Bodentruppen
+  if (T(a).domain === 'land' || T(d).domain === 'land') {
+    const att = T(a).domain === 'land' && a.owner != null && !!fireSupport(a.owner, x, y);
+    const def = T(d).domain === 'land' && d.owner != null && !!fireSupport(d.owner, x, y);
+    if (att && !def) { p = SUPPORT_HIT; notes.push(tt('Feuerunterstützung durch Schlachtschiff', 'fire support from a battleship')); }
+    if (def && !att) { p = 1 - SUPPORT_HIT; notes.push(tt('Feuerschutz durch Schlachtschiff des Verteidigers', 'covering fire from the defender\'s battleship')); }
+  }
   return { as, ds, p, first, notes };
 }
 function combatStr(a, d, x, y) { const c = combatSpec(a, d, x, y); return [c.as, c.ds]; }
@@ -185,13 +216,15 @@ function winProb(ahp, astr, dhp, dstr, p = 0.5, first = null) {
 
 // by: die erobernde Einheit – sie geht in der Stadt auf (wird verbraucht).
 // Das bremst den Vormarsch: Jede Eroberung kostet eine Einheit.
-function captureCity(c, owner, by = null) {
+function captureCity(c, owner, by = null, support = false) {
   const prev = c.owner;
   c.owner = owner; c.prod = 'inf'; c.progress = 0;
   if (hooks.capture) hooks.capture(c, owner, prev);
   if (by) killUnit(by);
-  if (owner === 0) addLog(tt(`Du hast ${c.name} erobert!`, `You captured ${c.name}!`) + (by ? tt(` ${{ m: 'Der', f: 'Die', n: 'Das' }[T(by).g]} ${T(by).name} geht in der Stadt auf.`, ` Your ${T(by).name.toLowerCase()} merges into the city.`) : ''), 'good', c.x, c.y);
-  else if (prev === 0) addLog(tt(`${c.name} ist an den Gegner gefallen!`, `${c.name} has fallen to the enemy!`), 'bad', c.x, c.y);
+  if (owner === 0) addLog(tt(`Du hast ${c.name} erobert!`, `You captured ${c.name}!`) + (by ? tt(` ${{ m: 'Der', f: 'Die', n: 'Das' }[T(by).g]} ${T(by).name} geht in der Stadt auf.`, ` Your ${T(by).name.toLowerCase()} merges into the city.`) : '')
+    + (support ? tt(' Dein Schlachtschiff gab Feuerunterstützung.', ' Your battleship gave fire support.') : ''), 'good', c.x, c.y);
+  else if (prev === 0) addLog(tt(`${c.name} ist an den Gegner gefallen!`, `${c.name} has fallen to the enemy!`)
+    + (support ? tt(' Ein feindliches Schlachtschiff gab Feuerunterstützung.', ' An enemy battleship gave fire support.') : ''), 'bad', c.x, c.y);
   if (owner === 1 && typeof aiChooseProduction === 'function') aiChooseProduction(c);
 }
 
@@ -201,6 +234,13 @@ function attack(u, nx, ny, enemies, city) {
   const involved = u.owner === 0 || def.owner === 0;
   const aName = uname(u), dName = uname(def, 'acc');
   const cs = combatSpec(u, def, nx, ny);
+  // Schlachtschiffe feuern mit: das des Angreifers aufs Ziel, das des Verteidigers auf den Angreifer
+  const supA = a.domain === 'land' ? fireSupport(u.owner, nx, ny) : null;
+  const supD = d.domain === 'land' || (city && city.owner === def.owner) ? fireSupport(def.owner, nx, ny) : null;
+  if (hooks.salvo) {
+    if (supA && (d.domain === 'land' || (city && city.owner !== u.owner && a.capture))) hooks.salvo(supA, nx, ny);
+    if (supD && supD !== def) hooks.salvo(supD, u.x, u.y);
+  }
   if (cs.first === 'att') def.hp -= cs.as;
   if (cs.first === 'def') u.hp -= cs.ds;
   while (u.hp > 0 && def.hp > 0) {
@@ -208,7 +248,7 @@ function attack(u, nx, ny, enemies, city) {
   }
   // Besetzte Stadt: Wer den Verteidiger besiegt und Städte erobern kann, würfelt
   // sofort die 50 % auf die Stadt. Fällt sie, geht die restliche Besatzung unter.
-  const storm = u.hp > 0 && city && city.owner !== u.owner && a.capture ? rng() < 0.5 : null;
+  const storm = u.hp > 0 && city && city.owner !== u.owner && a.capture ? rng() < captureChance(u.owner, city) : null;
   if (hooks.combat) hooks.combat(u, def, nx, ny, u.hp > 0, storm);   // won = Angreifer hat gewonnen
   if (u.hp <= 0) {
     if (involved) addLog(tt(`${aName} greift ${dName} an – und wird vernichtet.`, `${aName} attacks ${dName} – and is destroyed.`), u.owner === 0 ? 'bad' : 'good', nx, ny);
@@ -224,7 +264,7 @@ function attack(u, nx, ny, enemies, city) {
     let lost = 0;
     for (const o of garrison) { lost += 1 + cargoOf(o).length; killUnit(o); }
     relocate(u, nx, ny); u.carrier = null; u.order = null; u.moves = 0;
-    captureCity(city, u.owner, u);
+    captureCity(city, u.owner, u, !!supA);
     if (lost && involved) addLog(tt(`Mit ${city.name} ${lost === 1 ? 'ging 1 weitere Einheit' : `gingen ${lost} weitere Einheiten`} unter.`, `${lost === 1 ? '1 more unit was' : `${lost} more units were`} lost with ${city.name}.`),
       u.owner === 0 ? 'good' : 'bad', nx, ny);
     return { ok: true, combat: true, captured: city, died: true, consumed: true };
@@ -253,9 +293,11 @@ function moveStep(u, nx, ny) {
   if (city && city.owner !== u.owner) {
     if (!t.capture) return { ok: false, msg: tt('Nur Infanterie und Panzer können Städte erobern', 'Only infantry and tanks can capture cities') };
     u.moves = 0;
-    if (rng() < 0.5) {
+    const supA = fireSupport(u.owner, nx, ny), supD = fireSupport(city.owner, nx, ny);
+    if (hooks.salvo) { if (supA) hooks.salvo(supA, nx, ny); if (supD) hooks.salvo(supD, u.x, u.y); }
+    if (rng() < captureChance(u.owner, city)) {
       relocate(u, nx, ny); u.carrier = null; u.order = null;
-      captureCity(city, u.owner, u);
+      captureCity(city, u.owner, u, !!supA);
       return { ok: true, captured: city, died: true, consumed: true };
     }
     if (hooks.combat) hooks.combat(u, null, nx, ny, false);
@@ -775,6 +817,25 @@ function recordStrength() {
   if (S.hist.length > 1000) S.hist.shift();
 }
 
+// Meldet einmal, wenn ein sichtbares feindliches Schlachtschiff neben einer eigenen Stadt liegt
+// (nicht gespeichert: nach dem Laden wird einmal erneut gewarnt)
+let batWarned = { game: null, keys: new Set() };
+function warnBattleships() {
+  if (batWarned.game !== S) batWarned = { game: S, keys: new Set() };
+  const P = S.players[0], now = new Set();
+  for (const u of S.units) {
+    if (u.type !== 'bat' || u.owner === 0 || u.carrier != null || !P.vis[idx(u.x, u.y)]) continue;
+    for (const c of S.cities) {
+      if (c.owner !== 0 || cheb(u.x, u.y, c.x, c.y) > 1) continue;
+      const k = u.id + ':' + c.id;
+      now.add(k);
+      if (!batWarned.keys.has(k)) addLog(tt(`Feindliches Schlachtschiff bedroht ${c.name}: Die Stadt fällt jetzt leichter (75 %).`,
+        `Enemy battleship threatens ${c.name}: the city now falls more easily (75 %).`), 'bad', c.x, c.y);
+    }
+  }
+  batWarned.keys = now;
+}
+
 function startTurn(p) {
   S.cur = p;
   for (const u of S.units) {
@@ -797,7 +858,7 @@ function startTurn(p) {
     }
   }
   computeVision(p);
-  if (p === 0) recordStrength();
+  if (p === 0) { recordStrength(); warnBattleships(); }
 }
 
 function endTurn(p) {
