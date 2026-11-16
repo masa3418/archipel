@@ -45,6 +45,12 @@ exportieren. Hilfe und Tastenbelegung: Knopf **Hilfe** oder Taste `H`.
 | `js/ui.js` | Darstellung, Animationen, Bedienung, Seitenleiste, Dialoge |
 | `tools/serve.js` | Kleiner lokaler Webserver nur für die Entwicklung (`node tools/serve.js .`) |
 
+## Mitmachen
+
+Fehler, Ideen und Balancing-Rückmeldungen sind willkommen – siehe
+[CONTRIBUTING.md](CONTRIBUTING.md) und den [Verhaltenskodex](CODE_OF_CONDUCT.md).
+Sicherheitslücken bitte vertraulich melden: [SECURITY.md](SECURITY.md).
+
 ## Lizenz
 
 MIT – siehe [LICENSE](LICENSE).
