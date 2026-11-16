@@ -153,6 +153,25 @@
   .cap-unit:not(:disabled):hover { border-color: #f2b84b; background: #3a2f17; }
   .cap-unit.cur { border-color: #8a6a24; }
   .cap-unit:disabled { opacity: .35; cursor: not-allowed; }
+  .cap-dlg.plain { border-color: var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .cap-dlg.plain .cap-badge { animation: none; font-size: 34px; }
+  .cap-dlg.plain .cap-kicker { color: var(--muted); }
+  .cap-dlg.plain .cap-head h2 { color: var(--text); }
+  .cap-dlg.plain .cap-progress i { background: var(--accent); }
+  /* Kontextmenü (Rechtsklick auf eigene Einheit/Stadt) */
+  .ctx { position: fixed; z-index: 20; min-width: 220px; max-width: 290px; background: var(--panel); border: 1px solid #3d4b5e;
+    border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.55); padding: 5px; font-size: 13px; }
+  .ctx[hidden] { display: none; }
+  .ctx-head { padding: 4px 8px 5px; color: var(--muted); font-size: 12px; }
+  .ctx-head b { color: var(--text); font-size: 13px; }
+  .ctx button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0;
+    padding: 5px 8px; border-radius: 6px; font: inherit; color: var(--text); }
+  .ctx button:hover:not(:disabled) { background: var(--panel2); }
+  .ctx button.cur { background: #1f3352; }
+  .ctx button img { width: 22px; height: 22px; flex-shrink: 0; }
+  .ctx button kbd, .ctx button small { margin-left: auto; color: var(--muted); }
+  .ctx button small { font-size: 11px; white-space: nowrap; }
+  .ctx hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
   .stat-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 6px 0 14px; }
   .stat-summary div { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
   .stat-summary b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
@@ -290,7 +309,7 @@
 
     <h3>Steuerung</h3>
     <p>
-      <b>Klick</b> auf ein Nachbarfeld: ziehen oder angreifen. <b>Klick</b> auf ein entferntes Feld: Marschbefehl (läuft über mehrere Runden). <b>Klick auf eine eigene Stadt</b> schickt die gewählte Einheit dorthin; zum Bearbeiten der Stadt erst die Auswahl aufheben (Rechtsklick oder <kbd>Esc</kbd>) und dann die Stadt anklicken. Marsch, Patrouille und Erkunden halten an, sobald die Einheit eine unbekannte Stadt entdeckt, eine feindliche Stadt oder Einheit sichtet oder ihr direkt gegenübersteht – dann bist du gefragt.
+      <b>Klick</b> auf ein Nachbarfeld: ziehen oder angreifen. <b>Klick</b> auf ein entferntes Feld: Marschbefehl (läuft über mehrere Runden). <b>Klick auf eine eigene Stadt</b> schickt die gewählte Einheit dorthin; zum Bearbeiten der Stadt erst die Auswahl aufheben (Rechtsklick oder <kbd>Esc</kbd>) und dann die Stadt anklicken. <b>Rechtsklick auf eine eigene Einheit oder Stadt</b> öffnet ein Menü mit allen Befehlen, der Auswahl unter mehreren Einheiten auf dem Feld und „Produktion ändern“. Marsch, Patrouille und Erkunden halten an, sobald die Einheit eine unbekannte Stadt entdeckt, eine feindliche Stadt oder Einheit sichtet oder ihr direkt gegenübersteht – dann bist du gefragt.
       <b>Umschalt+Klick</b>: Marschbefehl auch auf Felder mit eigenen Einheiten. <b>Rechtsklick</b> / <kbd>Esc</kbd>: Auswahl aufheben. <b>Mittlere oder rechte Maustaste gedrückt halten und ziehen</b>: Karte verschieben. <b>Mausrad</b>: zoomen.<br>
       Richtungen: <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd> / <kbd>A</kbd><kbd>D</kbd> / <kbd>Y</kbd>/<kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd>, Pfeiltasten oder Ziffernblock.<br>
       <kbd>Leertaste</kbd> Einheit überspringen · <kbd>S</kbd> Wache (Einheit wartet) · <kbd>P</kbd> Patrouille (Wegpunkte anklicken, <kbd>Enter</kbd> startet, Rechtsklick löscht den letzten) · <kbd>R</kbd> Erkunden (Einheit zieht selbstständig ins Unbekannte) · <kbd>B</kbd> Heimkehr (Marsch zur nächsten eigenen Stadt, Schiffe zum nächsten eigenen Hafen) · <kbd>N</kbd> nächste Einheit ·
@@ -367,19 +386,21 @@
   </div>
 </div>
 
+<div id="ctxMenu" class="ctx" hidden></div>
+
 <div id="mCapture" class="modal" hidden>
   <div class="dlg cap-dlg">
     <div class="cap-head">
-      <div class="cap-badge">🏆</div>
-      <div class="cap-kicker">Sieg!</div>
+      <div class="cap-badge" id="capBadge">🏆</div>
+      <div class="cap-kicker" id="capKicker">Sieg!</div>
       <h2 id="capTitle"></h2>
       <p id="capCheer"></p>
     </div>
     <div class="cap-facts" id="capFacts"></div>
     <div class="cap-progress"><i id="capBar"></i></div>
-    <h3 class="cap-q">Was soll die Stadt jetzt für dich bauen?</h3>
+    <h3 class="cap-q" id="capQ">Was soll die Stadt jetzt für dich bauen?</h3>
     <div class="cap-units" id="capUnits"></div>
-    <p class="muted" style="font-size:12px;margin:10px 0 0">Ohne Wahl baut die Stadt Infanterie. Die Produktion lässt sich jederzeit über die Stadt ändern.</p>
+    <p class="muted" id="capHint" style="font-size:12px;margin:10px 0 0"></p>
   </div>
 </div>
 

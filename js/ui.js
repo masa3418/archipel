@@ -1133,14 +1133,37 @@ function showCaptureDialog() {
   const c = S.cities[q.id];
   if (!c || c.owner !== 0) return;
   cancelAutoEnd();
-  const mine = S.cities.filter(o => o.owner === 0).length, total = S.cities.length;
-  const a = strength(0).total, b = strength(1).total;
-  const pct = Math.round(a / Math.max(1, a + b) * 100);
-  $('capTitle').textContent = `${c.name} ist erobert!`;
-  $('capCheer').textContent = CAPTURE_CHEERS[(S.turn + c.id) % CAPTURE_CHEERS.length];
-  $('capFacts').innerHTML = `<span><b>${mine}</b> von ${total} Städten gehören dir</span><span>Kräfteverhältnis <b>${pct} %</b></span>`
-    + (c.coastal ? '<span>⚓ Hafenstadt – baut auch Schiffe</span>' : '');
-  $('capBar').style.width = Math.round(mine / total * 100) + '%';
+  openProdDialog(c, true);
+}
+
+// Produktion wählen: nach einer Eroberung (captured) mit Jubel, sonst als
+// schlichtes Fenster (Kontextmenü „Produktion ändern“)
+function openProdDialog(c, captured = false) {
+  $('mCapture').querySelector('.cap-dlg').classList.toggle('plain', !captured);
+  $('capBadge').textContent = captured ? '🏆' : '🏭';
+  $('capKicker').textContent = captured ? 'Sieg!' : 'Produktion';
+  $('capQ').textContent = captured ? 'Was soll die Stadt jetzt für dich bauen?' : 'Was soll die Stadt bauen?';
+  $('capHint').textContent = captured ? 'Ohne Wahl baut die Stadt Infanterie. Die Produktion lässt sich jederzeit über die Stadt ändern.'
+    : 'Ein Wechsel setzt den bisherigen Fortschritt zurück.';
+  const p = c.prod ? UT[c.prod] : null;
+  if (captured) {
+    const mine = S.cities.filter(o => o.owner === 0).length, total = S.cities.length;
+    const a = strength(0).total, b = strength(1).total;
+    const pct = Math.round(a / Math.max(1, a + b) * 100);
+    $('capTitle').textContent = `${c.name} ist erobert!`;
+    $('capCheer').textContent = CAPTURE_CHEERS[(S.turn + c.id) % CAPTURE_CHEERS.length];
+    $('capFacts').innerHTML = `<span><b>${mine}</b> von ${total} Städten gehören dir</span><span>Kräfteverhältnis <b>${pct} %</b></span>`
+      + (c.coastal ? '<span>⚓ Hafenstadt – baut auch Schiffe</span>' : '');
+    $('capBar').style.width = Math.round(mine / total * 100) + '%';
+  } else {
+    const n = topUnitsAt(c.x, c.y).filter(o => o.owner === 0).length;
+    const left = p ? p.cost - c.progress : 0;
+    $('capTitle').textContent = c.name;
+    $('capCheer').textContent = p ? `Baut gerade ${p.name} – fertig in ${left} Runde${left === 1 ? '' : 'n'}.` : 'Baut derzeit nichts.';
+    $('capFacts').innerHTML = (c.coastal ? '<span>⚓ Hafenstadt – baut auch Schiffe</span>' : '<span>Binnenstadt – keine Schiffe</span>')
+      + '<span>' + (n ? `<b>${n}</b> Einheit${n === 1 ? '' : 'en'} in der Stadt` : 'Keine Einheiten in der Stadt') + '</span>';
+    $('capBar').style.width = p ? Math.round(c.progress / p.cost * 100) + '%' : '0%';
+  }
   let h = '';
   for (const k of UNIT_ORDER) {
     const ut = UT[k], dis = ut.domain === 'sea' && !c.coastal;
@@ -1151,10 +1174,11 @@ function showCaptureDialog() {
   $('capUnits').onclick = e => {
     const btn = e.target.closest('[data-prod]');
     if (!btn || btn.disabled) return;
-    if (c.prod !== btn.dataset.prod) { c.prod = btn.dataset.prod; c.progress = 0; }
+    const changed = c.prod !== btn.dataset.prod;
+    if (changed) { c.prod = btn.dataset.prod; c.progress = 0; }
     Sfx.play('select');
     closeModals();
-    addLog(`${c.name} baut jetzt ${UT[c.prod].name}.`, '', c.x, c.y);
+    if (changed || captured) addLog(`${c.name} baut jetzt ${UT[c.prod].name}.`, '', c.x, c.y);
     saveGame(); refresh(); scheduleAutoEnd();
   };
   openModal('mCapture');
@@ -1242,6 +1266,7 @@ function tileFromEvent(e) {
 }
 
 cv.addEventListener('click', e => {
+  if (ctxSwallow) { ctxSwallow = false; return; }
   if (enemyPlaybackRunning()) { skipAnim(); return; }
   const [x, y] = tileFromEvent(e); onTileClick(x, y, e.shiftKey);
 });
@@ -1251,10 +1276,101 @@ cv.addEventListener('click', e => {
 // Rechtsklick ohne Ziehen behält seine Funktion.
 let drag = null;
 const DRAG_THRESHOLD = 4;
-function rightClickAction() {
+function rightClickAction(e) {
   if (patrolMode) { patrolUndo(); return; }
+  if (e && S && !S.over && !anyModalOpen()) {
+    const [x, y] = tileFromEvent(e);
+    if (inb(x, y) && openCtx(x, y, e.clientX, e.clientY)) return;
+  }
   sel = null; selCity = null; refresh();
 }
+
+// ------------------------------------------------------------------ Kontextmenü
+// Rechtsklick auf eigene Einheit/Stadt: Befehle, Auswahl im Stapel, Produktion
+const ctxEl = $('ctxMenu');
+let cmenu = null, ctxSwallow = false;
+function ctxUnits(x, y) {
+  const top = topUnitsAt(x, y).filter(o => o.owner === 0);
+  return top.concat(...top.map(cargoOf)).filter(o => o.owner === 0);
+}
+function openCtx(x, y, cx, cy) {
+  const units = ctxUnits(x, y);
+  const city = cityAt(x, y);
+  const ownCity = city && city.owner === 0 ? city : null;
+  if (!units.length && !ownCity) return false;
+  let u = selUnit();
+  if (!u || !units.includes(u)) u = units.find(needsOrders) || units[0] || null;
+  sel = u ? u.id : null;            // ohne select(): eine Wache bleibt Wache
+  selCity = ownCity ? ownCity.id : null;
+  cmenu = { x, y, cx, cy };
+  Sfx.play('tick');
+  renderCtx();
+  refresh();
+  return true;
+}
+function closeCtx() { if (!cmenu) return; cmenu = null; ctxEl.hidden = true; }
+function renderCtx() {
+  if (!cmenu || !S) return closeCtx();
+  const units = ctxUnits(cmenu.x, cmenu.y), city = cityAt(cmenu.x, cmenu.y);
+  const ownCity = city && city.owner === 0 ? city : null;
+  const u = selUnit() && units.includes(selUnit()) ? selUnit() : null;
+  if (!units.length && !ownCity) return closeCtx();
+  const status = o => o.order ? ({ sentry: 'Wache', patrol: 'Patrouille', explore: 'Erkundet', goto: 'Marsch' }[o.order.type] || '')
+    : o.moves <= 0 ? 'fertig' : o.carrier != null ? 'an Bord' : 'wartet';
+  let h = '';
+  if (ownCity) h += `<div class="cmenu-head"><b>${esc(ownCity.name)}</b>${ownCity.coastal ? ' · Hafen' : ''}</div>`;
+  if (units.length > 1) {
+    if (!ownCity) h += `<div class="cmenu-head">${units.length} Einheiten auf dem Feld</div>`;
+    for (const o of units) h += `<button data-cunit="${o.id}" class="${u === o ? 'cur' : ''}"><img src="${iconUrl('u', o.type)}" alt="">${esc(T(o).name)} ${o.hp}/${T(o).hp}<small>${status(o)}</small></button>`;
+    h += '<hr>';
+  }
+  if (u) {
+    const t = T(u), aboard = u.carrier != null, here = cityAt(u.x, u.y);
+    const homeOk = c => c && c.owner === 0 && (t.domain !== 'sea' || c.coastal);
+    if (units.length <= 1) h += `<div class="cmenu-head"><b>${esc(t.name)}</b> · ${u.moves}/${t.move} Bewegung${t.fuel ? ` · Treibstoff ${u.fuel}` : ''}</div>`;
+    const btn = (act, label, key, dis = false) => `<button data-cact="${act}" ${dis ? 'disabled' : ''}>${label}${key ? `<kbd>${key}</kbd>` : ''}</button>`;
+    h += btn('skip', 'Überspringen', 'Leertaste', u.moves <= 0);
+    h += btn('sentry', 'Wache', 'S', !!(u.order && u.order.type === 'sentry'));
+    h += btn('explore', 'Erkunden', 'R', (aboard && t.domain === 'land') || (u.type === 'trn' && cargoOf(u).length > 0));
+    h += btn('patrol', 'Patrouille', 'P', aboard);
+    h += btn('home', t.domain === 'sea' ? 'Heimkehr (Hafen)' : 'Heimkehr', 'B', !aboard && homeOk(here));
+    if (t.carries && here && here.owner === 0) h += btn('load', 'Einladen', 'L');
+    if (t.carries && cargoOf(u).length) h += btn('unload', `Ausladen (${cargoOf(u).length})`, 'U');
+    if (u.order) h += btn('cancel', u.order.type === 'sentry' ? 'Wecken' : 'Befehl löschen', '');
+  }
+  if (ownCity) {
+    const p = ownCity.prod ? UT[ownCity.prod] : null;
+    if (u) h += '<hr>';
+    h += `<button data-cact="prod"><img src="${iconUrl('c', ownCity.id % 2)}" alt="">Produktion ändern …<small>${p ? `${esc(p.name)} · ${p.cost - ownCity.progress} R.` : 'nichts'}</small></button>`;
+  }
+  ctxEl.innerHTML = h;
+  ctxEl.hidden = false;
+  // im Fenster halten
+  const w = ctxEl.offsetWidth, hh = ctxEl.offsetHeight;
+  ctxEl.style.left = Math.max(4, Math.min(cmenu.cx + 2, innerWidth - w - 4)) + 'px';
+  ctxEl.style.top = Math.max(4, Math.min(cmenu.cy + 2, innerHeight - hh - 4)) + 'px';
+}
+ctxEl.addEventListener('contextmenu', e => e.preventDefault());
+ctxEl.addEventListener('click', e => {
+  const ub = e.target.closest('[data-cunit]');
+  if (ub) { const o = unitById(+ub.dataset.cunit); if (o) { sel = o.id; Sfx.play('select'); renderCtx(); refresh(); } return; }
+  const b = e.target.closest('[data-cact]');
+  if (!b || b.disabled) return;
+  const city = cmenu ? cityAt(cmenu.x, cmenu.y) : null;
+  closeCtx();
+  if (b.dataset.cact === 'prod') { if (city && city.owner === 0) { Sfx.play('tick'); openProdDialog(city); } return; }
+  const u = selUnit();
+  if (u && u.order && u.order.type === 'sentry' && b.dataset.cact !== 'sentry' && b.dataset.cact !== 'cancel') u.order = null;
+  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, cancel: actCancel, patrol: actPatrol, explore: actExplore, home: actHome })[b.dataset.cact]();
+});
+// Klick daneben schließt das Menü (und löst sonst nichts aus)
+document.addEventListener('mousedown', e => {
+  if (!cmenu || ctxEl.contains(e.target)) return;
+  closeCtx();
+  if (e.button === 0 && e.target === cv) ctxSwallow = true;
+}, true);
+window.addEventListener('resize', closeCtx);
+window.addEventListener('blur', closeCtx);
 cv.addEventListener('mousedown', e => {
   if (e.button !== 1 && e.button !== 2) return;
   e.preventDefault();                       // verhindert das Auto-Scrollen
@@ -1274,7 +1390,7 @@ window.addEventListener('mouseup', e => {
   if (!drag || e.button !== drag.btn) return;
   const d = drag; drag = null;
   cv.style.cursor = '';
-  if (d.btn === 2 && !d.moved) rightClickAction();
+  if (d.btn === 2 && !d.moved) rightClickAction(e);
 });
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -1353,6 +1469,7 @@ document.addEventListener('mousedown', e => { if (autoEndAt && !e.target.closest
 
 document.addEventListener('keydown', e => {
   if (!S) return;
+  if (cmenu) { closeCtx(); if (e.key === 'Escape') return; }
   if (autoEndAt) { if (e.key === 'Enter') { e.preventDefault(); endHumanTurn(); } else cancelAutoEnd(); return; }
   if (enemyPlaybackRunning() && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); skipAnim(); return; }
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
