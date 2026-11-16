@@ -47,33 +47,22 @@ const NEUTRAL = { color: '#9aa0a6', light: '#d7dadd', dark: '#55595e' };
 //  caution   – Zuschlag auf die nötige Siegchance, bevor der Gegner angreift
 //  aiKnowsMap – Gegner kennt die ganze Karte (sonst muss er wie du erkunden)
 //  aiMistake – Anteil „menschlicher“ Fehlentscheidungen (vergessene Einheiten, Fehleinschätzungen)
-//  worlds    – abweichende Werte je Weltart (z. B. Schwer im Inselreich: Kartenwissen nützt dort weniger,
-//              daher baut der Gegner etwas schneller; per Simulation eingemessen)
+//  skill     – wie klug der Gegner spielt: 0 = einfach, 1 = umsichtig (siehe „Können“ in ai.js)
 const DIFFICULTY = {
   leicht: { label: tt('Leicht', 'Easy'), desc: tt('Gegner muss die Karte erst erkunden, baut langsamer, macht öfter Fehler und greift vorsichtig an. Du startest mit einer Extra-Infanterie.',
     'The enemy has to explore the map first, builds more slowly, makes more mistakes and attacks cautiously. You start with an extra infantry.'),
-    aiProd: 0.7, aiStart: [], youStart: ['inf'], aiCities: 0, invadeAt: 6, caution: 0.1, aiKnowsMap: false, aiMistake: 0.25 },
+    aiProd: 0.7, aiStart: [], youStart: ['inf'], aiCities: 0, invadeAt: 6, caution: 0.1, aiKnowsMap: false, aiMistake: 0.25, skill: 0 },
   normal: { label: 'Normal', desc: tt('Gleiche Bedingungen: Der Gegner muss wie du erkunden und macht gelegentlich Fehler.',
     'Equal terms: the enemy has to explore just like you and makes occasional mistakes.'),
-    aiProd: 1, aiStart: [], youStart: [], aiCities: 0, invadeAt: 4, caution: 0, aiKnowsMap: false, aiMistake: 0.12 },
-  schwer: { label: tt('Schwer', 'Hard'), desc: tt('Gegner kennt die ganze Karte, macht keine Fehler und landet schon mit kleineren Trupps. Im Inselreich baut er etwas schneller.',
-    'The enemy knows the whole map, makes no mistakes and lands even with smaller groups. In the archipelago it also builds a little faster.'),
-    aiProd: 1, aiStart: [], youStart: [], aiCities: 0, invadeAt: 3, caution: -0.05, aiKnowsMap: true, aiMistake: 0,
-    worlds: { inseln: { aiProd: 1.15 } } },
-  brutal: { label: 'Brutal', desc: tt('Gegner kennt die ganze Karte, macht keine Fehler, baut anderthalbmal so schnell und startet mit einer zweiten Stadt.',
-    'The enemy knows the whole map, makes no mistakes, builds one and a half times as fast and starts with a second city.'),
-    aiProd: 1.5, aiStart: ['tank', 'inf'], youStart: [], aiCities: 1, invadeAt: 3, caution: -0.05, aiKnowsMap: true, aiMistake: 0 },
+    aiProd: 1, aiStart: [], youStart: [], aiCities: 0, invadeAt: 4, caution: 0, aiKnowsMap: false, aiMistake: 0.12, skill: 0 },
+  schwer: { label: tt('Schwer', 'Hard'), desc: tt('Gegner spielt umsichtiger: Er greift mehrere Städte zugleich an, jagt gelandete Truppen und deine Transporter. Er kennt die ganze Karte und macht keine Fehler, baut aber nicht schneller als du.',
+    'The enemy plays more shrewdly: it attacks several cities at once and hunts landed troops and your transports. It knows the whole map and makes no mistakes, but builds no faster than you.'),
+    aiProd: 1, aiStart: [], youStart: [], aiCities: 0, invadeAt: 3, caution: -0.05, aiKnowsMap: true, aiMistake: 0, skill: 1 },
+  brutal: { label: 'Brutal', desc: tt('Wie Schwer, dazu baut der Gegner um ein Viertel schneller und startet mit einer zweiten Stadt.',
+    'Like Hard, and the enemy also builds a quarter faster and starts with a second city.'),
+    aiProd: 1.25, aiStart: [], youStart: [], aiCities: 1, invadeAt: 3, caution: -0.05, aiKnowsMap: true, aiMistake: 0, skill: 1 },
 };
-const diffCache = new Map();
-function diff() {
-  const has = typeof S !== 'undefined' && S;
-  const d = DIFFICULTY[(has && S.difficulty) || 'normal'] || DIFFICULTY.normal;
-  const w = has && S.world, o = w && d.worlds && d.worlds[w];
-  if (!o) return d;
-  const key = d.label + '|' + w;
-  if (!diffCache.has(key)) diffCache.set(key, Object.assign({}, d, o));
-  return diffCache.get(key);
-}
+const diff = () => DIFFICULTY[(typeof S !== 'undefined' && S && S.difficulty) || 'normal'] || DIFFICULTY.normal;
 // Kennt Spieler p die ganze Karte? Nur der Computergegner, und nur auf Schwer/Brutal.
 const aiKnowsMap = p => p === 1 && diff().aiKnowsMap;
 // Fehlerquote des Gegners (der Spielerplatz 0 macht in Simulationen keine Fehler)

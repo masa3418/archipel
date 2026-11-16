@@ -39,7 +39,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `js/data.js` | Einheitentypen `UT`, `UNIT_ORDER`, `DIRS`, Spielerfarben, `MAP_SIZES`, Schwierigkeitsgrade `DIFFICULTY` + `diff()`, `aiKnowsMap(p)`, `aiMistake(p)` |
 | `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen, Kontinente aus Value-Noise; Städte, faire Startpositionen |
 | `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung, Produktion, Sicht `computeVision`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
-| `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`) |
+| `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
 | `js/gfx.js` | Gelände-Rendering, Einheiten-Abzeichen (SVG-Pfade → Sprites), Stadtgrafik |
 | `js/sfx.js` | Web-Audio-Synthese: Effekte, Klangteppiche je Einheitentyp, Klangtest |
 | `js/ui.js` | Zeichnen, Animationen/Zeitleiste, Kamera, Eingabe, Seitenleiste, alle Dialoge |
@@ -90,9 +90,21 @@ Schneller und ohne Browser: `data.js`, `map.js`, `game.js`, `ai.js` mit Node per
 laden (`globalThis.localStorage` als Attrappe), dann dieselbe `simGame`-Schleife (ca. 1 s je Partie;
 im ausgeblendeten Browser-Fenster werden Zeitgeber gedrosselt, lange Läufe brechen dort ab).
 
-Letzte Einmessung (kleine Karte, „Siege“ des KI-Spielers auf Platz 0, nach Einführung der Weltarten):
-Inselreich (48 Partien je Stufe) Leicht 46/48 · Normal 24/48 · Schwer 17/64 (mit Bautempo 115 %, vorher 21/48) · Brutal 0/48, Partiedauer (Normal) ca. 227 Runden.
-Gemischt (24) 24/24 · 16/24 · 4/24 · 0/24 · Kontinente (24) 24/24 · 16/24 · 5/24 · 0/24 (Normal ca. 203 Runden).
+Letzte Einmessung (kleine Karte, „Siege“ des einfachen KI-Spielers auf Platz 0, je 32 Partien; nach „umsichtiger KI“ auf Schwer/Brutal):
+Inselreich Leicht 32/32 · Normal 16/32 · Schwer 5/32 · Brutal 0/32 · Gemischt 32 · 19 · 9 · 0 · Kontinente 32 · 16 · 9 · 0.
+Schwer über alle Welten 54/240 (23 %), ohne Bau-Bonus; Brutal mit 125 % Bautempo und zweiter Stadt 0/160. Partiedauer (Normal) ca. 220 Runden.
+
+**KI-Können messen:** `AI_SKILL[platz] = 0|1` erzwingt das Können je Platz. Für einen fairen Vergleich beide Plätze ohne Fehler
+(`DIFFICULTY.normal.aiMistake = 0`) und je Variante beide Sitzordnungen spielen, mindestens 400 Partien (bei 200 Partien liegt das
+Rauschen bei ±3,5 Punkten; „Variante = Basis“ ergab im Test schon einmal 54 %). Ergebnisse der Messreihe (ca. 10 000 Partien):
+- Umsichtige KI (Können 1) gegen einfache: 57 % Siege.
+- Wirksam: Infanterie statt Panzer als Eroberer (+10 Punkte). Im Rauschen, aber unschädlich: Zielverteilung, Jagd auf
+  Eindringlinge, Jäger-Jagd, vorsichtige Transporter.
+- **Schädlich: Besatzungen** (Frontstädte 42 %, Hinterland 45 %, jede Stadt von Beginn an < 30 %). Grund: Eine Infanterie
+  im Angriff erobert mit 50 % eine Stadt, in der Verteidigung senkt sie die Eroberungschance je Angreifer nur von 50 auf ca. 37 %.
+  Solange die Regeln so sind, lohnt Verteidigung nicht – erst mit einem Verteidigungsbonus würde sich das ändern.
+- Ebenfalls schlechter: keine frühen Kreuzer (34 %), mehr Transporter (42 %), Landung direkt vor der Stadt (47 %), andere Truppgrößen.
+- Auf Schwer im Inselreich baut der Gegner (kennt die Karte, fast nur Küstenstädte) praktisch keine Jäger.
 Inselstatistik je Weltart: `node mapstat.js <repo> <anzahl> <welt>` (Skript im Scratchpad, ggf. neu schreiben) –
 größte Insel ≈ 30–40 % des Landes (Inselreich), ≈ 50–60 % (Gemischt), ≈ 75–85 % (Kontinente).
 Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.

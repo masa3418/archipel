@@ -1,6 +1,7 @@
 'use strict';
 // ---------------------------------------------------------------------------
 // Computergegner: taktische Regeln je Einheit (keine übergreifende Strategie).
+// Auf Schwer/Brutal spielt er umsichtiger (siehe „Können“ weiter unten).
 //
 // Wissen: Auf Leicht/Normal kennt der Gegner nur, was seine Einheiten und
 // Städte gesehen haben, und muss die Karte erkunden. Auf Schwer/Brutal kennt
@@ -58,6 +59,45 @@ function pathToFog(u, maxDist = 40, extraGoal = null) {
 // ------------------------------------------------------------------ Fehler
 const mistake = p => rng() < aiMistake(p);
 
+// ------------------------------------------------------------------ Können
+// Wie klug der Computergegner spielt (DIFFICULTY.skill):
+//   0 = einfach: jede Einheit läuft für sich zum nächsten Ziel
+//   1 = umsichtig:
+//       – Bodentruppen verteilen sich auf mehrere Ziele, statt alle dieselbe Stadt anzulaufen
+//       – gelandete Feinde werden gejagt, eine bedrohte Stadt stellt auf Infanterie um
+//       – Panzer nur gegen Städte des Gegners; neutrale Städte nimmt die halb so teure Infanterie
+//       – beladene Transporter meiden die Reichweite sichtbarer Kriegsschiffe und Jäger
+//       – Jäger jagen lohnende Beute, vor allem Transporter
+// Eingemessen per Simulation (siehe CLAUDE.md). Besatzungen in den Städten bringen nach den
+// geltenden Regeln nichts: Eine Einheit im Angriff ist mehr wert als eine in der Verteidigung.
+// Der Spielerplatz 0 (Simulationen) spielt einfach, solange AI_SKILL nichts anderes vorgibt.
+const AI_SKILL = [null, null];
+const aiSkill = p => (AI_SKILL[p] != null ? AI_SKILL[p] : (p === 1 ? diff().skill || 0 : 0));
+const SPREAD = 3;   // Aufschlag (in Feldern) je Einheit, die dieselbe Stadt schon ansteuert
+
+// Lagebild des Spielers am Zug (Können ≥ 1), wird zu Beginn jedes KI-Zugs neu erstellt:
+//   invaders   – sichtbare feindliche Bodentruppen auf offenem Land
+//   threatened – eigene Städte mit Feind in der Nähe (Bodentruppen ≤ 4 Felder, Transporter ≤ 5)
+let aiPlan = null;
+const planFor = p => (aiPlan && aiPlan.game === S && aiPlan.p === p && aiSkill(p) >= 1 ? aiPlan : null);
+function landUnitsIn(c, p) {
+  return S.units.filter(o => o.owner === p && o.x === c.x && o.y === c.y && o.carrier == null && T(o).domain === 'land');
+}
+function buildPlan(p) {
+  const P = S.players[p];
+  const invaders = [], near = [];
+  for (const e of S.units) {
+    if (e.owner === p || e.carrier != null || !P.vis[idx(e.x, e.y)]) continue;
+    if (T(e).domain === 'land') {
+      near.push([e.x, e.y, 4]);
+      if (S.terrain[idx(e.x, e.y)] === 1 && !cityAt(e.x, e.y)) invaders.push(e);
+    } else if (e.type === 'trn') near.push([e.x, e.y, 5]);
+  }
+  const threatened = new Set();
+  for (const c of S.cities) if (c.owner === p && near.some(([x, y, d]) => cheb(x, y, c.x, c.y) <= d)) threatened.add(c.id);
+  return { game: S, p, invaders, threatened };
+}
+
 // ------------------------------------------------------------------ Produktion
 function aiChooseProduction(c) {
   const p = c.owner;
@@ -68,12 +108,16 @@ function aiChooseProduction(c) {
   const ncity = S.cities.filter(o => o.owner === p).length;
   const knows = aiKnowsMap(p);
   let prod;
+  const sk = aiSkill(p) >= 1;
   const landHere = mine.filter(u => T(u).domain === 'land' && u.carrier == null && S.cont[idx(u.x, u.y)] === here).length;
   const targetsHere = knownTargets(p).filter(o => S.cont[idx(o.x, o.y)] === here).length;
   const scouts = cnt('dst') + cnt('ftr');
   const fog = unexplored(p);
   if (targets.has(here) && landHere < targetsHere * 3 + 4) {
-    prod = rng() < 0.25 && ncity > 2 ? 'tank' : 'inf';
+    // Können ≥ 1: Panzer nur gegen Städte des Gegners (die verteidigt sein können) – für neutrale
+    // Städte reicht die halb so teure Infanterie
+    const tankOk = !sk || knownTargets(p).some(o => S.cont[idx(o.x, o.y)] === here && knownOwnerOf(p, o) >= 0);
+    prod = tankOk && rng() < 0.25 && ncity > 2 ? 'tank' : 'inf';
   } else if (targets.has(here)) {
     prod = c.coastal ? (rng() < 0.5 ? 'dst' : 'crs') : 'ftr';
   } else if (!knows && contHasFrontier(p, here) && landHere < 3) {
@@ -83,13 +127,16 @@ function aiChooseProduction(c) {
   } else if (c.coastal) {
     const land = mine.filter(u => T(u).domain === 'land').length;
     if (cnt('trn') < Math.max(1, Math.ceil(ncity / 4))) prod = 'trn';
-    else if (land < cnt('trn') * 5) prod = rng() < 0.3 ? 'tank' : 'inf';
+    else if (land < cnt('trn') * 5) prod = !sk && rng() < 0.3 ? 'tank' : 'inf';
     else {
       prod = counterPick(p);
     }
   } else {
     prod = rng() < 0.6 ? 'inf' : 'ftr';
   }
+  // Können ≥ 1: Eine bedrohte Stadt ohne Bodentruppen baut zuerst Infanterie
+  const plan = planFor(p);
+  if (plan && plan.threatened.has(c.id) && !landUnitsIn(c, p).length) prod = 'inf';
   // Fehler: etwas Beliebiges bauen
   if (mistake(p)) {
     const opts = UNIT_ORDER.filter(k => c.coastal || UT[k].domain !== 'sea');
@@ -139,7 +186,15 @@ function threatMap(u) {
 // ------------------------------------------------------------------ Runde
 function aiTurn(p = 1) {
   threatCache = new Map();
+  aiPlan = aiSkill(p) >= 1 ? buildPlan(p) : null;
   for (const c of S.cities) if (c.owner === p && !c.prod) aiChooseProduction(c);
+  if (aiPlan) {
+    // Notproduktion: bedrohte Stadt ohne Bodentruppen stellt auf Infanterie um, wenn der laufende Bau noch lange dauert
+    for (const c of S.cities) {
+      if (c.owner !== p || !aiPlan.threatened.has(c.id) || !c.prod || UT[c.prod].domain === 'land') continue;
+      if (!landUnitsIn(c, p).length && UT[c.prod].cost - c.progress > UT.inf.cost) { c.prod = 'inf'; c.progress = 0; }
+    }
+  }
   const mine = S.units.filter(u => u.owner === p);
   for (const dom of ['sea', 'land', 'air']) {
     for (const u of mine) {
@@ -207,10 +262,14 @@ function landField(p) {
   const knows = aiKnowsMap(p), seen = S.players[p].seen;
   let seenN = 0;
   if (!knows) for (let i = 0; i < seen.length; i++) seenN += seen[i];
-  const key = p + ':' + S.turn + ':' + seenN + ':' + S.cities.map(c => knownOwnerOf(p, c)).join(',');
+  // Können ≥ 1: sichtbare feindliche Bodentruppen auf offenem Land sind ebenfalls Ziele (Landungen abwehren)
+  const plan = planFor(p);
+  const hunt = plan ? plan.invaders.filter(e => alive(e)) : [];
+  const key = p + ':' + S.turn + ':' + seenN + ':' + S.cities.map(c => knownOwnerOf(p, c)).join(',') + ':' + hunt.map(t => idx(t.x, t.y)).join(',');
   if (fieldCache.key === key) return fieldCache.d;
   const N = S.W * S.H, d = new Int16Array(N).fill(-1), q = [];
   for (const c of knownTargets(p)) { const i = idx(c.x, c.y); d[i] = 0; q.push(i); }
+  for (const t of hunt) { const i = idx(t.x, t.y); if (d[i] === -1) { d[i] = 0; q.push(i); } }
   for (let h = 0; h < q.length; h++) {
     const cur = q[h], cx = cur % S.W, cy = (cur / S.W) | 0;
     for (const [dx, dy] of DIRS) {
@@ -225,13 +284,62 @@ function landField(p) {
   return d;
 }
 
+// Zielverteilung (Können ≥ 1): Statt alle zur nächsten Stadt zu schicken, bekommt jede Bodentruppe
+// ein eigenes Ziel – nahe Städte zuerst, aber nicht mehr Einheiten als nötig auf dieselbe Stadt.
+let spreadState = { key: '', fields: new Map(), load: new Map() };
+function cityField(p, c) {
+  let d = spreadState.fields.get(c.id);
+  if (d) return d;
+  const knows = aiKnowsMap(p), seen = S.players[p].seen;
+  const N = S.W * S.H, q = [idx(c.x, c.y)];
+  d = new Int16Array(N).fill(-1); d[q[0]] = 0;
+  for (let h = 0; h < q.length; h++) {
+    const cur = q[h], cx = cur % S.W, cy = (cur / S.W) | 0;
+    for (const [dx, dy] of DIRS) {
+      const nx = cx + dx, ny = cy + dy;
+      if (!inb(nx, ny)) continue;
+      const ni = idx(nx, ny);
+      if (d[ni] !== -1 || S.terrain[ni] !== 1 || !(knows || seen[ni])) continue;
+      d[ni] = d[cur] + 1; q.push(ni);
+    }
+  }
+  spreadState.fields.set(c.id, d);
+  return d;
+}
+function spreadField(u) {
+  const p = u.owner, key = S.turn + ':' + p;
+  if (spreadState.key !== key || spreadState.game !== S) spreadState = { key, game: S, fields: new Map(), load: new Map(), pick: new Map() };
+  const st = spreadState, ui = idx(u.x, u.y);
+  let tc = st.pick.get(u.id);
+  if (tc && !isTarget(p, tc)) { tc = null; st.fields.clear(); }
+  if (!tc) {
+    let bs = 1e9;
+    for (const c of knownTargets(p)) {
+      if (S.cont[idx(c.x, c.y)] !== S.cont[ui]) continue;
+      const f = cityField(p, c)[ui];
+      if (f <= 0) continue;
+      const n = st.load.get(c.id) || 0;
+      const cost = f + n * SPREAD + (n >= 2 ? (n - 1) * SPREAD * 2 : 0);
+      if (cost < bs) { bs = cost; tc = c; }
+    }
+    if (!tc) return null;
+    st.pick.set(u.id, tc);
+    st.load.set(tc.id, (st.load.get(tc.id) || 0) + 1);
+  }
+  return cityField(p, tc);
+}
+
 // ------------------------------------------------------------------ Bodentruppen
 function aiLand(u) {
   let guard = 8;
+  const plan = planFor(u.owner);
   while (alive(u) && u.moves > 0 && u.carrier == null && guard-- > 0) {
     const adj = aiAdjTarget(u, 0.45);
     if (adj) { moveStep(u, adj[0], adj[1]); continue; }
-    const F = landField(u.owner);
+    // Eindringlinge in der Nähe gehen vor (gemeinsames Feld), sonst hat jede Einheit ihr eigenes Ziel
+    const LF = landField(u.owner);
+    const lf = LF[idx(u.x, u.y)];
+    const F = (plan && !(lf > 0 && lf <= 4 && plan.invaders.length) && spreadField(u)) || LF;
     const here = F[idx(u.x, u.y)];
     if (here > 0) {
       let best = null, bs = 1e9;
@@ -309,7 +417,19 @@ function aiTransport(u) {
       if (did) continue;
     }
     cargo = cargoOf(u);
-    const pass = makePassable(u, aiKnowsMap(p));
+    const sk = aiSkill(p) >= 1;
+    const basePass = makePassable(u, aiKnowsMap(p));
+    let pass = basePass;
+    if (sk && cargo.length) {
+      // beladen nicht in die Reichweite sichtbarer feindlicher Kriegsschiffe und Jäger fahren
+      const threat = threatMap(u);
+      const safe = (x, y, i) => basePass(x, y, i) && (!threat[i] || !!(cityAt(x, y) && cityAt(x, y).owner === p));
+      if (threat[idx(u.x, u.y)] && !(c && c.owner === p)) {
+        // selbst in Gefahr: zum nächsten eigenen Hafen ausweichen, wenn einer in der Nähe ist
+        const esc = bfs(u.x, u.y, basePass, (x, y) => { const cc = cityAt(x, y); return !!(cc && cc.owner === p && cc.coastal); }, 6);
+        if (esc && rng() < 0.6) { if (!stepAlong(u, esc)) break; continue; }
+      } else if (rng() < 0.8) pass = safe;
+    }
     const waiting = waitingLand(p, targets);
     let path = null;
     const goInvade = cargo.length >= Math.min(cap, p === 1 ? diff().invadeAt : 4) || (cargo.length > 0 && (!waiting.length || (u.wait || 0) >= 3));
@@ -406,6 +526,21 @@ function aiFighter(u) {
   const home0 = distHome(p, u.x, u.y);
   const mustReturn = !isBase(u) && (u.fuel - t.move < home0 + t.move);
   let guard = 12;
+  if (aiSkill(p) >= 1 && !mustReturn) {
+    // Jagd: sichtbare Beute in Reichweite (vor allem Transporter), bei der der Rückflug noch sicher ist
+    if (u.aiGoal && u.aiGoal[2] === 'prey') u.aiGoal = null;
+    const P = S.players[p];
+    let best = null, bs = 0;
+    for (const e of S.units) {
+      if (e.owner === p || e.carrier != null || !P.vis[idx(e.x, e.y)] || cityAt(e.x, e.y)) continue;
+      const d = cheb(u.x, u.y, e.x, e.y);
+      if (d > t.fuel / 2 || u.fuel - d - t.move < distHome(p, e.x, e.y)) continue;
+      if (attackOdds(u, e, e.x, e.y) < 0.6) continue;
+      const v = (T(e).cost + cargoOf(e).length * 6) / (2 + d);
+      if (v > bs) { bs = v; best = e; }
+    }
+    if (best) u.aiGoal = [best.x, best.y, 'prey'];
+  }
   while (alive(u) && u.moves > 0 && guard-- > 0) {
     if (mustReturn) {
       if (isBase(u)) break;

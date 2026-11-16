@@ -1791,8 +1791,8 @@ $('bLang').onclick = () => {
     const you = d.youStart.map(t => '+1 ' + UT[t].name);
     const ai = [...d.aiStart.map(t => '+1 ' + UT[t].name), ...(d.aiCities ? ['+' + d.aiCities + tt(' Stadt', ' city')] : [])];
     const start = [you.length ? tt('du: ', 'you: ') + you.join(', ') : '', ai.length ? tt('Gegner: ', 'enemy: ') + ai.join(', ') : ''].filter(Boolean).join('; ') || tt('gleich', 'equal');
-    return `<tr><td><b>${d.label}</b></td><td>${d.aiKnowsMap ? tt('ja', 'yes') : tt('nein, erkundet', 'no, explores')}</td><td>${Math.round(d.aiMistake * 100)} %</td>
-      <td>${Math.round(d.aiProd * 100)} %${d.worlds && d.worlds.inseln ? ` (${tt('Inselreich', 'archipelago')} ${Math.round(d.worlds.inseln.aiProd * 100)} %)` : ''}</td><td>${d.invadeAt} ${tt('Truppen', 'troops')}</td><td>${start}</td></tr>`;
+    return `<tr><td><b>${d.label}</b></td><td>${d.skill ? tt('umsichtig', 'shrewd') : tt('einfach', 'simple')}</td><td>${d.aiKnowsMap ? tt('ja', 'yes') : tt('nein, erkundet', 'no, explores')}</td><td>${Math.round(d.aiMistake * 100)} %</td>
+      <td>${Math.round(d.aiProd * 100)} %</td><td>${d.invadeAt} ${tt('Truppen', 'troops')}</td><td>${start}</td></tr>`;
   }).join('');
   $('unitTable').innerHTML = UNIT_ORDER.map(k => {
     const t = UT[k];

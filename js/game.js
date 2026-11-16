@@ -925,7 +925,7 @@ function sanitizeState(o) {
       hp: num(u.hp, t.hp, 0.01, t.hp), moves: int(u.moves, 0, 0, t.move), fuel: num(u.fuel, t.fuel || 0, 0, t.fuel || 0),
       carrier: isNum(u.carrier) ? int(u.carrier) : null, order, skip: !!u.skip };
     if (isNum(u.aiTarget)) nu.aiTarget = int(u.aiTarget, 0, 0, s.cities.length - 1);
-    if (Array.isArray(u.aiGoal) && pt(u.aiGoal)) nu.aiGoal = [u.aiGoal[0], u.aiGoal[1], oneOf(u.aiGoal[2], ['fog', 'city'], 'fog'), int(u.aiGoal[3], 0, 0, s.cities.length - 1)];
+    if (Array.isArray(u.aiGoal) && pt(u.aiGoal)) nu.aiGoal = [u.aiGoal[0], u.aiGoal[1], oneOf(u.aiGoal[2], ['fog', 'city', 'prey'], 'fog'), int(u.aiGoal[3], 0, 0, s.cities.length - 1)];
     if (isNum(u.wait)) nu.wait = int(u.wait, 0, 0, 1000);
     units.push(nu);
   }
