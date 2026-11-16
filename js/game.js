@@ -1,0 +1,843 @@
+'use strict';
+// ---------------------------------------------------------------------------
+// Spielregeln: Zustand, Bewegung, Kampf, Städte, Produktion, Sicht, Runden
+// ---------------------------------------------------------------------------
+
+let S = null; // gesamter Spielzustand
+
+const T = u => UT[u.type];
+const idx = (x, y) => y * S.W + x;
+const inb = (x, y) => x >= 0 && y >= 0 && x < S.W && y < S.H;
+const alive = u => S.units.includes(u);
+
+function mkPlayer(W, H, nc) {
+  return { seen: new Uint8Array(W * H), vis: new Uint8Array(W * H), knownOwner: new Int8Array(nc).fill(-2) };
+}
+
+function newGame(sizeKey, diffKey = 'normal') {
+  const sz = MAP_SIZES[sizeKey] || MAP_SIZES.mittel;
+  let m = null, seed = Math.floor(Math.random() * 1e9);
+  for (let k = 0; !m && k < 200; k++) m = generateMap(sz.w, sz.h, seed + k);
+  S = {
+    W: m.W, H: m.H, size: sizeKey, terrain: m.terrain, elev: m.elev, depth: m.depth, cont: m.cont,
+    cities: m.cities, units: [], nextId: 1, turn: 1, cur: 0, log: [], over: null, difficulty: DIFFICULTY[diffKey] ? diffKey : 'normal',
+    players: [mkPlayer(m.W, m.H, m.cities.length), mkPlayer(m.W, m.H, m.cities.length)],
+  };
+  buildCityGrid();
+  m.start.forEach((cid, p) => {
+    const c = S.cities[cid];
+    c.owner = p; c.prod = 'inf'; c.progress = 0;
+    createUnit('inf', p, c.x, c.y);
+    for (const t of p === 0 ? diff().youStart : diff().aiStart) createUnit(t, p, c.x, c.y);
+  });
+  // Brutal: Gegner beginnt mit zusätzlichen Städten (die nächstgelegenen neutralen)
+  const aiHome = S.cities[m.start[1]];
+  for (let k = 0; k < diff().aiCities; k++) {
+    const near = S.cities.filter(c => c.owner === -1)
+      .sort((a, b) => cheb(a.x, a.y, aiHome.x, aiHome.y) - cheb(b.x, b.y, aiHome.x, aiHome.y))[0];
+    if (near) { near.owner = 1; near.prod = 'inf'; near.progress = 0; }
+  }
+  addLog('Willkommen! Erobere alle Städte der Welt.', 'good');
+  startTurn(0);
+  computeVision(1);
+}
+
+function buildCityGrid() {
+  S.cityGrid = new Int16Array(S.W * S.H).fill(-1);
+  for (const c of S.cities) S.cityGrid[idx(c.x, c.y)] = c.id;
+}
+
+function cityAt(x, y) { const i = S.cityGrid[idx(x, y)]; return i >= 0 ? S.cities[i] : null; }
+function topUnitsAt(x, y) { return S.units.filter(u => u.x === x && u.y === y && u.carrier == null); }
+function cargoOf(u) { return S.units.filter(c => c.carrier === u.id); }
+function unitById(id) { return S.units.find(u => u.id === id) || null; }
+
+function createUnit(type, owner, x, y) {
+  const t = UT[type];
+  const u = { id: S.nextId++, type, owner, x, y, hp: t.hp, moves: t.move, fuel: t.fuel || 0, carrier: null, order: null, skip: false };
+  S.units.push(u);
+  return u;
+}
+
+function killUnit(u) {
+  for (const c of cargoOf(u)) killUnit(c);
+  const k = S.units.indexOf(u);
+  if (k >= 0) S.units.splice(k, 1);
+}
+
+function addLog(text, cls = '', x = null, y = null) {
+  S.log.unshift({ t: S.turn, text, cls, x, y });
+  if (S.log.length > 100) S.log.pop();
+}
+
+// Deutsche Deklination: Nominativ (Angreifer) und Akkusativ (Verteidiger)
+const ART = {
+  nom: { 0: { m: 'Dein', f: 'Deine', n: 'Dein' }, 1: { m: 'Feindlicher', f: 'Feindliche', n: 'Feindliches' } },
+  acc: { 0: { m: 'deinen', f: 'deine', n: 'dein' }, 1: { m: 'feindlichen', f: 'feindliche', n: 'feindliches' } },
+};
+function uname(u, kase = 'nom') { return `${ART[kase][u.owner][T(u).g]} ${T(u).name}`; }
+
+function isBase(u) {
+  if (u.carrier != null) return true;
+  const c = cityAt(u.x, u.y);
+  return !!(c && c.owner === u.owner);
+}
+
+function canEnterTerrain(u, x, y) {
+  const t = T(u), i = idx(x, y);
+  if (t.domain === 'air') return true;
+  if (t.domain === 'land') return S.terrain[i] === 1;
+  if (S.terrain[i] === 0) return true;
+  const c = cityAt(x, y);
+  return !!(c && c.owner === u.owner && c.coastal);
+}
+
+// Haken für die Oberfläche (Animationen); die Regeln funktionieren auch ohne
+const hooks = { move: null, combat: null, capture: null };
+
+function relocate(u, x, y) {
+  if (hooks.move && (u.x !== x || u.y !== y)) hooks.move(u, u.x, u.y, x, y);
+  u.x = x; u.y = y;
+  for (const c of cargoOf(u)) { c.x = x; c.y = y; }
+}
+
+// Bewegungspunkt (und bei Flugzeugen Treibstoff) verbrauchen. false = abgestürzt
+function spendMove(u) {
+  u.moves--;
+  if (T(u).domain === 'air') {
+    if (isBase(u)) { u.fuel = T(u).fuel; }
+    else {
+      u.fuel--;
+      if (u.fuel <= 0) {
+        if (u.owner === 0) addLog(`Dein Jäger ist ohne Treibstoff abgestürzt.`, 'bad', u.x, u.y);
+        killUnit(u);
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function pickDefender(list) {
+  return list.reduce((b, o) => (T(o).str * o.hp + o.hp > T(b).str * b.hp + b.hp ? o : b));
+}
+
+// Exakte Siegwahrscheinlichkeit: jede Runde 50 % Treffer für eine Seite
+// ---------------------------------------------------------------------------
+// Kampfregeln
+//   Jede Kampfrunde trifft der Angreifer mit Wahrscheinlichkeit p (sonst der
+//   Verteidiger) und richtet so viel Schaden an, wie seine Stärke beträgt.
+//   Erstschlag: Eine Seite trifft vor der ersten Runde einmal sicher.
+// Besonderheiten (Konter):
+//   Küstenbatterie   – Schiff greift Einheiten in einer Stadt an: Verteidiger doppelt stark
+//   Torpedo          – U-Boot greift Schlachtschiff/Kreuzer/Träger an: Erstschlag, doppelte Stärke
+//   Sonar            – Zerstörer greift U-Boot an: Erstschlag, trifft danach zu 2/3
+//   Wasserbomben     – U-Boot greift Zerstörer an: Zerstörer verteidigt doppelt stark
+//   Luftangriff      – Jäger gegen U-Boot (an der Oberfläche): Jäger trifft zu 2/3
+//   Panzerung        – Infanterie gegen Panzer: Infanterie trifft nur zu 1/3
+// ---------------------------------------------------------------------------
+const BATTERY = 2;
+const BIG_SHIPS = ['bat', 'crs', 'car'];
+function combatSpec(a, d, x, y) {
+  const ta = a.type, td = d.type;
+  let as = T(a).str, ds = T(d).str, p = 0.5, first = null;
+  const notes = [];
+  if (T(a).domain === 'sea' && cityAt(x, y)) { ds = Math.max(1, ds) * BATTERY; notes.push('Küstenbatterie'); }
+  if (ta === 'sub' && BIG_SHIPS.includes(td)) { as *= 2; first = 'att'; notes.push('Torpedo-Überraschung'); }
+  if (ta === 'dst' && td === 'sub') { first = 'att'; p = 2 / 3; notes.push('Sonar: Zerstörer trifft zuerst und öfter'); }
+  if (ta === 'sub' && td === 'dst') { ds *= 2; notes.push('Wasserbomben'); }
+  if (ta === 'ftr' && td === 'sub') { p = 2 / 3; notes.push('Luftangriff auf U-Boot'); }
+  if (ta === 'inf' && td === 'tank') { p = 1 / 3; notes.push('Panzerung'); }
+  if (ta === 'tank' && td === 'inf') { p = 2 / 3; notes.push('Panzer gegen Infanterie'); }
+  return { as, ds, p, first, notes };
+}
+function combatStr(a, d, x, y) { const c = combatSpec(a, d, x, y); return [c.as, c.ds]; }
+function attackOdds(a, d, x, y) {
+  const c = combatSpec(a, d, x, y);
+  return winProb(a.hp, c.as, d.hp, c.ds, c.p, c.first);
+}
+
+function winProb(ahp, astr, dhp, dstr, p = 0.5, first = null) {
+  if (first === 'att') dhp -= astr;
+  if (first === 'def') ahp -= dstr;
+  if (dhp <= 0) return 1;
+  if (ahp <= 0) return 0;
+  if (astr <= 0) return 0;
+  if (dstr <= 0) return 1;
+  const memo = new Map();
+  const f = (a, d) => {
+    if (d <= 0) return 1;
+    if (a <= 0) return 0;
+    const k = a * 1000 + d;
+    if (memo.has(k)) return memo.get(k);
+    const v = p * f(a, d - astr) + (1 - p) * f(a - dstr, d);
+    memo.set(k, v);
+    return v;
+  };
+  return f(ahp, dhp);
+}
+
+function captureCity(c, owner) {
+  const prev = c.owner;
+  c.owner = owner; c.prod = 'inf'; c.progress = 0;
+  if (hooks.capture) hooks.capture(c, owner);
+  if (owner === 0) addLog(`Du hast ${c.name} erobert!`, 'good', c.x, c.y);
+  else if (prev === 0) addLog(`${c.name} ist an den Gegner gefallen!`, 'bad', c.x, c.y);
+  if (owner === 1 && typeof aiChooseProduction === 'function') aiChooseProduction(c);
+}
+
+function attack(u, nx, ny, enemies, city) {
+  const def = pickDefender(enemies);
+  const a = T(u), d = T(def);
+  const involved = u.owner === 0 || def.owner === 0;
+  const aName = uname(u), dName = uname(def, 'acc');
+  const cs = combatSpec(u, def, nx, ny);
+  if (cs.first === 'att') def.hp -= cs.as;
+  if (cs.first === 'def') u.hp -= cs.ds;
+  while (u.hp > 0 && def.hp > 0) {
+    if (rng() < cs.p) def.hp -= cs.as; else u.hp -= cs.ds;
+  }
+  if (hooks.combat) hooks.combat(u, def, nx, ny, u.hp > 0);   // won = Angreifer hat gewonnen
+  if (u.hp <= 0) {
+    if (involved) addLog(`${aName} greift ${dName} an – und wird vernichtet.`, u.owner === 0 ? 'bad' : 'good', nx, ny);
+    killUnit(u);
+    return { ok: true, died: true, combat: true };
+  }
+  const cargoLost = cargoOf(def).length;
+  if (involved) addLog(`${aName} greift ${dName} an – Sieg!` + (cargoLost ? ` (${cargoLost} Einheiten an Bord verloren)` : ''),
+    u.owner === 0 ? 'good' : 'bad', nx, ny);
+  killUnit(def);
+  const rest = topUnitsAt(nx, ny);
+  if (!rest.length && !(city && city.owner !== u.owner) && canEnterTerrain(u, nx, ny)) relocate(u, nx, ny);
+  const ok = spendMove(u);
+  return { ok: true, died: !ok, combat: true };
+}
+
+// Ein Schritt auf ein Nachbarfeld: bewegen, angreifen, erobern oder einsteigen
+function moveStep(u, nx, ny) {
+  const t = T(u);
+  if (!inb(nx, ny)) return { ok: false, msg: 'Kartenrand' };
+  if (cheb(u.x, u.y, nx, ny) !== 1) return { ok: false, msg: 'Feld ist nicht benachbart' };
+  if (u.moves <= 0) return { ok: false, msg: 'Keine Bewegungspunkte mehr' };
+  const city = cityAt(nx, ny);
+  const here = topUnitsAt(nx, ny);
+  const enemies = here.filter(o => o.owner !== u.owner);
+
+  if (enemies.length) {
+    if (t.str === 0) return { ok: false, msg: `${t.name} kann nicht angreifen` };
+    return attack(u, nx, ny, enemies, city);
+  }
+  if (city && city.owner !== u.owner) {
+    if (!t.capture) return { ok: false, msg: 'Nur Infanterie und Panzer können Städte erobern' };
+    u.moves = 0;
+    if (rng() < 0.5) {
+      relocate(u, nx, ny); u.carrier = null; u.order = null;
+      captureCity(city, u.owner);
+      return { ok: true, captured: city };
+    }
+    if (hooks.combat) hooks.combat(u, null, nx, ny, false);
+    if (u.owner === 0) addLog(`Angriff auf ${city.name} abgewehrt – ${t.name} verloren.`, 'bad', nx, ny);
+    else if (city.owner === 0) addLog(`${city.name} hat einen Angriff abgewehrt.`, 'good', nx, ny);
+    killUnit(u);
+    return { ok: true, died: true };
+  }
+  const ownCity = city && city.owner === u.owner;
+  if (here.length && !ownCity) {
+    const carrier = here.find(o => T(o).carries === t.domain && cargoOf(o).length < T(o).capacity);
+    if (!carrier) return { ok: false, msg: 'Feld ist besetzt' };
+    relocate(u, nx, ny); u.carrier = carrier.id;
+    if (u.owner === 0) u.order = { type: 'sentry' };
+    const ok = spendMove(u);
+    if (t.domain === 'air' && ok) u.fuel = t.fuel;
+    return { ok: true, died: !ok, boarded: carrier };
+  }
+  if (!canEnterTerrain(u, nx, ny)) {
+    if (t.domain === 'land') return { ok: false, msg: 'Bodentruppen können nicht ins Wasser' };
+    return { ok: false, msg: 'Schiffe können nicht an Land' };
+  }
+  relocate(u, nx, ny); u.carrier = null;
+  const ok = spendMove(u);
+  return { ok: true, died: !ok };
+}
+
+// Transporter/Träger in eigener Stadt: Einheiten aus der Stadt an Bord nehmen
+function loadUnits(u, filter = () => true) {
+  const t = T(u);
+  if (!t.carries) return 0;
+  const c = cityAt(u.x, u.y);
+  if (!c || c.owner !== u.owner) return 0;
+  let n = 0;
+  for (const o of topUnitsAt(u.x, u.y)) {
+    if (o === u || o.owner !== u.owner || T(o).domain !== t.carries || !filter(o)) continue;
+    if (cargoOf(u).length >= t.capacity) break;
+    o.carrier = u.id; if (u.owner === 0) o.order = { type: 'sentry' };
+    if (T(o).domain === 'air') o.fuel = T(o).fuel;
+    n++;
+  }
+  return n;
+}
+
+// Alle Einheiten an Bord auf freie Nachbarfelder (oder in die Stadt) ausladen
+function unloadAll(u) {
+  let n = 0;
+  const c = cityAt(u.x, u.y);
+  for (const o of cargoOf(u)) {
+    o.order = null;
+    if (c && c.owner === u.owner) { o.carrier = null; n++; continue; }
+    if (o.moves <= 0) continue;
+    for (const [dx, dy] of DIRS) {
+      const nx = u.x + dx, ny = u.y + dy;
+      if (!inb(nx, ny) || !canEnterTerrain(o, nx, ny)) continue;
+      const cc = cityAt(nx, ny);
+      if (cc && cc.owner !== o.owner) continue;
+      if (topUnitsAt(nx, ny).length && !(cc && cc.owner === o.owner)) continue;
+      const r = moveStep(o, nx, ny);
+      if (r.ok) { n++; break; }
+    }
+  }
+  return n;
+}
+
+// ---------------------------------------------------------------------------
+// Sicht / Nebel des Krieges
+// ---------------------------------------------------------------------------
+function computeVision(p) {
+  const P = S.players[p];
+  P.vis.fill(0);
+  const mark = (x, y, r) => {
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (!inb(nx, ny)) continue;
+      const i = idx(nx, ny); P.vis[i] = 1; P.seen[i] = 1;
+    }
+  };
+  for (const u of S.units) if (u.owner === p) mark(u.x, u.y, T(u).vision);
+  for (const c of S.cities) if (c.owner === p) mark(c.x, c.y, 2);
+  for (const c of S.cities) if (P.vis[idx(c.x, c.y)]) P.knownOwner[c.id] = c.owner;
+  // gesichtete feindliche Einheiten (id -> Typ), für die Konter-Produktion der KI
+  if (!P.intel) P.intel = {};
+  for (const u of S.units) if (u.owner !== p && P.vis[idx(u.x, u.y)]) P.intel[u.id] = u.type;
+}
+
+function visibleEnemyAt(p, x, y) {
+  if (!S.players[p].vis[idx(x, y)]) return null;
+  return topUnitsAt(x, y).find(o => o.owner !== p) || null;
+}
+
+// ---------------------------------------------------------------------------
+// Wegsuche (Breitensuche, 8 Richtungen)
+// ---------------------------------------------------------------------------
+function bfs(sx, sy, passable, goal, maxDist = 9999) {
+  const W = S.W, N = S.W * S.H;
+  const prev = new Int32Array(N).fill(-1);
+  const dist = new Int16Array(N);
+  const start = sy * W + sx;
+  prev[start] = start;
+  const q = [start];
+  for (let h = 0; h < q.length; h++) {
+    const cur = q[h];
+    if (dist[cur] >= maxDist) continue;
+    const cx = cur % W, cy = (cur / W) | 0;
+    for (const [dx, dy] of DIRS) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= S.H) continue;
+      const ni = ny * W + nx;
+      if (prev[ni] !== -1) continue;
+      if (goal(nx, ny, ni)) {
+        prev[ni] = cur;
+        const path = [];
+        for (let k = ni; k !== start; k = prev[k]) path.push([k % W, (k / W) | 0]);
+        return path.reverse();
+      }
+      if (passable(nx, ny, ni)) { prev[ni] = cur; dist[ni] = dist[cur] + 1; q.push(ni); }
+    }
+  }
+  return null;
+}
+
+// Passierbarkeit aus Sicht eines Spielers (knowAll: kennt die ganze Karte)
+function makePassable(u, knowAll, ignoreOwn = false) {
+  const p = u.owner, P = S.players[p], t = T(u);
+  const occ = new Map();
+  for (const o of S.units) {
+    if (o.carrier != null || o === u) continue;
+    const i = idx(o.x, o.y);
+    if (o.owner !== p) { if (P.vis[i]) occ.set(i, 2); }
+    else if (!ignoreOwn && !occ.has(i)) occ.set(i, 1);
+  }
+  return (x, y, i) => {
+    const ci = S.cityGrid[i];
+    if (ci >= 0) {
+      const own = knowAll ? S.cities[ci].owner : P.knownOwner[ci];
+      if (own !== p && own !== -2) return false;
+    }
+    const o = occ.get(i);
+    if (o === 2) return false;
+    if (o === 1 && ci < 0) return false;
+    if (!knowAll && !P.seen[i]) return true;
+    if (t.domain === 'air') return true;
+    if (t.domain === 'land') return S.terrain[i] === 1;
+    return S.terrain[i] === 0 || (ci >= 0 && S.cities[ci].coastal);
+  };
+}
+
+// Wegsuche zu einem festen Ziel. Diagonal ist ein Schritt genauso teuer wie
+// gerade, deshalb gibt es oft viele gleich kurze Wege. Unter diesen wird der
+// gewählt, der am nächsten an der direkten Linie Start–Ziel bleibt
+// (winziger Aufschlag je Schritt für den Abstand zur Linie; die Schrittzahl
+// hat immer Vorrang).
+function findPath(u, tx, ty, knowAll = false) {
+  if (u.x === tx && u.y === ty) return [];
+  const passable = makePassable(u, knowAll);
+  const W = S.W, N = S.W * S.H, sx = u.x, sy = u.y;
+  const lx = tx - sx, ly = ty - sy, len = Math.hypot(lx, ly) || 1;
+  const EPS = 1e-5;
+  const dev = (x, y) => Math.abs(lx * (y - sy) - ly * (x - sx)) / len;
+  const cost = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1);
+  const start = sy * W + sx, goal = ty * W + tx;
+  cost[start] = 0;
+  // kleiner Binär-Heap aus [Kosten, Index]
+  const heap = [[0, start]];
+  const push = item => {
+    heap.push(item);
+    let i = heap.length - 1;
+    while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; }
+  };
+  const pop = () => {
+    const top = heap[0], last = heap.pop();
+    if (heap.length) {
+      heap[0] = last;
+      let i = 0;
+      for (;;) {
+        const l = 2 * i + 1, r = l + 1;
+        let m = i;
+        if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+        if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+        if (m === i) break;
+        [heap[m], heap[i]] = [heap[i], heap[m]]; i = m;
+      }
+    }
+    return top;
+  };
+  while (heap.length) {
+    const [c, cur] = pop();
+    if (c > cost[cur]) continue;
+    if (cur === goal) break;
+    const cx = cur % W, cy = (cur / W) | 0;
+    for (const [dx, dy] of DIRS) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= S.H) continue;
+      const ni = ny * W + nx;
+      if (ni !== goal && !passable(nx, ny, ni)) continue;
+      const nc = c + 1 + EPS * dev(nx, ny);
+      if (nc < cost[ni]) { cost[ni] = nc; prev[ni] = cur; push([nc, ni]); }
+    }
+  }
+  if (prev[goal] === -1) return null;
+  const path = [];
+  for (let k = goal; k !== start; k = prev[k]) path.push([k % W, (k / W) | 0]);
+  return path.reverse();
+}
+
+// Marschbefehl ausführen, solange Bewegungspunkte da sind
+function runGoto(u) {
+  let guard = 50;
+  while (alive(u) && u.order && u.order.type === 'goto' && u.moves > 0 && guard-- > 0) {
+    const o = u.order;
+    if (u.x === o.x && u.y === o.y) { u.order = null; break; }
+    const path = findPath(u, o.x, o.y, aiKnowsMap(u.owner));
+    if (!path || !path.length) {
+      if (u.owner === 0) addLog(`${T(u).name}: kein Weg zum Ziel gefunden.`, '', u.x, u.y);
+      u.order = null; break;
+    }
+    const [nx, ny] = path[0];
+    const r = moveStep(u, nx, ny);
+    computeVision(u.owner);
+    if (!r.ok) {
+      if (u.owner === 0) addLog(`${T(u).name}: Marsch unterbrochen (${r.msg}).`, '', u.x, u.y);
+      if (alive(u)) u.order = null;
+      break;
+    }
+    if (r.died || r.combat || r.captured || r.boarded) { if (alive(u)) u.order = null; break; }
+    if (alive(u) && u.x === o.x && u.y === o.y) { u.order = null; break; }
+  }
+}
+
+// Patrouille: läuft die Wegpunkte im Kreis ab (Start -> P1 -> ... -> Pn -> Start ...)
+function enemyAdjacent(u) {
+  for (const [dx, dy] of DIRS) {
+    const x = u.x + dx, y = u.y + dy;
+    if (inb(x, y) && visibleEnemyAt(u.owner, x, y)) return true;
+  }
+  return false;
+}
+
+function runPatrol(u) {
+  let guard = 60;
+  const stop = (msg, cls = '') => {
+    if (alive(u)) u.order = null;
+    if (u.owner === 0 && msg) addLog(`${T(u).name}: ${msg}`, cls, u.x, u.y);
+  };
+  while (alive(u) && u.order && u.order.type === 'patrol' && u.moves > 0 && guard-- > 0) {
+    const o = u.order;
+    if (enemyAdjacent(u)) { stop('Patrouille unterbrochen – Feindkontakt!', 'bad'); break; }
+    let [tx, ty] = o.pts[o.i];
+    if (u.x === tx && u.y === ty) {
+      o.i = (o.i + 1) % o.pts.length;
+      [tx, ty] = o.pts[o.i];
+      if (u.x === tx && u.y === ty) break;   // nur ein Punkt = Standort
+    }
+    const path = findPath(u, tx, ty, aiKnowsMap(u.owner));
+    if (!path || !path.length) { stop('Patrouille abgebrochen – kein Weg zum Wegpunkt.'); break; }
+    const [nx, ny] = path[0];
+    // Jäger: nur weiterfliegen, wenn der Treibstoff für den Rückweg zur Basis reicht
+    if (T(u).domain === 'air' && typeof distHome === 'function') {
+      const c = cityAt(nx, ny);
+      const base = c && c.owner === u.owner;
+      if (!base && u.fuel - 1 - Math.max(0, u.moves - 1) < distHome(u.owner, nx, ny)) {
+        u.order = { type: 'goto', ...nearestBase(u) };
+        if (u.owner === 0) addLog('Jäger: Patrouille abgebrochen – Treibstoff knapp, fliegt zur Basis.', '', u.x, u.y);
+        runGoto(u);
+        break;
+      }
+    }
+    const r = moveStep(u, nx, ny);
+    computeVision(u.owner);
+    if (!r.ok) {
+      if (r.msg === 'Feld ist besetzt') break;   // eigene Einheit im Weg: nächste Runde weiter
+      stop(`Patrouille abgebrochen (${r.msg}).`);
+      break;
+    }
+    if (r.died) break;
+    if (r.combat || r.captured || r.boarded) { stop('Patrouille beendet.'); break; }
+  }
+}
+
+// Erkundungsziel nach Informationsgewinn: Unter allen erreichbaren, bekannten
+// Feldern wird das gewählt, von dem aus die Einheit mit ihrer Sichtweite am
+// meisten Unbekanntes aufdeckt – im Verhältnis zum Weg dorthin. Felder
+// außerhalb der Karte zählen nicht, daher fährt niemand sinnlos an den Rand.
+// Gefahrenzone: Felder neben sichtbaren feindlichen Einheiten und neben
+// bekannten Feindstädten (dort können Verteidiger stehen)
+function dangerZone(p) {
+  const P = S.players[p], z = new Uint8Array(S.W * S.H);
+  const mark = (x, y) => {
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (inb(nx, ny)) z[idx(nx, ny)] = 1;
+    }
+  };
+  for (const o of S.units) if (o.owner !== p && o.carrier == null && P.vis[idx(o.x, o.y)]) mark(o.x, o.y);
+  for (const c of S.cities) {
+    const k = aiKnowsMap(p) ? c.owner : P.knownOwner[c.id];
+    if (k >= 0 && k !== p) mark(c.x, c.y);
+  }
+  return z;
+}
+
+// avoid: Gefahrenzone meiden (Erkunder sollen nicht neben Gegnern landen)
+function explorePath(u, maxDist = 60, avoid = true) {
+  const p = u.owner, seen = S.players[p].seen, W = S.W, N = S.W * S.H;
+  const r = T(u).vision;
+  const danger = avoid ? dangerZone(p) : null;
+  const basePass = makePassable(u, false);
+  const pass = danger ? (x, y, i) => !danger[i] && basePass(x, y, i) : basePass;
+  const prev = new Int32Array(N).fill(-1), dist = new Int16Array(N);
+  const start = idx(u.x, u.y);
+  prev[start] = start;
+  const q = [start];
+  let best = -1, bestScore = 0;
+  const gainAt = (x, y) => {
+    let g = 0;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < W && ny < S.H && !seen[ny * W + nx]) g++;
+    }
+    return g;
+  };
+  for (let h = 0; h < q.length; h++) {
+    const cur = q[h], cx = cur % W, cy = (cur / W) | 0;
+    if (cur !== start) {
+      const g = gainAt(cx, cy);
+      // Gewinn je Schritt; leichte Bevorzugung naher Ziele
+      const sc = g / (dist[cur] + 1.5);
+      if (sc > bestScore) { bestScore = sc; best = cur; }
+    }
+    if (dist[cur] >= maxDist) continue;
+    for (const [dx, dy] of DIRS) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= S.H) continue;
+      const ni = ny * W + nx;
+      if (prev[ni] !== -1 || !seen[ni] || !pass(nx, ny, ni)) continue;   // nur über bekanntes Gelände planen
+      prev[ni] = cur; dist[ni] = dist[cur] + 1; q.push(ni);
+    }
+  }
+  if (best < 0) {
+    // nichts Lohnendes über bekanntes Gelände: zum nächsten unbekannten Feld (optimistisch durch den Nebel)
+    return bfs(u.x, u.y, pass, (x, y, i) => !seen[i], maxDist);
+  }
+  const path = [];
+  for (let k = best; k !== start; k = prev[k]) path.push([k % W, (k / W) | 0]);
+  return path.reverse();
+}
+
+// Erkunden: Die Einheit zieht selbstständig dorthin, wo sie am meisten Neues sieht.
+// Bricht ab bei Feindkontakt oder wenn nichts Erreichbares mehr unbekannt ist.
+// Jäger fliegen rechtzeitig zum Tanken heim und erkunden danach weiter.
+function runExplore(u) {
+  const t = T(u), p = u.owner, seen = S.players[p].seen;
+  const stop = (msg, cls = '') => {
+    if (alive(u)) u.order = null;
+    if (p === 0 && msg) addLog(`${t.name}: ${msg}`, cls, u.x, u.y);
+  };
+  const air = t.domain === 'air';
+  // Jäger: Rückflug nötig, wenn der Treibstoff für eine weitere Runde draußen nicht reicht
+  const mustReturn = air && !isBase(u) && (u.fuel - t.move < distHome(p, u.x, u.y) + t.move);
+  let guard = 30, reported = false;
+  while (alive(u) && u.order && u.order.type === 'explore' && u.moves > 0 && guard-- > 0) {
+    if (enemyAdjacent(u)) {
+      // Bodentruppen und Schiffe halten an und melden sich. Jäger melden nur –
+      // in der Luft stehen bleiben würde sie den Treibstoff kosten.
+      if (!air) { stop('Erkundung unterbrochen – Feindkontakt!', 'bad'); return; }
+      if (!reported && p === 0) { addLog('Jäger meldet Feindkontakt und erkundet weiter.', 'bad', u.x, u.y); reported = true; }
+    }
+    if (mustReturn) {
+      if (isBase(u)) return;                       // getankt wird zu Rundenbeginn, dann geht es weiter
+      const danger = dangerZone(p);
+      let best = null, bd = 1e9;
+      for (const [dx, dy] of DIRS) {
+        const nx = u.x + dx, ny = u.y + dy;
+        if (!inb(nx, ny) || topUnitsAt(nx, ny).some(o => o.owner !== p)) continue;
+        const c = cityAt(nx, ny);
+        if (c && c.owner !== p) continue;
+        // Heimweg geht vor, bei gleichem Abstand lieber nicht neben Gegnern
+        const d = distHome(p, nx, ny) + (danger[idx(nx, ny)] ? 0.5 : 0);
+        if (d < bd) { bd = d; best = [nx, ny]; }
+      }
+      if (!best || !moveStep(u, best[0], best[1]).ok) return;
+      computeVision(p);
+      continue;
+    }
+    const reach = air ? Math.max(1, Math.floor((u.fuel - t.move) / 2)) : 60;
+    const path = explorePath(u, reach);
+    if (!path || !path.length) {
+      // Es gäbe noch etwas zu entdecken, aber nur durch Feindnähe: diese Runde abwarten
+      const risky = explorePath(u, reach, false);
+      if (risky && risky.length) return;
+      stop(air ? 'Erkundung beendet – nichts Unbekanntes mehr in Reichweite.' : 'Erkundung beendet – hier gibt es nichts mehr zu entdecken.');
+      return;
+    }
+    const [nx, ny] = path[0];
+    if (air) {
+      const c = cityAt(nx, ny);
+      if (!(c && c.owner === p) && u.fuel - t.move < distHome(p, nx, ny)) return;   // lieber nicht weiter raus
+    }
+    const r = moveStep(u, nx, ny);
+    computeVision(p);
+    if (!r.ok || r.died) return;
+    if (r.combat || r.captured) { stop('Erkundung beendet.'); return; }
+  }
+}
+
+function nearestBase(u) {
+  let best = null, bd = 1e9;
+  for (const c of S.cities) if (c.owner === u.owner) {
+    const d = cheb(u.x, u.y, c.x, c.y);
+    if (d < bd) { bd = d; best = { x: c.x, y: c.y }; }
+  }
+  for (const o of S.units) if (o.owner === u.owner && T(o).carries === 'air' && cargoOf(o).length < T(o).capacity) {
+    const d = cheb(u.x, u.y, o.x, o.y);
+    if (d < bd) { bd = d; best = { x: o.x, y: o.y }; }
+  }
+  return best || { x: u.x, y: u.y };
+}
+
+// ---------------------------------------------------------------------------
+// Runden
+// ---------------------------------------------------------------------------
+// Kräfteverhältnis: Wert aller Einheiten (Bauzeit, anteilig nach Trefferpunkten)
+// plus 20 Punkte je Stadt (Produktionskraft)
+const CITY_VALUE = 20;
+function strength(p) {
+  let units = 0, n = 0;
+  for (const u of S.units) if (u.owner === p) { units += T(u).cost * u.hp / T(u).hp; n++; }
+  const cities = S.cities.filter(c => c.owner === p).length;
+  return { cities, units: n, unitValue: Math.round(units), total: Math.round(units + cities * CITY_VALUE) };
+}
+function recordStrength() {
+  if (!S.hist) S.hist = [];
+  const e = { t: S.turn, me: strength(0).total, en: strength(1).total };
+  const last = S.hist[S.hist.length - 1];
+  if (last && last.t === S.turn) S.hist[S.hist.length - 1] = e; else S.hist.push(e);
+  if (S.hist.length > 1000) S.hist.shift();
+}
+
+function startTurn(p) {
+  S.cur = p;
+  for (const u of S.units) {
+    if (u.owner !== p) continue;
+    const t = T(u);
+    u.moves = t.move; u.skip = false;
+    const c = cityAt(u.x, u.y);
+    if (c && c.owner === p && u.hp < t.hp) u.hp = Math.min(t.hp, u.hp + (t.domain === 'sea' ? 1 : t.hp));
+    if (t.domain === 'air' && isBase(u)) u.fuel = t.fuel;
+  }
+  for (const c of S.cities) {
+    if (c.owner !== p || !c.prod) continue;
+    if (UT[c.prod].domain === 'sea' && !c.coastal) { c.prod = 'inf'; c.progress = 0; }
+    c.progress += p === 1 ? diff().aiProd : 1;
+    if (c.progress >= UT[c.prod].cost) {
+      c.progress = Math.max(0, c.progress - UT[c.prod].cost);
+      createUnit(c.prod, p, c.x, c.y);
+      if (p === 0) addLog(`${c.name}: ${UT[c.prod].name} fertiggestellt.`, '', c.x, c.y);
+      else if (typeof aiChooseProduction === 'function') aiChooseProduction(c);
+    }
+  }
+  computeVision(p);
+  if (p === 0) recordStrength();
+}
+
+function endTurn(p) {
+  for (const u of [...S.units]) {
+    if (u.owner !== p || T(u).domain !== 'air' || isBase(u)) continue;
+    u.fuel -= Math.max(0, u.moves);
+    u.moves = 0;
+    if (u.fuel <= 0) {
+      if (p === 0) addLog('Dein Jäger ist ohne Treibstoff abgestürzt.', 'bad', u.x, u.y);
+      killUnit(u);
+    }
+  }
+}
+
+function isAlive(p) {
+  return S.cities.some(c => c.owner === p) || S.units.some(u => u.owner === p && T(u).capture);
+}
+
+function checkGameOver() {
+  if (S.over) return S.over;
+  if (!isAlive(1)) S.over = 'win';
+  else if (!isAlive(0)) S.over = 'lose';
+  return S.over;
+}
+
+// ---------------------------------------------------------------------------
+// Speichern / Laden
+// ---------------------------------------------------------------------------
+const SAVE_KEY = 'archipel-save-v1';          // automatischer Spielstand
+const SLOT_INDEX = 'archipel-slots';             // Liste der benannten Spielstände
+const SLOT_PREFIX = 'archipel-slot-';
+const TYPED = { terrain: Uint8Array, elev: Float32Array, depth: Uint8Array, cont: Int16Array };
+
+// Typed Arrays als Base64 (deutlich kleiner als Zahlenlisten)
+function b64(arr) {
+  const u8 = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+  let s = '';
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function unb64(str, Type) {
+  const s = atob(str), u8 = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
+  return new Type(u8.buffer);
+}
+// liest altes Format (Zahlenliste) und neues (Base64)
+const fromSaved = (v, Type) => typeof v === 'string' ? unb64(v, Type) : Type.from(v);
+
+function serialize() {
+  const o = { v: 2 };
+  for (const k of Object.keys(S)) {
+    if (k === 'cityGrid') continue;
+    o[k] = TYPED[k] ? b64(S[k]) : S[k];
+  }
+  // Höhe nur für die Grafik: 256 Stufen genügen
+  o.elev = { q: b64(Uint8Array.from(S.elev, v => Math.round(Math.max(0, Math.min(1, v)) * 255))) };
+  // Sichtbereiche werden beim Laden neu berechnet
+  o.players = S.players.map(P => ({ seen: b64(P.seen), knownOwner: b64(P.knownOwner), intel: P.intel || {} }));
+  return JSON.stringify(o);
+}
+
+function deserialize(json) {
+  const o = JSON.parse(json);
+  if (!o || !o.terrain || !o.cities || !o.units || !o.players) throw new Error('Kein gültiger Spielstand');
+  for (const [k, Type] of Object.entries(TYPED)) {
+    if (k === 'elev' && o.elev && o.elev.q) o.elev = Float32Array.from(unb64(o.elev.q, Uint8Array), v => v / 255);
+    else o[k] = fromSaved(o[k], Type);
+  }
+  o.players = o.players.map(P => ({
+    seen: fromSaved(P.seen, Uint8Array), vis: new Uint8Array(o.W * o.H), knownOwner: fromSaved(P.knownOwner, Int8Array),
+    intel: P.intel || {},
+  }));
+  delete o.v;
+  S = o;
+  buildCityGrid();
+  computeVision(0); computeVision(1);
+}
+
+function saveGame(key = SAVE_KEY) {
+  try { localStorage.setItem(key, serialize()); return true; } catch (e) { return false; }
+}
+function loadGame(key = SAVE_KEY) {
+  try {
+    const j = localStorage.getItem(key);
+    if (!j) return false;
+    deserialize(j);
+    return true;
+  } catch (e) { return false; }
+}
+function hasSave(key = SAVE_KEY) {
+  try { return !!localStorage.getItem(key); } catch (e) { return false; }
+}
+
+// ---- benannte Spielstände
+function saveSummary() {
+  return {
+    turn: S.turn, size: S.size, difficulty: S.difficulty || 'normal',
+    cities: S.cities.filter(c => c.owner === 0).length,
+    units: S.units.filter(u => u.owner === 0).length,
+    over: S.over || null,
+  };
+}
+function listSlots() {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem(SLOT_INDEX) || '[]'); } catch (e) {}
+  // alten einzelnen Spielstand („Speichern“-Knopf früherer Versionen) übernehmen
+  try {
+    const old = localStorage.getItem('archipel-manual');
+    if (old) {
+      const id = 'm' + Date.now().toString(36);
+      localStorage.setItem(SLOT_PREFIX + id, old);
+      const o = JSON.parse(old);
+      list.push({ id, name: 'Älterer Spielstand', date: Date.now(), turn: o.turn, size: o.size,
+        cities: o.cities.filter(c => c.owner === 0).length, units: o.units.filter(u => u.owner === 0).length, over: o.over || null });
+      localStorage.setItem(SLOT_INDEX, JSON.stringify(list));
+      localStorage.removeItem('archipel-manual');
+    }
+  } catch (e) {}
+  return list.sort((x, y) => y.date - x.date);
+}
+function writeSlots(list) { localStorage.setItem(SLOT_INDEX, JSON.stringify(list)); }
+
+// speichert unter neuem Namen oder überschreibt (id). Wirft bei vollem Speicher.
+function saveSlot(name, id = null) {
+  const list = listSlots();
+  id = id || 's' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+  const data = serialize();
+  localStorage.setItem(SLOT_PREFIX + id, data);
+  const meta = { id, name: name || 'Spielstand', date: Date.now(), bytes: data.length, ...saveSummary() };
+  const i = list.findIndex(s => s.id === id);
+  if (i >= 0) list[i] = meta; else list.push(meta);
+  writeSlots(list);
+  return meta;
+}
+function loadSlot(id) {
+  const j = localStorage.getItem(SLOT_PREFIX + id);
+  if (!j) return false;
+  deserialize(j);
+  return true;
+}
+function deleteSlot(id) {
+  localStorage.removeItem(SLOT_PREFIX + id);
+  writeSlots(listSlots().filter(s => s.id !== id));
+}
+function slotData(id) { return id === 'auto' ? localStorage.getItem(SAVE_KEY) : localStorage.getItem(SLOT_PREFIX + id); }
+

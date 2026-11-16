@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archipel</title>
+<style>
+  :root {
+    --bg: #0e1218; --panel: #161c25; --panel2: #1d2531; --line: #2a3442;
+    --text: #e6ebf2; --muted: #8b97a8; --accent: #2f7de1; --good: #4cc38a; --bad: #ff6b61; --warn: #f2b84b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 14px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  header { height: 48px; display: flex; align-items: center; gap: 16px; padding: 0 14px;
+    background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: .08em; font-weight: 700; }
+  header h1 span { color: var(--accent); }
+  #turnInfo { color: var(--muted); font-variant-numeric: tabular-nums; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #turnInfo b { color: var(--text); font-weight: 600; }
+  button { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 10px; font: inherit; cursor: pointer; }
+  button:hover { border-color: #3d4b5e; background: #232d3b; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.primary:hover { background: #3f8cf0; }
+  button:disabled { opacity: .45; cursor: default; }
+  .hbtns { display: flex; gap: 6px; align-items: center; }
+  .snd { display: inline-flex; align-items: center; gap: 4px; }
+  #vol { width: 70px; accent-color: var(--accent); }
+  @media (max-width: 900px) { #vol { display: none; } }
+  main { display: flex; height: calc(100% - 48px - 26px); }
+  #mapWrap { flex: 1; overflow: auto; position: relative; background: #070a0f; }
+  #map { display: block; cursor: crosshair; image-rendering: auto; }
+  aside { width: 320px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--line);
+    display: flex; flex-direction: column; overflow: hidden; }
+  #mini { display: block; margin: 10px auto 6px; border: 1px solid var(--line); cursor: pointer; background: #000; }
+  .box { padding: 10px 12px; border-top: 1px solid var(--line); }
+  .box h3 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  #panel { overflow-y: auto; flex: 0 1 auto; min-height: 120px; }
+  .uname { font-size: 16px; font-weight: 600; }
+  .stats { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 6px 0; color: var(--muted); }
+  .stats b { color: var(--text); font-weight: 500; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .row button { padding: 4px 8px; font-size: 13px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 10px; background: var(--panel2);
+    border: 1px solid var(--line); font-size: 12px; cursor: pointer; margin: 2px 2px 0 0; }
+  .chip:hover { border-color: var(--accent); }
+  .chip.cur { border-color: #8fc0ff; background: #1d3556; color: #fff; }
+  .pcard { border: 1px solid var(--line); border-left-width: 4px; border-radius: 8px; padding: 8px 10px 10px; margin-bottom: 10px; }
+  .pcard:last-child { margin-bottom: 0; }
+  .pc-unit { border-left-color: #2f7de1; background: linear-gradient(180deg, rgba(47,125,225,.12), rgba(47,125,225,.03)); }
+  .pc-city { border-left-color: #c9a85a; background: linear-gradient(180deg, rgba(201,168,90,.12), rgba(201,168,90,.03)); }
+  .pc-city h3 { color: #d8bf86; }
+  .pc-unit h3 { color: #8fc0ff; }
+  .pc-head { display: flex; align-items: center; gap: 10px; }
+  .pc-head h3 { margin: 0; }
+  .pc-icon { width: 40px; height: 40px; flex-shrink: 0; }
+  .chip.done { opacity: .55; }
+  select { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px; font: inherit; width: 100%; }
+  .bar { height: 6px; border-radius: 3px; background: var(--panel2); overflow: hidden; margin-top: 6px; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .warn { color: var(--warn); }
+  .muted { color: var(--muted); }
+  #logBox { flex: 1; overflow-y: auto; min-height: 80px; }
+  #logBox.collapsed { flex: 0 0 auto; min-height: 0; overflow: hidden; }
+  #logBox.collapsed #log { display: none; }
+  #logBox:not(.collapsed) #logLast { display: none; }
+  #logHead { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  #logHead:hover { color: var(--text); }
+  #logHead .chev { display: inline-block; transition: transform .15s; }
+  #logBox:not(.collapsed) #logHead .chev { transform: rotate(90deg); }
+  #logNew { background: #f2b84b; color: #1b1406; border-radius: 9px; padding: 0 6px; font-size: 11px; letter-spacing: 0; text-transform: none; }
+  #logNew:empty { display: none; }
+  #logLast { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #logLast[data-x] { cursor: pointer; }
+  #logLast .good { color: var(--good); } #logLast .bad { color: var(--bad); }
+  #logLast .t { color: var(--muted); margin-right: 6px; }
+  #log div { padding: 3px 0; border-bottom: 1px solid #1f2731; font-size: 13px; cursor: default; }
+  #log div[data-x] { cursor: pointer; }
+  #log div:hover[data-x] { color: #fff; }
+  #log .good { color: var(--good); } #log .bad { color: var(--bad); }
+  #log .t { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+  .power { margin: 2px 12px 8px; flex-shrink: 0; }
+  .power-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .power-head b { text-transform: none; letter-spacing: 0; font-size: 13px; }
+  .power-bar { position: relative; height: 20px; border-radius: 10px; overflow: hidden; background: linear-gradient(90deg, #a8312a, #d9433b);
+    border: 1px solid var(--line); }
+  .power-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #1f5fb3, #2f7de1);
+    transition: width .6s ease; box-shadow: 2px 0 6px rgba(0,0,0,.4); }
+  .power-bar span { position: absolute; top: 0; line-height: 20px; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  .power-bar .pl { left: 8px; } .power-bar .pr { right: 8px; }
+  .power-foot { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .power-foot canvas { flex: 1; min-width: 0; height: 26px; }
+  #powerTrend { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .up { color: var(--good); } .down { color: var(--bad); } .flat { color: var(--muted); }
+  .turnbar { display: flex; flex-direction: column; gap: 6px; margin: 4px 12px 10px; flex-shrink: 0; }
+  .turnbar button { padding: 10px; font-size: 15px; }
+  #endTurn { width: 100%; }
+  #nextUnit { width: 100%; padding: 7px; font-size: 14px; }
+  #nextUnit[hidden] { display: none; }
+  #nextUnit kbd { margin-left: 4px; }
+  #endTurn.pending { background: #3a2f17; border-color: #f2b84b; color: #ffd98a; font-weight: 600; }
+  #endTurn.pending:hover { background: #4a3b1b; }
+  #endTurn small { font-weight: 400; opacity: .85; }
+  #endTurn.auto { background: linear-gradient(90deg, #3f8cf0 var(--auto, 0%), #1f4f8f var(--auto, 0%)); }
+  .autoend { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .autoend input { accent-color: var(--accent); margin: 0; }
+  footer { height: 26px; line-height: 26px; padding: 0 12px; background: var(--panel); border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #toast { position: fixed; left: 50%; top: 60px; transform: translateX(-50%); background: #2b1d1d; color: #ffd2cd;
+    border: 1px solid #6a3431; padding: 8px 14px; border-radius: 8px; pointer-events: none; opacity: 0; transition: opacity .2s; z-index: 5; }
+  #toast.show { opacity: 1; }
+  #banner { position: fixed; left: calc(50% - 160px); bottom: 40px; transform: translateX(-50%); background: rgba(22,28,37,.92); color: var(--text);
+    border: 1px solid #6a3431; border-left: 4px solid #d9433b; padding: 8px 14px; border-radius: 8px; z-index: 4; pointer-events: none; white-space: nowrap; }
+  #banner span { color: var(--muted); margin-left: 8px; font-size: 13px; }
+  #banner[hidden] { display: none; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+  .modal[hidden] { display: none; }
+  .dlg { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 24px; max-width: 620px; width: 100%;
+    max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .dlg h2 { margin: 0 0 10px; }
+  .dlg table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 8px 0; }
+  .dlg td, .dlg th { padding: 3px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+  .dlg th { color: var(--muted); font-weight: 600; }
+  .snd-table td { vertical-align: middle; }
+  .snd-table button { padding: 3px 8px; font-size: 13px; }
+  .snd-table button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .snd-table input[type=range] { width: 100px; accent-color: var(--accent); vertical-align: middle; }
+  .patrolbox { margin-top: 8px; padding: 8px 10px; border: 1px solid #2f6f66; background: #12302c; border-radius: 8px; font-size: 13px; }
+  .patrolbox b { color: #7fe0d0; }
+  .dlg.wide { max-width: 760px; }
+  .stat-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 6px 0 14px; }
+  .stat-summary div { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .stat-summary b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .stat-summary span { color: var(--muted); font-size: 12px; }
+  .stat-table th.num, .stat-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .stat-table td.zero { color: var(--muted); }
+  .stat-table select { width: auto; padding: 2px 4px; font-size: 13px; }
+  .stat-table .citylink { color: var(--text); text-decoration: underline dotted; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+  .stat-table .citylink:hover { color: #8fc0ff; }
+  .stat-table .sym { display: inline-block; width: 18px; color: var(--muted); font-weight: 700; }
+  .save-new { display: flex; gap: 8px; margin-bottom: 12px; }
+  .save-new input { flex: 1; min-width: 0; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
+  .save-table td { vertical-align: middle; }
+  .save-table .acts { text-align: right; white-space: nowrap; }
+  .save-table .acts button { padding: 3px 8px; font-size: 13px; margin-left: 4px; }
+  .save-table .auto td:first-child { color: #8fc0ff; }
+  .save-table button.danger:hover { border-color: var(--bad); color: var(--bad); }
+  details.more { margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; background: var(--panel2); }
+  details.more summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+  details.more summary:hover { color: #8fc0ff; }
+  details.more[open] summary { margin-bottom: 6px; }
+  details.more p { font-size: 13px; }
+  kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-size: 12px; }
+  @media (max-width: 760px) {
+    #banner { left: 50%; white-space: normal; text-align: center; }
+    html, body { overflow: auto; }
+    main { flex-direction: column; height: auto; }
+    #mapWrap { height: 60vh; flex: none; }
+    aside { width: 100%; border-left: 0; }
+    #panel { max-height: none; }
+    header { gap: 8px; }
+    .hbtns button { padding: 6px 7px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>ARCHI<span>PEL</span></h1>
+  <div id="turnInfo"></div>
+  <div class="hbtns">
+    <button id="bNew">Neues Spiel</button>
+    <button id="bSaves" title="Spielstände speichern und laden">Spielstände</button>
+    <button id="bZoomOut" title="Verkleinern (-)">−</button>
+    <button id="bZoomIn" title="Vergrößern (+)">+</button>
+    <span class="snd"><button id="bSound" title="Ton (M)">🔊</button><button id="bSndTest" title="Klangtest (K)">Klänge</button><input id="vol" type="range" min="0" max="100" aria-label="Lautstärke"></span>
+    <button id="bStats" title="Statistik (I)">Statistik</button>
+    <button id="bHelp">Hilfe</button>
+  </div>
+</header>
+<main>
+  <div id="mapWrap"><canvas id="map"></canvas></div>
+  <aside>
+    <canvas id="mini"></canvas>
+    <div id="power" class="power">
+      <div class="power-head"><span>Kräfteverhältnis</span><b id="powerVerdict"></b></div>
+      <div class="power-bar"><i id="powerMe"></i><span class="pl" id="powerL"></span><span class="pr" id="powerR"></span></div>
+      <div class="power-foot"><canvas id="powerSpark" width="190" height="26"></canvas><span id="powerTrend"></span></div>
+    </div>
+    <div class="turnbar">
+      <button id="nextUnit" title="Zur nächsten wartenden Einheit (N)">▶ Nächste Einheit <kbd>N</kbd></button>
+      <button id="endTurn" class="primary">Runde beenden ⏎</button>
+      <label class="autoend"><input type="checkbox" id="autoEndChk"> Automatisch beenden, wenn alle gezogen haben</label>
+    </div>
+    <div id="panel" class="box"></div>
+    <div id="logBox" class="box collapsed">
+      <h3 id="logHead" title="Meldungen ein-/ausklappen"><span class="chev">▸</span> Meldungen <span id="logNew"></span></h3>
+      <div id="logLast"></div>
+      <div id="log"></div>
+    </div>
+  </aside>
+</main>
+<footer id="hover">&nbsp;</footer>
+<div id="toast"></div>
+<div id="banner" hidden>Gegner zieht … <span>Klick oder beliebige Taste überspringt</span></div>
+
+<div id="mNew" class="modal" hidden>
+  <div class="dlg">
+    <h2>Neues Spiel</h2>
+    <p class="muted">Eine neue Welt wird zufällig erzeugt. Das laufende Spiel geht verloren, wenn du es nicht gespeichert hast.</p>
+    <label>Kartengröße<br><select id="sizeSel"></select></label>
+    <label style="display:block;margin-top:10px">Schwierigkeit<br><select id="diffSel"></select></label>
+    <p class="muted" id="diffDesc" style="font-size:13px;margin:6px 0 0"></p>
+    <div class="row" style="margin-top:14px">
+      <button class="primary" id="bStart">Los geht's</button>
+      <button data-close>Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<div id="mHelp" class="modal" hidden>
+  <div class="dlg">
+    <h2>So wird gespielt</h2>
+    <p>Die Welt besteht aus Inseln und Kontinenten. Du startest mit <b>einer Stadt</b> und einer Infanterie. Ziel: alle Städte des Gegners erobern. Zu Beginn liegt fast alles im <b>Nebel</b>: Erkunde die Karte mit deinen Einheiten.</p>
+    <p><b>Städte</b> bauen Einheiten. Klicke auf eine eigene Stadt, um die Produktion zu wählen. Ein Wechsel setzt den Baufortschritt zurück. Schiffe können nur Küstenstädte bauen. Neutrale (graue) und feindliche Städte erobern nur <b>Infanterie und Panzer</b>, mit 50 % Erfolgschance. Misslingt der Angriff, ist die Einheit verloren.</p>
+    <p><b>Übersee:</b> Bodentruppen fahren auf Transportern. Zieh sie auf einen Transporter neben der Küste, oder klicke im Hafen auf „Einladen“. Neben fremdem Land lädst du sie mit „Ausladen“ wieder aus.</p>
+    <p><b>Jäger</b> haben 18 Felder Treibstoff und müssen zu einer eigenen Stadt oder einem Träger zurück. Jede Runde in der Luft kostet mindestens 6 Felder Treibstoff.</p>
+    <p><b>Kampf:</b> In jeder Kampfrunde trifft eine Seite zufällig (50:50) und richtet so viel Schaden an, wie ihre Stärke beträgt. Wer zuerst keine Trefferpunkte mehr hat, verliert. Fährst du mit der Maus über einen Gegner, siehst du deine Siegchance. Einheiten in eigenen Städten werden repariert. <b>Küstenbatterien:</b> Greift ein Schiff Einheiten in einer Stadt an, verteidigen diese mit doppelter Stärke. Schiffe eignen sich daher eher zur Unterstützung einer Landung als zum Belagern.</p>
+    <p><b>Stärken und Schwächen:</b> Manche Einheiten sind gegen bestimmte andere besonders wirksam. Die angezeigte Siegchance berücksichtigt das, die Fußzeile nennt den Grund.</p>
+    <table>
+      <tr><th>Wenn …</th><th>dann</th><th>Siegchance des Angreifers</th></tr>
+      <tr><td>U-Boot greift Schlachtschiff, Kreuzer oder Träger an</td><td>Torpedo-Überraschung: erster Treffer sicher, doppelte Stärke</td><td>gegen Schlachtschiff und Kreuzer 50 % (sonst 6 bzw. 13 %), gegen Träger 75 %</td></tr>
+      <tr><td>Zerstörer greift U-Boot an</td><td>Sonar: erster Treffer sicher, danach trifft der Zerstörer zu 2/3</td><td>67 % (sonst 25 %)</td></tr>
+      <tr><td>U-Boot greift Zerstörer an</td><td>Wasserbomben: Zerstörer verteidigt doppelt stark</td><td>50 % (sonst 75 %)</td></tr>
+      <tr><td>Jäger greift U-Boot an</td><td>U-Boot an der Oberfläche: Jäger trifft zu 2/3</td><td>44 % (sonst 25 %)</td></tr>
+      <tr><td>Panzer greift Infanterie an</td><td>Panzer trifft zu 2/3</td><td>89 % (sonst 75 %)</td></tr>
+      <tr><td>Infanterie greift Panzer an</td><td>Panzerung: Infanterie trifft nur zu 1/3</td><td>11 % (sonst 25 %)</td></tr>
+    </table>
+    <table>
+      <tr><th>Einheit</th><th>Bew.</th><th>TP</th><th>Stärke</th><th>Bauzeit</th><th>Besonderes</th></tr>
+      <tbody id="unitTable"></tbody>
+    </table>
+    <details class="more">
+      <summary>Mehr über die Schwierigkeitsstufen und den Computergegner</summary>
+      <p>Die Schwierigkeit wählst du unter <b>Neues Spiel</b>. Sie verändert nur den Gegner und die Startbedingungen.
+        Würfelglück, Sichtweiten und Regeln sind auf allen Stufen gleich.</p>
+      <table>
+        <thead><tr><th>Stufe</th><th>Kennt Karte</th><th>Fehler</th><th>Bautempo</th><th>Landet ab</th><th>Start</th></tr></thead>
+        <tbody id="diffTable"></tbody>
+      </table>
+      <p><b>Kennt Karte:</b> Auf Leicht und Normal kennt der Gegner nur, was seine Einheiten und Städte gesehen haben,
+        genau wie du. Er muss erkunden: Bodentruppen laufen zum Rand des Nebels, Zerstörer und Jäger dienen als Späher.
+        Auf Schwer und Brutal kennt er alle Inseln und Städte von Anfang an. Deine Einheiten sieht er auf allen Stufen
+        nur in seiner Sichtweite.</p>
+      <p><b>Fehler:</b> Anteil „menschlicher“ Fehlentscheidungen. Der Gegner vergisst dann eine Einheit für eine Runde,
+        schätzt einen Angriff falsch ein (zu wagemutig oder zu zaghaft) oder baut etwas Unpassendes.</p>
+      <p><b>Bautempo:</b> wie schnell gegnerische Städte Einheiten fertigstellen, verglichen mit deinen.
+        <b>Landet ab:</b> mit wie vielen Truppen an Bord ein Transporter eine Landung wagt.</p>
+      <p><b>Wie der Gegner denkt:</b> Er folgt festen Regeln je Einheit (eine Art Entscheidungsbaum) und denkt nicht voraus.
+        Vor jedem Angriff berechnet er die Siegchance und greift nur an, wenn sie hoch genug ist. Auf Leicht ist er dabei
+        vorsichtiger. Seine Städte bauen zuerst Bodentruppen, solange es auf dem eigenen Kontinent noch etwas zu erobern
+        gibt, danach Transporter, Nachschub und Flotte. Er hat keine übergreifende Strategie: Einheiten handeln einzeln,
+        Großangriffe stimmt er nicht ab. Wer seine Kräfte bündelt, ist ihm überlegen.</p>
+      <p class="muted">In Testpartien gegen einen Computerspieler, der selbst erkunden muss und keine Fehler macht, gewann
+        dieser auf Leicht praktisch immer, auf Normal gut die Hälfte, auf Schwer etwa ein Viertel bis ein Drittel und auf Brutal nie.
+        Wie schwer es für dich ist, hängt natürlich von deiner Spielweise ab.</p>
+    </details>
+
+    <h3>Steuerung</h3>
+    <p>
+      <b>Klick</b> auf ein Nachbarfeld: ziehen oder angreifen. <b>Klick</b> auf ein entferntes Feld: Marschbefehl (läuft über mehrere Runden).
+      <b>Umschalt+Klick</b>: Marschbefehl auch auf Felder mit eigenen Einheiten. <b>Rechtsklick</b> / <kbd>Esc</kbd>: Auswahl aufheben. <b>Mittlere oder rechte Maustaste gedrückt halten und ziehen</b>: Karte verschieben. <b>Mausrad</b>: zoomen.<br>
+      Richtungen: <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd> / <kbd>A</kbd><kbd>D</kbd> / <kbd>Y</kbd>/<kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd>, Pfeiltasten oder Ziffernblock.<br>
+      <kbd>Leertaste</kbd> Einheit überspringen · <kbd>S</kbd> Wache (Einheit wartet) · <kbd>P</kbd> Patrouille (Wegpunkte anklicken, <kbd>Enter</kbd> startet, Rechtsklick löscht den letzten) · <kbd>R</kbd> Erkunden (Einheit zieht selbstständig ins Unbekannte) · <kbd>N</kbd> nächste Einheit ·
+      <kbd>L</kbd> Einladen · <kbd>U</kbd> Ausladen · <kbd>Enter</kbd> Runde beenden (endet auf Wunsch auch automatisch, sobald alle Einheiten gezogen haben) · <kbd>+</kbd>/<kbd>−</kbd> Zoom · <kbd>M</kbd> Ton an/aus · <kbd>K</kbd> Klangtest · <kbd>I</kbd> Statistik
+    </p>
+    <p class="muted">Das Spiel speichert nach jeder Runde automatisch im Browser.</p>
+    <div class="row"><button class="primary" data-close>Verstanden</button></div>
+  </div>
+</div>
+
+<div id="mSound" class="modal" hidden>
+  <div class="dlg">
+    <h2>Klangtest</h2>
+    <p class="muted">Hör dir jeden Klang an und stell die Lautstärke je Einheit ein. Alle Klänge werden im Spiel selbst erzeugt. Die Einstellungen werden gespeichert.</p>
+    <table class="snd-table">
+      <thead><tr><th>Einheit</th><th>Anhören</th><th>Lautstärke</th></tr></thead>
+      <tbody id="sndRows"></tbody>
+    </table>
+    <h3 style="margin-top:14px">Effekte</h3>
+    <div class="row" id="sndFx"></div>
+    <div class="row" style="margin-top:16px"><button class="primary" data-close>Fertig</button></div>
+  </div>
+</div>
+
+<div id="mStats" class="modal" hidden>
+  <div class="dlg wide">
+    <h2>Statistik</h2>
+    <div id="statSummary" class="stat-summary"></div>
+    <h3>Einheiten und Produktion</h3>
+    <table class="stat-table">
+      <thead><tr><th>Einheit</th><th class="num">Im Besitz</th><th class="num">davon</th><th class="num">Städte bauen</th><th class="num">Nächste fertig in</th></tr></thead>
+      <tbody id="statUnits"></tbody>
+    </table>
+    <h3>Deine Städte</h3>
+    <table class="stat-table">
+      <thead><tr><th>Stadt</th><th>Produktion</th><th class="num">Fertig in</th><th class="num">Einheiten in der Stadt</th></tr></thead>
+      <tbody id="statCities"></tbody>
+    </table>
+    <div class="row" style="margin-top:14px"><button class="primary" data-close>Schließen</button></div>
+  </div>
+</div>
+
+<div id="mOffer" class="modal" hidden>
+  <div class="dlg" style="text-align:center;max-width:480px">
+    <h2 id="offerTitle"></h2>
+    <p id="offerText"></p>
+    <div class="row" style="justify-content:center"><button class="primary" id="offerYes"></button><button id="offerNo"></button></div>
+  </div>
+</div>
+
+<div id="mSaves" class="modal" hidden>
+  <div class="dlg wide">
+    <h2>Spielstände</h2>
+    <div class="save-new">
+      <input id="saveName" type="text" maxlength="40" placeholder="Name für den Spielstand">
+      <button class="primary" id="saveNew">Aktuelles Spiel speichern</button>
+    </div>
+    <table class="stat-table save-table">
+      <thead><tr><th>Name</th><th>Stand</th><th>Gespeichert</th><th></th></tr></thead>
+      <tbody id="saveRows"></tbody>
+    </table>
+    <p class="muted" id="saveInfo" style="font-size:12px"></p>
+    <div class="row" style="margin-top:10px">
+      <button id="saveImport">Aus Datei laden…</button>
+      <button class="primary" data-close>Schließen</button>
+    </div>
+  </div>
+</div>
+
+<div id="mOver" class="modal" hidden>
+  <div class="dlg" style="text-align:center">
+    <h2 id="overTitle"></h2>
+    <p id="overText" class="muted"></p>
+    <div class="row" style="justify-content:center"><button class="primary" id="bOverNew">Neues Spiel</button><button data-close>Karte ansehen</button></div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/map.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/gfx.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
