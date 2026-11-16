@@ -24,7 +24,7 @@ exportieren. Hilfe und Tastenbelegung: Knopf **Hilfe** oder Taste `H`.
 ## Inhalt
 
 - Deutsch und Englisch (Sprachknopf oben in der Leiste)
-- Zufällige Karten in drei Größen mit Kontinenten, Inseln, Wäldern und Bergen
+- Zufällige Karten in drei Größen und drei Weltarten (Inselreich, Gemischt, Kontinente) mit Wäldern und Bergen
 - Nebel des Krieges, Städte erobern (50 % Chance, der Eroberer geht in der Stadt auf) und Produktion wählen
 - Neun Einheiten: Infanterie, Panzer, Jäger (mit Treibstoff), Transporter, Zerstörer,
   U-Boot, Kreuzer, Träger, Schlachtschiff

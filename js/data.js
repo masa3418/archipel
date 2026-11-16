@@ -47,6 +47,8 @@ const NEUTRAL = { color: '#9aa0a6', light: '#d7dadd', dark: '#55595e' };
 //  caution   – Zuschlag auf die nötige Siegchance, bevor der Gegner angreift
 //  aiKnowsMap – Gegner kennt die ganze Karte (sonst muss er wie du erkunden)
 //  aiMistake – Anteil „menschlicher“ Fehlentscheidungen (vergessene Einheiten, Fehleinschätzungen)
+//  worlds    – abweichende Werte je Weltart (z. B. Schwer im Inselreich: Kartenwissen nützt dort weniger,
+//              daher baut der Gegner etwas schneller; per Simulation eingemessen)
 const DIFFICULTY = {
   leicht: { label: tt('Leicht', 'Easy'), desc: tt('Gegner muss die Karte erst erkunden, baut langsamer, macht öfter Fehler und greift vorsichtig an. Du startest mit einer Extra-Infanterie.',
     'The enemy has to explore the map first, builds more slowly, makes more mistakes and attacks cautiously. You start with an extra infantry.'),
@@ -54,14 +56,24 @@ const DIFFICULTY = {
   normal: { label: 'Normal', desc: tt('Gleiche Bedingungen: Der Gegner muss wie du erkunden und macht gelegentlich Fehler.',
     'Equal terms: the enemy has to explore just like you and makes occasional mistakes.'),
     aiProd: 1, aiStart: [], youStart: [], aiCities: 0, invadeAt: 4, caution: 0, aiKnowsMap: false, aiMistake: 0.12 },
-  schwer: { label: tt('Schwer', 'Hard'), desc: tt('Gegner kennt die ganze Karte, macht keine Fehler und landet schon mit kleineren Trupps.',
-    'The enemy knows the whole map, makes no mistakes and lands even with smaller groups.'),
-    aiProd: 1, aiStart: [], youStart: [], aiCities: 0, invadeAt: 3, caution: -0.05, aiKnowsMap: true, aiMistake: 0 },
+  schwer: { label: tt('Schwer', 'Hard'), desc: tt('Gegner kennt die ganze Karte, macht keine Fehler und landet schon mit kleineren Trupps. Im Inselreich baut er etwas schneller.',
+    'The enemy knows the whole map, makes no mistakes and lands even with smaller groups. In the archipelago it also builds a little faster.'),
+    aiProd: 1, aiStart: [], youStart: [], aiCities: 0, invadeAt: 3, caution: -0.05, aiKnowsMap: true, aiMistake: 0,
+    worlds: { inseln: { aiProd: 1.15 } } },
   brutal: { label: 'Brutal', desc: tt('Gegner kennt die ganze Karte, macht keine Fehler, baut anderthalbmal so schnell und startet mit einer zweiten Stadt.',
     'The enemy knows the whole map, makes no mistakes, builds one and a half times as fast and starts with a second city.'),
     aiProd: 1.5, aiStart: ['tank', 'inf'], youStart: [], aiCities: 1, invadeAt: 3, caution: -0.05, aiKnowsMap: true, aiMistake: 0 },
 };
-const diff = () => DIFFICULTY[(typeof S !== 'undefined' && S && S.difficulty) || 'normal'] || DIFFICULTY.normal;
+const diffCache = new Map();
+function diff() {
+  const has = typeof S !== 'undefined' && S;
+  const d = DIFFICULTY[(has && S.difficulty) || 'normal'] || DIFFICULTY.normal;
+  const w = has && S.world, o = w && d.worlds && d.worlds[w];
+  if (!o) return d;
+  const key = d.label + '|' + w;
+  if (!diffCache.has(key)) diffCache.set(key, Object.assign({}, d, o));
+  return diffCache.get(key);
+}
 // Kennt Spieler p die ganze Karte? Nur der Computergegner, und nur auf Schwer/Brutal.
 const aiKnowsMap = p => p === 1 && diff().aiKnowsMap;
 // Fehlerquote des Gegners (der Spielerplatz 0 macht in Simulationen keine Fehler)
@@ -71,6 +83,22 @@ const MAP_SIZES = {
   klein:  { w: 48, h: 30, label: tt('Klein (48×30)', 'Small (48×30)') },
   mittel: { w: 64, h: 40, label: tt('Mittel (64×40)', 'Medium (64×40)') },
   gross:  { w: 90, h: 56, label: tt('Groß (90×56)', 'Large (90×56)') },
+};
+
+// Weltarten für den Kartengenerator (map.js).
+//  rBig  – Radius der großen Inseln (Startinseln) relativ zu √(Kartenfläche)
+//  perBig – Kartenfläche je großer Insel (mehr Fläche → mehr große Inseln, mindestens 2)
+//  mid   – Anteil mittlerer Inseln an den übrigen, small – größter Radius kleiner Inseln (relativ zu rBig)
+//  gap   – Mindestabstand (Wasser) zwischen geplanten Inseln
+const WORLDS = {
+  inseln: { label: tt('Inselreich', 'Archipelago'),
+    desc: tt('Viele Inseln, nur wenige große. Ohne Schiffe kommst du nicht weit.', 'Many islands, only a few large ones. You won\'t get far without ships.'),
+    rBig: 0.12, perBig: 1700, mid: 0.3, small: 0.35, gap: 3.5, land: 0.33 },
+  gemischt: { label: tt('Gemischt', 'Mixed'),
+    desc: tt('Einige große Inseln und ein paar kleine dazwischen.', 'Several large islands with a few small ones in between.'),
+    rBig: 0.16, perBig: 1500, mid: 0.5, small: 0.3, gap: 3, land: 0.35 },
+  kontinente: { label: tt('Kontinente', 'Continents'),
+    desc: tt('Eine oder zwei riesige Landmassen. Viel Landkrieg, Schiffe sind Nebensache.', 'One or two huge land masses. Lots of land warfare, ships play a minor role.') },
 };
 
 function mulberry32(a) {

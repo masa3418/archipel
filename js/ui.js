@@ -1253,10 +1253,11 @@ function showGameOver() {
   refresh();
 }
 
-function startNew(size, diffKey) {
+function startNew(size, diffKey, worldKey) {
   if (!diffKey) { try { diffKey = localStorage.getItem('archipel-diff') || 'normal'; } catch (e) { diffKey = 'normal'; } }
+  if (!worldKey) { try { worldKey = localStorage.getItem('archipel-world') || 'inseln'; } catch (e) { worldKey = 'inseln'; } }
   setTimeout(() => { logSeen = S.log[0] || null; updateLogHead(); }, 0);
-  newGame(size, diffKey);
+  newGame(size, diffKey, worldKey);
   sel = null; selCity = null; hover = null; updateHover();
   resizeCanvas();
   selectNext();
@@ -1536,10 +1537,14 @@ $('autoEndChk').onchange = e => {
 };
 $('bNew').onclick = () => openModal('mNew');
 $('bStart').onclick = () => {
-  try { localStorage.setItem('archipel-diff', $('diffSel').value); localStorage.setItem('archipel-size', $('sizeSel').value); } catch (e) {}
-  closeModals(); startNew($('sizeSel').value, $('diffSel').value);
+  try {
+    localStorage.setItem('archipel-diff', $('diffSel').value); localStorage.setItem('archipel-size', $('sizeSel').value);
+    localStorage.setItem('archipel-world', $('worldSel').value);
+  } catch (e) {}
+  closeModals(); startNew($('sizeSel').value, $('diffSel').value, $('worldSel').value);
 };
 $('diffSel').onchange = () => { $('diffDesc').textContent = DIFFICULTY[$('diffSel').value].desc; };
+$('worldSel').onchange = () => { $('worldDesc').textContent = WORLDS[$('worldSel').value].desc; };
 $('bOverNew').onclick = () => { closeModals(); openModal('mNew'); };
 $('bHelp').onclick = () => openModal('mHelp');
 
@@ -1777,12 +1782,17 @@ $('bLang').onclick = () => {
   $('sizeSel').innerHTML = Object.entries(MAP_SIZES).map(([k, v]) => `<option value="${k}" ${k === prefSize ? 'selected' : ''}>${v.label}</option>`).join('');
   $('diffSel').innerHTML = Object.entries(DIFFICULTY).map(([k, v]) => `<option value="${k}" ${k === prefDiff ? 'selected' : ''}>${v.label}</option>`).join('');
   $('diffDesc').textContent = DIFFICULTY[$('diffSel').value].desc;
+  let prefWorld = 'inseln';
+  try { prefWorld = localStorage.getItem('archipel-world') || 'inseln'; } catch (e) {}
+  $('worldSel').innerHTML = Object.entries(WORLDS).map(([k, v]) => `<option value="${k}" ${k === prefWorld ? 'selected' : ''}>${v.label}</option>`).join('');
+  if (!WORLDS[$('worldSel').value]) $('worldSel').value = 'inseln';
+  $('worldDesc').textContent = WORLDS[$('worldSel').value].desc;
   $('diffTable').innerHTML = Object.values(DIFFICULTY).map(d => {
     const you = d.youStart.map(t => '+1 ' + UT[t].name);
     const ai = [...d.aiStart.map(t => '+1 ' + UT[t].name), ...(d.aiCities ? ['+' + d.aiCities + tt(' Stadt', ' city')] : [])];
     const start = [you.length ? tt('du: ', 'you: ') + you.join(', ') : '', ai.length ? tt('Gegner: ', 'enemy: ') + ai.join(', ') : ''].filter(Boolean).join('; ') || tt('gleich', 'equal');
     return `<tr><td><b>${d.label}</b></td><td>${d.aiKnowsMap ? tt('ja', 'yes') : tt('nein, erkundet', 'no, explores')}</td><td>${Math.round(d.aiMistake * 100)} %</td>
-      <td>${Math.round(d.aiProd * 100)} %</td><td>${d.invadeAt} ${tt('Truppen', 'troops')}</td><td>${start}</td></tr>`;
+      <td>${Math.round(d.aiProd * 100)} %${d.worlds && d.worlds.inseln ? ` (${tt('Inselreich', 'archipelago')} ${Math.round(d.worlds.inseln.aiProd * 100)} %)` : ''}</td><td>${d.invadeAt} ${tt('Truppen', 'troops')}</td><td>${start}</td></tr>`;
   }).join('');
   $('unitTable').innerHTML = UNIT_ORDER.map(k => {
     const t = UT[k];

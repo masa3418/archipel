@@ -37,7 +37,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | Datei | Inhalt |
 |---|---|
 | `js/data.js` | Einheitentypen `UT`, `UNIT_ORDER`, `DIRS`, Spielerfarben, `MAP_SIZES`, Schwierigkeitsgrade `DIFFICULTY` + `diff()`, `aiKnowsMap(p)`, `aiMistake(p)` |
-| `js/map.js` | Kartengenerator (Value-Noise, Kontinente, Städte, Startpositionen) |
+| `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen, Kontinente aus Value-Noise; Städte, faire Startpositionen |
 | `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung, Produktion, Sicht `computeVision`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
 | `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`) |
 | `js/gfx.js` | Gelände-Rendering, Einheiten-Abzeichen (SVG-Pfade → Sprites), Stadtgrafik |
@@ -74,8 +74,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 4. KI-gegen-KI-Simulation (im Browser ausführen):
 
 ```js
-function simGame(size, dk, maxT = 350) {
-  newGame(size, dk);
+function simGame(size, dk, world = 'inseln', maxT = 350) {
+  newGame(size, dk, world);   // world: inseln | gemischt | kontinente
   for (let k = 0; k < maxT && !S.over; k++) {
     for (const c of S.cities) if (c.owner === 0 && c.progress === 0) aiChooseProduction(c);
     aiTurn(0); endTurn(0); if (S.over) break;
@@ -90,8 +90,11 @@ Schneller und ohne Browser: `data.js`, `map.js`, `game.js`, `ai.js` mit Node per
 laden (`globalThis.localStorage` als Attrappe), dann dieselbe `simGame`-Schleife (ca. 1 s je Partie;
 im ausgeblendeten Browser-Fenster werden Zeitgeber gedrosselt, lange Läufe brechen dort ab).
 
-Letzte Einmessung (kleine Karte, „Siege“ des KI-Spielers auf Platz 0, nach „Eroberer geht in der Stadt auf“):
-Leicht 14/16 · Normal 17/32 · Schwer 8/32 · Brutal 0/16. Partiedauer bis zur Entscheidung (Normal) ca. 224 Runden.
+Letzte Einmessung (kleine Karte, „Siege“ des KI-Spielers auf Platz 0, nach Einführung der Weltarten):
+Inselreich (48 Partien je Stufe) Leicht 46/48 · Normal 24/48 · Schwer 17/64 (mit Bautempo 115 %, vorher 21/48) · Brutal 0/48, Partiedauer (Normal) ca. 227 Runden.
+Gemischt (24) 24/24 · 16/24 · 4/24 · 0/24 · Kontinente (24) 24/24 · 16/24 · 5/24 · 0/24 (Normal ca. 203 Runden).
+Inselstatistik je Weltart: `node mapstat.js <repo> <anzahl> <welt>` (Skript im Scratchpad, ggf. neu schreiben) –
+größte Insel ≈ 30–40 % des Landes (Inselreich), ≈ 50–60 % (Gemischt), ≈ 75–85 % (Kontinente).
 Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
 
 ## Bekannte Eigenheiten

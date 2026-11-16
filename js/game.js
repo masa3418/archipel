@@ -14,13 +14,14 @@ function mkPlayer(W, H, nc) {
   return { seen: new Uint8Array(W * H), vis: new Uint8Array(W * H), knownOwner: new Int8Array(nc).fill(-2) };
 }
 
-function newGame(sizeKey, diffKey = 'normal') {
+function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln') {
   const sz = MAP_SIZES[sizeKey] || MAP_SIZES.mittel;
+  if (!WORLDS[worldKey]) worldKey = 'inseln';
   let m = null, seed = Math.floor(Math.random() * 1e9);
-  for (let k = 0; !m && k < 200; k++) m = generateMap(sz.w, sz.h, seed + k);
+  for (let k = 0; !m && k < 200; k++) m = generateMap(sz.w, sz.h, seed + k, worldKey);
   S = {
     W: m.W, H: m.H, size: sizeKey, terrain: m.terrain, elev: m.elev, depth: m.depth, cont: m.cont,
-    cities: m.cities, units: [], nextId: 1, turn: 1, cur: 0, log: [], over: null, difficulty: DIFFICULTY[diffKey] ? diffKey : 'normal',
+    cities: m.cities, units: [], nextId: 1, turn: 1, cur: 0, log: [], over: null, difficulty: DIFFICULTY[diffKey] ? diffKey : 'normal', world: worldKey,
     players: [mkPlayer(m.W, m.H, m.cities.length), mkPlayer(m.W, m.H, m.cities.length)],
   };
   buildCityGrid();
@@ -888,6 +889,7 @@ function sanitizeState(o) {
     W, H, terrain: o.terrain, elev: o.elev, depth: o.depth, cont: o.cont,
     size: oneOf(o.size, Object.keys(MAP_SIZES), 'mittel'),
     difficulty: oneOf(o.difficulty, Object.keys(DIFFICULTY), 'normal'),
+    world: oneOf(o.world, Object.keys(WORLDS), 'kontinente'),   // ältere Spielstände: bisherige Welt
     turn: int(o.turn, 1, 1, 1e6), cur: oneOf(o.cur, [0, 1], 0),
     over: oneOf(o.over, ['win', 'lose'], null),
     overReason: oneOf(o.overReason, ['surrender', 'capitulation'], undefined),

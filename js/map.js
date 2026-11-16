@@ -19,7 +19,8 @@ function makeNameGen(r) {
   };
 }
 
-function generateMap(W, H, seed) {
+function generateMap(W, H, seed, worldKey = 'inseln') {
+  const world = WORLDS[worldKey] || WORLDS.inseln;
   const r = mulberry32(seed);
   const N = W * H;
 
@@ -36,20 +37,62 @@ function generateMap(W, H, seed) {
       return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
     };
   }
-  const base = Math.max(8, Math.round(Math.min(W, H) / 3.5));
-  const layers = [[layer(base), 0.6], [layer(base / 2), 0.28], [layer(base / 4), 0.14]];
-
   const raw = new Float32Array(N);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    let v = 0;
-    for (const [f, w] of layers) v += f(x, y) * w;
-    const e = Math.min(x, W - 1 - x, y, H - 1 - y);
-    const fall = Math.min(1, e / 5);
-    v -= (1 - fall) * 0.45;
-    raw[y * W + x] = v;
+  let landFrac = 0.37;
+  if (!world.rBig) {
+    // Kontinente: großflächiges Rauschen, ergibt wenige riesige Landmassen
+    const base = Math.max(8, Math.round(Math.min(W, H) / 3.5));
+    const layers = [[layer(base), 0.6], [layer(base / 2), 0.28], [layer(base / 4), 0.14]];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let v = 0;
+      for (const [f, w] of layers) v += f(x, y) * w;
+      const e = Math.min(x, W - 1 - x, y, H - 1 - y);
+      const fall = Math.min(1, e / 5);
+      v -= (1 - fall) * 0.45;
+      raw[y * W + x] = v;
+    }
+  } else {
+    // Inselwelten: Inseln werden geplant (wenige große, einige mittlere, viele kleine)
+    // und mit Abstand zueinander verteilt; Rauschen macht die Küsten unregelmäßig.
+    landFrac = world.land;
+    const A = W * H, Rb = Math.sqrt(A) * world.rBig;
+    const plan = [];
+    const nBig = Math.max(2, Math.round(A / world.perBig));
+    for (let k = 0; k < nBig; k++) plan.push(Rb * (0.9 + r() * 0.25));
+    let est = plan.reduce((s, q) => s + Math.PI * q * q, 0);
+    for (let k = 0; est < A * landFrac * 1.15 && k < 400; k++) {
+      const q = r() < world.mid ? Rb * (0.5 + r() * 0.25) : 1.2 + r() * Rb * world.small;
+      plan.push(q); est += Math.PI * q * q;
+    }
+    const isl = [];
+    for (const R of plan) {
+      const st = 0.75 + r() * 0.55, ext = R * Math.max(st, 1 / st);
+      const mx = Math.min(ext + 2, W / 2 - 1), my = Math.min(ext + 2, H / 2 - 1);
+      for (let t = 0; t < 200; t++) {
+        const x = mx + r() * (W - 2 * mx), y = my + r() * (H - 2 * my);
+        if (isl.some(o => Math.hypot(o.x - x, o.y - y) < o.ext + ext + world.gap)) continue;
+        const ang = r() * Math.PI;
+        isl.push({ x, y, R, st, ext, c: Math.cos(ang), s: Math.sin(ang) });
+        break;
+      }
+    }
+    const n1 = layer(Math.max(3, Rb / 1.5)), n2 = layer(Math.max(2, Rb / 3.5)), n3 = layer(Math.max(1.5, Rb / 7));
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let v = -1;
+      for (const o of isl) {
+        const dx = x - o.x, dy = y - o.y;
+        if (Math.abs(dx) > o.ext * 1.6 + 2 || Math.abs(dy) > o.ext * 1.6 + 2) continue;
+        const u = dx * o.c + dy * o.s, w = -dx * o.s + dy * o.c;
+        const d = Math.hypot(u / o.st, w * o.st);
+        v = Math.max(v, 1 - d / o.R);
+      }
+      v += (n1(x, y) - 0.5) * 0.8 + (n2(x, y) - 0.5) * 0.5 + (n3(x, y) - 0.5) * 0.2;
+      const e = Math.min(x, W - 1 - x, y, H - 1 - y);
+      v -= (1 - Math.min(1, e / 3)) * 0.5;
+      raw[y * W + x] = v;
+    }
   }
   const sorted = Array.from(raw).sort((p, q) => p - q);
-  const landFrac = 0.37;
   const thr = sorted[Math.floor(N * (1 - landFrac))];
 
   const terrain = new Uint8Array(N);
@@ -151,7 +194,8 @@ function generateMap(W, H, seed) {
   for (let a = 0; a < eligible.length; a++) for (let b = a + 1; b < eligible.length; b++) {
     const A = eligible[a], B = eligible[b];
     const ka = land.lab[A.y * W + A.x], kb = land.lab[B.y * W + B.x];
-    let s = cheb(A.x, A.y, B.x, B.y) + (ka !== kb ? 20 : 0);
+    // weit auseinander, möglichst auf verschiedenen Inseln, und fair: ähnlich viele Städte auf beiden Startinseln
+    let s = cheb(A.x, A.y, B.x, B.y) + (ka !== kb ? 20 : 0) - 3 * Math.abs(perCont.get(ka) - perCont.get(kb));
     if (s > bestScore) { bestScore = s; best = [A.id, B.id]; }
   }
   if (!best || cheb(cities[best[0]].x, cities[best[0]].y, cities[best[1]].x, cities[best[1]].y) < Math.min(W, H) / 2) return null;
