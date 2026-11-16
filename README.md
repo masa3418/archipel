@@ -13,6 +13,17 @@ is available in English: use the language button in the top bar.
 
 ![Archipel: Landung an einer feindlichen Küstenstadt – ein Schlachtschiff gibt Feuerunterstützung, daneben Träger und Transporter; rechts Übersichtskarte, Kräfteverhältnis und die Karte der gewählten Einheit](docs/screenshot.png)
 
+*Landung im Inselreich, Runde 71:* Dein Schlachtschiff liegt vor der feindlichen Stadt Maristad und hält
+sie unter Feuer – die Eckwinkel um die Stadt zeigen es, und die Seitenleiste nennt die Wirkung: Sie fällt
+jetzt zu 75 % statt zu 50 %. Daneben wartet ein Transporter mit zwei weiteren Truppen, an Land stehen
+Infanterie und Panzer zum Sturm bereit, feindliche Truppen (rot) halten dagegen. Der Träger links
+(gestrichelter Ring) überblickt das Seegebiet und schützt mit seinem Jäger an Bord die Flotte vor
+Luftangriffen. Rechts oben die Übersichtskarte mit den Inseln, darunter das Kräfteverhältnis.
+
+*The scene:* a landing in the archipelago. Your battleship lies off the enemy city of Maristad and gives
+fire support (corner brackets; the city now falls 75 % of the time instead of 50 %), a transport brings
+more troops, and the carrier on the left watches the sea and shields the fleet from air attacks.
+
 ## Spielen
 
 Direkt im Browser: **https://masa3418.github.io/archipel/**
