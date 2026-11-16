@@ -454,6 +454,73 @@ function findPath(u, tx, ty, knowAll = false) {
   return path.reverse();
 }
 
+// Kontaktprüfung für Befehle (Marsch, Patrouille, Erkunden): Vor jedem Schritt
+// wird festgehalten, was bekannt ist; danach hält die Einheit an, sobald sie
+// eine unbekannte Stadt entdeckt, eine feindliche Stadt oder Einheit neu sichtet
+// oder neu an eine feindliche Einheit/Stadt angrenzt. ignore = [x, y] (Marschziel).
+function contactSnap(u) {
+  const p = u.owner, P = S.players[p];
+  const units = new Set(), cities = new Set(), known = new Set(), adj = new Set();
+  for (const o of S.units) if (o.owner !== p && o.carrier == null && P.vis[idx(o.x, o.y)]) units.add(o.id);
+  for (const c of S.cities) {
+    if (P.knownOwner[c.id] !== -2) known.add(c.id);
+    if (c.owner >= 0 && c.owner !== p && P.vis[idx(c.x, c.y)]) cities.add(c.id);
+  }
+  for (const k of adjacentEnemies(u)) adj.add(k);
+  return { units, cities, known, adj };
+}
+
+function adjacentEnemies(u) {
+  const out = [];
+  for (const [dx, dy] of DIRS) {
+    const x = u.x + dx, y = u.y + dy;
+    if (!inb(x, y)) continue;
+    const e = visibleEnemyAt(u.owner, x, y);
+    if (e) out.push('u' + e.id);
+    const c = cityAt(x, y);
+    if (c && c.owner >= 0 && c.owner !== u.owner) out.push('c' + c.id);
+  }
+  return out;
+}
+
+function contactCheck(u, snap, ignore = null) {
+  if (!alive(u)) return null;
+  const p = u.owner, P = S.players[p];
+  const skip = (x, y) => ignore && ignore[0] === x && ignore[1] === y;
+  for (const c of S.cities) {
+    if (skip(c.x, c.y)) continue;
+    if (!snap.known.has(c.id) && P.knownOwner[c.id] !== -2) {
+      if (c.owner === p) continue;
+      return c.owner < 0 ? { msg: `neue Stadt entdeckt: ${c.name}`, cls: 'good', x: c.x, y: c.y }
+                         : { msg: `feindliche Stadt entdeckt: ${c.name}`, cls: 'bad', x: c.x, y: c.y };
+    }
+    if (c.owner >= 0 && c.owner !== p && P.vis[idx(c.x, c.y)] && !snap.cities.has(c.id))
+      return { msg: `feindliche Stadt in Sicht: ${c.name}`, cls: 'bad', x: c.x, y: c.y };
+  }
+  for (const o of S.units) {
+    if (o.owner === p || o.carrier != null || skip(o.x, o.y) || !P.vis[idx(o.x, o.y)] || snap.units.has(o.id)) continue;
+    return { msg: `${uname(o).replace(/^F/, 'f')} gesichtet`, cls: 'bad', x: o.x, y: o.y };
+  }
+  for (const k of adjacentEnemies(u)) {
+    if (snap.adj.has(k)) continue;
+    const id = +k.slice(1);
+    if (k[0] === 'c') {
+      const c = S.cities.find(q => q.id === id);
+      if (c && !skip(c.x, c.y)) return { msg: `Feindkontakt an ${c.name}`, cls: 'bad', x: c.x, y: c.y };
+    } else {
+      const o = S.units.find(q => q.id === id);
+      if (o && !skip(o.x, o.y)) return { msg: `Feindkontakt – ${uname(o).replace(/^F/, 'f')} direkt nebenan`, cls: 'bad', x: o.x, y: o.y };
+    }
+  }
+  return null;
+}
+
+// Hält einen Befehl wegen Kontakt an und meldet es
+function contactStop(u, what, hit) {
+  u.order = null;
+  if (u.owner === 0) addLog(`${T(u).name}: ${what} angehalten – ${hit.msg}.`, hit.cls, u.x, u.y);
+}
+
 // Marschbefehl ausführen, solange Bewegungspunkte da sind
 function runGoto(u) {
   let guard = 50;
@@ -466,6 +533,7 @@ function runGoto(u) {
       u.order = null; break;
     }
     const [nx, ny] = path[0];
+    const snap = contactSnap(u);
     const r = moveStep(u, nx, ny);
     computeVision(u.owner);
     if (!r.ok) {
@@ -475,6 +543,8 @@ function runGoto(u) {
     }
     if (r.died || r.combat || r.captured || r.boarded) { if (alive(u)) u.order = null; break; }
     if (alive(u) && u.x === o.x && u.y === o.y) { u.order = null; break; }
+    const hit = contactCheck(u, snap, [o.x, o.y]);
+    if (hit) { contactStop(u, 'Marsch', hit); break; }
   }
 }
 
@@ -516,6 +586,7 @@ function runPatrol(u) {
         break;
       }
     }
+    const snap = contactSnap(u);
     const r = moveStep(u, nx, ny);
     computeVision(u.owner);
     if (!r.ok) {
@@ -525,6 +596,8 @@ function runPatrol(u) {
     }
     if (r.died) break;
     if (r.combat || r.captured || r.boarded) { stop('Patrouille beendet.'); break; }
+    const hit = contactCheck(u, snap);
+    if (hit) { contactStop(u, 'Patrouille', hit); break; }
   }
 }
 
@@ -647,10 +720,13 @@ function runExplore(u) {
       const c = cityAt(nx, ny);
       if (!(c && c.owner === p) && u.fuel - t.move < distHome(p, nx, ny)) return;   // lieber nicht weiter raus
     }
+    const snap = contactSnap(u);
     const r = moveStep(u, nx, ny);
     computeVision(p);
     if (!r.ok || r.died) return;
     if (r.combat || r.captured) { stop('Erkundung beendet.'); return; }
+    const hit = contactCheck(u, snap);
+    if (hit) { contactStop(u, 'Erkundung', hit); return; }
   }
 }
 

@@ -863,7 +863,11 @@ function endHumanTurn() {
       for (const [dx, dy] of DIRS) if (inb(u.x + dx, u.y + dy) && visibleEnemyAt(0, u.x + dx, u.y + dy)) enemy = true;
       if (enemy) { u.order = null; addLog(`${T(u).name} meldet Feindkontakt!`, 'bad', u.x, u.y); }
     }
-    for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'goto')) runGoto(u);
+    for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'goto')) {
+      // Feind ist während des Gegnerzugs herangerückt: Marsch anhalten
+      if (u.carrier == null && enemyAdjacent(u)) { u.order = null; addLog(`${T(u).name}: Marsch angehalten – Feindkontakt!`, 'bad', u.x, u.y); continue; }
+      runGoto(u);
+    }
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'patrol')) runPatrol(u);
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'explore')) runExplore(u);
     computeVision(0);
