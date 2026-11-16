@@ -2056,6 +2056,7 @@ document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e =
 // Größere Abschnitte stehen doppelt da, mit data-lang="de" bzw. "en" (per CSS ausgeblendet).
 function applyLang() {
   document.documentElement.lang = LANG;
+  document.querySelectorAll('.ver').forEach(el => { el.textContent = VERSION; });
   $('bLang').textContent = EN ? 'DE' : 'EN';
   $('bLang').title = EN ? 'Auf Deutsch umschalten' : 'Switch to English';
   if (!EN) return;

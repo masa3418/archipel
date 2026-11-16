@@ -87,6 +87,12 @@ stehen in [CLAUDE.md](CLAUDE.md).
 - Commit-Nachrichten auf Deutsch, kurze Betreffzeile im Präsens
   (z. B. „Zerstörer erkunden mit voller Sichtweite“).
 
+### Releases
+
+Eine neue Version entsteht so: `VERSION` in `js/data.js` erhöhen, in `CHANGELOG.md` einen Abschnitt `## X.Y.Z`
+ergänzen, committen und das Tag `vX.Y.Z` pushen. GitHub baut daraus die Offline-Fassung (`archipel.html` und
+`archipel-offline.zip`) und legt den Release an. Lokal testen: `node tools/pack.js`, dann `dist/archipel.html` öffnen.
+
 ## Lizenz
 
 Mit deinem Beitrag erklärst du dich einverstanden, dass er unter der

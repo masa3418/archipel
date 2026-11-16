@@ -1,0 +1,35 @@
+# Legt einen Release mit der Offline-Fassung an, sobald ein Versions-Tag (vX.Y.Z) gepusht wird.
+# Das Tag muss zur Versionsnummer in js/data.js passen, und CHANGELOG.md braucht einen Abschnitt dafür.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax prüfen
+        run: for f in js/*.js tools/*.js; do node --check "$f"; done
+
+      - name: Offline-Fassung bauen
+        run: node tools/pack.js
+
+      - name: ZIP packen
+        run: cd dist && zip -r archipel-offline.zip archipel-offline
+
+      - name: Release anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME"
+          dist/archipel.html dist/archipel-offline.zip
+          --title "Archipel ${GITHUB_REF_NAME#v}"
+          --notes-file dist/NOTES.md
+          --verify-tag

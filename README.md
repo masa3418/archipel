@@ -28,7 +28,8 @@ more troops, and the carrier on the left watches the sea and shields the fleet f
 
 Direkt im Browser: **https://masa3418.github.io/archipel/**
 
-Oder lokal: `index.html` doppelklicken. Das Spiel speichert nach jeder Runde automatisch im Browser;
+Ohne Internet: Unter [Releases](https://github.com/masa3418/archipel/releases/latest) gibt es das ganze Spiel als
+einzelne Datei `archipel.html` – herunterladen und doppelklicken. Wer den Quelltext hat, öffnet einfach `index.html`. Das Spiel speichert nach jeder Runde automatisch im Browser;
 über **Spielstände** lassen sich beliebig viele benannte Stände anlegen und als Datei
 exportieren. Das **Handbuch** (Knopf **Hilfe** oder Taste `H`) erklärt in sechs Reitern erste Schritte, Einheiten,
 Kampf, Steuerung und den Gegner.
@@ -64,6 +65,8 @@ Kampf, Steuerung und den Gegner.
 | `js/sfx.js` | Klänge (Web Audio) |
 | `js/ui.js` | Darstellung, Animationen, Bedienung, Seitenleiste, Dialoge, Handbuch |
 | `tools/serve.js` | Kleiner lokaler Webserver nur für die Entwicklung (`node tools/serve.js .`) |
+| `tools/pack.js` | Verpackt die Offline-Fassung für einen Release (läuft automatisch auf GitHub) |
+| `CHANGELOG.md` | Änderungen je Version |
 
 ## Datenschutz
 

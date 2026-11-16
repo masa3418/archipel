@@ -7,3 +7,7 @@ desktop.ini
 .DS_Store
 .vscode/
 .idea/
+
+# Offline-Fassung (entsteht mit node tools/pack.js) und lokale Testspielstände
+dist/
+archipel-test-*.json

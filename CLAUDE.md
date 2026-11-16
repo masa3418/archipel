@@ -13,6 +13,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   selbstständig umsetzen, im Browser prüfen, verständlich (ohne Code-Fachjargon) berichten.
 - Spielerische Änderungen (Balancing, KI) per Simulation absichern und Zahlen nennen.
 - Committen und pushen nur auf Wunsch (Nutzer sagt z. B. „committe und pushe“).
+- **Neue Version nur auf Wunsch** (öffentlicher Release): `VERSION` in `js/data.js` erhöhen, Abschnitt `## X.Y.Z` in
+  `CHANGELOG.md` schreiben (deutsch, kurzer englischer Absatz), `node tools/pack.js` lokal prüfen, committen, dann
+  `git tag vX.Y.Z && git push origin vX.Y.Z`. Den Rest erledigt GitHub; Ergebnis unter Actions und Releases ansehen.
   Commit-Nachrichten auf Deutsch, kurz, mit Co-Authored-By-Zeile.
 
 ## Grundsätze der Technik
@@ -20,7 +23,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Keine Abhängigkeiten, kein Build.** Reines HTML/CSS/JavaScript, klassische `<script>`-Tags
   (keine ES-Module), damit `index.html` auch per Doppelklick (`file://`) läuft.
 - **Keine Asset-Dateien.** Grafik (`gfx.js`) und Klänge (`sfx.js`) werden im Code erzeugt.
-  Einzige Ausnahmen: `favicon.svg`, `docs/screenshot.png` (README).
+  Einzige Ausnahmen: `favicon.svg`, `docs/screenshot.png` (README). `tools/pack.js` ist kein Build für den Betrieb,
+  sondern verpackt nur den Release; `dist/` gehört nicht ins Repository.
 - Alle Skripte teilen sich den globalen Namensraum. Reihenfolge in `index.html`:
   `data.js → map.js → game.js → ai.js → gfx.js → sfx.js → ui.js`.
 - Spielzustand liegt komplett in der globalen Variable `S`.
@@ -45,6 +49,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `js/ui.js` | Zeichnen, Animationen/Zeitleiste, Kamera, Eingabe, Seitenleiste, Kontextmenü, alle Dialoge, Handbuch (`openHelp`, `buildHelp`) |
 | `index.html` | Layout, CSS, Dialoge (Handbuch, Statistik, Spielstände, Klangtest …) |
 | `tools/serve.js` | Mini-Webserver für die Entwicklung |
+| `tools/pack.js` | Verpackt die Offline-Fassung nach `dist/` (Einzeldatei `archipel.html`, Ordner fürs ZIP, Release-Text) |
+| `.github/workflows/release.yml` | Legt bei einem Tag `vX.Y.Z` den Release mit der Offline-Fassung an |
 
 ## Wichtige Zusammenhänge (beim Ändern beachten)
 
