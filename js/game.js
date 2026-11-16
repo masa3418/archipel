@@ -738,10 +738,15 @@ function b64(arr) {
 function unb64(str, Type) {
   const s = atob(str), u8 = new Uint8Array(s.length);
   for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
+  if (u8.length % Type.BYTES_PER_ELEMENT) throw new Error('Ungültige Daten');
   return new Type(u8.buffer);
 }
 // liest altes Format (Zahlenliste) und neues (Base64)
-const fromSaved = (v, Type) => typeof v === 'string' ? unb64(v, Type) : Type.from(v);
+const fromSaved = (v, Type) => {
+  if (typeof v === 'string') return unb64(v, Type);
+  if (Array.isArray(v)) return Type.from(v, x => (Number.isFinite(x) ? x : 0));
+  throw new Error('Ungültige Daten');
+};
 
 function serialize() {
   const o = { v: 2 };
@@ -756,19 +761,116 @@ function serialize() {
   return JSON.stringify(o);
 }
 
+// Ein Spielstand kann aus einer fremden Datei stammen. Deshalb wird beim Laden
+// jeder Wert auf Typ und Wertebereich geprüft; Unbekanntes wird verworfen.
+// So kann ein präparierter Spielstand keinen Code in die Seite einschleusen.
+function sanitizeState(o) {
+  const isNum = v => typeof v === 'number' && Number.isFinite(v);
+  const num = (v, d = 0, lo = -1e9, hi = 1e9) => (isNum(v) ? Math.min(hi, Math.max(lo, v)) : d);
+  const int = (v, d = 0, lo = -1e9, hi = 1e9) => Math.trunc(num(v, d, lo, hi));
+  const str = (v, max = 80) => (typeof v === 'string' ? v.slice(0, max) : '');
+  const oneOf = (v, list, d) => (list.includes(v) ? v : d);
+  const W = int(o.W, 0), H = int(o.H, 0);
+  if (W < 8 || H < 8 || W > 300 || H > 300) throw new Error('Ungültige Kartengröße');
+  const N = W * H;
+  for (const k of ['terrain', 'elev', 'depth', 'cont']) if (!o[k] || o[k].length !== N) throw new Error('Ungültige Kartendaten');
+  const inMap = (x, y) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < W && y < H;
+  const pt = v => (Array.isArray(v) && inMap(v[0], v[1]) ? [v[0], v[1]] : null);
+  for (let i = 0; i < N; i++) {
+    o.terrain[i] = o.terrain[i] ? 1 : 0;
+    o.elev[i] = Number.isFinite(o.elev[i]) ? Math.min(1, Math.max(0, o.elev[i])) : 0;
+    if (!o.terrain[i] && o.depth[i] < 1) o.depth[i] = 1;   // Wasser hat immer Tiefe ≥ 1 (Farbtabelle)
+  }
+
+  const s = {
+    W, H, terrain: o.terrain, elev: o.elev, depth: o.depth, cont: o.cont,
+    size: oneOf(o.size, Object.keys(MAP_SIZES), 'mittel'),
+    difficulty: oneOf(o.difficulty, Object.keys(DIFFICULTY), 'normal'),
+    turn: int(o.turn, 1, 1, 1e6), cur: oneOf(o.cur, [0, 1], 0),
+    over: oneOf(o.over, ['win', 'lose'], null),
+    overReason: oneOf(o.overReason, ['surrender', 'capitulation'], undefined),
+    offerPause: int(o.offerPause, 0, 0, 1e6),
+  };
+
+  if (!Array.isArray(o.cities) || !o.cities.length || o.cities.length > 2000) throw new Error('Ungültige Städte');
+  s.cities = o.cities.map((c, i) => {
+    c = c || {};
+    const x = int(c.x, -1), y = int(c.y, -1);
+    if (!inMap(x, y)) throw new Error('Ungültige Stadt');
+    return { id: i, x, y, name: str(c.name, 40) || 'Stadt ' + (i + 1), owner: oneOf(c.owner, [-1, 0, 1], -1),
+      prod: UT[c.prod] ? c.prod : null, progress: num(c.progress, 0, 0, 1000), coastal: !!c.coastal };
+  });
+
+  const units = [];
+  const seenIds = new Set();
+  for (const u of Array.isArray(o.units) ? o.units.slice(0, 20000) : []) {
+    if (!u || !UT[u.type]) continue;
+    const t = UT[u.type], x = int(u.x, -1), y = int(u.y, -1), id = int(u.id, 0, 1, 1e9);
+    if (!inMap(x, y) || !id || seenIds.has(id)) continue;
+    seenIds.add(id);
+    let order = null;
+    const od = u.order;
+    if (od && od.type === 'sentry') order = { type: 'sentry' };
+    else if (od && od.type === 'explore') order = { type: 'explore' };
+    else if (od && od.type === 'goto' && inMap(od.x, od.y)) order = { type: 'goto', x: od.x, y: od.y };
+    else if (od && od.type === 'patrol' && Array.isArray(od.pts)) {
+      const pts = od.pts.slice(0, 50).map(pt).filter(Boolean), start = pt(od.start);
+      if (pts.length && start) order = { type: 'patrol', start, pts, i: int(od.i, 0, 0, pts.length - 1) };
+    }
+    const nu = { id, type: u.type, owner: oneOf(u.owner, [0, 1], 0), x, y,
+      hp: num(u.hp, t.hp, 0.01, t.hp), moves: int(u.moves, 0, 0, t.move), fuel: num(u.fuel, t.fuel || 0, 0, t.fuel || 0),
+      carrier: isNum(u.carrier) ? int(u.carrier) : null, order, skip: !!u.skip };
+    if (isNum(u.aiTarget)) nu.aiTarget = int(u.aiTarget, 0, 0, s.cities.length - 1);
+    if (Array.isArray(u.aiGoal) && pt(u.aiGoal)) nu.aiGoal = [u.aiGoal[0], u.aiGoal[1], oneOf(u.aiGoal[2], ['fog', 'city'], 'fog'), int(u.aiGoal[3], 0, 0, s.cities.length - 1)];
+    if (isNum(u.wait)) nu.wait = int(u.wait, 0, 0, 1000);
+    units.push(nu);
+  }
+  // Ladung nur an existierenden Trägern
+  const byId = new Map(units.map(u => [u.id, u]));
+  for (const u of units) {
+    const c = u.carrier != null && byId.get(u.carrier);
+    if (!c || c === u || !UT[c.type].carries) u.carrier = null;
+    else { u.x = c.x; u.y = c.y; }
+  }
+  s.units = units;
+  s.nextId = Math.max(int(o.nextId, 1, 1, 2e9), ...units.map(u => u.id + 1), 1);
+
+  s.log = (Array.isArray(o.log) ? o.log.slice(0, 100) : []).filter(l => l && typeof l.text === 'string').map(l => ({
+    t: int(l.t, 1, 0, 1e6), text: str(l.text, 300), cls: oneOf(l.cls, ['', 'good', 'bad'], ''),
+    x: inMap(l.x, l.y) ? l.x : null, y: inMap(l.x, l.y) ? l.y : null,
+  }));
+  s.hist = (Array.isArray(o.hist) ? o.hist.slice(-1000) : []).filter(e => e && isNum(e.t)).map(e => ({
+    t: int(e.t, 1, 0, 1e6), me: num(e.me, 0, 0, 1e9), en: num(e.en, 0, 0, 1e9),
+  }));
+
+  if (!Array.isArray(o.players) || o.players.length !== 2) throw new Error('Ungültige Spielerdaten');
+  s.players = o.players.map(P => {
+    if (!P || !P.seen || P.seen.length !== N) throw new Error('Ungültige Spielerdaten');
+    const ko = new Int8Array(s.cities.length).fill(-2);
+    if (P.knownOwner) for (let i = 0; i < ko.length && i < P.knownOwner.length; i++) ko[i] = Math.min(1, Math.max(-2, P.knownOwner[i]));
+    for (let i = 0; i < N; i++) P.seen[i] = P.seen[i] ? 1 : 0;
+    const intel = {};
+    if (P.intel && typeof P.intel === 'object') for (const [k, v] of Object.entries(P.intel).slice(0, 20000)) if (UT[v] && /^\d+$/.test(k)) intel[k] = v;
+    return { seen: P.seen, vis: new Uint8Array(N), knownOwner: ko, intel };
+  });
+  return s;
+}
+
 function deserialize(json) {
   const o = JSON.parse(json);
-  if (!o || !o.terrain || !o.cities || !o.units || !o.players) throw new Error('Kein gültiger Spielstand');
+  if (!o || typeof o !== 'object' || !o.terrain || !o.cities || !o.units || !o.players) throw new Error('Kein gültiger Spielstand');
   for (const [k, Type] of Object.entries(TYPED)) {
-    if (k === 'elev' && o.elev && o.elev.q) o.elev = Float32Array.from(unb64(o.elev.q, Uint8Array), v => v / 255);
+    if (k === 'elev' && o.elev && typeof o.elev.q === 'string') o.elev = Float32Array.from(unb64(o.elev.q, Uint8Array), v => v / 255);
     else o[k] = fromSaved(o[k], Type);
   }
+  if (!Array.isArray(o.players)) throw new Error('Kein gültiger Spielstand');
   o.players = o.players.map(P => ({
-    seen: fromSaved(P.seen, Uint8Array), vis: new Uint8Array(o.W * o.H), knownOwner: fromSaved(P.knownOwner, Int8Array),
-    intel: P.intel || {},
+    seen: P && P.seen ? fromSaved(P.seen, Uint8Array) : null,
+    knownOwner: P && P.knownOwner ? fromSaved(P.knownOwner, Int8Array) : null,
+    intel: P && P.intel,
   }));
-  delete o.v;
-  S = o;
+  const clean = sanitizeState(o);   // wirft bei unbrauchbaren Daten – dann bleibt das alte Spiel erhalten
+  S = clean;
   buildCityGrid();
   computeVision(0); computeVision(1);
 }

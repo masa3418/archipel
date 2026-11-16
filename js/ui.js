@@ -1409,9 +1409,11 @@ function fmtDate(t) {
 }
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 function slotDesc(m) {
+  m = { ...m, turn: Math.trunc(Number(m.turn)) || 0, cities: Math.trunc(Number(m.cities)) || 0, units: Math.trunc(Number(m.units)) || 0,
+    size: SIZE_NAME[m.size] ? m.size : '', over: ['win', 'lose'].includes(m.over) ? m.over : null };
   const end = m.over === 'win' ? ' · gewonnen' : m.over === 'lose' ? ' · verloren' : '';
   const dl = m.difficulty && DIFFICULTY[m.difficulty] ? ' · ' + DIFFICULTY[m.difficulty].label : '';
-  return `Runde ${m.turn} · ${plural(m.cities, 'Stadt', 'Städte')} · ${plural(m.units, 'Einheit', 'Einheiten')} · Karte ${SIZE_NAME[m.size] || m.size || '?'}${dl}${end}`;
+  return `Runde ${m.turn} · ${plural(m.cities, 'Stadt', 'Städte')} · ${plural(m.units, 'Einheit', 'Einheiten')} · Karte ${SIZE_NAME[m.size] || '?'}${dl}${end}`;
 }
 function renderSaves() {
   const slots = listSlots();
