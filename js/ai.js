@@ -141,9 +141,13 @@ function aiChooseProduction(c) {
     prod = c.coastal ? 'dst' : 'ftr';               // Späher für fremde Inseln
   } else if (c.coastal) {
     const land = mine.filter(u => T(u).domain === 'land').length;
+    // vorhandene Einheiten plus solche, die andere Städte gerade bauen – sonst beginnen mehrere Städte dasselbe
+    const planned = t => cnt(t) + S.cities.filter(o => o.owner === p && o !== c && o.prod === t).length;
     if (cnt('trn') < Math.max(1, Math.ceil(ncity / 4))) prod = 'trn';
-    else if (sk && cnt('dst') < cnt('trn')) prod = 'dst';   // Können ≥ 1: ein Zerstörer je Transporter als Geleitschutz
-    else if (cnt('sub') < Math.floor(ncity / 5)) prod = 'sub';   // ein U-Boot je fünf Städte, das vor den Häfen des Gegners lauert
+    else if (sk && planned('dst') < cnt('trn')) prod = 'dst';   // Können ≥ 1: ein Zerstörer je Transporter als Geleitschutz
+    else if (planned('sub') < Math.floor(ncity / 5)) prod = 'sub';
+    else if (sk && ncity >= 8 && planned('car') < 1) prod = 'car';   // ein Träger als Auge der Flotte
+    else if (cnt('car') > 0 && planned('ftr') < 1) prod = 'ftr';                    // … und ein Jäger für die Luftdeckung   // ein U-Boot je fünf Städte, das vor den Häfen des Gegners lauert
     else if (land < cnt('trn') * 5) prod = !sk && rng() < 0.3 ? 'tank' : 'inf';
     else {
       prod = counterPick(p);
@@ -258,7 +262,8 @@ function aiAdjTarget(u, minProb) {
     if (!inb(nx, ny)) continue;
     const i = idx(nx, ny);
     const c = cityAt(nx, ny);
-    const ens = P.vis[i] ? topUnitsAt(nx, ny).filter(o => o.owner !== u.owner && canSee(u.owner, o)) : [];
+    // gegen Bodentruppen verteidigen Schiffe im Hafen eine Stadt nicht (cityDefenders)
+    const ens = cityDefenders(u, c, P.vis[i] ? topUnitsAt(nx, ny).filter(o => o.owner !== u.owner && canSee(u.owner, o)) : []);
     let score = 0;
     if (ens.length) {
       if (t.str === 0) continue;
@@ -499,7 +504,46 @@ function aiTransport(u) {
 }
 
 // ------------------------------------------------------------------ Kriegsschiffe
+// Träger: sieht weit und gibt Luftdeckung, kämpft aber nicht selbst. Er nimmt im Hafen einen Jäger an Bord und
+// hält sich beim wertvollsten eigenen Schiff auf (Schlachtschiff, sonst beladener Transporter), sonst im Hafen.
+function aiCarrier(u) {
+  const p = u.owner, t = T(u);
+  let guard = 8;
+  while (alive(u) && u.moves > 0 && guard-- > 0) {
+    const here = cityAt(u.x, u.y);
+    const inPort = !!(here && here.owner === p);
+    if (inPort && !cargoOf(u).length) { let taken = 0; loadUnits(u, o => o.type === 'ftr' && taken++ < 1); }
+    const basePass = makePassable(u, aiKnowsMap(p));
+    const threat = threatMap(u);
+    const pass = (x, y, i) => basePass(x, y, i) && (!threat[i] || !!(cityAt(x, y) && cityAt(x, y).owner === p));
+    const ownPort = (x, y) => { const c = cityAt(x, y); return !!(c && c.owner === p && c.coastal); };
+    if (u.hp < t.hp) {            // beschädigt: im Hafen reparieren
+      if (inPort) break;
+      const pp = bfs(u.x, u.y, pass, ownPort);
+      if (!pp || !stepAlong(u, pp)) break;
+      continue;
+    }
+    if (!cargoOf(u).length && inPort) break;   // ohne Jäger keine Luftdeckung: im Hafen auf einen warten
+    let ward = null, bd = 1e9;
+    for (const o of S.units) {
+      if (o.owner !== p || o.carrier != null || o === u) continue;
+      const v = o.type === 'bat' ? 0 : (o.type === 'trn' && cargoOf(o).length ? 20 : -1);
+      if (v < 0) continue;
+      const d = v + cheb(o.x, o.y, u.x, u.y);
+      if (d < bd) { bd = d; ward = o; }
+    }
+    let path;
+    if (ward) {
+      if (cheb(u.x, u.y, ward.x, ward.y) <= 1) break;
+      path = bfs(u.x, u.y, pass, (x, y, i) => pass(x, y, i) && S.terrain[i] === 0 && cheb(x, y, ward.x, ward.y) <= 1, 30);
+    }
+    if (!path) { if (inPort) break; path = bfs(u.x, u.y, pass, ownPort); }
+    if (!path || !stepAlong(u, path)) break;
+  }
+}
+
 function aiWarship(u) {
+  if (u.type === 'car') return aiCarrier(u);
   let guard = 10;
   const t = T(u), p = u.owner;
   while (alive(u) && u.moves > 0 && guard-- > 0) {
@@ -612,6 +656,27 @@ function aiFighter(u) {
   const home0 = distHome(p, u.x, u.y);
   const mustReturn = !isBase(u) && (u.fuel - t.move < home0 + t.move);
   let guard = 12;
+  // Ein eigener Träger ohne Jäger in Reichweite? Dann dorthin und an Bord bleiben (Luftdeckung).
+  if (!mustReturn) {
+    const car = S.units.find(c => c.owner === p && c.type === 'car' && c.carrier == null && !cargoOf(c).length &&
+      cheb(c.x, c.y, u.x, u.y) <= Math.min(u.fuel - t.move, t.fuel / 2) && !cityAt(c.x, c.y));
+    if (car) {
+      while (alive(u) && u.moves > 0 && u.carrier == null && guard-- > 0) {
+        if (cheb(u.x, u.y, car.x, car.y) <= 1) { moveStep(u, car.x, car.y); return; }
+        let best = null, bd = 1e9;
+        for (const [dx, dy] of DIRS) {
+          const nx = u.x + dx, ny = u.y + dy;
+          if (!inb(nx, ny) || topUnitsAt(nx, ny).some(o => canSee(p, o))) continue;
+          const c = cityAt(nx, ny);
+          if (c && c.owner !== p) continue;
+          const d = cheb(nx, ny, car.x, car.y);
+          if (d < bd) { bd = d; best = [nx, ny]; }
+        }
+        if (!best || !moveStep(u, best[0], best[1]).ok) break;
+      }
+      return;
+    }
+  }
   if (aiSkill(p) >= 1 && !mustReturn) {
     // Jagd: sichtbare Beute in Reichweite (vor allem Transporter), bei der der Rückflug noch sicher ist
     if (u.aiGoal && u.aiGoal[2] === 'prey') u.aiGoal = null;

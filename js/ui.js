@@ -196,20 +196,20 @@ function animPos(u, rel) {
 function drawToken(u, px, py, size, opts = {}) {
   const spr = unitSprite(u.type, u.owner, size);
   const t = T(u);
-  const dive = t.stealth && !u.surf;   // getauchtes U-Boot: blasser, mit Wellenlinien
   ctx.save();
-  if (opts.dim) ctx.globalAlpha = 0.6; else if (dive) ctx.globalAlpha = 0.8;
+  if (opts.dim) ctx.globalAlpha = 0.6;
   ctx.drawImage(spr, px - spr.pad, py - spr.pad);
   ctx.restore();
-  if (dive) {
+  // U-Boot: Getaucht ist der Normalzustand und bekommt kein Zeichen. Nur das aufgetauchte (nach einem Angriff,
+  // für alle sichtbar) trägt eine Welle unter dem Boot.
+  if (t.stealth && u.surf) {
     ctx.save();
-    ctx.strokeStyle = 'rgba(200,232,255,0.95)'; ctx.lineWidth = Math.max(1.2, size / 18); ctx.lineCap = 'round';
-    for (let k = 0; k < 2; k++) {
-      const yy = py + size * (0.64 + k * 0.13), x0 = px + size * 0.2, w = size * 0.6;
-      ctx.beginPath(); ctx.moveTo(x0, yy);
-      for (let j = 1; j <= 12; j++) ctx.lineTo(x0 + w * j / 12, yy + Math.sin(j / 12 * Math.PI * 3) * size * 0.035);
-      ctx.stroke();
-    }
+    ctx.beginPath(); ctx.arc(px + size / 2, py + size / 2, size * 0.4, 0, 7); ctx.clip();
+    ctx.strokeStyle = 'rgba(215,240,255,0.95)'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.2, size / 16);
+    const yy = py + size * 0.72, x0 = px + size * 0.18, w = size * 0.64;
+    ctx.beginPath(); ctx.moveTo(x0, yy);
+    for (let k = 1; k <= 14; k++) ctx.lineTo(x0 + w * k / 14, yy + Math.sin(k / 14 * Math.PI * 4) * size * 0.03);
+    ctx.stroke();
     ctx.restore();
   }
   if (u.hp < t.hp) {
@@ -365,6 +365,18 @@ function render(now = performance.now()) {
       const c = cityAt(x, y);
       if (!c || !P.seen[idx(x, y)]) continue;
       drawSupportMark(x, y, (S.over ? c.owner : shownOwner(c, rel, playing)) === b.owner, PLAYERS[b.owner].light);
+    }
+  }
+  // Luftdeckung: Schiffe neben einem sichtbaren Träger mit Jägern an Bord (gestrichelter Ring = geschützt)
+  const covered = new Set();
+  for (const c of S.units) {
+    if (c.type !== 'car' || c.carrier != null || (!canSee(0, c) && !S.over) || !S.units.some(f => f.carrier === c.id && f.type === 'ftr')) continue;
+    for (const s of S.units) {
+      if (s.owner !== c.owner || s.carrier != null || T(s).domain !== 'sea' || cheb(s.x, s.y, c.x, c.y) > 1 || (!canSee(0, s) && !S.over)) continue;
+      const i = idx(s.x, s.y);
+      if (covered.has(i) || S.cityGrid[i] >= 0) continue;
+      covered.add(i);
+      drawSupportMark(s.x, s.y, true, PLAYERS[c.owner].light);
     }
   }
 
@@ -1062,6 +1074,11 @@ function updatePanel() {
             <span>${tt('Nächste Basis', 'Nearest base')}</span><b>${dh} ${tt('Felder', 'tiles')}</b>`;
     }
     if (t.stealth) h += `<span>${tt('Tarnung', 'Stealth')}</span><b>${u.surf ? tt('aufgetaucht – bis zu deinem nächsten Zug sichtbar', 'surfaced – visible until your next turn') : tt('getaucht – nur aus der Nähe und von Zerstörern zu orten', 'submerged – only located up close or by destroyers')}</b>`;
+    if (u.type === 'car' && u.carrier == null) {
+      const hasFtr = cargo.some(o => o.type === 'ftr');
+      const n = S.units.filter(o => o.owner === 0 && o !== u && o.carrier == null && T(o).domain === 'sea' && cheb(o.x, o.y, u.x, u.y) <= 1).length;
+      h += `<span>${tt('Luftdeckung', 'Air cover')}</span><b>${hasFtr ? tt(`aktiv – schützt sich und ${n} ${n === 1 ? 'Schiff' : 'Schiffe'} nebenan vor Jägern`, `active – protects itself and ${n} adjacent ${n === 1 ? 'ship' : 'ships'} from fighters`) : tt('keine – dafür muss ein Jäger an Bord sein', 'none – needs a fighter on board')}</b>`;
+    }
     if (u.type === 'bat' && u.carrier == null) {
       // Städte im Feuerbereich: fremde fallen leichter, eigene sind geschützt
       const near = S.cities.filter(c => cheb(c.x, c.y, u.x, u.y) <= 1 && S.players[0].seen[idx(c.x, c.y)]);
@@ -1234,8 +1251,11 @@ function updateHover() {
     if (us.length) s += ' · ' + us.map(o => `${o.owner === 0 ? '' : tt('Feind: ', 'Enemy: ')}${T(o).name} ${o.hp}/${T(o).hp}${T(o).stealth ? (o.surf ? tt(' (aufgetaucht)', ' (surfaced)') : tt(' (getaucht)', ' (submerged)')) : ''}`).join(', ');
     const su = selUnit();
     const en = us.filter(o => o.owner !== 0);
-    if (su && en.length && T(su).str > 0) {
-      const d = pickDefender(en);
+    const foes = su ? cityDefenders(su, c, en) : en;   // Schiffe im Hafen verteidigen nicht gegen Bodentruppen
+    const ships = en.length - foes.length;
+    const sinkTxt = ships ? tt(` · ${ships === 1 ? 'das Schiff im Hafen geht' : 'die Schiffe im Hafen gehen'} mit der Stadt unter`, ` · the ${ships === 1 ? 'ship' : 'ships'} in port ${ships === 1 ? 'is' : 'are'} lost with the city`) : '';
+    if (su && foes.length && T(su).str > 0) {
+      const d = pickDefender(foes);
       s += ` · ${tt('Siegchance', 'Win chance')}: ${Math.round(attackOdds(su, d, x, y) * 100)} %`;
       const cs = combatSpec(su, d, x, y);
       if (cs.notes.length) s += ' (' + cs.notes.join(', ') + ')';
@@ -1243,9 +1263,9 @@ function updateHover() {
         const [pc, why] = capInfo(c);
         s += tt(` · danach ${pc} % Eroberung${why}: Besatzung (${us.length}) fällt, deine Einheit geht in der Stadt auf`, ` · then ${pc} % capture${why}: garrison (${us.length}) falls, your unit merges into the city`);
       }
-    } else if (su && c && c.owner !== 0 && P.knownOwner[c.id] !== 0 && T(su).capture && !en.length) {
+    } else if (su && c && c.owner !== 0 && P.knownOwner[c.id] !== 0 && T(su).capture && !foes.length) {
       const [pc, why] = capInfo(c);
-      s += tt(` · Eroberungschance: ${pc} %${why} (deine Einheit geht dabei in der Stadt auf)`, ` · Capture chance: ${pc} %${why} (your unit merges into the city)`);
+      s += tt(` · Eroberungschance: ${pc} %${why} (deine Einheit geht dabei in der Stadt auf)`, ` · Capture chance: ${pc} %${why} (your unit merges into the city)`) + sinkTxt;
     }
   }
   $('hover').textContent = s;
@@ -1266,12 +1286,12 @@ const UNIT_ROLE = EN ? {
   inf: 'Captures cities · quick to build', tank: 'Captures cities · 2 tiles per turn',
   ftr: 'Flies far · scouts and hunts', trn: 'Carries 6 land units across the sea',
   dst: 'Locates and hunts submarines', sub: 'Hidden · torpedoes big ships',
-  crs: 'Sturdy and versatile', car: 'Floating base for fighters', bat: 'Fire support for landings',
+  crs: 'Sturdy and versatile', car: 'Sees 4 tiles · air cover for the fleet', bat: 'Fire support for landings',
 } : {
   inf: 'Erobert Städte · schnell gebaut', tank: 'Erobert Städte · 2 Felder pro Zug',
   ftr: 'Fliegt weit · späht und jagt', trn: 'Bringt 6 Landeinheiten übers Meer',
   dst: 'Ortet und jagt U-Boote', sub: 'Getarnt · Torpedo gegen große Schiffe',
-  crs: 'Robust und vielseitig', car: 'Schwimmende Basis für Jäger', bat: 'Feuerunterstützung für Landungen',
+  crs: 'Robust und vielseitig', car: 'Sieht 4 Felder · Luftdeckung für die Flotte', bat: 'Feuerunterstützung für Landungen',
 };
 const CAPTURE_CHEERS = EN ? [
   'The people cheer – your flag flies over the city!',
@@ -1345,6 +1365,82 @@ function openProdDialog(c, captured = false) {
 }
 
 function openModal(id) { $(id).hidden = false; }
+
+// ------------------------------------------------------------------ Handbuch
+// Sechs Reiter. Einheitenkarten und die Tabelle „Wer schlägt wen“ entstehen aus den Spieldaten und den
+// Kampfregeln (attackOdds) – sie können nicht veralten. Neue Regeltexte gehören in index.html (Reiter „Kampf“).
+const UNIT_INFO = {
+  inf: tt('Erobert Städte (50 %) und geht dabei in der Stadt auf. Billig und schnell gebaut – die Arbeitskraft jeder Eroberung.',
+    'Captures cities (50 %) and merges into the city when it does. Cheap and quick to build – the workhorse of every conquest.'),
+  tank: tt('Erobert Städte wie die Infanterie, ist aber doppelt so schnell und hält einen Treffer aus. Wird in Städten nicht repariert. Als Eroberer teuer, im Feld stark gegen Infanterie.',
+    'Captures cities like infantry, but moves twice as fast and survives one hit. Is not repaired in cities. Expensive as a conqueror, strong against infantry in the field.'),
+  ftr: tt('Fliegt über Land und Wasser. Hat Treibstoff für 18 Felder und muss zu einer eigenen Stadt oder einem Träger zurück; jede Runde in der Luft kostet mindestens 6. Jagt Transporter und richtet gegen Schlachtschiffe dreifachen Schaden an.',
+    'Flies over land and water. Has fuel for 18 tiles and must return to one of your cities or a carrier; every turn in the air costs at least 6. Hunts transports and deals triple damage to battleships.'),
+  trn: tt('Bringt bis zu 6 Bodentruppen übers Meer. Unbewaffnet: Wer ihn erwischt, versenkt die ganze Ladung. Gib ihm einen Zerstörer mit.',
+    'Carries up to 6 ground units across the sea. Unarmed: whoever catches it sinks the whole load. Give it a destroyer escort.'),
+  dst: tt('Schnell, billig, guter Späher. Ortet als einziges Schiff getauchte U-Boote in seiner vollen Sichtweite und schlägt sie mit Sonar und Wasserbomben. Der Geleitschutz für Transporter.',
+    'Fast, cheap, a good scout. The only ship that locates submerged submarines at its full vision range, and beats them with sonar and depth charges. The escort for transports.'),
+  sub: tt('Getarnt: Getaucht sehen es nur Nachbarn und Zerstörer. Sein Torpedo trifft große Schiffe zuerst und doppelt stark. Nach einem Angriff ist es bis zu deinem nächsten Zug aufgetaucht (Welle unter dem Boot).',
+    'Hidden: submerged, it is only seen by neighbours and destroyers. Its torpedo hits big ships first and with double strength. After attacking it is surfaced until your next turn (wave below the boat).'),
+  crs: tt('Das Allround-Kriegsschiff: schlägt Zerstörer und geortete U-Boote sicher und hält viel aus. Gegen Schlachtschiffe und U-Boot-Hinterhalte hat es das Nachsehen.',
+    'The all-round warship: reliably beats destroyers and located submarines and can take a lot. It loses out to battleships and submarine ambushes.'),
+  car: tt('Das Auge der Flotte: sieht 4 Felder weit. Trägt und betankt bis zu 6 Jäger. Mit mindestens einem Jäger an Bord gibt er Luftdeckung: Feindliche Jäger treffen ihn und eigene Schiffe nebenan nur zu einem Drittel.',
+    'The eyes of the fleet: sees 4 tiles. Carries and refuels up to 6 fighters. With at least one fighter on board it gives air cover: enemy fighters hit it and your adjacent ships only one third of the time.'),
+  bat: tt('Beherrscht das Seegefecht und gibt Feuerunterstützung auf alle Nachbarfelder: Fremde Städte dort fallen zu 75 %, eigene nur zu 25 %. Verwundbar durch U-Boote und Jäger-Schwärme.',
+    'Rules the sea battle and gives fire support to all adjacent tiles: foreign cities there fall 75 % of the time, your own only 25 %. Vulnerable to submarines and fighter swarms.'),
+};
+// Siegchancen aller Einheiten gegeneinander, unbeschädigt und ohne örtliche Zu- oder Abschläge
+function oddsMatrix() {
+  let x = 0, y = 0;
+  for (let k = 0; k < S.W * S.H; k++) if (S.cityGrid[k] < 0 && S.terrain[k] === 0) { x = k % S.W; y = (k / S.W) | 0; break; }
+  const mk = (t, o) => ({ type: t, hp: UT[t].hp, owner: o, x: -9, y: -9, carrier: null });   // Besitzer ohne Einheiten: keine Unterstützung
+  const m = {};
+  for (const a of UNIT_ORDER) { m[a] = {}; for (const d of UNIT_ORDER) m[a][d] = UT[a].str > 0 ? attackOdds(mk(a, 7), mk(d, 8), x, y) : null; }
+  return m;
+}
+function buildHelp() {
+  const m = oddsMatrix(), pc = v => Math.round(v * 100);
+  const names = list => list.map(k => UT[k].name).join(', ') || '–';
+  $('helpUnits').innerHTML = UNIT_ORDER.map(k => {
+    const t = UT[k];
+    // lohnend: Siegchance ab zwei Dritteln – oder etwa 50:50 gegen etwas deutlich Teureres
+    const pays = (a, d) => m[a][d] != null && (m[a][d] >= 0.66 || (UT[a].domain !== 'land' && m[a][d] >= 0.44 && UT[d].cost >= UT[a].cost * 1.5));
+    const sameField = (a, d) => UT[a].domain !== 'sea' || UT[d].domain !== 'land';   // Schiffe gegen Bodentruppen: Randfall, nicht aufführen
+    const strong = UNIT_ORDER.filter(d => d !== k && UT[d].str > 0 && pays(k, d) && sameField(k, d));
+    let weak = UNIT_ORDER.filter(a => a !== k && pays(a, k) && sameField(a, k));
+    if (k === 'bat' && !weak.includes('ftr')) weak.push('ftr');   // einzeln schwach, im Schwarm tödlich (Schaden bleibt)
+    const weakTxt = weak.length >= 7 ? tt('allen bewaffneten Einheiten', 'all armed units') : names(weak);
+    const stat = (l, v) => `<span>${l} <b>${v}</b></span>`;
+    return `<div class="ucard" id="help-${k}"><div class="ucard-head"><img src="${iconUrl('u', k)}" alt=""><div><b>${t.name}</b><small>${UNIT_ROLE[k] || ''}</small></div></div>
+      <div class="ucard-stats">${stat(tt('Bauzeit', 'Build'), t.cost)}${stat(tt('Bewegung', 'Moves'), t.move)}${stat(tt('Trefferpunkte', 'HP'), t.hp)}${stat(tt('Stärke', 'Strength'), t.str)}${stat(tt('Sicht', 'Vision'), t.vision)}${t.fuel ? stat(tt('Treibstoff', 'Fuel'), t.fuel) : ''}${t.capacity ? stat(tt('Plätze', 'Capacity'), t.capacity) : ''}</div>
+      <p>${UNIT_INFO[k]}</p>
+      ${t.str > 0 ? `<div class="vs"><b class="good">${tt('Stark gegen', 'Strong against')}:</b> ${names(strong)}</div>` : ''}
+      <div class="vs"><b class="bad">${tt('Verwundbar durch', 'Vulnerable to')}:</b> ${weakTxt}</div></div>`;
+  }).join('');
+  const head = '<tr><th class="row">' + tt('Angreifer ↓ / Verteidiger →', 'Attacker ↓ / defender →') + '</th>' +
+    UNIT_ORDER.map(d => `<th title="${UT[d].name}"><img src="${iconUrl('u', d)}" alt="">${UT[d].sym}</th>`).join('') + '</tr>';
+  $('helpMatrix').innerHTML = head + UNIT_ORDER.filter(a => UT[a].str > 0).map(a => `<tr><th class="row">${UT[a].sym} · ${UT[a].name}</th>` + UNIT_ORDER.map(d => {
+    const v = m[a][d], p = pc(v);
+    return `<td class="${p >= 60 ? 'hi' : p >= 40 ? 'mid' : p > 0 ? 'lo' : 'none'}" title="${UT[a].name} → ${UT[d].name}">${p} %</td>`;
+  }).join('') + '</tr>').join('');
+}
+function helpTab(name) {
+  const tabs = [...$('helpTabs').querySelectorAll('button')];
+  if (!tabs.some(b => b.dataset.tab === name)) name = 'start';
+  for (const b of tabs) b.classList.toggle('on', b.dataset.tab === name);
+  for (const p of $('helpBody').querySelectorAll('[data-pane]')) p.hidden = p.dataset.pane !== name;
+  $('helpBody').scrollTop = 0;
+  try { localStorage.setItem('archipel-helptab', name); } catch (e) {}
+}
+// tab: gewünschter Reiter (sonst der zuletzt geöffnete), unit: Einheitenkarte, zu der gesprungen wird
+function openHelp(tab = null, unit = null) {
+  if (S) buildHelp();
+  if (!tab) { try { tab = localStorage.getItem('archipel-helptab'); } catch (e) {} }
+  helpTab(unit ? 'units' : tab || 'start');
+  openModal('mHelp');
+  if (unit && $('help-' + unit)) $('help-' + unit).scrollIntoView({ block: 'center' });
+}
+$('helpTabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) helpTab(b.dataset.tab); });
 function closeModals() { document.querySelectorAll('.modal').forEach(m => m.hidden = true); Sfx.preview(null); }
 
 // ------------------------------------------------------------------ Aufgeben / vorzeitiger Sieg
@@ -1661,7 +1757,7 @@ document.addEventListener('keydown', e => {
     case 'Escape': sel = null; selCity = null; refresh(); break;
     case '+': setZoom(TS + 4); break;
     case '-': setZoom(TS - 4); break;
-    case 'h': case '?': openModal('mHelp'); break;
+    case 'h': case '?': openHelp(); break;
     case 'm': toggleSound(); break;
     case 'k': openSoundTest(); break;
     case 'i': openStats(); break;
@@ -1687,7 +1783,7 @@ $('bStart').onclick = () => {
 $('diffSel').onchange = () => { $('diffDesc').textContent = DIFFICULTY[$('diffSel').value].desc; };
 $('worldSel').onchange = () => { $('worldDesc').textContent = WORLDS[$('worldSel').value].desc; };
 $('bOverNew').onclick = () => { closeModals(); openModal('mNew'); };
-$('bHelp').onclick = () => openModal('mHelp');
+$('bHelp').onclick = () => openHelp();
 
 function updateSoundUi() {
   $('bSound').textContent = Sfx.isMuted() ? '🔇' : '🔊';
@@ -1935,16 +2031,9 @@ $('bLang').onclick = () => {
     return `<tr><td><b>${d.label}</b></td><td>${d.skill ? tt('umsichtig', 'shrewd') : tt('einfach', 'simple')}</td><td>${d.aiKnowsMap ? tt('ja', 'yes') : tt('nein, erkundet', 'no, explores')}</td><td>${Math.round(d.aiMistake * 100)} %</td>
       <td>${Math.round(d.aiProd * 100)} %</td><td>${d.invadeAt} ${tt('Truppen', 'troops')}</td><td>${start}</td></tr>`;
   }).join('');
-  $('unitTable').innerHTML = UNIT_ORDER.map(k => {
-    const t = UT[k];
-    const extra = [t.capture ? tt('erobert Städte', 'captures cities') : '', t.stealth ? tt('getarnt', 'hidden') : '', t.sonar ? tt('ortet U-Boote', 'locates submarines') : '', t.noRepair ? tt('wird nicht repariert', 'not repaired') : '',
-      t.carries ? tt(`trägt ${t.capacity} ${t.carries === 'land' ? 'Bodentruppen' : 'Jäger'}`, `carries ${t.capacity} ${t.carries === 'land' ? 'land units' : 'fighters'}`) : '',
-      t.fuel ? `${t.fuel} ${tt('Treibstoff', 'fuel')}` : '', t.str === 0 ? tt('unbewaffnet', 'unarmed') : ''].filter(Boolean).join(', ');
-    return `<tr><td>${t.sym} ${t.name}</td><td>${t.move}</td><td>${t.hp}</td><td>${t.str}</td><td>${t.cost}</td><td>${extra}</td></tr>`;
-  }).join('');
   try { const z = +localStorage.getItem('archipel-zoom'); if (z >= 14 && z <= 48) TS = z; } catch (e) {}
   if (loadGame()) { afterLoad(); addLog(tt('Spielstand fortgesetzt.', 'Game resumed.')); refresh(); }
-  else { startNew('mittel'); openModal('mHelp'); }
+  else { startNew('mittel'); openHelp('start'); }
   requestAnimationFrame(loop);
   window.addEventListener('resize', () => renderMini());
 })();

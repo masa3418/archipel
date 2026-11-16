@@ -65,6 +65,18 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   beladenem Transporter). Messung KI gegen KI (je 400 Partien): Geleitschutz, mehr U-Boote und die Lauer-Taktik ändern die
   Siegquote nicht messbar (48–51 %); U-Boote statt Kreuzern verlieren (36–42 %). Die Tarnung zahlt sich also vor allem für
   den Menschen aus – die KI führt U-Boote weiterhin schwächer als Kreuzer.
+- **Schiffe im Hafen**: `cityDefenders(u, city, enemies)` (game.js) – greifen Bodentruppen eine fremde Stadt an, kämpfen Schiffe
+  im Hafen nicht mit; fällt die Stadt, gehen sie mit unter (auch ein Schlachtschiff). Ohne diese Regel machte ein Schiff im
+  Hafen die Stadt für Infanterie uneinnehmbar: Seit die KI U-Boote baut, blieben so auf Leicht 18 von 96 Partien stecken.
+  Wer Kampfgegner auf einem Stadtfeld bestimmt (Regeln, KI, Hinweiszeile), nimmt `cityDefenders`, nicht alle Einheiten des Feldes.
+- **Träger**: Sichtweite 4; `airCover(owner, x, y)` (game.js) – mit mindestens einem Jäger an Bord treffen feindliche Jäger den
+  Träger und eigene Schiffe auf Nachbarfeldern nur zu 1/3. KI: `aiCarrier` (bleibt beim Schlachtschiff bzw. beladenen Transporter),
+  ab Können 1 und 8 Städten ein Träger. Produktionsregeln der KI zählen mit `planned(t)` auch Einheiten, die andere Städte
+  gerade bauen – sonst beginnen mehrere Städte gleichzeitig dasselbe.
+- **Handbuch** (Hilfe): sechs Reiter in `index.html` (`data-tab`/`data-pane`), geöffnet über `openHelp(tab, unit)`.
+  Einheitenkarten (`UNIT_INFO`, `UNIT_ROLE`) und die Tabelle „Wer schlägt wen“ (`oddsMatrix` über `attackOdds`) entstehen
+  in `buildHelp()` aus den Spieldaten – Prozentwerte nie von Hand in die Hilfe schreiben. Neue Sonderregeln als Zeile in der
+  Tabelle `.help-rules` (Reiter „Kampf“) ergänzen, den Einheitentext in `UNIT_INFO`.
 - **Neues Feld im Spielzustand** → in `sanitizeState` (game.js) aufnehmen, sonst wird es beim
   Laden verworfen. Spielstände aus Dateien sind nicht vertrauenswürdig (siehe `SECURITY.md`);
   Werte aus `S` nie ungeprüft per `innerHTML` ausgeben, Texte mit `esc()` maskieren.
@@ -110,6 +122,9 @@ Nach den getarnten U-Booten (KI baut ein U-Boot je fünf Städte, Geleitschutz a
 Leicht 95/96 · Normal 56/96 · Schwer 27/192 (14 %, damit etwas schwerer als zuvor mit 23 %) · Brutal 2/96.
 Auf Schwer wirken die U-Boote, weil der Gegner die Karte kennt und sofort vor den richtigen Häfen lauert; ohne Kartenwissen
 gewänne der Vergleichsspieler 31 % (Kontinente 50 %, Inselreich 10 %) – zu ungleich je Welt, deshalb nicht übernommen.
+Nach Träger (Sichtweite 4, Luftdeckung, KI ab Können 1 und 8 Städten) und der Hafenregel, je 96 Partien:
+Leicht 96 · Normal 56 · Schwer 12 · Brutal 2; unentschieden nach 350 Runden: 0 · 3 · 6 · 2.
+KI mit Träger gegen KI ohne: 57 % (400 Partien).
 Nach Einführung der Schlachtschiff-Regeln (Feuerunterstützung, Luftangriff), je 96 Partien über alle Welten: Leicht 95 · Normal 62 · Schwer 20 · Brutal 0.
 Verzicht auf Schlachtschiffe kostet KI gegen KI jetzt ca. 5 Punkte (vorher nichts); die KI baut sie selten und spät.
 
@@ -134,4 +149,4 @@ Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
 - Lange Ersetzungen lieber als Node-Skript im Scratchpad ausführen statt per `sed`/Heredoc
   mit Backticks (Quoting-Probleme unter Git Bash).
 - `localStorage`: Autosave `archipel-save-v1`, Spielstände `archipel-slot-*` mit Index
-  `archipel-slots`, Einstellungen `archipel-*` (Ton, Zoom, Schwierigkeit, Rundenende, Sprache …).
+  `archipel-slots`, Einstellungen `archipel-*` (Ton, Zoom, Schwierigkeit, Rundenende, Sprache, Handbuch-Reiter …).

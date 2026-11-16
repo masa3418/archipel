@@ -19,7 +19,8 @@ Direkt im Browser: **https://masa3418.github.io/archipel/**
 
 Oder lokal: `index.html` doppelklicken. Das Spiel speichert nach jeder Runde automatisch im Browser;
 über **Spielstände** lassen sich beliebig viele benannte Stände anlegen und als Datei
-exportieren. Hilfe und Tastenbelegung: Knopf **Hilfe** oder Taste `H`.
+exportieren. Das **Handbuch** (Knopf **Hilfe** oder Taste `H`) erklärt in sechs Reitern erste Schritte, Einheiten,
+Kampf, Steuerung und den Gegner.
 
 ## Inhalt
 
@@ -29,7 +30,7 @@ exportieren. Hilfe und Tastenbelegung: Knopf **Hilfe** oder Taste `H`.
 - Neun Einheiten: Infanterie, Panzer, Jäger (mit Treibstoff), Transporter, Zerstörer,
   U-Boot, Kreuzer, Träger, Schlachtschiff
 - Stärken und Schwächen (Torpedo, Sonar, Wasserbomben, Küstenbatterien, Luftangriffe,
-  Feuerunterstützung durch Schlachtschiffe),
+  Feuerunterstützung durch Schlachtschiffe, getarnte U-Boote, Luftdeckung durch Träger),
   die angezeigte Siegchance berücksichtigt sie
 - Befehle: Marsch, Wache, Patrouille, Erkunden, Ein-/Ausladen
 - Computergegner in vier Schwierigkeitsstufen; auf Leicht/Normal muss er die Karte

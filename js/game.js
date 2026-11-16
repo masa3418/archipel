@@ -147,6 +147,8 @@ function pickDefender(list) {
 //                      doppelter Stärke zurück (das U-Boot ist ein Konter des Schlachtschiffs)
 //   Luftangriff      – Jäger gegen Schlachtschiff: trifft zu 2/3 mit dreifachem Schaden
 //                      (versenkt es selten allein, aber der Schaden bleibt – Schwärme lohnen sich)
+// Luftdeckung      – Träger mit mindestens einem Jäger an Bord schützen eigene Schiffe auf den Nachbarfeldern
+//                      (und sich selbst): Feindliche Jäger treffen dort nur zu 1/3
 // Feuerunterstützung – Schlachtschiffe wirken auf die acht Nachbarfelder (und das eigene Feld):
 //   Angriff:      Bodentruppen, die ein solches Feld angreifen, treffen zu 2/3; eine Stadt dort fällt zu 75 %
 //   Verteidigung: Bodentruppen auf einem solchen Feld werden nur zu 1/3 getroffen; eine eigene Stadt fällt nur zu 25 %
@@ -161,6 +163,15 @@ function fireSupport(owner, x, y) {
   if (owner < 0) return null;
   for (const u of S.units) {
     if (u.type === 'bat' && u.owner === owner && u.carrier == null && u.hp > 0 && cheb(u.x, u.y, x, y) <= 1) return u;
+  }
+  return null;
+}
+// Träger des Spielers mit Jägern an Bord, der das Feld (x, y) deckt – oder null
+function airCover(owner, x, y) {
+  if (owner == null || owner < 0) return null;
+  for (const u of S.units) {
+    if (u.type !== 'car' || u.owner !== owner || u.carrier != null || u.hp <= 0 || cheb(u.x, u.y, x, y) > 1) continue;
+    if (S.units.some(f => f.carrier === u.id && f.type === 'ftr')) return u;
   }
   return null;
 }
@@ -182,6 +193,7 @@ function combatSpec(a, d, x, y) {
   if (ta === 'ftr' && td === 'sub') { p = 2 / 3; notes.push(tt('Luftangriff auf U-Boot', 'air strike on submarine')); }
   if (ta === 'bat' && td === 'sub') { p = 1 / 4; ds *= 2; notes.push(tt('U-Boot taucht ab: schwer zu treffen, Torpedo-Gegenschlag', 'submarine dives: hard to hit, torpedo counter-strike')); }
   if (ta === 'ftr' && td === 'bat') { as *= 3; p = 2 / 3; notes.push(tt('Luftangriff auf Schlachtschiff', 'air strike on battleship')); }
+  if (ta === 'ftr' && T(d).domain === 'sea' && airCover(d.owner, x, y)) { p = 1 / 3; notes.push(tt('Luftdeckung durch Träger', 'air cover from a carrier')); }
   // Feuerunterstützung/Feuerschutz betreffen nur Bodentruppen
   if (T(a).domain === 'land' || T(d).domain === 'land') {
     const att = T(a).domain === 'land' && a.owner != null && !!fireSupport(a.owner, x, y);
@@ -280,6 +292,12 @@ function attack(u, nx, ny, enemies, city) {
   return { ok: true, died: !ok, combat: true };
 }
 
+// Wer verteidigt das Feld gegen u? Greifen Bodentruppen eine fremde Stadt an, kämpfen Schiffe im Hafen nicht mit –
+// fällt die Stadt, gehen sie mit unter (auch ein Schlachtschiff). So macht kein Schiff eine Stadt uneinnehmbar.
+function cityDefenders(u, city, enemies) {
+  return T(u).domain === 'land' && city && city.owner !== u.owner ? enemies.filter(o => T(o).domain !== 'sea') : enemies;
+}
+
 // Ein Schritt auf ein Nachbarfeld: bewegen, angreifen, erobern oder einsteigen
 function moveStep(u, nx, ny) {
   const t = T(u);
@@ -289,16 +307,17 @@ function moveStep(u, nx, ny) {
   const city = cityAt(nx, ny);
   const here = topUnitsAt(nx, ny);
   const enemies = here.filter(o => o.owner !== u.owner);
+  const foes = cityDefenders(u, city, enemies);
 
-  if (enemies.length) {
+  if (foes.length) {
     // Sonarkontakt: Liegt dort nur ein U-Boot, das der Spieler bisher nicht geortet hat, gibt es keinen Kampf.
     // Die Einheit bleibt stehen, das U-Boot ist jetzt entdeckt (sie steht ja direkt daneben).
-    if (enemies.every(o => T(o).stealth && !o.surf && !canSee(u.owner, o))) {
+    if (foes.every(o => T(o).stealth && !o.surf && !canSee(u.owner, o))) {
       computeVision(u.owner);
       return { ok: false, contact: true, msg: tt('Sonarkontakt: U-Boot voraus', 'Sonar contact: submarine ahead') };
     }
     if (t.str === 0) return { ok: false, msg: tt(`${t.name} kann nicht angreifen`, `${t.name} cannot attack`) };
-    return attack(u, nx, ny, enemies, city);
+    return attack(u, nx, ny, foes, city);
   }
   if (city && city.owner !== u.owner) {
     if (!t.capture) return { ok: false, msg: tt('Nur Infanterie und Panzer können Städte erobern', 'Only infantry and tanks can capture cities') };
@@ -306,8 +325,14 @@ function moveStep(u, nx, ny) {
     const supA = fireSupport(u.owner, nx, ny), supD = fireSupport(city.owner, nx, ny);
     if (hooks.salvo) { if (supA) hooks.salvo(supA, nx, ny); if (supD) hooks.salvo(supD, u.x, u.y); }
     if (rng() < captureChance(u.owner, city)) {
+      // Schiffe im Hafen gehen mit der Stadt unter
+      const mine = u.owner === 0 || city.owner === 0;
+      let sunk = 0;
+      for (const o of enemies) { sunk += 1 + cargoOf(o).length; killUnit(o); }
       relocate(u, nx, ny); u.carrier = null; u.order = null;
       captureCity(city, u.owner, u, !!supA);
+      if (sunk && mine) addLog(tt(`Mit ${city.name} ${sunk === 1 ? 'ging 1 Einheit im Hafen' : `gingen ${sunk} Einheiten im Hafen`} unter.`,
+        `${sunk === 1 ? '1 unit in port was' : `${sunk} units in port were`} lost with ${city.name}.`), u.owner === 0 ? 'good' : 'bad', nx, ny);
       return { ok: true, captured: city, died: true, consumed: true };
     }
     if (hooks.combat) hooks.combat(u, null, nx, ny, false);

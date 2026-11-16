@@ -195,6 +195,49 @@
   details.more summary:hover { color: #8fc0ff; }
   details.more[open] summary { margin-bottom: 6px; }
   details.more p { font-size: 13px; }
+  /* Handbuch */
+  .dlg.help { max-width: 940px; padding: 0; display: flex; flex-direction: column; height: min(88vh, 780px); overflow: hidden; }
+  .help-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 6px; }
+  .help-head h2 { margin: 0; }
+  .help-x { border: 0; background: none; font-size: 18px; padding: 4px 8px; color: var(--muted); }
+  .help-x:hover { color: var(--text); background: var(--panel2); }
+  .help-tabs { display: flex; gap: 4px; padding: 0 16px; border-bottom: 1px solid var(--line); overflow-x: auto; flex-shrink: 0; }
+  .help-tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 9px 12px; color: var(--muted); white-space: nowrap; font-weight: 600; }
+  .help-tabs button:hover { color: var(--text); background: none; }
+  .help-tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+  .help-body { flex: 1; overflow-y: auto; padding: 14px 22px 22px; }
+  .help-body h3 { margin: 18px 0 6px; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .help-body section > h3:first-child, .help-cols h3 { margin-top: 4px; }
+  .help-lead { font-size: 16px; margin: 4px 0 10px; }
+  .help-steps { margin: 0 0 12px; padding-left: 22px; }
+  .help-steps li { margin: 7px 0; }
+  .help-tip { margin: 12px 0; padding: 10px 12px; border: 1px solid #2f6f66; background: #12302c; border-radius: 8px; font-size: 13px; }
+  .help-tip b { color: #7fe0d0; }
+  .help-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; margin-top: 10px; }
+  .ucard { border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); padding: 10px 12px; }
+  .ucard-head { display: flex; align-items: center; gap: 10px; }
+  .ucard-head img { width: 40px; height: 40px; flex-shrink: 0; }
+  .ucard-head b { font-size: 16px; display: block; }
+  .ucard-head small { color: var(--muted); }
+  .ucard-stats { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+  .ucard-stats span { font-size: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 1px 7px; color: var(--muted); }
+  .ucard-stats span b { color: var(--text); font-weight: 600; }
+  .ucard p { font-size: 13px; margin: 6px 0; }
+  .ucard .vs { font-size: 12px; color: var(--muted); margin: 3px 0 0; }
+  .ucard .vs b.good { color: var(--good); } .ucard .vs b.bad { color: var(--bad); }
+  .help-matrix-wrap { overflow-x: auto; }
+  .dlg table.help-matrix { width: auto; min-width: 100%; font-variant-numeric: tabular-nums; }
+  .help-matrix th, .help-matrix td { text-align: center; padding: 4px 6px; white-space: nowrap; }
+  .help-matrix th.row { text-align: left; color: var(--text); }
+  .help-matrix th img { width: 22px; height: 22px; display: block; margin: 0 auto 2px; }
+  .help-matrix td.hi { background: rgba(76,195,138,.22); color: #bdf5d6; }
+  .help-matrix td.mid { background: rgba(242,184,75,.18); color: #ffe2a6; }
+  .help-matrix td.lo { background: rgba(255,107,97,.14); color: #ffc5c0; }
+  .help-matrix td.none { color: var(--muted); }
+  .help-rules td:first-child, .help-keys td:first-child { white-space: nowrap; font-weight: 600; vertical-align: top; }
+  .help-keys td:first-child { font-weight: 400; }
+  .help-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 4px 28px; }
+  @media (max-width: 760px) { .dlg.help { height: 92vh; } .help-rules td:first-child, .help-keys td:first-child { white-space: normal; } }
   kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-size: 12px; }
   @media (max-width: 760px) {
     #banner { left: 50%; white-space: normal; text-align: center; }
@@ -267,122 +310,187 @@
 </div>
 
 <div id="mHelp" class="modal" hidden>
-  <div class="dlg">
-    <h2 data-en="How to play">So wird gespielt</h2>
-    <p data-lang="de">Beim neuen Spiel wählst du die <b>Welt</b>: ein <b>Inselreich</b> aus vielen Inseln (ohne Schiffe geht wenig), eine <b>gemischte</b> Welt oder große <b>Kontinente</b> mit viel Landkrieg. Du startest mit <b>einer Stadt</b> und einer Infanterie. Ziel: alle Städte des Gegners erobern. Zu Beginn liegt fast alles im <b>Nebel</b>: Erkunde die Karte mit deinen Einheiten.</p>
-    <p data-lang="en">When starting a new game you choose the <b>world</b>: an <b>archipelago</b> of many islands (little works without ships), a <b>mixed</b> world, or large <b>continents</b> with lots of land warfare. You start with <b>one city</b> and one infantry. Goal: capture all enemy cities. At first almost everything lies in the <b>fog</b>: explore the map with your units.</p>
-    <p data-lang="de"><b>Städte</b> bauen Einheiten. Nach einer Eroberung fragt das Spiel gleich, was die neue Stadt bauen soll. Später klickst du auf eine eigene Stadt (ohne gewählte Einheit), um die Produktion zu ändern. Ein Wechsel setzt den Baufortschritt zurück. Schiffe können nur Küstenstädte bauen. Neutrale (graue) und feindliche Städte erobern nur <b>Infanterie und Panzer</b>, mit 50 % Erfolgschance. <b>Jede Eroberung kostet die Einheit:</b> Gelingt sie, geht der Eroberer in der Stadt auf, und die Stadt steht danach leer, bis du Truppen nachziehst oder sie selbst etwas baut. Misslingt der Angriff auf eine leere Stadt, ist die Einheit ebenfalls verloren. Für Eroberungen lohnt sich also die billigere Infanterie, der Panzer ist die schnelle Feldtruppe. Steht eine Besatzung in der Stadt, kämpft zuerst ihr stärkster Verteidiger. Gewinnt deine Infanterie oder dein Panzer, folgt sofort der 50-%-Wurf auf die Stadt: Fällt sie, geht die <b>gesamte restliche Besatzung</b> mit unter (auch Schiffe im Hafen und Jäger). Auch dann geht deine Einheit in der Stadt auf. Hält sie, bleibt deine Einheit vor der Stadt. Große Stapel in einer Stadt sind also ein Risiko.</p>
-    <p data-lang="en"><b>Cities</b> build units. After a capture the game immediately asks what the new city should build. Later you click on one of your cities (with no unit selected) to change its production. Switching resets the build progress. Only coastal cities can build ships. Neutral (grey) and enemy cities can only be captured by <b>infantry and tanks</b>, with a 50 % chance of success. <b>Every capture costs the unit:</b> if it succeeds, the conqueror is absorbed into the city, and the city then stands empty until you bring up troops or it builds something itself. If the attack on an empty city fails, the unit is lost as well. So infantry, being cheaper, is the better choice for captures; the tank is the fast field unit. If a garrison holds the city, its strongest defender fights first. If your infantry or tank wins, the 50 % roll for the city follows immediately: if it falls, the <b>entire remaining garrison</b> goes down with it (including ships in port and fighters). In that case, too, your unit is absorbed into the city. If the city holds, your unit stays outside. Big stacks in a city are therefore a risk.</p>
-    <p data-lang="de"><b>Übersee:</b> Bodentruppen fahren auf Transportern. Zieh sie auf einen Transporter neben der Küste, oder klicke im Hafen auf „Einladen“. Neben fremdem Land lädst du sie mit „Ausladen“ wieder aus.</p>
-    <p data-lang="en"><b>Overseas:</b> Ground troops travel on transports. Move them onto a transport next to the coast, or click “Load” in a port. Next to foreign land you unload them again with “Unload”.</p>
-    <p data-lang="de"><b>Jäger</b> haben 18 Felder Treibstoff und müssen zu einer eigenen Stadt oder einem Träger zurück. Jede Runde in der Luft kostet mindestens 6 Felder Treibstoff.</p>
-    <p data-lang="en"><b>Fighters</b> have 18 tiles of fuel and must return to one of your cities or a carrier. Every turn in the air costs at least 6 tiles of fuel.</p>
-    <p data-lang="de"><b>Kampf:</b> In jeder Kampfrunde trifft eine Seite zufällig (50:50) und richtet so viel Schaden an, wie ihre Stärke beträgt. Wer zuerst keine Trefferpunkte mehr hat, verliert. Fährst du mit der Maus über einen Gegner, siehst du deine Siegchance. Einheiten in eigenen Städten werden repariert – außer <b>Panzern</b>: Ein beschädigter Panzer bleibt beschädigt. <b>Küstenbatterien:</b> Greift ein Schiff Einheiten in einer Stadt an, verteidigen diese mit doppelter Stärke. Schiffe eignen sich daher eher zur Unterstützung einer Landung als zum Belagern.</p>
-    <p data-lang="en"><b>Combat:</b> In each combat round one side hits at random (50:50) and deals as much damage as its strength. Whoever runs out of hit points first loses. Hover over an enemy to see your win chance. Units in your own cities are repaired – except <b>tanks</b>: a damaged tank stays damaged. <b>Coastal batteries:</b> if a ship attacks units in a city, they defend with double strength. Ships are therefore better at supporting a landing than at laying siege.</p>
-    <p data-lang="de"><b>Schlachtschiffe</b> geben <b>Feuerunterstützung</b> auf alle Nachbarfelder. Im Angriff: Eine fremde Stadt neben deinem Schlachtschiff fällt zu 75 % statt 50 %, und deine Bodentruppen treffen dort zu zwei Dritteln. In der Verteidigung: Eine eigene Stadt neben deinem Schlachtschiff fällt nur zu 25 %, und deine Bodentruppen dort werden nur zu einem Drittel getroffen. Liegen Schlachtschiffe beider Seiten am selben Feld, hebt es sich auf. Auf der Karte zeigen <b>Eckwinkel</b> um eine Stadt, dass sie unter Feuer liegt, ein <b>gestrichelter Ring</b>, dass sie geschützt ist. Ein Schlachtschiff ist damit ein lohnendes Ziel: U-Boote schlagen es in jedem zweiten Angriff und sind für das Schlachtschiff selbst schwer zu fassen (dafür braucht es Zerstörer oder Kreuzer), und Jäger richten dreifachen Schaden an – ein Schwarm versenkt es.</p>
-    <p data-lang="en"><b>Battleships</b> give <b>fire support</b> to all adjacent tiles. On the attack: a foreign city next to your battleship falls 75 % of the time instead of 50 %, and your ground troops hit two thirds of the time there. On defence: one of your cities next to your battleship falls only 25 % of the time, and your ground troops there are hit only one third of the time. If battleships of both sides are next to the same tile, the effects cancel out. On the map, <b>corner brackets</b> around a city show that it is under fire, a <b>dashed ring</b> that it is covered. That makes a battleship a worthwhile target: submarines beat it in every second attack and are hard for the battleship itself to catch (that takes destroyers or cruisers), and fighters deal triple damage – a swarm will sink it.</p>
-    <p data-lang="de"><b>U-Boote</b> sind <b>getarnt</b>: Ein getauchtes U-Boot sieht nur, wer direkt daneben steht (Einheit oder Stadt). Nur <b>Zerstörer</b> orten es in ihrer vollen Sichtweite von 2 Feldern. Das U-Boot selbst sieht 2 Felder weit: Es kann ein Ziel ausmachen, ohne geortet zu sein. Greift ein U-Boot an, taucht es auf und ist bis zu seinem nächsten Zug für alle sichtbar. Getauchte U-Boote sind blasser gezeichnet und tragen Wellenlinien. Marsch, Patrouille und Erkundung halten bei „Sonarkontakt“ an.</p>
-    <p data-lang="en"><b>Submarines</b> are <b>hidden</b>: a submerged submarine is only seen by whoever is right next to it (unit or city). Only <b>destroyers</b> locate it at their full vision range of 2 tiles. The submarine itself sees 2 tiles: it can pick out a target without being located. When a submarine attacks, it surfaces and is visible to everyone until its next turn. Submerged submarines are drawn paler and carry wavy lines. Go-to, patrol and explore orders stop on “sonar contact”.</p>
-    <p data-lang="de"><b>Stärken und Schwächen:</b> Manche Einheiten sind gegen bestimmte andere besonders wirksam. Die angezeigte Siegchance berücksichtigt das, die Fußzeile nennt den Grund.</p>
-    <p data-lang="en"><b>Strengths and weaknesses:</b> Some units are especially effective against certain others. The displayed win chance takes this into account, and the footer names the reason.</p>
-    <table>
-      <tr><th data-en="If …">Wenn …</th><th data-en="then">dann</th><th data-en="Attacker's win chance">Siegchance des Angreifers</th></tr>
-      <tr><td data-en="Submarine attacks battleship, cruiser or carrier">U-Boot greift Schlachtschiff, Kreuzer oder Träger an</td><td data-en="Torpedo surprise: first hit guaranteed, double strength">Torpedo-Überraschung: erster Treffer sicher, doppelte Stärke</td><td data-en="vs. battleship and cruiser 50 % (otherwise 6 and 13 %), vs. carrier 75 %">gegen Schlachtschiff und Kreuzer 50 % (sonst 6 bzw. 13 %), gegen Träger 75 %</td></tr>
-      <tr><td data-en="Destroyer attacks submarine">Zerstörer greift U-Boot an</td><td data-en="Sonar: first hit guaranteed, then the destroyer hits 2/3 of the time">Sonar: erster Treffer sicher, danach trifft der Zerstörer zu 2/3</td><td data-en="67 % (otherwise 25 %)">67 % (sonst 25 %)</td></tr>
-      <tr><td data-en="Submarine attacks destroyer">U-Boot greift Zerstörer an</td><td data-en="Depth charges: destroyer defends with double strength">Wasserbomben: Zerstörer verteidigt doppelt stark</td><td data-en="50 % (otherwise 75 %)">50 % (sonst 75 %)</td></tr>
-      <tr><td data-en="Battleship attacks submarine">Schlachtschiff greift U-Boot an</td><td data-en="Submarine dives: the battleship hits only 1/4 of the time, the submarine strikes back with double strength">U-Boot taucht ab: Das Schlachtschiff trifft nur zu 1/4, das U-Boot schlägt mit doppelter Stärke zurück</td><td data-en="44 % (otherwise 94 %)">44 % (sonst 94 %)</td></tr>
-      <tr><td data-en="Fighter attacks battleship">Jäger greift Schlachtschiff an</td><td data-en="Air strike: fighter hits 2/3 of the time with triple damage; the damage stays">Luftangriff: Jäger trifft zu 2/3 mit dreifachem Schaden; der Schaden bleibt</td><td data-en="20 % (otherwise 0 %), on average almost half its hit points gone">20 % (sonst 0 %), im Schnitt fast die Hälfte der Trefferpunkte weg</td></tr>
-      <tr><td data-en="Ground unit attacks a tile next to its own battleship">Bodentruppe greift ein Feld neben eigenem Schlachtschiff an</td><td data-en="Fire support: hits 2/3 of the time">Feuerunterstützung: trifft zu 2/3</td><td data-en="infantry vs. infantry 67 % (otherwise 50 %)">Infanterie gegen Infanterie 67 % (sonst 50 %)</td></tr>
-      <tr><td data-en="Ground unit is attacked next to its own battleship">Bodentruppe wird neben eigenem Schlachtschiff angegriffen</td><td data-en="Covering fire: the attacker hits only 1/3 of the time">Feuerschutz: Angreifer trifft nur zu 1/3</td><td data-en="infantry vs. infantry 33 % (otherwise 50 %)">Infanterie gegen Infanterie 33 % (sonst 50 %)</td></tr>
-      <tr><td data-en="Fighter attacks submarine">Jäger greift U-Boot an</td><td data-en="Submarine on the surface: fighter hits 2/3 of the time">U-Boot an der Oberfläche: Jäger trifft zu 2/3</td><td data-en="44 % (otherwise 25 %)">44 % (sonst 25 %)</td></tr>
-    </table>
-    <table>
-      <tr><th data-en="Unit">Einheit</th><th data-en="Move">Bew.</th><th data-en="HP">TP</th><th data-en="Strength">Stärke</th><th data-en="Build time">Bauzeit</th><th data-en="Special">Besonderes</th></tr>
-      <tbody id="unitTable"></tbody>
-    </table>
-    <details class="more">
-      <summary data-en="More about the difficulty levels and the computer opponent">Mehr über die Schwierigkeitsstufen und den Computergegner</summary>
-      <p data-lang="de">Die Schwierigkeit wählst du unter <b>Neues Spiel</b>. Sie verändert nur den Gegner und die Startbedingungen.
-        Würfelglück, Sichtweiten und Regeln sind auf allen Stufen gleich.</p>
-      <p data-lang="en">You choose the difficulty under <b>New game</b>. It only changes the enemy and the starting conditions.
-        Dice luck, vision ranges and rules are the same on every level.</p>
-      <table>
-        <thead><tr><th data-en="Level">Stufe</th><th data-en="Play style">Spielweise</th><th data-en="Knows map">Kennt Karte</th><th data-en="Mistakes">Fehler</th><th data-en="Build speed">Bautempo</th><th data-en="Lands with">Landet ab</th><th>Start</th></tr></thead>
-        <tbody id="diffTable"></tbody>
-      </table>
-      <p data-lang="de"><b>Kennt Karte:</b> Auf Leicht und Normal kennt der Gegner nur, was seine Einheiten und Städte gesehen haben,
-        genau wie du. Er muss erkunden: Bodentruppen laufen zum Rand des Nebels, Zerstörer und Jäger dienen als Späher.
-        Auf Schwer und Brutal kennt er alle Inseln und Städte von Anfang an. Deine Einheiten sieht er auf allen Stufen
-        nur in seiner Sichtweite.</p>
-      <p data-lang="en"><b>Knows map:</b> On Easy and Normal the enemy only knows what its units and cities have seen,
-        just like you. It has to explore: ground troops head for the edge of the fog, destroyers and fighters serve as scouts.
-        On Hard and Brutal it knows all islands and cities from the start. On every level it only sees your units
-        within its vision range.</p>
-      <p data-lang="de"><b>Spielweise:</b> Auf Leicht und Normal spielt der Gegner <b>einfach</b>: Alle Truppen laufen zur nächstgelegenen Stadt.
-        Auf Schwer und Brutal spielt er <b>umsichtig</b>: Seine Truppen verteilen sich auf mehrere Städte zugleich, gelandete Einheiten
-        von dir werden gejagt, und eine bedrohte Stadt baut sofort Infanterie. Beladene Transporter weichen deinen Kriegsschiffen aus,
-        Jäger machen gezielt Jagd auf deine Transporter. Jeder Transporter bekommt einen Zerstörer als Geleitschutz, der U-Boote ortet. Panzer baut er nur noch gegen deine Städte, für neutrale reicht ihm Infanterie.</p>
-      <p data-lang="en"><b>Play style:</b> On Easy and Normal the enemy plays <b>simply</b>: all troops head for the nearest city.
-        On Hard and Brutal it plays <b>shrewdly</b>: its troops spread out over several cities at once, units you land
-        are hunted down, and a threatened city builds infantry right away. Loaded transports steer clear of your warships,
-        and fighters go after your transports. Every transport gets a destroyer as an escort that locates submarines. It builds tanks only against your cities; infantry is enough for neutral ones.</p>
-      <p data-lang="de"><b>Fehler:</b> Anteil „menschlicher“ Fehlentscheidungen. Der Gegner vergisst dann eine Einheit für eine Runde,
-        schätzt einen Angriff falsch ein (zu wagemutig oder zu zaghaft) oder baut etwas Unpassendes.</p>
-      <p data-lang="en"><b>Mistakes:</b> share of “human” bad decisions. The enemy then forgets a unit for a turn,
-        misjudges an attack (too bold or too timid) or builds something unsuitable.</p>
-      <p data-lang="de"><b>Bautempo:</b> wie schnell gegnerische Städte Einheiten fertigstellen, verglichen mit deinen.
-        <b>Landet ab:</b> mit wie vielen Truppen an Bord ein Transporter eine Landung wagt.</p>
-      <p data-lang="en"><b>Build speed:</b> how fast enemy cities complete units compared with yours.
-        <b>Lands with:</b> how many troops a transport needs on board before it dares a landing.</p>
-      <p data-lang="de"><b>Wie der Gegner denkt:</b> Er folgt festen Regeln je Einheit (eine Art Entscheidungsbaum) und denkt nicht voraus.
-        Vor jedem Angriff berechnet er die Siegchance und greift nur an, wenn sie hoch genug ist. Auf Leicht ist er dabei
-        vorsichtiger. Seine Städte bauen zuerst Bodentruppen, solange es auf dem eigenen Kontinent noch etwas zu erobern
-        gibt, danach Transporter, Nachschub und Flotte. Er hat keine übergreifende Strategie und stimmt Großangriffe nicht ab. Wer seine Kräfte bündelt,
-        ist ihm überlegen. Seine Städte lässt er unbesetzt: Er setzt ganz auf Angriff. Er baut etwa ein U-Boot je fünf Städte: Sie lauern getaucht vor deinen Häfen und greifen nur Transporter und große Schiffe an. Zerstörer als Geleitschutz sind das Gegenmittel.</p>
-      <p data-lang="en"><b>How the enemy thinks:</b> It follows fixed rules for each unit (a kind of decision tree) and does not plan ahead.
-        Before every attack it calculates the win chance and only attacks if it is high enough. On Easy it is
-        more cautious. Its cities build ground troops first, as long as there is still something to capture on its own
-        continent, then transports, reinforcements and a fleet. It has no overall strategy and does not coordinate large attacks. If you concentrate your forces,
-        you will outmatch it. It leaves its cities ungarrisoned: it relies entirely on attack. It builds about one submarine per five cities: they lurk submerged off your ports and attack only transports and big ships. Destroyers as escorts are the remedy.</p>
-      <p data-lang="de" class="muted">In Testpartien gegen einen Computerspieler, der selbst erkunden muss und keine Fehler macht, gewann
-        dieser auf Leicht praktisch immer, auf Normal die Hälfte bis zwei Drittel, auf Schwer etwa jede siebte Partie und auf Brutal praktisch nie.
-        Wie schwer es für dich ist, hängt natürlich von deiner Spielweise ab.</p>
-      <p data-lang="en" class="muted">In test games against a computer player that has to explore by itself and makes no mistakes, that player
-        won practically always on Easy, half to two thirds of the time on Normal, about one game in seven on Hard and practically never on Brutal.
-        How hard it is for you naturally depends on your style of play.</p>
-    </details>
+  <div class="dlg help">
+    <div class="help-head">
+      <h2 data-en="Handbook">Handbuch</h2>
+      <button class="help-x" data-close aria-label="Schließen" data-en-aria-label="Close">✕</button>
+    </div>
+    <nav class="help-tabs" id="helpTabs">
+      <button data-tab="start" data-en="First steps">Erste Schritte</button>
+      <button data-tab="units" data-en="Units">Einheiten</button>
+      <button data-tab="combat" data-en="Combat">Kampf</button>
+      <button data-tab="keys" data-en="Controls">Steuerung</button>
+      <button data-tab="ai" data-en="Enemy &amp; levels">Gegner &amp; Stufen</button>
+      <button data-tab="about" data-en="About">Über das Spiel</button>
+    </nav>
+    <div class="help-body" id="helpBody">
 
-    <h3 data-en="Controls">Steuerung</h3>
-    <p data-lang="de">
-      <b>Klick</b> auf ein Nachbarfeld: ziehen oder angreifen. <b>Klick</b> auf ein entferntes Feld: Marschbefehl (läuft über mehrere Runden). <b>Klick auf eine eigene Stadt</b> schickt die gewählte Einheit dorthin; zum Bearbeiten der Stadt erst die Auswahl aufheben (Rechtsklick oder <kbd>Esc</kbd>) und dann die Stadt anklicken. <b>Rechtsklick auf eine eigene Einheit oder Stadt</b> öffnet ein Menü mit allen Befehlen, der Auswahl unter mehreren Einheiten auf dem Feld und „Produktion ändern“. Marsch, Patrouille und Erkunden halten an, sobald die Einheit eine unbekannte Stadt entdeckt, eine feindliche Stadt oder Einheit sichtet oder ihr direkt gegenübersteht – dann bist du gefragt.
-      <b>Umschalt+Klick</b>: Marschbefehl auch auf Felder mit eigenen Einheiten. <b>Rechtsklick</b> / <kbd>Esc</kbd>: Auswahl aufheben. <b>Mittlere oder rechte Maustaste gedrückt halten und ziehen</b>: Karte verschieben. <b>Mausrad</b>: zoomen.<br>
-      Richtungen: <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd> / <kbd>A</kbd><kbd>D</kbd> / <kbd>Y</kbd>/<kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd>, Pfeiltasten oder Ziffernblock.<br>
-      <kbd>Leertaste</kbd> Einheit überspringen · <kbd>S</kbd> Wache (Einheit wartet) · <kbd>P</kbd> Patrouille (Wegpunkte anklicken, <kbd>Enter</kbd> startet, Rechtsklick löscht den letzten) · <kbd>R</kbd> Erkunden (Einheit zieht selbstständig ins Unbekannte) · <kbd>B</kbd> Heimkehr (Marsch zur nächsten eigenen Stadt, Schiffe zum nächsten eigenen Hafen) · <kbd>N</kbd> nächste Einheit ·
-      <kbd>L</kbd> Einladen · <kbd>U</kbd> Ausladen · <kbd>Enter</kbd> Runde beenden (endet auf Wunsch auch automatisch, sobald alle Einheiten gezogen haben) · <kbd>+</kbd>/<kbd>−</kbd> Zoom · <kbd>M</kbd> Ton an/aus · <kbd>K</kbd> Klangtest · <kbd>I</kbd> Statistik
-    </p>
-    <p data-lang="en">
-      <b>Click</b> a neighbouring tile: move or attack. <b>Click</b> a distant tile: march order (runs over several turns). <b>Clicking one of your cities</b> sends the selected unit there; to manage the city, first clear the selection (right-click or <kbd>Esc</kbd>) and then click the city. <b>Right-clicking one of your units or cities</b> opens a menu with all commands, a choice among several units on the tile and “Change production”. March, patrol and explore stop as soon as the unit discovers an unknown city, sights an enemy city or unit, or stands right next to one – then it is your call.
-      <b>Shift+click</b>: march order even onto tiles with your own units. <b>Right-click</b> / <kbd>Esc</kbd>: clear selection. <b>Hold the middle or right mouse button and drag</b>: pan the map. <b>Mouse wheel</b>: zoom.<br>
-      Directions: <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd> / <kbd>A</kbd><kbd>D</kbd> / <kbd>Y</kbd>/<kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd>, arrow keys or numpad.<br>
-      <kbd>Space</kbd> skip unit · <kbd>S</kbd> sentry (unit waits) · <kbd>P</kbd> patrol (click waypoints, <kbd>Enter</kbd> starts, right-click removes the last one) · <kbd>R</kbd> explore (unit moves into the unknown on its own) · <kbd>B</kbd> return home (march to the nearest own city, ships to the nearest own port) · <kbd>N</kbd> next unit ·
-      <kbd>L</kbd> load · <kbd>U</kbd> unload · <kbd>Enter</kbd> end turn (can also end automatically once all units have moved) · <kbd>+</kbd>/<kbd>−</kbd> zoom · <kbd>M</kbd> sound on/off · <kbd>K</kbd> sound test · <kbd>I</kbd> statistics
-    </p>
-    <p data-lang="de" class="muted">Das Spiel speichert nach jeder Runde automatisch im Browser.</p>
-    <p data-lang="en" class="muted">The game saves automatically in your browser after every turn.</p>
-    <h3 data-en="Privacy">Datenschutz</h3>
-    <p data-lang="de" class="muted" style="font-size:13px">Archipel verwendet <b>keine Cookies</b>, <b>kein Tracking</b> und lädt <b>nichts von anderen Servern</b>
+      <section data-pane="start">
+        <p class="help-lead" data-lang="de">Erobere alle Städte des Gegners. Du startest mit <b>einer Stadt</b> und einer Infanterie, fast alles liegt im <b>Nebel</b>.</p>
+        <p class="help-lead" data-lang="en">Capture all of the enemy's cities. You start with <b>one city</b> and one infantry, and almost everything lies in the <b>fog</b>.</p>
+        <ol class="help-steps" data-lang="de">
+          <li><b>Ziehen:</b> Einheit anklicken, dann ein Nachbarfeld. Ein Klick auf ein entferntes Feld gibt einen Marschbefehl über mehrere Runden.</li>
+          <li><b>Erkunden:</b> Nur was deine Einheiten und Städte sehen, ist sichtbar. Mit <kbd>R</kbd> erkundet eine Einheit von selbst.</li>
+          <li><b>Städte erobern:</b> Das können nur <b>Infanterie und Panzer</b>, mit 50 % Chance. Gelingt es, geht die Einheit in der Stadt auf – die Stadt gehört dir, steht aber leer. Misslingt es, ist die Einheit verloren.</li>
+          <li><b>Bauen:</b> Jede Stadt baut ständig eine Einheit. Nach einer Eroberung fragt das Spiel, was sie bauen soll; später klickst du die Stadt an (ohne gewählte Einheit). Ein Wechsel setzt den Fortschritt zurück. Schiffe bauen nur Küstenstädte.</li>
+          <li><b>Übers Meer:</b> Bodentruppen fahren auf <b>Transportern</b>. Im Hafen „Einladen“ (<kbd>L</kbd>), neben fremdem Land „Ausladen“ (<kbd>U</kbd>).</li>
+          <li><b>Runde beenden:</b> <kbd>Enter</kbd> – danach zieht der Gegner. Auf Wunsch endet die Runde von selbst, sobald alle Einheiten gezogen haben.</li>
+        </ol>
+        <ol class="help-steps" data-lang="en">
+          <li><b>Moving:</b> click a unit, then an adjacent tile. Clicking a distant tile gives a march order that runs over several turns.</li>
+          <li><b>Exploring:</b> you only see what your units and cities see. Press <kbd>R</kbd> and a unit explores on its own.</li>
+          <li><b>Capturing cities:</b> only <b>infantry and tanks</b> can do it, with a 50 % chance. If it works, the unit merges into the city – the city is yours but stands empty. If it fails, the unit is lost.</li>
+          <li><b>Building:</b> every city is always building a unit. After a capture the game asks what it should build; later you click the city (with no unit selected). Switching resets the progress. Only coastal cities build ships.</li>
+          <li><b>Across the sea:</b> ground troops travel on <b>transports</b>. In a port use “Load” (<kbd>L</kbd>), next to foreign land “Unload” (<kbd>U</kbd>).</li>
+          <li><b>Ending the turn:</b> <kbd>Enter</kbd> – then the enemy moves. If you like, the turn ends by itself once all units have moved.</li>
+        </ol>
+        <div class="help-tip" data-lang="de"><b>Drei Tipps:</b> Angriff zahlt sich mehr aus als Verteidigung – wer vorrückt, wächst schneller. Für neutrale Städte reicht die billige Infanterie. Und schick Transporter nie allein los: Ein Zerstörer als Begleitung ortet lauernde U-Boote.</div>
+        <div class="help-tip" data-lang="en"><b>Three tips:</b> attack pays off more than defence – whoever advances grows faster. Cheap infantry is enough for neutral cities. And never send transports out alone: a destroyer escort locates lurking submarines.</div>
+        <p class="muted" data-lang="de">Beim neuen Spiel wählst du die <b>Welt</b>: ein <b>Inselreich</b> aus vielen Inseln, eine <b>gemischte</b> Welt oder große <b>Kontinente</b> mit viel Landkrieg.</p>
+        <p class="muted" data-lang="en">When you start a new game you choose the <b>world</b>: an <b>archipelago</b> of many islands, a <b>mixed</b> world, or large <b>continents</b> with lots of land warfare.</p>
+      </section>
+
+      <section data-pane="units" hidden>
+        <p class="muted" data-lang="de">Jede Einheit hat eine eigene Aufgabe. „Stark gegen“ und „Verwundbar durch“ ergeben sich aus den Kampfregeln (Siegchance ab zwei Dritteln, oder etwa 50:50 gegen etwas deutlich Teureres).</p>
+        <p class="muted" data-lang="en">Every unit has a job of its own. “Strong against” and “Vulnerable to” follow from the combat rules (win chance of two thirds or more, or about 50:50 against something much more expensive).</p>
+        <div class="help-cards" id="helpUnits"></div>
+      </section>
+
+      <section data-pane="combat" hidden>
+        <p data-lang="de">In jeder Kampfrunde trifft eine Seite zufällig (50:50) und richtet so viel Schaden an, wie ihre Stärke beträgt. Wer keine Trefferpunkte mehr hat, verliert. <b>Fahr mit der Maus über einen Gegner:</b> Die Fußzeile zeigt deine Siegchance und nennt den Grund für Zu- oder Abschläge. Einheiten in eigenen Städten werden repariert, Panzer nicht.</p>
+        <p data-lang="en">In each combat round one side hits at random (50:50) and deals as much damage as its strength. Whoever runs out of hit points loses. <b>Hover over an enemy:</b> the footer shows your win chance and names the reason for any bonus or penalty. Units in your own cities are repaired, tanks are not.</p>
+        <h3 data-en="Who beats whom">Wer schlägt wen</h3>
+        <p class="muted" data-lang="de">Siegchance des Angreifers (Zeile) gegen den Verteidiger (Spalte), beide unbeschädigt, auf offenem Feld. Die Werte berechnet das Spiel aus den geltenden Regeln.</p>
+        <p class="muted" data-lang="en">Win chance of the attacker (row) against the defender (column), both undamaged, in the open. The game calculates the values from the current rules.</p>
+        <div class="help-matrix-wrap"><table class="help-matrix" id="helpMatrix"></table></div>
+        <h3 data-en="Special rules">Sonderregeln</h3>
+        <table class="help-rules">
+          <tr><th data-en="Rule">Regel</th><th data-en="Effect">Wirkung</th></tr>
+          <tr><td data-en="Capture">Eroberung</td><td data-en="Infantry and tanks take a city 50 % of the time. If the city is occupied, they must first beat the strongest defender; if the assault then succeeds, the whole garrison falls. Ships in port do not defend a city against ground troops: if the city falls, they are lost with it – even a battleship.">Infanterie und Panzer nehmen eine Stadt zu 50 %. Ist sie besetzt, müssen sie erst den stärksten Verteidiger schlagen; gelingt danach der Sturm, fällt die ganze Besatzung. Schiffe im Hafen verteidigen eine Stadt nicht gegen Bodentruppen: Fällt die Stadt, gehen sie mit unter – auch ein Schlachtschiff.</td></tr>
+          <tr><td data-en="Fire support (battleship)">Feuerunterstützung (Schlachtschiff)</td><td data-en="A foreign city next to your battleship falls 75 % of the time, and your ground troops hit 2/3 of the time there. Corner brackets mark the city.">Eine fremde Stadt neben deinem Schlachtschiff fällt zu 75 %, und deine Bodentruppen treffen dort zu 2/3. Eckwinkel markieren die Stadt.</td></tr>
+          <tr><td data-en="Covering fire (battleship)">Feuerschutz (Schlachtschiff)</td><td data-en="One of your cities next to your battleship falls only 25 % of the time, and your ground troops there are hit only 1/3 of the time. A dashed ring marks the city. If both sides have a battleship there, the effects cancel out.">Eine eigene Stadt neben deinem Schlachtschiff fällt nur zu 25 %, und deine Bodentruppen dort werden nur zu 1/3 getroffen. Ein gestrichelter Ring markiert die Stadt. Liegen Schlachtschiffe beider Seiten dort, hebt es sich auf.</td></tr>
+          <tr><td data-en="Air cover (carrier)">Luftdeckung (Träger)</td><td data-en="A carrier with at least one fighter on board protects itself and your ships on adjacent tiles: enemy fighters hit only 1/3 of the time. A dashed ring marks covered ships.">Ein Träger mit mindestens einem Jäger an Bord schützt sich und eigene Schiffe auf den Nachbarfeldern: Feindliche Jäger treffen nur zu 1/3. Ein gestrichelter Ring markiert geschützte Schiffe.</td></tr>
+          <tr><td data-en="Stealth (submarine)">Tarnung (U-Boot)</td><td data-en="A submerged submarine is only seen by units and cities right next to it, and by destroyers within 2 tiles. After attacking it is surfaced until its next turn (wave below the boat) and visible to everyone.">Ein getauchtes U-Boot sehen nur Einheiten und Städte direkt daneben sowie Zerstörer im Umkreis von 2 Feldern. Nach einem Angriff ist es bis zu seinem nächsten Zug aufgetaucht (Welle unter dem Boot) und für alle sichtbar.</td></tr>
+          <tr><td data-en="Torpedo (submarine)">Torpedo (U-Boot)</td><td data-en="Against battleships, cruisers and carriers the submarine hits first, with double strength.">Gegen Schlachtschiff, Kreuzer und Träger trifft das U-Boot zuerst und mit doppelter Stärke.</td></tr>
+          <tr><td data-en="Sonar and depth charges (destroyer)">Sonar und Wasserbomben (Zerstörer)</td><td data-en="Attacking a submarine, the destroyer hits first and then 2/3 of the time. Attacked by a submarine, it defends with double strength.">Greift der Zerstörer ein U-Boot an, trifft er zuerst und danach zu 2/3. Wird er von einem U-Boot angegriffen, verteidigt er doppelt stark.</td></tr>
+          <tr><td data-en="Submarine dives (battleship)">U-Boot taucht ab (Schlachtschiff)</td><td data-en="A battleship attacking a submarine hits only 1/4 of the time, and the submarine strikes back with double strength.">Ein Schlachtschiff, das ein U-Boot angreift, trifft nur zu 1/4, und das U-Boot schlägt mit doppelter Stärke zurück.</td></tr>
+          <tr><td data-en="Air strike (fighter)">Luftangriff (Jäger)</td><td data-en="Against battleships the fighter hits 2/3 of the time with triple damage, and the damage stays – a swarm will sink one. Against submarines it hits 2/3 of the time.">Gegen Schlachtschiffe trifft der Jäger zu 2/3 mit dreifachem Schaden, und der Schaden bleibt – ein Schwarm versenkt eines. Gegen U-Boote trifft er zu 2/3.</td></tr>
+          <tr><td data-en="Coastal battery">Küstenbatterie</td><td data-en="If a ship attacks units in a city, they defend with double strength.">Greift ein Schiff Einheiten in einer Stadt an, verteidigen diese mit doppelter Stärke.</td></tr>
+        </table>
+      </section>
+
+      <section data-pane="keys" hidden>
+        <div class="help-cols">
+          <div>
+            <h3 data-en="Mouse">Maus</h3>
+            <table class="help-keys">
+              <tr><td data-en="Click an adjacent tile">Klick auf ein Nachbarfeld</td><td data-en="move or attack">ziehen oder angreifen</td></tr>
+              <tr><td data-en="Click a distant tile">Klick auf ein entferntes Feld</td><td data-en="march order over several turns">Marschbefehl über mehrere Runden</td></tr>
+              <tr><td data-en="Click your own city">Klick auf eine eigene Stadt</td><td data-en="with a unit selected: send it there; without: choose production">mit gewählter Einheit: dorthin schicken; ohne: Produktion wählen</td></tr>
+              <tr><td data-en="Right-click your unit or city">Rechtsklick auf eigene Einheit oder Stadt</td><td data-en="menu with all commands">Menü mit allen Befehlen</td></tr>
+              <tr><td data-en="Right-click elsewhere">Rechtsklick woanders</td><td data-en="clear selection">Auswahl aufheben</td></tr>
+              <tr><td data-en="Shift + click">Umschalt + Klick</td><td data-en="march order even onto tiles with your own units">Marschbefehl auch auf Felder mit eigenen Einheiten</td></tr>
+              <tr><td data-en="Hold right or middle button and drag">Rechte oder mittlere Taste halten und ziehen</td><td data-en="pan the map">Karte verschieben</td></tr>
+              <tr><td data-en="Mouse wheel">Mausrad</td><td data-en="zoom">zoomen</td></tr>
+              <tr><td data-en="Click a message">Klick auf eine Meldung</td><td data-en="jump to the place">zur Stelle springen</td></tr>
+            </table>
+          </div>
+          <div>
+            <h3 data-en="Keys">Tasten</h3>
+            <table class="help-keys">
+              <tr><td><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd> <kbd>A</kbd><kbd>D</kbd> <kbd>Y</kbd><kbd>X</kbd><kbd>C</kbd></td><td data-en="move in eight directions (also arrow keys, numpad; Z works like Y)">in acht Richtungen ziehen (auch Pfeiltasten, Ziffernblock; Z wirkt wie Y)</td></tr>
+              <tr><td><kbd>Enter</kbd></td><td data-en="end turn">Runde beenden</td></tr>
+              <tr><td><kbd>N</kbd></td><td data-en="next waiting unit">nächste wartende Einheit</td></tr>
+              <tr><td><kbd data-en="Space">Leertaste</kbd></td><td data-en="skip unit this turn">Einheit diese Runde überspringen</td></tr>
+              <tr><td><kbd>S</kbd></td><td data-en="sentry: unit waits until woken">Wache: Einheit wartet, bis du sie weckst</td></tr>
+              <tr><td><kbd>R</kbd></td><td data-en="explore: unit heads into the unknown on its own">Erkunden: Einheit zieht selbstständig ins Unbekannte</td></tr>
+              <tr><td><kbd>P</kbd></td><td data-en="patrol: click waypoints, Enter starts, right-click removes the last">Patrouille: Wegpunkte anklicken, Enter startet, Rechtsklick löscht den letzten</td></tr>
+              <tr><td><kbd>B</kbd></td><td data-en="return home: to the nearest own city or port">Heimkehr: zur nächsten eigenen Stadt bzw. zum nächsten Hafen</td></tr>
+              <tr><td><kbd>L</kbd> <kbd>U</kbd></td><td data-en="load / unload">Einladen / Ausladen</td></tr>
+              <tr><td><kbd>Esc</kbd></td><td data-en="clear selection, close windows">Auswahl aufheben, Fenster schließen</td></tr>
+              <tr><td><kbd>+</kbd> <kbd>−</kbd></td><td data-en="zoom">Zoom</td></tr>
+              <tr><td><kbd>H</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>K</kbd></td><td data-en="handbook · statistics · sound on/off · sound test">Handbuch · Statistik · Ton an/aus · Klangtest</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="help-tip" data-lang="de"><b>Befehle halten von selbst an:</b> Marsch, Patrouille und Erkunden stoppen, sobald die Einheit eine unbekannte Stadt entdeckt, eine feindliche Stadt oder Einheit sichtet, ein U-Boot ortet (Sonarkontakt) oder einem Feind direkt gegenübersteht. Dann bist du gefragt.</div>
+        <div class="help-tip" data-lang="en"><b>Orders stop by themselves:</b> march, patrol and explore stop as soon as the unit discovers an unknown city, sights an enemy city or unit, locates a submarine (sonar contact) or stands right next to an enemy. Then it is your call.</div>
+      </section>
+
+      <section data-pane="ai" hidden>
+        <p data-lang="de">Die Schwierigkeit wählst du unter <b>Neues Spiel</b>. Sie verändert nur den Gegner und die Startbedingungen.
+          Würfelglück, Sichtweiten und Regeln sind auf allen Stufen gleich.</p>
+        <p data-lang="en">You choose the difficulty under <b>New game</b>. It only changes the enemy and the starting conditions.
+          Dice luck, vision ranges and rules are the same on every level.</p>
+        <table>
+          <thead><tr><th data-en="Level">Stufe</th><th data-en="Play style">Spielweise</th><th data-en="Knows map">Kennt Karte</th><th data-en="Mistakes">Fehler</th><th data-en="Build speed">Bautempo</th><th data-en="Lands with">Landet ab</th><th>Start</th></tr></thead>
+          <tbody id="diffTable"></tbody>
+        </table>
+        <p data-lang="de"><b>Kennt Karte:</b> Auf Leicht und Normal kennt der Gegner nur, was seine Einheiten und Städte gesehen haben,
+          genau wie du. Er muss erkunden: Bodentruppen laufen zum Rand des Nebels, Zerstörer und Jäger dienen als Späher.
+          Auf Schwer und Brutal kennt er alle Inseln und Städte von Anfang an. Deine Einheiten sieht er auf allen Stufen
+          nur in seiner Sichtweite.</p>
+        <p data-lang="en"><b>Knows map:</b> On Easy and Normal the enemy only knows what its units and cities have seen,
+          just like you. It has to explore: ground troops head for the edge of the fog, destroyers and fighters serve as scouts.
+          On Hard and Brutal it knows all islands and cities from the start. On every level it only sees your units
+          within its vision range.</p>
+        <p data-lang="de"><b>Spielweise:</b> Auf Leicht und Normal spielt der Gegner <b>einfach</b>: Alle Truppen laufen zur nächstgelegenen Stadt.
+          Auf Schwer und Brutal spielt er <b>umsichtig</b>: Seine Truppen verteilen sich auf mehrere Städte zugleich, gelandete Einheiten
+          von dir werden gejagt, und eine bedrohte Stadt baut sofort Infanterie. Beladene Transporter weichen deinen Kriegsschiffen aus,
+          Jäger machen gezielt Jagd auf deine Transporter. Jeder Transporter bekommt einen Zerstörer als Geleitschutz, der U-Boote ortet. Panzer baut er nur noch gegen deine Städte, für neutrale reicht ihm Infanterie.</p>
+        <p data-lang="en"><b>Play style:</b> On Easy and Normal the enemy plays <b>simply</b>: all troops head for the nearest city.
+          On Hard and Brutal it plays <b>shrewdly</b>: its troops spread out over several cities at once, units you land
+          are hunted down, and a threatened city builds infantry right away. Loaded transports steer clear of your warships,
+          and fighters go after your transports. Every transport gets a destroyer as an escort that locates submarines. It builds tanks only against your cities; infantry is enough for neutral ones.</p>
+        <p data-lang="de"><b>Fehler:</b> Anteil „menschlicher“ Fehlentscheidungen. Der Gegner vergisst dann eine Einheit für eine Runde,
+          schätzt einen Angriff falsch ein (zu wagemutig oder zu zaghaft) oder baut etwas Unpassendes.</p>
+        <p data-lang="en"><b>Mistakes:</b> share of “human” bad decisions. The enemy then forgets a unit for a turn,
+          misjudges an attack (too bold or too timid) or builds something unsuitable.</p>
+        <p data-lang="de"><b>Bautempo:</b> wie schnell gegnerische Städte Einheiten fertigstellen, verglichen mit deinen.
+          <b>Landet ab:</b> mit wie vielen Truppen an Bord ein Transporter eine Landung wagt.</p>
+        <p data-lang="en"><b>Build speed:</b> how fast enemy cities complete units compared with yours.
+          <b>Lands with:</b> how many troops a transport needs on board before it dares a landing.</p>
+        <p data-lang="de"><b>Wie der Gegner denkt:</b> Er folgt festen Regeln je Einheit (eine Art Entscheidungsbaum) und denkt nicht voraus.
+          Vor jedem Angriff berechnet er die Siegchance und greift nur an, wenn sie hoch genug ist. Auf Leicht ist er dabei
+          vorsichtiger. Seine Städte bauen zuerst Bodentruppen, solange es auf dem eigenen Kontinent noch etwas zu erobern
+          gibt, danach Transporter, Nachschub und Flotte. Er hat keine übergreifende Strategie und stimmt Großangriffe nicht ab. Wer seine Kräfte bündelt,
+          ist ihm überlegen. Seine Städte lässt er unbesetzt: Er setzt ganz auf Angriff. Er baut etwa ein U-Boot je fünf Städte: Sie lauern getaucht vor deinen Häfen und greifen nur Transporter und große Schiffe an. Zerstörer als Geleitschutz sind das Gegenmittel.</p>
+        <p data-lang="en"><b>How the enemy thinks:</b> It follows fixed rules for each unit (a kind of decision tree) and does not plan ahead.
+          Before every attack it calculates the win chance and only attacks if it is high enough. On Easy it is
+          more cautious. Its cities build ground troops first, as long as there is still something to capture on its own
+          continent, then transports, reinforcements and a fleet. It has no overall strategy and does not coordinate large attacks. If you concentrate your forces,
+          you will outmatch it. It leaves its cities ungarrisoned: it relies entirely on attack. It builds about one submarine per five cities: they lurk submerged off your ports and attack only transports and big ships. Destroyers as escorts are the remedy.</p>
+        <p data-lang="de" class="muted">In Testpartien gegen einen Computerspieler, der selbst erkunden muss und keine Fehler macht, gewann
+          dieser auf Leicht praktisch immer, auf Normal die Hälfte bis zwei Drittel, auf Schwer etwa jede siebte Partie und auf Brutal praktisch nie.
+          Wie schwer es für dich ist, hängt natürlich von deiner Spielweise ab.</p>
+        <p data-lang="en" class="muted">In test games against a computer player that has to explore by itself and makes no mistakes, that player
+          won practically always on Easy, half to two thirds of the time on Normal, about one game in seven on Hard and practically never on Brutal.
+          How hard it is for you naturally depends on your style of play.</p>
+      </section>
+
+      <section data-pane="about" hidden>
+        <h3 data-en="Saving">Speichern</h3>
+        <p data-lang="de">Das Spiel speichert nach jeder Runde automatisch im Browser. Unter <b>Spielstände</b> legst du beliebig viele benannte Stände an, exportierst sie als Datei und lädst sie wieder.</p>
+        <p data-lang="en">The game saves automatically in your browser after every turn. Under <b>Saved games</b> you can keep any number of named saves, export them as files and load them again.</p>
+        <h3 data-en="Language">Sprache</h3>
+        <p data-lang="de">Der Knopf <b>EN</b> oben rechts schaltet auf Englisch um, <b>DE</b> zurück auf Deutsch. Das laufende Spiel bleibt erhalten.</p>
+        <p data-lang="en">The <b>DE</b> button at the top right switches to German, <b>EN</b> back to English. The current game is kept.</p>
+        <h3 data-en="Privacy">Datenschutz</h3>
+        <p data-lang="de">Archipel verwendet <b>keine Cookies</b>, <b>kein Tracking</b> und lädt <b>nichts von anderen Servern</b>
       (auch keine Schriften). Spielstände und Einstellungen werden nur in deinem Browser gespeichert (localStorage) und verlassen
       deinen Rechner nicht – außer du exportierst selbst eine Datei. Löschen kannst du sie über die Spielstände oder indem du die
       Website-Daten im Browser entfernst. Die Online-Version wird über GitHub Pages bereitgestellt; GitHub verarbeitet dabei
       technisch notwendige Daten wie die IP-Adresse
       (<a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">Datenschutzerklärung von GitHub</a>).</p>
-    <p data-lang="en" class="muted" style="font-size:13px">Archipel uses <b>no cookies</b>, <b>no tracking</b> and loads <b>nothing from other servers</b>
+    <p data-lang="en">Archipel uses <b>no cookies</b>, <b>no tracking</b> and loads <b>nothing from other servers</b>
       (not even fonts). Saved games and settings are stored only in your browser (localStorage) and never leave
       your computer – unless you export a file yourself. You can delete them via Saved games or by removing the
       site data in your browser. The online version is served via GitHub Pages; GitHub processes
       technically necessary data such as the IP address
       (<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub privacy statement</a>).</p>
-    <div class="row"><button class="primary" data-close data-en="Got it">Verstanden</button></div>
+      </section>
+
+    </div>
   </div>
 </div>
 
