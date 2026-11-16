@@ -104,10 +104,16 @@ function animEnd(maxMs = 3500) {
 function animActive(now) { return now < anim.end + 30; }
 
 function seenByHuman(x, y) { return S.players[0].vis[idx(x, y)] === 1; }
+// Sähe der Mensch die Einheit, wenn sie auf (x, y) steht? (getauchte U-Boote nur im Ortungsbereich)
+function humanSeesAt(u, x, y) {
+  if (u.owner === 0) return true;
+  const P = S.players[0], i = idx(x, y);
+  return P.vis[i] === 1 && (!T(u).stealth || u.surf === true || P.sonar[i] === 1);
+}
 
 hooks.move = (u, fx, fy, tx, ty) => {
   if (!anim.rec) return;
-  if (u.owner !== 0 && !seenByHuman(fx, fy) && !seenByHuman(tx, ty)) return;
+  if (!humanSeesAt(u, fx, fy) && !humanSeesAt(u, tx, ty)) return;
   recCam(fx, fy, tx, ty);
   anim.events.push({ type: 'move', id: u.id, utype: u.type, owner: u.owner, fx, fy, tx, ty, t0: anim.cursor, dur: anim.speed,
     vr: u.owner === 0 ? T(u).vision : 0 });
@@ -190,10 +196,22 @@ function animPos(u, rel) {
 function drawToken(u, px, py, size, opts = {}) {
   const spr = unitSprite(u.type, u.owner, size);
   const t = T(u);
+  const dive = t.stealth && !u.surf;   // getauchtes U-Boot: blasser, mit Wellenlinien
   ctx.save();
-  if (opts.dim) ctx.globalAlpha = 0.6;
+  if (opts.dim) ctx.globalAlpha = 0.6; else if (dive) ctx.globalAlpha = 0.8;
   ctx.drawImage(spr, px - spr.pad, py - spr.pad);
   ctx.restore();
+  if (dive) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(200,232,255,0.95)'; ctx.lineWidth = Math.max(1.2, size / 18); ctx.lineCap = 'round';
+    for (let k = 0; k < 2; k++) {
+      const yy = py + size * (0.64 + k * 0.13), x0 = px + size * 0.2, w = size * 0.6;
+      ctx.beginPath(); ctx.moveTo(x0, yy);
+      for (let j = 1; j <= 12; j++) ctx.lineTo(x0 + w * j / 12, yy + Math.sin(j / 12 * Math.PI * 3) * size * 0.035);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   if (u.hp < t.hp) {
     const w = size * 0.62, h = Math.max(3, size * 0.1), x0 = px + (size - w) / 2, y0 = py + size * 0.86;
     roundRectPath(ctx, x0 - 1, y0 - 1, w + 2, h + 2, h / 2 + 1); ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fill();
@@ -284,8 +302,8 @@ function moveHints(u) {
     const x = u.x + dx, y = u.y + dy;
     if (!inb(x, y) || !S.players[0].seen[idx(x, y)]) continue;
     const c = cityAt(x, y);
-    const here = topUnitsAt(x, y);
-    const enemy = here.some(o => o.owner !== 0) && S.players[0].vis[idx(x, y)];
+    const here = topUnitsAt(x, y).filter(o => canSee(0, o));
+    const enemy = here.some(o => o.owner !== 0);
     if (enemy) { if (t.str > 0) out.push([x, y, 'attack']); continue; }
     if (c && c.owner !== 0) { if (t.capture) out.push([x, y, 'attack']); continue; }
     if (here.length && !(c && c.owner === 0)) {
@@ -379,7 +397,7 @@ function render(now = performance.now()) {
       if (p) { moving.push([u, p]); continue; }
     }
     const i = idx(u.x, u.y);
-    if (u.owner !== 0 && !V.vis[i] && !S.over) continue;
+    if (u.owner !== 0 && !S.over && (!V.vis[i] || (T(u).stealth && !u.surf && !P.sonar[i]))) continue;
     if (!groups.has(i)) groups.set(i, []);
     groups.get(i).push(u);
   }
@@ -511,7 +529,7 @@ function render(now = performance.now()) {
   }
   if (hover) {
     const [hx, hy] = hover;
-    const en = su && S.players[0].vis[idx(hx, hy)] ? topUnitsAt(hx, hy).filter(o => o.owner !== 0) : [];
+    const en = su && S.players[0].vis[idx(hx, hy)] ? topUnitsAt(hx, hy).filter(o => o.owner !== 0 && canSee(0, o)) : [];
     ctx.strokeStyle = en.length ? 'rgba(255,110,100,0.9)' : 'rgba(255,255,255,0.45)';
     ctx.lineWidth = en.length ? 2 : 1;
     roundRectPath(ctx, hx * TS + 1.5, hy * TS + 1.5, TS - 3, TS - 3, TS * 0.15); ctx.stroke();
@@ -636,7 +654,7 @@ function renderMini() {
   }
   for (const u of S.units) {
     if (u.carrier != null) continue;
-    if (u.owner !== 0 && !P.vis[idx(u.x, u.y)] && !S.over) continue;
+    if (u.owner !== 0 && !canSee(0, u) && !S.over) continue;
     if (S.cityGrid[idx(u.x, u.y)] >= 0) continue;
     put(u.x, u.y, u.owner === 0 ? [120, 180, 255] : [255, 110, 100]);
   }
@@ -796,14 +814,22 @@ function afterAction(u) {
 function refresh() { dirty = true; renderMini(); updatePanel(); updateHeader(); }
 
 // ------------------------------------------------------------------ Aktionen
+// geortete getauchte U-Boote des Gegners (für die Meldung „Sonarkontakt“ nach einem eigenen Zug)
+function locatedSubs() { return S.units.filter(o => o.owner !== 0 && o.carrier == null && T(o).stealth && !o.surf && canSee(0, o)); }
 function doMove(u, x, y) {
   u.order = null;
+  const before = new Set(locatedSubs().map(o => o.id));
   animBegin(120);
   const r = moveStep(u, x, y);
   animEnd();
   if (!r.ok) { toast(r.msg); Sfx.play('error'); }
   else if (r.boarded) Sfx.play('clank');
   afterAction(u);
+  const found = locatedSubs().filter(o => !before.has(o.id));
+  if (found.length) {
+    addLog(tt('Sonarkontakt: feindliches U-Boot geortet.', 'Sonar contact: enemy submarine located.'), 'bad', found[0].x, found[0].y);
+    Sfx.play('alarm'); refresh();
+  }
 }
 
 function doGoto(u, x, y) {
@@ -1035,6 +1061,7 @@ function updatePanel() {
       h += `<span>${tt('Treibstoff', 'Fuel')}</span><b class="${warn ? 'warn' : ''}">${u.fuel} / ${t.fuel}${warn ? tt(' ⚠ zurückfliegen!', ' ⚠ fly back!') : ''}</b>
             <span>${tt('Nächste Basis', 'Nearest base')}</span><b>${dh} ${tt('Felder', 'tiles')}</b>`;
     }
+    if (t.stealth) h += `<span>${tt('Tarnung', 'Stealth')}</span><b>${u.surf ? tt('aufgetaucht – bis zu deinem nächsten Zug sichtbar', 'surfaced – visible until your next turn') : tt('getaucht – nur aus der Nähe und von Zerstörern zu orten', 'submerged – only located up close or by destroyers')}</b>`;
     if (u.type === 'bat' && u.carrier == null) {
       // Städte im Feuerbereich: fremde fallen leichter, eigene sind geschützt
       const near = S.cities.filter(c => cheb(c.x, c.y, u.x, u.y) <= 1 && S.players[0].seen[idx(c.x, c.y)]);
@@ -1203,8 +1230,8 @@ function updateHover() {
       : pc < 50 ? tt(' wegen Feuerschutz durch ein feindliches Schlachtschiff', ' because of covering fire from an enemy battleship') : ''];
   };
   if (P.vis[i]) {
-    const us = topUnitsAt(x, y);
-    if (us.length) s += ' · ' + us.map(o => `${o.owner === 0 ? '' : tt('Feind: ', 'Enemy: ')}${T(o).name} ${o.hp}/${T(o).hp}`).join(', ');
+    const us = topUnitsAt(x, y).filter(o => canSee(0, o));
+    if (us.length) s += ' · ' + us.map(o => `${o.owner === 0 ? '' : tt('Feind: ', 'Enemy: ')}${T(o).name} ${o.hp}/${T(o).hp}${T(o).stealth ? (o.surf ? tt(' (aufgetaucht)', ' (surfaced)') : tt(' (getaucht)', ' (submerged)')) : ''}`).join(', ');
     const su = selUnit();
     const en = us.filter(o => o.owner !== 0);
     if (su && en.length && T(su).str > 0) {
@@ -1238,12 +1265,12 @@ function captureReadyAt(q) {
 const UNIT_ROLE = EN ? {
   inf: 'Captures cities · quick to build', tank: 'Captures cities · 2 tiles per turn',
   ftr: 'Flies far · scouts and hunts', trn: 'Carries 6 land units across the sea',
-  dst: 'Fast scout · hunts submarines', sub: 'Torpedoes big ships',
+  dst: 'Locates and hunts submarines', sub: 'Hidden · torpedoes big ships',
   crs: 'Sturdy and versatile', car: 'Floating base for fighters', bat: 'Fire support for landings',
 } : {
   inf: 'Erobert Städte · schnell gebaut', tank: 'Erobert Städte · 2 Felder pro Zug',
   ftr: 'Fliegt weit · späht und jagt', trn: 'Bringt 6 Landeinheiten übers Meer',
-  dst: 'Schneller Späher · jagt U-Boote', sub: 'Torpedo gegen große Schiffe',
+  dst: 'Ortet und jagt U-Boote', sub: 'Getarnt · Torpedo gegen große Schiffe',
   crs: 'Robust und vielseitig', car: 'Schwimmende Basis für Jäger', bat: 'Feuerunterstützung für Landungen',
 };
 const CAPTURE_CHEERS = EN ? [
@@ -1910,7 +1937,7 @@ $('bLang').onclick = () => {
   }).join('');
   $('unitTable').innerHTML = UNIT_ORDER.map(k => {
     const t = UT[k];
-    const extra = [t.capture ? tt('erobert Städte', 'captures cities') : '', t.noRepair ? tt('wird nicht repariert', 'not repaired') : '',
+    const extra = [t.capture ? tt('erobert Städte', 'captures cities') : '', t.stealth ? tt('getarnt', 'hidden') : '', t.sonar ? tt('ortet U-Boote', 'locates submarines') : '', t.noRepair ? tt('wird nicht repariert', 'not repaired') : '',
       t.carries ? tt(`trägt ${t.capacity} ${t.carries === 'land' ? 'Bodentruppen' : 'Jäger'}`, `carries ${t.capacity} ${t.carries === 'land' ? 'land units' : 'fighters'}`) : '',
       t.fuel ? `${t.fuel} ${tt('Treibstoff', 'fuel')}` : '', t.str === 0 ? tt('unbewaffnet', 'unarmed') : ''].filter(Boolean).join(', ');
     return `<tr><td>${t.sym} ${t.name}</td><td>${t.move}</td><td>${t.hp}</td><td>${t.str}</td><td>${t.cost}</td><td>${extra}</td></tr>`;

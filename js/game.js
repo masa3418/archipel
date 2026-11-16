@@ -11,7 +11,7 @@ const inb = (x, y) => x >= 0 && y >= 0 && x < S.W && y < S.H;
 const alive = u => S.units.includes(u);
 
 function mkPlayer(W, H, nc) {
-  return { seen: new Uint8Array(W * H), vis: new Uint8Array(W * H), knownOwner: new Int8Array(nc).fill(-2) };
+  return { seen: new Uint8Array(W * H), vis: new Uint8Array(W * H), sonar: new Uint8Array(W * H), knownOwner: new Int8Array(nc).fill(-2) };
 }
 
 function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln') {
@@ -237,6 +237,7 @@ function attack(u, nx, ny, enemies, city) {
   const involved = u.owner === 0 || def.owner === 0;
   const aName = uname(u), dName = uname(def, 'acc');
   const cs = combatSpec(u, def, nx, ny);
+  if (a.stealth) u.surf = true;   // wer angreift, verrät sich: aufgetaucht bis zum nächsten eigenen Zug
   // Schlachtschiffe feuern mit: das des Angreifers aufs Ziel, das des Verteidigers auf den Angreifer
   const supA = a.domain === 'land' ? fireSupport(u.owner, nx, ny) : null;
   const supD = d.domain === 'land' || (city && city.owner === def.owner) ? fireSupport(def.owner, nx, ny) : null;
@@ -290,6 +291,12 @@ function moveStep(u, nx, ny) {
   const enemies = here.filter(o => o.owner !== u.owner);
 
   if (enemies.length) {
+    // Sonarkontakt: Liegt dort nur ein U-Boot, das der Spieler bisher nicht geortet hat, gibt es keinen Kampf.
+    // Die Einheit bleibt stehen, das U-Boot ist jetzt entdeckt (sie steht ja direkt daneben).
+    if (enemies.every(o => T(o).stealth && !o.surf && !canSee(u.owner, o))) {
+      computeVision(u.owner);
+      return { ok: false, contact: true, msg: tt('Sonarkontakt: U-Boot voraus', 'Sonar contact: submarine ahead') };
+    }
     if (t.str === 0) return { ok: false, msg: tt(`${t.name} kann nicht angreifen`, `${t.name} cannot attack`) };
     return attack(u, nx, ny, enemies, city);
   }
@@ -369,9 +376,31 @@ function unloadAll(u) {
 // ---------------------------------------------------------------------------
 // Sicht / Nebel des Krieges
 // ---------------------------------------------------------------------------
+// Getarnte U-Boote: Ein getauchtes U-Boot sieht nur, wer es ortet – jede Einheit und jede Stadt
+// direkt daneben, Zerstörer in ihrer vollen Sichtweite (P.sonar). Nach einem Angriff ist das U-Boot
+// bis zum nächsten eigenen Zug aufgetaucht (u.surf) und wie jede andere Einheit sichtbar.
+// canSee(p, u): Kann Spieler p die Einheit u sehen? Für fremde Einheiten immer diese Funktion
+// benutzen, nie nur P.vis des Feldes abfragen.
+function canSee(p, u) {
+  if (u.owner === p) return true;
+  const P = S.players[p], i = idx(u.x, u.y);
+  if (!P.vis[i]) return false;
+  return !T(u).stealth || u.surf === true || P.sonar[i] === 1;
+}
+
 function computeVision(p) {
   const P = S.players[p];
   P.vis.fill(0);
+  if (!P.sonar) P.sonar = new Uint8Array(S.W * S.H);
+  P.sonar.fill(0);
+  const ping = (x, y, r) => {
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (inb(nx, ny)) P.sonar[idx(nx, ny)] = 1;
+    }
+  };
+  for (const u of S.units) if (u.owner === p) ping(u.x, u.y, T(u).sonar ? T(u).vision : 1);
+  for (const c of S.cities) if (c.owner === p) ping(c.x, c.y, 1);
   const mark = (x, y, r) => {
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       const nx = x + dx, ny = y + dy;
@@ -388,12 +417,12 @@ function computeVision(p) {
   }
   // gesichtete feindliche Einheiten (id -> Typ), für die Konter-Produktion der KI
   if (!P.intel) P.intel = {};
-  for (const u of S.units) if (u.owner !== p && P.vis[idx(u.x, u.y)]) P.intel[u.id] = u.type;
+  for (const u of S.units) if (u.owner !== p && canSee(p, u)) P.intel[u.id] = u.type;
 }
 
 function visibleEnemyAt(p, x, y) {
   if (!S.players[p].vis[idx(x, y)]) return null;
-  return topUnitsAt(x, y).find(o => o.owner !== p) || null;
+  return topUnitsAt(x, y).find(o => o.owner !== p && canSee(p, o)) || null;
 }
 
 // ---------------------------------------------------------------------------
@@ -434,7 +463,7 @@ function makePassable(u, knowAll, ignoreOwn = false) {
   for (const o of S.units) {
     if (o.carrier != null || o === u) continue;
     const i = idx(o.x, o.y);
-    if (o.owner !== p) { if (P.vis[i]) occ.set(i, 2); }
+    if (o.owner !== p) { if (canSee(p, o)) occ.set(i, 2); }
     else if (!ignoreOwn && !occ.has(i)) occ.set(i, 1);
   }
   return (x, y, i) => {
@@ -518,7 +547,7 @@ function findPath(u, tx, ty, knowAll = false) {
 function contactSnap(u) {
   const p = u.owner, P = S.players[p];
   const units = new Set(), cities = new Set(), known = new Set(), adj = new Set();
-  for (const o of S.units) if (o.owner !== p && o.carrier == null && P.vis[idx(o.x, o.y)]) units.add(o.id);
+  for (const o of S.units) if (o.owner !== p && o.carrier == null && canSee(p, o)) units.add(o.id);
   for (const c of S.cities) {
     if (P.knownOwner[c.id] !== -2) known.add(c.id);
     if (c.owner >= 0 && c.owner !== p && P.vis[idx(c.x, c.y)]) cities.add(c.id);
@@ -555,7 +584,8 @@ function contactCheck(u, snap, ignore = null) {
       return { msg: tt(`feindliche Stadt in Sicht: ${c.name}`, `enemy city in sight: ${c.name}`), cls: 'bad', x: c.x, y: c.y };
   }
   for (const o of S.units) {
-    if (o.owner === p || o.carrier != null || skip(o.x, o.y) || !P.vis[idx(o.x, o.y)] || snap.units.has(o.id)) continue;
+    if (o.owner === p || o.carrier != null || skip(o.x, o.y) || !canSee(p, o) || snap.units.has(o.id)) continue;
+    if (T(o).stealth && !o.surf) return { msg: tt('Sonarkontakt, feindliches U-Boot geortet', 'sonar contact, enemy submarine located'), cls: 'bad', x: o.x, y: o.y };
     return { msg: tt(`${lc1(uname(o))} gesichtet`, `${lc1(uname(o))} sighted`), cls: 'bad', x: o.x, y: o.y };
   }
   for (const k of adjacentEnemies(u)) {
@@ -672,7 +702,7 @@ function dangerZone(p) {
       if (inb(nx, ny)) z[idx(nx, ny)] = 1;
     }
   };
-  for (const o of S.units) if (o.owner !== p && o.carrier == null && P.vis[idx(o.x, o.y)]) mark(o.x, o.y);
+  for (const o of S.units) if (o.owner !== p && o.carrier == null && canSee(p, o)) mark(o.x, o.y);
   for (const c of S.cities) {
     const k = aiKnowsMap(p) ? c.owner : P.knownOwner[c.id];
     if (k >= 0 && k !== p) mark(c.x, c.y);
@@ -845,6 +875,7 @@ function startTurn(p) {
     if (u.owner !== p) continue;
     const t = T(u);
     u.moves = t.move; u.skip = false;
+    if (u.surf) u.surf = false;   // U-Boot taucht wieder ab
     const c = cityAt(u.x, u.y);
     if (c && c.owner === p && u.hp < t.hp && !t.noRepair) u.hp = Math.min(t.hp, u.hp + (t.domain === 'sea' ? 1 : t.hp));
     if (t.domain === 'air' && isBase(u)) u.fuel = t.fuel;
@@ -991,6 +1022,7 @@ function sanitizeState(o) {
     if (isNum(u.aiTarget)) nu.aiTarget = int(u.aiTarget, 0, 0, s.cities.length - 1);
     if (Array.isArray(u.aiGoal) && pt(u.aiGoal)) nu.aiGoal = [u.aiGoal[0], u.aiGoal[1], oneOf(u.aiGoal[2], ['fog', 'city', 'prey'], 'fog'), int(u.aiGoal[3], 0, 0, s.cities.length - 1)];
     if (isNum(u.wait)) nu.wait = int(u.wait, 0, 0, 1000);
+    if (u.surf === true && UT[u.type].stealth) nu.surf = true;
     units.push(nu);
   }
   // Ladung nur an existierenden Trägern
@@ -1019,7 +1051,7 @@ function sanitizeState(o) {
     for (let i = 0; i < N; i++) P.seen[i] = P.seen[i] ? 1 : 0;
     const intel = {};
     if (P.intel && typeof P.intel === 'object') for (const [k, v] of Object.entries(P.intel).slice(0, 20000)) if (UT[v] && /^\d+$/.test(k)) intel[k] = v;
-    return { seen: P.seen, vis: new Uint8Array(N), knownOwner: ko, intel };
+    return { seen: P.seen, vis: new Uint8Array(N), sonar: new Uint8Array(N), knownOwner: ko, intel };
   });
   return s;
 }

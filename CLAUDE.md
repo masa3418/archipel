@@ -55,6 +55,16 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Schlachtschiffe**: `fireSupport(owner, x, y)` und `captureChance(owner, c)` (game.js) – Feuerunterstützung/Feuerschutz auf
   Nachbarfelder (Eroberung 75 % / 25 %, Bodentruppen treffen zu 2/3 bzw. werden zu 1/3 getroffen). Eroberungschancen nie fest
   mit 50 % rechnen, immer `captureChance` nehmen. Salven meldet `hooks.salvo`; Markierungen zeichnet `drawSupportMark` (ui.js).
+- **Getarnte U-Boote**: `canSee(p, u)` (game.js) entscheidet, ob Spieler p eine Einheit sieht. Für fremde Einheiten immer
+  diese Funktion benutzen, nie nur `P.vis` des Feldes. `P.sonar` = Ortungsbereich (jede Einheit/Stadt Umkreis 1, Einheiten mit
+  `sonar: true` volle Sichtweite), wird in `computeVision` berechnet und nicht gespeichert. `u.surf` = aufgetaucht nach einem
+  Angriff, bis zum nächsten eigenen Rundenbeginn. `moveStep` liefert `contact: true` (Sonarkontakt), wenn auf dem Zielfeld nur
+  ein bisher ungeortetes U-Boot liegt – das passiert praktisch nur der KI, deren Sicht innerhalb eines Zugs veraltet sein kann.
+  U-Boote sehen 2 Felder weit, werden aber erst auf 1 Feld geortet. KI: U-Boote lauern 2–3 Felder vor Häfen des Gegners und
+  greifen nur Beute an (`SUB_PREY`: Transporter, große Schiffe); ab Können 1 Geleitschutz (`plan.escort`, ein Zerstörer je
+  beladenem Transporter). Messung KI gegen KI (je 400 Partien): Geleitschutz, mehr U-Boote und die Lauer-Taktik ändern die
+  Siegquote nicht messbar (48–51 %); U-Boote statt Kreuzern verlieren (36–42 %). Die Tarnung zahlt sich also vor allem für
+  den Menschen aus – die KI führt U-Boote weiterhin schwächer als Kreuzer.
 - **Neues Feld im Spielzustand** → in `sanitizeState` (game.js) aufnehmen, sonst wird es beim
   Laden verworfen. Spielstände aus Dateien sind nicht vertrauenswürdig (siehe `SECURITY.md`);
   Werte aus `S` nie ungeprüft per `innerHTML` ausgeben, Texte mit `esc()` maskieren.
@@ -96,6 +106,10 @@ im ausgeblendeten Browser-Fenster werden Zeitgeber gedrosselt, lange Läufe brec
 Letzte Einmessung (kleine Karte, „Siege“ des einfachen KI-Spielers auf Platz 0, je 32 Partien; nach „umsichtiger KI“ auf Schwer/Brutal):
 Inselreich Leicht 32/32 · Normal 16/32 · Schwer 5/32 · Brutal 0/32 · Gemischt 32 · 19 · 9 · 0 · Kontinente 32 · 16 · 9 · 0.
 Schwer über alle Welten 54/240 (23 %), ohne Bau-Bonus; Brutal mit 125 % Bautempo und zweiter Stadt 0/160. Partiedauer (Normal) ca. 220 Runden.
+Nach den getarnten U-Booten (KI baut ein U-Boot je fünf Städte, Geleitschutz ab Können 1, Brutal 115 % Bautempo):
+Leicht 95/96 · Normal 56/96 · Schwer 27/192 (14 %, damit etwas schwerer als zuvor mit 23 %) · Brutal 2/96.
+Auf Schwer wirken die U-Boote, weil der Gegner die Karte kennt und sofort vor den richtigen Häfen lauert; ohne Kartenwissen
+gewänne der Vergleichsspieler 31 % (Kontinente 50 %, Inselreich 10 %) – zu ungleich je Welt, deshalb nicht übernommen.
 Nach Einführung der Schlachtschiff-Regeln (Feuerunterstützung, Luftangriff), je 96 Partien über alle Welten: Leicht 95 · Normal 62 · Schwer 20 · Brutal 0.
 Verzicht auf Schlachtschiffe kostet KI gegen KI jetzt ca. 5 Punkte (vorher nichts); die KI baut sie selten und spät.
 

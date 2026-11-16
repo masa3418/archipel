@@ -17,13 +17,14 @@ const tt = (de, en) => (EN ? en : de);
 // domain: land | sea | air
 // move: Felder pro Runde, hp: Trefferpunkte, str: Schaden pro Treffer
 // cost: Bauzeit in Runden, vision: Sichtweite
+// stealth: getaucht unsichtbar (nur geortet zu sehen), sonar: ortet U-Boote in voller Sichtweite
 const UT = {
   inf:  { name: tt('Infanterie', 'Infantry'), g: 'f',     sym: 'I', domain: 'land', move: 1, hp: 1,  str: 1, cost: 5,  vision: 1, capture: true },
   tank: { name: tt('Panzer', 'Tank'), g: 'm',         sym: tt('P', 'A'), domain: 'land', move: 2, hp: 2,  str: 1, cost: 10, vision: 1, capture: true, noRepair: true },
   ftr:  { name: tt('Jäger', 'Fighter'), g: 'm',          sym: tt('J', 'F'), domain: 'air',  move: 6, hp: 1,  str: 1, cost: 10, vision: 2, fuel: 18 },
   trn:  { name: tt('Transporter', 'Transport'), g: 'm',    sym: 'T', domain: 'sea',  move: 3, hp: 1,  str: 0, cost: 15, vision: 1, carries: 'land', capacity: 6 },
-  dst:  { name: tt('Zerstörer', 'Destroyer'), g: 'm',      sym: tt('Z', 'D'), domain: 'sea',  move: 4, hp: 3,  str: 1, cost: 15, vision: 2 },
-  sub:  { name: tt('U-Boot', 'Submarine'), g: 'n',         sym: tt('U', 'S'), domain: 'sea',  move: 3, hp: 2,  str: 3, cost: 20, vision: 1 },
+  dst:  { name: tt('Zerstörer', 'Destroyer'), g: 'm',      sym: tt('Z', 'D'), domain: 'sea',  move: 4, hp: 3,  str: 1, cost: 15, vision: 2, sonar: true },
+  sub:  { name: tt('U-Boot', 'Submarine'), g: 'n',         sym: tt('U', 'S'), domain: 'sea',  move: 3, hp: 2,  str: 3, cost: 20, vision: 2, stealth: true },
   crs:  { name: tt('Kreuzer', 'Cruiser'), g: 'm',        sym: tt('K', 'R'), domain: 'sea',  move: 3, hp: 8,  str: 2, cost: 30, vision: 2 },
   car:  { name: tt('Träger', 'Carrier'), g: 'm',         sym: tt('F', 'C'), domain: 'sea',  move: 3, hp: 8,  str: 1, cost: 30, vision: 2, carries: 'air', capacity: 6 },
   bat:  { name: tt('Schlachtschiff', 'Battleship'), g: 'n', sym: tt('S', 'B'), domain: 'sea',  move: 2, hp: 12, str: 3, cost: 40, vision: 2 },
@@ -55,12 +56,12 @@ const DIFFICULTY = {
   normal: { label: 'Normal', desc: tt('Gleiche Bedingungen: Der Gegner muss wie du erkunden und macht gelegentlich Fehler.',
     'Equal terms: the enemy has to explore just like you and makes occasional mistakes.'),
     aiProd: 1, aiStart: [], youStart: [], aiCities: 0, invadeAt: 4, caution: 0, aiKnowsMap: false, aiMistake: 0.12, skill: 0 },
-  schwer: { label: tt('Schwer', 'Hard'), desc: tt('Gegner spielt umsichtiger: Er greift mehrere Städte zugleich an, jagt gelandete Truppen und deine Transporter. Er kennt die ganze Karte und macht keine Fehler, baut aber nicht schneller als du.',
-    'The enemy plays more shrewdly: it attacks several cities at once and hunts landed troops and your transports. It knows the whole map and makes no mistakes, but builds no faster than you.'),
+  schwer: { label: tt('Schwer', 'Hard'), desc: tt('Gegner spielt umsichtiger: Er greift mehrere Städte zugleich an, jagt gelandete Truppen und deine Transporter und schützt seine eigenen mit Zerstörern. Er kennt die ganze Karte und macht keine Fehler, baut aber nicht schneller als du.',
+    'The enemy plays more shrewdly: it attacks several cities at once, hunts landed troops and your transports, and escorts its own with destroyers. It knows the whole map and makes no mistakes, but builds no faster than you.'),
     aiProd: 1, aiStart: [], youStart: [], aiCities: 0, invadeAt: 3, caution: -0.05, aiKnowsMap: true, aiMistake: 0, skill: 1 },
-  brutal: { label: 'Brutal', desc: tt('Wie Schwer, dazu baut der Gegner um ein Viertel schneller und startet mit einer zweiten Stadt.',
-    'Like Hard, and the enemy also builds a quarter faster and starts with a second city.'),
-    aiProd: 1.25, aiStart: [], youStart: [], aiCities: 1, invadeAt: 3, caution: -0.05, aiKnowsMap: true, aiMistake: 0, skill: 1 },
+  brutal: { label: 'Brutal', desc: tt('Wie Schwer, dazu baut der Gegner etwas schneller (115 %) und startet mit einer zweiten Stadt.',
+    'Like Hard, and the enemy also builds a little faster (115 %) and starts with a second city.'),
+    aiProd: 1.15, aiStart: [], youStart: [], aiCities: 1, invadeAt: 3, caution: -0.05, aiKnowsMap: true, aiMistake: 0, skill: 1 },
 };
 const diff = () => DIFFICULTY[(typeof S !== 'undefined' && S && S.difficulty) || 'normal'] || DIFFICULTY.normal;
 // Kennt Spieler p die ganze Karte? Nur der Computergegner, und nur auf Schwer/Brutal.

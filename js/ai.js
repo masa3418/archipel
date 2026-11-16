@@ -68,10 +68,14 @@ const mistake = p => rng() < aiMistake(p);
 //       – Panzer nur gegen Städte des Gegners; neutrale Städte nimmt die halb so teure Infanterie
 //       – beladene Transporter meiden die Reichweite sichtbarer Kriegsschiffe und Jäger
 //       – Jäger jagen lohnende Beute, vor allem Transporter
+//       – Geleitschutz: je Transporter ein Zerstörer, der bei ihm bleibt und U-Boote ortet
 // Eingemessen per Simulation (siehe CLAUDE.md). Besatzungen in den Städten bringen nach den
 // geltenden Regeln nichts: Eine Einheit im Angriff ist mehr wert als eine in der Verteidigung.
 // Der Spielerplatz 0 (Simulationen) spielt einfach, solange AI_SKILL nichts anderes vorgibt.
 const AI_SKILL = [null, null];
+// Beute eines U-Boots: Transporter und große Schiffe. Alles andere lässt es in Ruhe, um getarnt zu bleiben.
+const SUB_PREY = ['trn', 'bat', 'crs', 'car'];
+const subSkips = (u, d) => u.type === 'sub' && !SUB_PREY.includes(d.type);
 const aiSkill = p => (AI_SKILL[p] != null ? AI_SKILL[p] : (p === 1 ? diff().skill || 0 : 0));
 const SPREAD = 3;   // Aufschlag (in Feldern) je Einheit, die dieselbe Stadt schon ansteuert
 
@@ -87,7 +91,7 @@ function buildPlan(p) {
   const P = S.players[p];
   const invaders = [], near = [];
   for (const e of S.units) {
-    if (e.owner === p || e.carrier != null || !P.vis[idx(e.x, e.y)]) continue;
+    if (e.owner === p || e.carrier != null || !canSee(p, e)) continue;
     if (T(e).domain === 'land') {
       near.push([e.x, e.y, 4]);
       if (S.terrain[idx(e.x, e.y)] === 1 && !cityAt(e.x, e.y)) invaders.push(e);
@@ -95,7 +99,18 @@ function buildPlan(p) {
   }
   const threatened = new Set();
   for (const c of S.cities) if (c.owner === p && near.some(([x, y, d]) => cheb(x, y, c.x, c.y) <= d)) threatened.add(c.id);
-  return { game: S, p, invaders, threatened };
+  // Geleitschutz: Jeder beladene Transporter bekommt den nächsten freien Zerstörer (Ortung von U-Booten)
+  const escort = new Map();
+  {
+    const dsts = S.units.filter(u => u.owner === p && u.type === 'dst' && u.carrier == null), used = new Set();
+    for (const t of S.units) {
+      if (t.owner !== p || t.type !== 'trn' || !cargoOf(t).length) continue;
+      let best = null, bd = 11;
+      for (const d of dsts) { if (used.has(d.id)) continue; const dd = cheb(d.x, d.y, t.x, t.y); if (dd < bd) { bd = dd; best = d; } }
+      if (best) { used.add(best.id); escort.set(best.id, t); }
+    }
+  }
+  return { game: S, p, invaders, threatened, escort };
 }
 
 // ------------------------------------------------------------------ Produktion
@@ -119,7 +134,7 @@ function aiChooseProduction(c) {
     const tankOk = !sk || knownTargets(p).some(o => S.cont[idx(o.x, o.y)] === here && knownOwnerOf(p, o) >= 0);
     prod = tankOk && rng() < 0.25 && ncity > 2 ? 'tank' : 'inf';
   } else if (targets.has(here)) {
-    prod = c.coastal ? (rng() < 0.5 ? 'dst' : 'crs') : 'ftr';
+    prod = c.coastal ? (rng() < 0.2 ? 'sub' : rng() < 0.5 ? 'dst' : 'crs') : 'ftr';   // jedes fünfte Schiff ein U-Boot (kostet laut Messung nichts)
   } else if (!knows && contHasFrontier(p, here) && landHere < 3) {
     prod = 'inf';                                   // eigenen Kontinent zu Fuß erkunden
   } else if (!knows && fog > 0.3 && scouts < 1 + Math.floor(ncity / 5)) {
@@ -127,6 +142,8 @@ function aiChooseProduction(c) {
   } else if (c.coastal) {
     const land = mine.filter(u => T(u).domain === 'land').length;
     if (cnt('trn') < Math.max(1, Math.ceil(ncity / 4))) prod = 'trn';
+    else if (sk && cnt('dst') < cnt('trn')) prod = 'dst';   // Können ≥ 1: ein Zerstörer je Transporter als Geleitschutz
+    else if (cnt('sub') < Math.floor(ncity / 5)) prod = 'sub';   // ein U-Boot je fünf Städte, das vor den Häfen des Gegners lauert
     else if (land < cnt('trn') * 5) prod = !sk && rng() < 0.3 ? 'tank' : 'inf';
     else {
       prod = counterPick(p);
@@ -171,7 +188,7 @@ function threatMap(u) {
   const P = S.players[u.owner], z = new Uint8Array(S.W * S.H);
   threatCache.set(key, z);
   for (const e of S.units) {
-    if (e.owner === u.owner || e.carrier != null || !P.vis[idx(e.x, e.y)] || T(e).str === 0) continue;
+    if (e.owner === u.owner || e.carrier != null || !canSee(u.owner, e) || T(e).str === 0) continue;
     if (T(e).domain === 'land' && T(u).domain === 'sea') continue;   // Bodentruppen greifen keine Schiffe an
     const r = Math.max(1, T(e).move);
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
@@ -196,6 +213,7 @@ function aiTurn(p = 1) {
     }
   }
   const mine = S.units.filter(u => u.owner === p);
+  if (aiPlan) mine.sort((a, b) => (b.type === 'trn') - (a.type === 'trn'));   // Transporter zuerst, der Geleitschutz schließt danach auf
   for (const dom of ['sea', 'land', 'air']) {
     for (const u of mine) {
       if (S.over || !alive(u) || T(u).domain !== dom) continue;
@@ -240,11 +258,12 @@ function aiAdjTarget(u, minProb) {
     if (!inb(nx, ny)) continue;
     const i = idx(nx, ny);
     const c = cityAt(nx, ny);
-    const ens = P.vis[i] ? topUnitsAt(nx, ny).filter(o => o.owner !== u.owner) : [];
+    const ens = P.vis[i] ? topUnitsAt(nx, ny).filter(o => o.owner !== u.owner && canSee(u.owner, o)) : [];
     let score = 0;
     if (ens.length) {
       if (t.str === 0) continue;
       const d = pickDefender(ens);
+      if (subSkips(u, d)) continue;
       const ship = t.domain === 'sea';
       if (ship && c && !landingSupport(u.owner, nx, ny)) continue;
       const pr = attackOdds(u, d, nx, ny);
@@ -499,6 +518,10 @@ function aiWarship(u) {
       continue;
     }
     if (here && here.owner === p && u.hp < t.hp) break;
+    // Geleitschutz: Zerstörer mit Auftrag bleibt beim Transporter und jagt nur in der Nähe
+    const plan = planFor(p);
+    const ward = plan && plan.escort.get(u.id);
+    const guarding = !!(ward && alive(ward));
     // sichtbaren Gegner jagen
     let path = bfs(u.x, u.y, pass, (x, y, i) => {
       if (!pass(x, y, i)) return false;
@@ -506,16 +529,41 @@ function aiWarship(u) {
         const nx = x + dx, ny = y + dy;
         if (!inb(nx, ny)) continue;
         const e = visibleEnemyAt(p, nx, ny);
-        if (!e || (cityAt(nx, ny) && !landingSupport(p, nx, ny))) continue;
+        if (!e || (cityAt(nx, ny) && !landingSupport(p, nx, ny)) || subSkips(u, e)) continue;
         if (attackOdds(u, e, nx, ny) >= aiNeed(u, e, 0.55)) return true;
       }
       return false;
-    }, 12);
+    }, guarding ? 4 : 12);
+    if (!path && guarding) {
+      if (cheb(u.x, u.y, ward.x, ward.y) <= 1) break;
+      path = bfs(u.x, u.y, pass, (x, y, i) => pass(x, y, i) && S.terrain[i] === 0 && cheb(x, y, ward.x, ward.y) <= 1, 16);
+      if (path) { if (!stepAlong(u, path)) break; continue; }
+    }
     // Zerstörer sind Späher: erkunden, solange viel unbekannt ist
     const explorer = !aiKnowsMap(p) && (u.type === 'dst' ? unexplored(p) > 0.15 : knownTargets(p).every(c => !c.coastal));
     if (!path && explorer) {
       path = explorePath(u, 60);
       // das unbekannte Ziel selbst ist evtl. Land – ein Schritt dorthin scheitert dann, und das Feld ist danach bekannt
+    }
+    if (!path && u.type === 'sub') {
+      // Lauern: getaucht zwei bis drei Felder vor einem Hafen des Gegners warten, bis Beute vorbeikommt
+      // (die Stadt ortet nur direkt nebenan, das U-Boot sieht zwei Felder weit)
+      let tc = u.aiTarget != null ? S.cities[u.aiTarget] : null;
+      const foePort = c => c.coastal && knownOwnerOf(p, c) >= 0 && knownOwnerOf(p, c) !== p;
+      if (!tc || !foePort(tc)) {
+        const opts = S.cities.filter(foePort);
+        if (opts.length) {
+          opts.sort((a, b) => cheb(u.x, u.y, a.x, a.y) - cheb(u.x, u.y, b.x, b.y));
+          tc = opts[Math.floor(rng() * Math.min(3, opts.length))];
+          u.aiTarget = tc.id;
+        } else tc = null;
+      }
+      if (tc) {
+        const d0 = cheb(u.x, u.y, tc.x, tc.y);
+        if (d0 >= 2 && d0 <= 3 && S.terrain[idx(u.x, u.y)] === 0) break;
+        path = bfs(u.x, u.y, pass, (x, y, i) => { const d = cheb(x, y, tc.x, tc.y); return pass(x, y, i) && S.terrain[i] === 0 && d >= 2 && d <= 3; });
+        if (!path) u.aiTarget = null;
+      }
     }
     if (!path && u.type === 'bat') {
       // Feuerunterstützung: direkt vor eine fremde Küstenstadt legen und dort bleiben, bis sie gefallen ist.
@@ -530,7 +578,7 @@ function aiWarship(u) {
         u.aiTarget = tc.id;
       }
       if (cheb(u.x, u.y, tc.x, tc.y) <= 1) break;
-      path = bfs(u.x, u.y, pass, (x, y, i) => pass(x, y, i) && S.terrain[i] === 0 && cheb(x, y, tc.x, tc.y) === 1 && !topUnitsAt(x, y).length);
+      path = bfs(u.x, u.y, pass, (x, y, i) => pass(x, y, i) && S.terrain[i] === 0 && cheb(x, y, tc.x, tc.y) === 1 && !topUnitsAt(x, y).some(o => canSee(p, o)));
       if (!path) u.aiTarget = null;
     }
     if (!path) {
@@ -570,7 +618,7 @@ function aiFighter(u) {
     const P = S.players[p];
     let best = null, bs = 0;
     for (const e of S.units) {
-      if (e.owner === p || e.carrier != null || !P.vis[idx(e.x, e.y)] || cityAt(e.x, e.y)) continue;
+      if (e.owner === p || e.carrier != null || !canSee(p, e) || cityAt(e.x, e.y)) continue;
       const d = cheb(u.x, u.y, e.x, e.y);
       if (d > t.fuel / 2 || u.fuel - d - t.move < distHome(p, e.x, e.y)) continue;
       if (attackOdds(u, e, e.x, e.y) < aiNeed(u, e, 0.6)) continue;
@@ -585,7 +633,7 @@ function aiFighter(u) {
       let best = null, bd = 1e9;
       for (const [dx, dy] of DIRS) {
         const nx = u.x + dx, ny = u.y + dy;
-        if (!inb(nx, ny) || topUnitsAt(nx, ny).some(o => o.owner !== p)) continue;
+        if (!inb(nx, ny) || topUnitsAt(nx, ny).some(o => o.owner !== p && canSee(p, o))) continue;
         const c = cityAt(nx, ny);
         if (c && c.owner !== p) continue;
         const d = distHome(p, nx, ny);
@@ -628,7 +676,7 @@ function aiFighter(u) {
     let best = null, bd = 1e9;
     for (const [dx, dy] of DIRS) {
       const nx = u.x + dx, ny = u.y + dy;
-      if (!inb(nx, ny) || topUnitsAt(nx, ny).length) continue;
+      if (!inb(nx, ny) || topUnitsAt(nx, ny).some(o => canSee(p, o))) continue;
       const c = cityAt(nx, ny);
       if (c && c.owner !== p) continue;
       if (u.fuel - t.move < distHome(p, nx, ny)) continue;
