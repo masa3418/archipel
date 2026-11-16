@@ -4,12 +4,15 @@ Rundenbasiertes Eroberungsspiel im Stil der klassischen Strategiespiele der 80er
 eine zufällige Inselwelt im Nebel des Krieges, Städte erobern, Einheiten bauen,
 Truppen per Schiff übersetzen – gegen einen Computergegner.
 
-Läuft komplett im Browser, ohne Installation und ohne externe Bibliotheken.
+Läuft komplett im Browser, ohne Installation und ohne externe Bibliotheken – online oder als
+[einzelne Datei zum Herunterladen](https://github.com/masa3418/archipel/releases/latest) auch ganz ohne Internet.
 Grafik und Klänge werden im Programm erzeugt, es gibt keine Bild- oder Audiodateien.
 
 *English:* a turn-based island conquest game in the spirit of the classic 80s strategy games – explore,
 capture cities, build units and ship your troops across the sea against a computer opponent. The game
-is available in English: use the language button in the top bar.
+is available in English: use the language button in the top bar. Play it
+[online](https://masa3418.github.io/archipel/) or download the single-file
+[offline copy](https://github.com/masa3418/archipel/releases/latest) and double-click it.
 
 ![Archipel: Landung an einer feindlichen Küstenstadt – ein Schlachtschiff gibt Feuerunterstützung, daneben Träger und Transporter; rechts Übersichtskarte, Kräfteverhältnis und die Karte der gewählten Einheit](docs/screenshot.png)
 
@@ -26,13 +29,16 @@ more troops, and the carrier on the left watches the sea and shields the fleet f
 
 ## Spielen
 
-Direkt im Browser: **https://masa3418.github.io/archipel/**
+- **Online:** https://masa3418.github.io/archipel/
+- **Offline:** Unter [Releases](https://github.com/masa3418/archipel/releases/latest) die Datei `archipel.html`
+  herunterladen und doppelklicken. Das ganze Spiel steckt in dieser einen Datei; es wird nichts installiert und
+  keine Internetverbindung gebraucht. Wer lieber einzelne Dateien hat, nimmt `archipel-offline.zip`.
+- **Aus dem Quelltext:** Repository herunterladen und `index.html` doppelklicken.
 
-Ohne Internet: Unter [Releases](https://github.com/masa3418/archipel/releases/latest) gibt es das ganze Spiel als
-einzelne Datei `archipel.html` – herunterladen und doppelklicken. Wer den Quelltext hat, öffnet einfach `index.html`. Das Spiel speichert nach jeder Runde automatisch im Browser;
-über **Spielstände** lassen sich beliebig viele benannte Stände anlegen und als Datei
-exportieren. Das **Handbuch** (Knopf **Hilfe** oder Taste `H`) erklärt in sechs Reitern erste Schritte, Einheiten,
-Kampf, Steuerung und den Gegner.
+Das Spiel speichert nach jeder Runde automatisch im Browser; über **Spielstände** lassen sich beliebig viele
+benannte Stände anlegen und als Datei exportieren. Online- und Offline-Fassung haben getrennte Spielstände – per
+Export und „Aus Datei laden“ wandern sie von der einen zur anderen. Das **Handbuch** (Knopf **Hilfe** oder Taste `H`)
+erklärt in sechs Reitern erste Schritte, Einheiten, Kampf, Steuerung und den Gegner.
 
 ## Inhalt
 
@@ -50,6 +56,8 @@ Kampf, Steuerung und den Gegner.
   (Geleitschutz, lauernde U-Boote, Träger)
 - Handbuch im Spiel mit Einheitenkarten und einer Tabelle „Wer schlägt wen“, die sich aus den Regeln selbst berechnet
 - Animationen, Kamerafahrten bei Gegnerzügen, Kräfteverhältnis, Statistik
+- Bedienung mit Maus, Tastatur und Touchpad
+- Offline-Fassung als einzelne Datei, siehe [Änderungen je Version](CHANGELOG.md)
 - Synthetisierte Soundeffekte und Klangteppiche je Einheitentyp, Klangtest-Fenster
 
 ## Aufbau
