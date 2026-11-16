@@ -27,6 +27,11 @@
   button.primary:hover { background: #3f8cf0; }
   button:disabled { opacity: .45; cursor: default; }
   .hbtns { display: flex; gap: 6px; align-items: center; }
+  /* Handbuch und Sprache: hervorgehoben, damit man sie findet */
+  .hbtns .hl { border-color: #3d6aa8; background: #1b2f4b; font-weight: 600; white-space: nowrap; }
+  .hbtns .hl:hover { background: #24406a; border-color: #5b8fd6; }
+  .hbtns .hl .ico { margin-right: 6px; }
+  @media (max-width: 980px) { .hbtns .hl .lbl { display: none; } .hbtns .hl .ico { margin-right: 0; } }
   .snd { display: inline-flex; align-items: center; gap: 4px; }
   #vol { width: 70px; accent-color: var(--accent); }
   @media (max-width: 900px) { #vol { display: none; } }
@@ -205,6 +210,17 @@
   details.more summary:hover { color: #8fc0ff; }
   details.more[open] summary { margin-bottom: 6px; }
   details.more p { font-size: 13px; }
+  /* Willkommensfenster */
+  .dlg.welcome { max-width: 560px; text-align: left; }
+  .wel-flag { font-size: 13px; letter-spacing: .14em; font-weight: 700; color: var(--muted); }
+  .wel-flag span { color: var(--accent); }
+  .dlg.welcome h2 { font-size: 26px; margin: 2px 0 8px; }
+  .wel-list { margin: 0 0 14px; padding-left: 20px; }
+  .wel-list li { margin: 5px 0; }
+  .wel-hints { display: grid; gap: 8px; margin-bottom: 16px; }
+  .wel-hint { display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px; border: 1px solid #3d6aa8; background: #1b2f4b; border-radius: 8px; font-size: 13px; }
+  .wel-hint .ico { font-size: 18px; line-height: 1.2; }
+  .wel-btns button { padding: 8px 14px; font-size: 14px; }
   /* Handbuch */
   .dlg.help { max-width: 940px; padding: 0; display: flex; flex-direction: column; height: min(88vh, 780px); overflow: hidden; }
   .help-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 6px; }
@@ -276,8 +292,8 @@
     <button id="bZoomIn" title="Vergrößern (+)" data-en-title="Zoom in (+)">+</button>
     <span class="snd"><button id="bSound" title="Ton (M)" data-en-title="Sound (M)">🔊</button><button id="bSndTest" title="Klangtest (K)" data-en-title="Sound test (K)" data-en="Sounds">Klänge</button><input id="vol" type="range" min="0" max="100" aria-label="Lautstärke" data-en-aria-label="Volume"></span>
     <button id="bStats" title="Statistik (I)" data-en-title="Statistics (I)" data-en="Statistics">Statistik</button>
-    <button id="bHelp" data-en="Help">Hilfe</button>
-    <button id="bLang" title="Sprache wechseln / Change language">EN</button>
+    <button id="bHelp" class="hl" title="Handbuch öffnen (H)" data-en-title="Open the handbook (H)"><span class="ico">❔</span><span class="lbl" data-en="Handbook">Handbuch</span></button>
+    <button id="bLang" class="hl" title="Sprache wechseln / Change language"><span class="ico">🌐</span><span class="lbl" id="bLangLbl">English</span></button>
   </div>
 </header>
 <main>
@@ -319,6 +335,42 @@
     <div class="row" style="margin-top:14px">
       <button class="primary" id="bStart" data-en="Let's go">Los geht's</button>
       <button data-close data-en="Cancel">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<div id="mWelcome" class="modal" hidden>
+  <div class="dlg welcome">
+    <div class="wel-flag">ARCHI<span>PEL</span></div>
+    <h2 data-en="Welcome!">Willkommen!</h2>
+    <p class="help-lead" data-lang="de">Erobere eine Inselwelt im Nebel des Krieges: Städte einnehmen, Flotten bauen, den Computergegner schlagen.</p>
+    <p class="help-lead" data-lang="en">Conquer an island world in the fog of war: take cities, build fleets, beat the computer opponent.</p>
+    <ul class="wel-list" data-lang="de">
+      <li><b>Ziehen:</b> eine Einheit anklicken, dann ein Nachbarfeld.</li>
+      <li><b>Erobern:</b> Infanterie und Panzer nehmen Städte ein.</li>
+      <li><b>Weiter:</b> <kbd>Enter</kbd> beendet die Runde, dann zieht der Gegner.</li>
+    </ul>
+    <ul class="wel-list" data-lang="en">
+      <li><b>Move:</b> click a unit, then an adjacent tile.</li>
+      <li><b>Capture:</b> infantry and tanks take cities.</li>
+      <li><b>Next:</b> <kbd>Enter</kbd> ends the turn, then the enemy moves.</li>
+    </ul>
+    <div class="wel-hints">
+      <div class="wel-hint">
+        <span class="ico">❔</span>
+        <span data-lang="de">Alles Weitere steht im <b>Handbuch</b>: erste Schritte, alle Einheiten, Kampf und Steuerung. Du findest es jederzeit oben rechts oder mit der Taste <kbd>H</kbd>.</span>
+        <span data-lang="en">Everything else is in the <b>handbook</b>: first steps, all units, combat and controls. You can find it any time at the top right or with the <kbd>H</kbd> key.</span>
+      </div>
+      <div class="wel-hint">
+        <span class="ico">🌐</span>
+        <span data-lang="de">Prefer English? The game is fully available in English – switch any time with the button at the top right.</span>
+        <span data-lang="en">Lieber auf Deutsch? Das Spiel gibt es vollständig auf Deutsch – jederzeit umschaltbar mit dem Knopf oben rechts.</span>
+      </div>
+    </div>
+    <div class="row wel-btns">
+      <button class="primary" id="wStart" data-en="Let's go">Los geht's</button>
+      <button id="wHelp"><span data-en="Open the handbook">Handbuch öffnen</span></button>
+      <button id="wLang"></button>
     </div>
   </div>
 </div>
@@ -497,9 +549,10 @@
         <h3 data-en="Saving">Speichern</h3>
         <p data-lang="de">Das Spiel speichert nach jeder Runde automatisch im Browser. Unter <b>Spielstände</b> legst du beliebig viele benannte Stände an, exportierst sie als Datei und lädst sie wieder.</p>
         <p data-lang="en">The game saves automatically in your browser after every turn. Under <b>Saved games</b> you can keep any number of named saves, export them as files and load them again.</p>
+        <p><button id="bWelcomeAgain" data-en="Show the welcome window again">Willkommensfenster noch einmal zeigen</button></p>
         <h3 data-en="Language">Sprache</h3>
-        <p data-lang="de">Der Knopf <b>EN</b> oben rechts schaltet auf Englisch um, <b>DE</b> zurück auf Deutsch. Das laufende Spiel bleibt erhalten.</p>
-        <p data-lang="en">The <b>DE</b> button at the top right switches to German, <b>EN</b> back to English. The current game is kept.</p>
+        <p data-lang="de">Der Knopf <b>🌐 English</b> oben rechts schaltet auf Englisch um, <b>🌐 Deutsch</b> zurück auf Deutsch. Das laufende Spiel bleibt erhalten.</p>
+        <p data-lang="en">The <b>🌐 Deutsch</b> button at the top right switches to German, <b>🌐 English</b> back to English. The current game is kept.</p>
         <h3 data-en="Version and offline copy">Version und Offline-Fassung</h3>
         <p data-lang="de">Du spielst <b>Version <span class="ver"></span></b>. Archipel läuft auch ohne Internet: Unter
           <a href="https://github.com/masa3418/archipel/releases/latest" target="_blank" rel="noopener">Releases auf GitHub</a> gibt es das ganze Spiel als einzelne Datei <code>archipel.html</code> –

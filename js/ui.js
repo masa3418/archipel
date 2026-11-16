@@ -2057,13 +2057,31 @@ document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e =
 function applyLang() {
   document.documentElement.lang = LANG;
   document.querySelectorAll('.ver').forEach(el => { el.textContent = VERSION; });
-  $('bLang').textContent = EN ? 'DE' : 'EN';
+  // Der Sprachknopf nennt die Sprache, in die er umschaltet – in dieser Sprache, damit man ihn auch ohne Deutsch findet
+  $('bLangLbl').textContent = EN ? 'Deutsch' : 'English';
   $('bLang').title = EN ? 'Auf Deutsch umschalten' : 'Switch to English';
+  $('wLang').textContent = EN ? '🌐 Auf Deutsch spielen' : '🌐 Play in English';
   if (!EN) return;
   document.querySelectorAll('[data-en]').forEach(el => { el.innerHTML = el.dataset.en; });
   for (const a of ['title', 'placeholder', 'aria-label'])
     document.querySelectorAll(`[data-en-${a}]`).forEach(el => el.setAttribute(a, el.getAttribute('data-en-' + a)));
 }
+// ------------------------------------------------------------------ Willkommensfenster
+// Erscheint beim ersten Besuch (kein Spielstand, noch nie gesehen) und weist auf Handbuch und Sprachwahl hin.
+function welcomeSeen() { try { return localStorage.getItem('archipel-welcome') === '1'; } catch (e) { return true; } }
+function showWelcome() {
+  try { localStorage.setItem('archipel-welcome', '1'); } catch (e) {}
+  openModal('mWelcome');
+}
+$('wStart').onclick = closeModals;
+$('wHelp').onclick = () => { closeModals(); openHelp('start'); };
+$('wLang').onclick = () => {
+  // nach dem Umschalten soll das Fenster in der anderen Sprache noch einmal erscheinen
+  try { localStorage.removeItem('archipel-welcome'); } catch (e) {}
+  $('bLang').onclick();
+};
+$('bWelcomeAgain').onclick = () => { closeModals(); showWelcome(); };
+
 $('bLang').onclick = () => {
   try { if (S && !S.over) saveGame(); localStorage.setItem('archipel-lang', EN ? 'de' : 'en'); } catch (e) {}
   location.reload();
@@ -2091,7 +2109,8 @@ $('bLang').onclick = () => {
   }).join('');
   try { const z = +localStorage.getItem('archipel-zoom'); if (z >= 14 && z <= 48) TS = z; } catch (e) {}
   if (loadGame()) { afterLoad(); addLog(tt('Spielstand fortgesetzt.', 'Game resumed.')); refresh(); }
-  else { startNew('mittel'); openHelp('start'); }
+  else startNew('mittel');
+  if (!welcomeSeen()) showWelcome();
   requestAnimationFrame(loop);
   window.addEventListener('resize', () => renderMini());
 })();
