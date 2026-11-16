@@ -120,18 +120,23 @@ hooks.combat = (a, d, x, y, won) => {
     hl: (a.owner === 0 && !won) || (d && d.owner === 0 && won) });
   // Ergebnis aus deiner Sicht als Schriftzug über dem Feld
   let label = null;
-  if (a.owner === 0) label = won ? ['Sieg!', 'good'] : d ? ['Verloren', 'bad'] : ['Abgewehrt', 'bad'];
+  // d === null: Eroberungsversuch einer unbesetzten Stadt ist gescheitert
+  const city = cityAt(x, y);
+  if (a.owner === 0) label = won ? ['Sieg!', 'good'] : d ? ['Verloren', 'bad'] : ['Gescheitert', 'bad'];
   else if (d && d.owner === 0) label = won ? ['Verloren', 'bad'] : ['Abgewehrt!', 'good'];
+  else if (!d && city && city.owner === 0) label = ['Abgewehrt!', 'good'];
   if (label) anim.events.push({ type: 'label', x, y, text: label[0], tone: label[1], t0: anim.cursor + 250, dur: LABEL_MS });
   anim.cursor += Math.max(260, anim.speed * 2.5);
 };
-hooks.capture = (c, owner) => {
+hooks.capture = (c, owner, prev) => {
   if (!anim.rec) return;
   if (owner === 0) captureQueue.push({ game: S, id: c.id });
   if (owner !== 0 && !seenByHuman(c.x, c.y)) return;
   recCam(c.x, c.y);
-  anim.events.push({ type: 'capture', x: c.x, y: c.y, owner, t0: anim.cursor, dur: 900 });
-  anim.events.push({ type: 'label', x: c.x, y: c.y, text: owner === 0 ? 'Erobert!' : 'Stadt verloren', tone: owner === 0 ? 'good' : 'bad', t0: anim.cursor + 150, dur: LABEL_MS });
+  const lost = prev === 0;
+  anim.events.push({ type: 'capture', x: c.x, y: c.y, owner, lost, t0: anim.cursor, dur: 900 });
+  const text = owner === 0 ? 'Erobert!' : lost ? 'Stadt verloren' : 'Gegner erobert';
+  anim.events.push({ type: 'label', x: c.x, y: c.y, text, tone: owner === 0 ? 'good' : 'bad', t0: anim.cursor + 150, dur: LABEL_MS });
   anim.cursor += Math.max(200, anim.speed * 2);
 };
 
@@ -476,7 +481,7 @@ function playAnimSounds(now) {
       }
     }
     else if (e.type === 'boom') { Sfx.play('boom', 80); if (e.hl) setTimeout(() => Sfx.play('lost', 300), 380); }
-    else if (e.type === 'capture') Sfx.play(e.owner === 0 ? 'capture' : 'cityLost');
+    else if (e.type === 'capture') { if (e.owner === 0) Sfx.play('capture'); else if (e.lost) Sfx.play('cityLost'); else Sfx.play('boom', 80); }
   }
   if (anim.after && now >= anim.end) { const f = anim.after; anim.after = null; f(); }
   if (captureQueue.length && now >= anim.end && !anyModalOpen()) showCaptureDialog();

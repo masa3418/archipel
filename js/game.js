@@ -180,7 +180,7 @@ function winProb(ahp, astr, dhp, dstr, p = 0.5, first = null) {
 function captureCity(c, owner) {
   const prev = c.owner;
   c.owner = owner; c.prod = 'inf'; c.progress = 0;
-  if (hooks.capture) hooks.capture(c, owner);
+  if (hooks.capture) hooks.capture(c, owner, prev);
   if (owner === 0) addLog(`Du hast ${c.name} erobert!`, 'good', c.x, c.y);
   else if (prev === 0) addLog(`${c.name} ist an den Gegner gefallen!`, 'bad', c.x, c.y);
   if (owner === 1 && typeof aiChooseProduction === 'function') aiChooseProduction(c);
