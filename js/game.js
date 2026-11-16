@@ -313,7 +313,11 @@ function computeVision(p) {
   };
   for (const u of S.units) if (u.owner === p) mark(u.x, u.y, T(u).vision);
   for (const c of S.cities) if (c.owner === p) mark(c.x, c.y, 2);
-  for (const c of S.cities) if (P.vis[idx(c.x, c.y)]) P.knownOwner[c.id] = c.owner;
+  // Sichtbare Städte zeigen den wahren Besitzer. Eigene Städte kennt man immer –
+  // auch den Verlust einer eigenen Stadt erfährt man sofort, selbst im Nebel.
+  for (const c of S.cities) {
+    if (P.vis[idx(c.x, c.y)] || c.owner === p || P.knownOwner[c.id] === p) P.knownOwner[c.id] = c.owner;
+  }
   // gesichtete feindliche Einheiten (id -> Typ), für die Konter-Produktion der KI
   if (!P.intel) P.intel = {};
   for (const u of S.units) if (u.owner !== p && P.vis[idx(u.x, u.y)]) P.intel[u.id] = u.type;
