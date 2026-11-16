@@ -709,6 +709,24 @@ function actUnload() {
   toast(n ? `${n} Einheit(en) ausgeladen` : 'Kein freies Feld zum Ausladen');
   afterAction(u);
 }
+// Heimkehr: Marsch zur nächsten erreichbaren eigenen Stadt (Schiffe: Hafenstadt)
+function actHome() {
+  const u = selUnit(); if (!u) return;
+  const t = T(u);
+  const ok = c => c && c.owner === 0 && (t.domain !== 'sea' || c.coastal);
+  const here = cityAt(u.x, u.y);
+  if (u.carrier == null && ok(here)) { toast(t.domain === 'sea' ? 'Liegt schon im Hafen' : 'Steht schon in einer eigenen Stadt'); Sfx.play('error'); return; }
+  const path = bfs(u.x, u.y, makePassable(u, false, true), (x, y) => ok(cityAt(x, y)));
+  if (!path) { toast(t.domain === 'sea' ? 'Kein eigener Hafen erreichbar' : 'Keine eigene Stadt erreichbar'); Sfx.play('error'); return; }
+  const [x, y] = path[path.length - 1];
+  if (t.fuel && path.length > u.fuel) {
+    // Nicht losschicken: der Resttreibstoff bleibt dem Spieler (z. B. zum Erkunden)
+    toast(`Treibstoff reicht nicht: ${cityAt(x, y).name} ist ${path.length} Felder entfernt, Treibstoff für ${u.fuel}`);
+    Sfx.play('error'); return;
+  }
+  Sfx.play('select');
+  doGoto(u, x, y);
+}
 function actCancel() { const u = selUnit(); if (u) { u.order = null; refresh(); } }
 
 // ------------------------------------------------------------------ Patrouille
@@ -895,7 +913,8 @@ function updatePanel() {
       <button data-act="skip" title="Leertaste">Überspringen</button>
       <button data-act="sentry" title="S">Wache</button>
       <button data-act="patrol" title="P">Patrouille</button>
-      <button data-act="explore" title="R">Erkunden</button>`;
+      <button data-act="explore" title="R">Erkunden</button>
+      <button data-act="home" title="B – zur nächsten eigenen ${t.domain === 'sea' ? 'Hafenstadt' : 'Stadt'}">Heimkehr</button>`;
     if (u.order) h += `<button data-act="cancel">Befehl löschen</button>`;
     const c = cityAt(u.x, u.y);
     if (t.carries && c && c.owner === 0) h += `<button data-act="load" title="L">Einladen</button>`;
@@ -1197,7 +1216,7 @@ $('panel').addEventListener('click', e => {
   if (chip) { const u = unitById(+chip.dataset.unit); if (u) { select(u); refresh(); } return; }
   const b = e.target.closest('[data-act]');
   if (!b) return;
-  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, cancel: actCancel, next: actNext, patrol: actPatrol, patrolGo: patrolStart, patrolUndo: patrolUndo, patrolAbort: patrolAbort, explore: actExplore })[b.dataset.act]();
+  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, cancel: actCancel, next: actNext, patrol: actPatrol, patrolGo: patrolStart, patrolUndo: patrolUndo, patrolAbort: patrolAbort, explore: actExplore, home: actHome })[b.dataset.act]();
 });
 // ------------------------------------------------------------------ Meldungen ein-/ausklappen
 let logOpen = false, logSeen = null;   // logSeen: neueste Meldung beim letzten Hinsehen
@@ -1260,6 +1279,7 @@ document.addEventListener('keydown', e => {
     case 's': actSentry(); break;
     case 'p': actPatrol(); break;
     case 'r': actExplore(); break;
+    case 'b': actHome(); break;
     case 'n': actNext(); break;
     case 'l': actLoad(); break;
     case 'u': actUnload(); break;
