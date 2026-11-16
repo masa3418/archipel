@@ -1062,7 +1062,7 @@ function updatePanel() {
       : u.order.type === 'explore' ? tt('Erkunden', 'Explore')
       : u.order.type === 'patrol' ? tt(`Patrouille (${u.order.pts.length - 1} Wegpunkt${u.order.pts.length > 2 ? 'e' : ''})`, `Patrol (${u.order.pts.length - 1} waypoint${u.order.pts.length > 2 ? 's' : ''})`)
       : tt(`Marsch nach ${u.order.x},${u.order.y}`, `Go to ${u.order.x},${u.order.y}`);
-    h += `<section class="pcard pc-unit"><div class="pc-head"><img class="pc-icon" src="${iconUrl('u', u.type)}" alt=""><div><h3>${tt('Einheit', 'Unit')}</h3><div class="uname">${esc(t.name)}</div></div></div>`;
+    h += `<section class="pcard pc-unit"><div class="pc-head"><img class="pc-icon" src="${iconUrl('u', u.type)}" alt=""><div><h3>${tt('Einheit', 'Unit')}</h3><div class="uname">${esc(t.name)}</div></div><button class="qhelp" data-help="${u.type}" title="${tt('Im Handbuch nachschlagen', 'Look up in the handbook')}" aria-label="${tt('Im Handbuch nachschlagen', 'Look up in the handbook')}">?</button></div>`;
     h += `<div class="stats">
       <span>${tt('Trefferpunkte', 'Hit points')}</span><b>${u.hp} / ${t.hp}</b>
       <span>${tt('Bewegung', 'Moves')}</span><b>${u.moves} / ${t.move}</b>
@@ -1438,7 +1438,11 @@ function openHelp(tab = null, unit = null) {
   if (!tab) { try { tab = localStorage.getItem('archipel-helptab'); } catch (e) {} }
   helpTab(unit ? 'units' : tab || 'start');
   openModal('mHelp');
-  if (unit && $('help-' + unit)) $('help-' + unit).scrollIntoView({ block: 'center' });
+  const card = unit && $('help-' + unit);
+  if (card) {
+    card.scrollIntoView({ block: 'center' });
+    card.classList.add('flash'); setTimeout(() => card.classList.remove('flash'), 1800);
+  }
 }
 $('helpTabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) helpTab(b.dataset.tab); });
 function closeModals() { document.querySelectorAll('.modal').forEach(m => m.hidden = true); Sfx.preview(null); }
@@ -1596,6 +1600,7 @@ function renderCtx() {
     if (t.carries && here && here.owner === 0) h += btn('load', tt('Einladen', 'Load'), 'L');
     if (t.carries && cargoOf(u).length) h += btn('unload', `${tt('Ausladen', 'Unload')} (${cargoOf(u).length})`, 'U');
     if (u.order) h += btn('cancel', u.order.type === 'sentry' ? tt('Wecken', 'Wake') : tt('Befehl löschen', 'Clear order'), '');
+    h += '<hr>' + btn('help', tt(`Handbuch: ${t.name}`, `Handbook: ${t.name}`), '');
   }
   if (ownCity) {
     const p = ownCity.prod ? UT[ownCity.prod] : null;
@@ -1619,6 +1624,7 @@ ctxEl.addEventListener('click', e => {
   closeCtx();
   if (b.dataset.cact === 'prod') { if (city && city.owner === 0) { Sfx.play('tick'); openProdDialog(city); } return; }
   const u = selUnit();
+  if (b.dataset.cact === 'help') { if (u) openHelp(null, u.type); return; }
   if (u && u.order && u.order.type === 'sentry' && b.dataset.cact !== 'sentry' && b.dataset.cact !== 'cancel') u.order = null;
   ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, cancel: actCancel, patrol: actPatrol, explore: actExplore, home: actHome })[b.dataset.cact]();
 });
@@ -1681,6 +1687,8 @@ mini.addEventListener('click', e => {
 });
 
 $('panel').addEventListener('click', e => {
+  const q = e.target.closest('[data-help]');
+  if (q) { openHelp(null, q.dataset.help); return; }
   const chip = e.target.closest('[data-unit]');
   if (chip) { const u = unitById(+chip.dataset.unit); if (u) { select(u); refresh(); } return; }
   const b = e.target.closest('[data-act]');
