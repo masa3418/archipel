@@ -33,6 +33,9 @@ const anim = { rec: false, cursor: 0, speed: 110, events: [], byUnit: new Map(),
 function animBegin(speed, follow = false) {
   anim.rec = true; anim.cursor = 0; anim.speed = speed; anim.events = []; anim.skippable = false;
   anim.follow = follow;
+  // Sichtstand vor der Aufzeichnung: neu aufgedeckte Felder erscheinen erst,
+  // wenn die eigene Einheit in der Wiedergabe dort ankommt
+  if (S) { anim.seen0 = S.players[0].seen.slice(); anim.vis0 = S.players[0].vis.slice(); }
   // gedachte Kameraposition während der Aufzeichnung (Kachelmitte des Sichtfensters)
   anim.vcx = (wrap.scrollLeft + wrap.clientWidth / 2) / TS;
   anim.vcy = (wrap.scrollTop + wrap.clientHeight / 2) / TS;
@@ -103,7 +106,8 @@ hooks.move = (u, fx, fy, tx, ty) => {
   if (!anim.rec) return;
   if (u.owner !== 0 && !seenByHuman(fx, fy) && !seenByHuman(tx, ty)) return;
   recCam(fx, fy, tx, ty);
-  anim.events.push({ type: 'move', id: u.id, utype: u.type, owner: u.owner, fx, fy, tx, ty, t0: anim.cursor, dur: anim.speed });
+  anim.events.push({ type: 'move', id: u.id, utype: u.type, owner: u.owner, fx, fy, tx, ty, t0: anim.cursor, dur: anim.speed,
+    vr: u.owner === 0 ? T(u).vision : 0 });
   anim.cursor += anim.speed;
 };
 const LABEL_MS = 1700;
@@ -207,8 +211,26 @@ function drawToken(u, px, py, size, opts = {}) {
   }
 }
 
-function drawFog() {
+// Sicht für die Darstellung: während einer Wiedergabe nur das, was die
+// eigenen Einheiten bis zum aktuellen Zeitpunkt schon gesehen haben
+function viewNow(rel, playing) {
   const P = S.players[0];
+  if (!playing || !anim.seen0 || anim.seen0.length !== P.seen.length) return P;
+  const seen = anim.seen0.slice(), vis = anim.vis0.slice();
+  for (const e of anim.events) {
+    if (e.type !== 'move' || !e.vr || rel < e.t0 + e.dur * 0.6) continue;
+    for (let dy = -e.vr; dy <= e.vr; dy++) for (let dx = -e.vr; dx <= e.vr; dx++) {
+      const x = e.tx + dx, y = e.ty + dy;
+      if (!inb(x, y)) continue;
+      const i = idx(x, y);
+      if (P.seen[i]) seen[i] = 1;
+      if (P.vis[i]) vis[i] = 1;
+    }
+  }
+  return { seen, vis };
+}
+
+function drawFog(P = S.players[0]) {
   if (fogC.width !== S.W || fogC.height !== S.H) { fogC.width = S.W; fogC.height = S.H; }
   const img = fogG.createImageData(S.W, S.H);
   for (let i = 0; i < S.W * S.H; i++) {
@@ -255,7 +277,8 @@ function render(now = performance.now()) {
     ctx.drawImage(citySprite(S.over ? c.owner : P.knownOwner[c.id], TS, c.id % 2), c.x * TS, c.y * TS);
   }
 
-  drawFog();
+  const V = viewNow(rel, playing);
+  drawFog(V);
 
   const su = selUnit();
   // Zugmarker der ausgewählten Einheit
@@ -286,7 +309,7 @@ function render(now = performance.now()) {
       if (p) { moving.push([u, p]); continue; }
     }
     const i = idx(u.x, u.y);
-    if (u.owner !== 0 && !P.vis[i] && !S.over) continue;
+    if (u.owner !== 0 && !V.vis[i] && !S.over) continue;
     if (!groups.has(i)) groups.set(i, []);
     groups.get(i).push(u);
   }
