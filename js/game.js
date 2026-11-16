@@ -134,7 +134,6 @@ function pickDefender(list) {
 //   Sonar            – Zerstörer greift U-Boot an: Erstschlag, trifft danach zu 2/3
 //   Wasserbomben     – U-Boot greift Zerstörer an: Zerstörer verteidigt doppelt stark
 //   Luftangriff      – Jäger gegen U-Boot (an der Oberfläche): Jäger trifft zu 2/3
-//   Panzerung        – Infanterie gegen Panzer: Infanterie trifft nur zu 1/3
 // ---------------------------------------------------------------------------
 const BATTERY = 2;
 const BIG_SHIPS = ['bat', 'crs', 'car'];
@@ -147,8 +146,6 @@ function combatSpec(a, d, x, y) {
   if (ta === 'dst' && td === 'sub') { first = 'att'; p = 2 / 3; notes.push('Sonar: Zerstörer trifft zuerst und öfter'); }
   if (ta === 'sub' && td === 'dst') { ds *= 2; notes.push('Wasserbomben'); }
   if (ta === 'ftr' && td === 'sub') { p = 2 / 3; notes.push('Luftangriff auf U-Boot'); }
-  if (ta === 'inf' && td === 'tank') { p = 1 / 3; notes.push('Panzerung'); }
-  if (ta === 'tank' && td === 'inf') { p = 2 / 3; notes.push('Panzer gegen Infanterie'); }
   return { as, ds, p, first, notes };
 }
 function combatStr(a, d, x, y) { const c = combatSpec(a, d, x, y); return [c.as, c.ds]; }
@@ -697,7 +694,7 @@ function startTurn(p) {
     const t = T(u);
     u.moves = t.move; u.skip = false;
     const c = cityAt(u.x, u.y);
-    if (c && c.owner === p && u.hp < t.hp) u.hp = Math.min(t.hp, u.hp + (t.domain === 'sea' ? 1 : t.hp));
+    if (c && c.owner === p && u.hp < t.hp && !t.noRepair) u.hp = Math.min(t.hp, u.hp + (t.domain === 'sea' ? 1 : t.hp));
     if (t.domain === 'air' && isBase(u)) u.fuel = t.fuel;
   }
   for (const c of S.cities) {

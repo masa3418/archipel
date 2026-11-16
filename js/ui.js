@@ -1614,7 +1614,7 @@ document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e =
   }).join('');
   $('unitTable').innerHTML = UNIT_ORDER.map(k => {
     const t = UT[k];
-    const extra = [t.capture ? 'erobert Städte' : '', t.carries ? `trägt ${t.capacity} ${t.carries === 'land' ? 'Bodentruppen' : 'Jäger'}` : '',
+    const extra = [t.capture ? 'erobert Städte' : '', t.noRepair ? 'wird nicht repariert' : '', t.carries ? `trägt ${t.capacity} ${t.carries === 'land' ? 'Bodentruppen' : 'Jäger'}` : '',
       t.fuel ? `${t.fuel} Treibstoff` : '', t.str === 0 ? 'unbewaffnet' : ''].filter(Boolean).join(', ');
     return `<tr><td>${t.sym} ${t.name}</td><td>${t.move}</td><td>${t.hp}</td><td>${t.str}</td><td>${t.cost}</td><td>${extra}</td></tr>`;
   }).join('');

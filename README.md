@@ -23,7 +23,7 @@ exportieren. Hilfe und Tastenbelegung: Knopf **Hilfe** oder Taste `H`.
 - Nebel des Krieges, Städte erobern (50 % Chance) und Produktion wählen
 - Neun Einheiten: Infanterie, Panzer, Jäger (mit Treibstoff), Transporter, Zerstörer,
   U-Boot, Kreuzer, Träger, Schlachtschiff
-- Stärken und Schwächen (Torpedo, Sonar, Wasserbomben, Panzerung, Küstenbatterien),
+- Stärken und Schwächen (Torpedo, Sonar, Wasserbomben, Küstenbatterien),
   die angezeigte Siegchance berücksichtigt sie
 - Befehle: Marsch, Wache, Patrouille, Erkunden, Ein-/Ausladen
 - Computergegner in vier Schwierigkeitsstufen; auf Leicht/Normal muss er die Karte

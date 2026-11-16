@@ -8,7 +8,7 @@
 // cost: Bauzeit in Runden, vision: Sichtweite
 const UT = {
   inf:  { name: 'Infanterie', g: 'f',     sym: 'I', domain: 'land', move: 1, hp: 1,  str: 1, cost: 5,  vision: 1, capture: true },
-  tank: { name: 'Panzer', g: 'm',         sym: 'P', domain: 'land', move: 2, hp: 2,  str: 1, cost: 10, vision: 1, capture: true },
+  tank: { name: 'Panzer', g: 'm',         sym: 'P', domain: 'land', move: 2, hp: 2,  str: 1, cost: 10, vision: 1, capture: true, noRepair: true },
   ftr:  { name: 'Jäger', g: 'm',          sym: 'J', domain: 'air',  move: 6, hp: 1,  str: 1, cost: 10, vision: 2, fuel: 18 },
   trn:  { name: 'Transporter', g: 'm',    sym: 'T', domain: 'sea',  move: 3, hp: 1,  str: 0, cost: 15, vision: 1, carries: 'land', capacity: 6 },
   dst:  { name: 'Zerstörer', g: 'm',      sym: 'Z', domain: 'sea',  move: 4, hp: 3,  str: 1, cost: 15, vision: 2 },
