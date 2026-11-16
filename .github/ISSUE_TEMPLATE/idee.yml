@@ -1,45 +1,51 @@
-name: Idee oder Wunsch
-description: Ein Vorschlag für eine neue Funktion oder eine Verbesserung.
+name: Idee oder Wunsch / Idea or request
+description: Ein Vorschlag für eine neue Funktion oder eine Verbesserung. / A suggestion for a new feature or an improvement.
 title: "[Idee] "
 labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Du kannst auf Deutsch oder Englisch schreiben. / Feel free to write in English or German.
+
   - type: textarea
     id: idee
     attributes:
-      label: Was wünschst du dir?
-      placeholder: "Beispiel: Ein Befehl, mit dem eine Einheit selbstständig die Karte erkundet."
+      label: Was wünschst du dir? / What would you like?
+      placeholder: "Beispiel / Example: Ein Befehl, mit dem eine Einheit selbstständig die Karte erkundet."
     validations:
       required: true
 
   - type: textarea
     id: warum
     attributes:
-      label: Warum wäre das gut?
-      description: Welches Problem löst es, oder was macht es besser?
-      placeholder: "Beispiel: Jäger und Zerstörer einzeln durch den Nebel zu steuern ist mühsam."
+      label: Warum wäre das gut? / Why would it help?
+      description: Welches Problem löst es, oder was macht es besser? / What problem does it solve, or what does it improve?
+      placeholder: "Beispiel / Example: Jäger und Zerstörer einzeln durch den Nebel zu steuern ist mühsam."
     validations:
       required: false
 
   - type: dropdown
     id: bereich
     attributes:
-      label: Bereich
+      label: Bereich / Area
       multiple: true
       options:
-        - Spielregeln / Einheiten
-        - Computergegner
-        - Bedienung
-        - Grafik / Animationen
-        - Klänge
-        - Karte / Spielwelt
-        - Sonstiges
+        - Spielregeln / Einheiten – Rules / units
+        - Computergegner – Computer opponent
+        - Bedienung – Controls
+        - Grafik / Animationen – Graphics / animations
+        - Klänge – Sound
+        - Karte / Spielwelt – Map / world
+        - Übersetzung – Translation
+        - Sonstiges – Other
     validations:
       required: false
 
   - type: textarea
     id: details
     attributes:
-      label: Weitere Details
-      description: Skizzen, Beispiele aus anderen Spielen, Screenshots …
+      label: Weitere Details / More details
+      description: Skizzen, Beispiele aus anderen Spielen, Screenshots … / Sketches, examples from other games, screenshots …
     validations:
       required: false

@@ -1,5 +1,7 @@
 # Verhaltenskodex
 
+*[English summary below](#english-summary)*
+
 ## Unser Anspruch
 
 Archipel soll ein Projekt sein, an dem alle gern mitwirken – unabhängig von Alter, Herkunft,
@@ -51,3 +53,24 @@ Unangemessene Beiträge können bearbeitet, ausgeblendet oder gelöscht werden.
 
 Dieser Kodex ist angelehnt an den [Contributor Covenant](https://www.contributor-covenant.org/),
 Version 2.1.
+
+---
+
+## English summary
+
+Archipel should be a project everyone enjoys taking part in, regardless of age, background, gender,
+identity, appearance, disability, experience, religion, sexual orientation or any other personal
+trait. Be friendly, patient and respectful, discuss things objectively, give and accept constructive
+criticism, and own up to mistakes.
+
+Not acceptable: insults, demeaning or discriminatory comments, personal attacks, harassment (public or
+private), sexualized language or advances, trolling, publishing others' private information without
+explicit permission, or any other behaviour considered inappropriate in a respectful environment.
+
+This code applies to all project spaces (issues, pull requests, discussions, comments) and wherever
+someone represents the project publicly. To report a violation, contact the maintainer confidentially
+([masa3418 on GitHub](https://github.com/masa3418)); reports are treated confidentially. Depending on
+severity, consequences range from a private note and a warning to a temporary or permanent ban;
+inappropriate contributions may be edited, hidden or deleted.
+
+Adapted from the [Contributor Covenant](https://www.contributor-covenant.org/), version 2.1.

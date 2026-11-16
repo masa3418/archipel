@@ -1,5 +1,5 @@
-name: Fehler melden
-description: Etwas funktioniert nicht wie erwartet.
+name: Fehler melden / Report a bug
+description: Etwas funktioniert nicht wie erwartet. / Something doesn't work as expected.
 title: "[Fehler] "
 labels: ["bug"]
 body:
@@ -7,25 +7,29 @@ body:
     attributes:
       value: |
         Danke, dass du einen Fehler meldest! Je genauer die Beschreibung, desto schneller lässt er sich beheben.
+        Du kannst auf Deutsch oder Englisch schreiben.
+
+        Thanks for reporting a bug! The more precise the description, the faster it can be fixed.
+        Feel free to write in English or German.
 
   - type: textarea
     id: was
     attributes:
-      label: Was ist passiert?
-      description: Beschreibe kurz, was schiefgelaufen ist.
-      placeholder: "Beispiel: Nach einem Angriff mit Infanterie auf eine Stadt erschien „Sieg!“, obwohl die Einheit verloren hat."
+      label: Was ist passiert? / What happened?
+      description: Beschreibe kurz, was schiefgelaufen ist. / Briefly describe what went wrong.
+      placeholder: "Beispiel / Example: Nach einem Angriff mit Infanterie auf eine Stadt erschien „Sieg!“, obwohl die Einheit verloren hat."
     validations:
       required: true
 
   - type: textarea
     id: schritte
     attributes:
-      label: Wie lässt sich der Fehler nachstellen?
-      description: Schritt für Schritt, so weit möglich.
+      label: Wie lässt sich der Fehler nachstellen? / How can it be reproduced?
+      description: Schritt für Schritt, so weit möglich. / Step by step, as far as possible.
       placeholder: |
-        1. Neues Spiel, Karte mittel, Schwierigkeit Normal
-        2. Infanterie neben eine feindliche Stadt ziehen
-        3. Angreifen
+        1. Neues Spiel, Karte mittel, Schwierigkeit Normal / New game, medium map, Normal difficulty
+        2. Infanterie neben eine feindliche Stadt ziehen / Move infantry next to an enemy city
+        3. Angreifen / Attack
         4. …
     validations:
       required: false
@@ -33,59 +37,72 @@ body:
   - type: textarea
     id: erwartet
     attributes:
-      label: Was hättest du erwartet?
+      label: Was hättest du erwartet? / What did you expect?
     validations:
       required: false
 
   - type: dropdown
     id: version
     attributes:
-      label: Wo spielst du?
+      label: Wo spielst du? / Where do you play?
       options:
         - Online (masa3418.github.io/archipel)
-        - Lokal (index.html per Doppelklick)
+        - Lokal (index.html per Doppelklick) / Locally (double-click index.html)
     validations:
       required: true
 
   - type: dropdown
+    id: sprache
+    attributes:
+      label: Spielsprache / Game language
+      options:
+        - Deutsch
+        - English
+    validations:
+      required: false
+
+  - type: dropdown
     id: schwierigkeit
     attributes:
-      label: Schwierigkeit
+      label: Schwierigkeit / Difficulty
       options:
-        - Leicht
+        - Leicht / Easy
         - Normal
-        - Schwer
+        - Schwer / Hard
         - Brutal
-        - Weiß ich nicht / spielt keine Rolle
+        - Weiß ich nicht / spielt keine Rolle – Don't know / doesn't matter
     validations:
       required: false
 
   - type: dropdown
     id: karte
     attributes:
-      label: Kartengröße
+      label: Kartengröße / Map size
       options:
-        - Klein
-        - Mittel
-        - Groß
-        - Weiß ich nicht / spielt keine Rolle
+        - Klein / Small
+        - Mittel / Medium
+        - Groß / Large
+        - Weiß ich nicht / spielt keine Rolle – Don't know / doesn't matter
     validations:
       required: false
 
   - type: input
     id: browser
     attributes:
-      label: Browser und Betriebssystem
-      placeholder: "z. B. Chrome 131 unter Windows 11"
+      label: Browser und Betriebssystem / Browser and operating system
+      placeholder: "z. B. / e.g. Chrome 131, Windows 11"
     validations:
       required: false
 
   - type: textarea
     id: anhaenge
     attributes:
-      label: Screenshot oder Spielstand
+      label: Screenshot oder Spielstand / Screenshot or saved game
       description: |
         Ein Screenshot hilft oft sehr. Noch besser ist ein Spielstand kurz vor dem Fehler:
         **Spielstände → Export** erzeugt eine `.json`-Datei, die du hier hineinziehen kannst.
+
+        A screenshot helps a lot. Even better is a saved game from just before the bug:
+        **Saved games → Export** creates a `.json` file you can drag in here.
     validations:
       required: false

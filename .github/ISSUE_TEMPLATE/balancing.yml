@@ -1,5 +1,5 @@
-name: Balancing-Feedback
-description: Zu leicht, zu schwer, eine Einheit zu stark oder zu schwach?
+name: Balancing-Feedback / Balance feedback
+description: Zu leicht, zu schwer, eine Einheit zu stark oder zu schwach? / Too easy, too hard, a unit too strong or too weak?
 title: "[Balancing] "
 labels: ["balancing"]
 body:
@@ -8,14 +8,16 @@ body:
       value: |
         Rückmeldungen aus echten Partien helfen am meisten, die Schwierigkeitsstufen und Einheiten richtig einzustellen.
 
+        Feedback from real games helps most to tune the difficulty levels and units. English or German is fine.
+
   - type: dropdown
     id: schwierigkeit
     attributes:
-      label: Schwierigkeit
+      label: Schwierigkeit / Difficulty
       options:
-        - Leicht
+        - Leicht / Easy
         - Normal
-        - Schwer
+        - Schwer / Hard
         - Brutal
     validations:
       required: true
@@ -23,52 +25,52 @@ body:
   - type: dropdown
     id: karte
     attributes:
-      label: Kartengröße
+      label: Kartengröße / Map size
       options:
-        - Klein
-        - Mittel
-        - Groß
+        - Klein / Small
+        - Mittel / Medium
+        - Groß / Large
     validations:
       required: true
 
   - type: dropdown
     id: ausgang
     attributes:
-      label: Wie ist die Partie ausgegangen?
+      label: Wie ist die Partie ausgegangen? / How did the game end?
       options:
-        - Gewonnen
-        - Verloren
-        - Aufgegeben
-        - Noch nicht zu Ende
+        - Gewonnen / Won
+        - Verloren / Lost
+        - Aufgegeben / Resigned
+        - Noch nicht zu Ende / Not finished yet
     validations:
       required: true
 
   - type: input
     id: runden
     attributes:
-      label: Nach wie vielen Runden?
-      placeholder: "z. B. 140"
+      label: Nach wie vielen Runden? / After how many turns?
+      placeholder: "z. B. / e.g. 140"
     validations:
       required: false
 
   - type: dropdown
     id: gefuehl
     attributes:
-      label: Wie hat sich die Stufe angefühlt?
+      label: Wie hat sich die Stufe angefühlt? / How did the difficulty feel?
       options:
-        - Viel zu leicht
-        - Etwas zu leicht
-        - Genau richtig
-        - Etwas zu schwer
-        - Viel zu schwer
+        - Viel zu leicht / Much too easy
+        - Etwas zu leicht / A bit too easy
+        - Genau richtig / Just right
+        - Etwas zu schwer / A bit too hard
+        - Viel zu schwer / Much too hard
     validations:
       required: true
 
   - type: textarea
     id: beobachtung
     attributes:
-      label: Was ist dir aufgefallen?
-      description: Zum Beispiel eine Einheit, die zu stark oder zu schwach wirkt, oder ein Verhalten des Gegners.
-      placeholder: "Beispiel: Gegnerische U-Boote versenken meine Schlachtschiffe zu leicht."
+      label: Was ist dir aufgefallen? / What did you notice?
+      description: Zum Beispiel eine Einheit, die zu stark oder zu schwach wirkt, oder ein Verhalten des Gegners. / For example a unit that feels too strong or too weak, or something the enemy does.
+      placeholder: "Beispiel / Example: Gegnerische U-Boote versenken meine Schlachtschiffe zu leicht."
     validations:
       required: false
