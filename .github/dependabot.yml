@@ -13,6 +13,4 @@ updates:
       timezone: "Europe/Berlin"
     commit-message:
       prefix: "Abhängigkeiten"
-    labels:
-      - "dependencies"
     open-pull-requests-limit: 5
