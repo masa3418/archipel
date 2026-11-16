@@ -118,14 +118,15 @@ im ausgeblendeten Browser-Fenster werden Zeitgeber gedrosselt, lange Läufe brec
 ### Stand der Einmessung
 
 Kleine Karte, „Siege“ des einfachen KI-Spielers auf Platz 0, je 96 Partien über alle drei Welten
-(nach Träger, Hafenregel und getarnten U-Booten):
+(nach Träger, Hafenregel und getarnten U-Booten; Schwer und Brutal nach dem Verlangsamen des Trägers auf 2 Felder –
+mit 3 Feldern waren es 12 bzw. 2 Siege, der schnelle Träger nützte der KI also spürbar):
 
 | Stufe | Siege | unentschieden nach 350 Runden | Bonus des Gegners |
 |---|---|---|---|
 | Leicht | 96 | 0 | 70 % Bautempo, macht Fehler, du +1 Infanterie |
 | Normal | 56 | 3 | keiner, macht gelegentlich Fehler |
-| Schwer | 12 | 6 | kennt die Karte, spielt umsichtig |
-| Brutal | 2 | 2 | wie Schwer, 115 % Bautempo, zweite Stadt |
+| Schwer | 24 | 4 | kennt die Karte, spielt umsichtig |
+| Brutal | 5 | 1 | wie Schwer, 115 % Bautempo, zweite Stadt |
 
 Partiedauer bis zur Entscheidung (Normal) ca. 210 Runden. Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
 Inselstatistik: größte Insel ≈ 30–40 % des Landes (Inselreich), ≈ 50–60 % (Gemischt), ≈ 75–85 % (Kontinente).
