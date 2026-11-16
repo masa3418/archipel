@@ -28,10 +28,13 @@ function buildTerrainCache() {
 // ------------------------------------------------------------------ Animationen
 // Während einer Aktion (oder des gegnerischen Zugs) werden sichtbare Bewegungen
 // und Kämpfe aufgezeichnet und anschließend als Zeitleiste abgespielt.
-const anim = { rec: false, cursor: 0, speed: 110, events: [], byUnit: new Map(), t0: 0, end: 0 };
+// gone: Einheiten, die während der Aufzeichnung vernichtet wurden oder in einer Stadt aufgegangen sind.
+// Das Ergebnis steht im Spielzustand sofort fest – in der Wiedergabe bleiben sie bis zu ihrem Moment sichtbar,
+// ebenso behält eine eroberte Stadt bis dahin ihre alte Farbe (siehe shownOwner).
+const anim = { rec: false, cursor: 0, speed: 110, events: [], byUnit: new Map(), gone: [], t0: 0, end: 0 };
 
 function animBegin(speed, follow = false) {
-  anim.rec = true; anim.cursor = 0; anim.speed = speed; anim.events = []; anim.skippable = false;
+  anim.rec = true; anim.cursor = 0; anim.speed = speed; anim.events = []; anim.gone = []; anim.skippable = false;
   anim.follow = follow;
   // Sichtstand vor der Aufzeichnung: neu aufgedeckte Felder erscheinen erst,
   // wenn die eigene Einheit in der Wiedergabe dort ankommt
@@ -110,13 +113,22 @@ hooks.move = (u, fx, fy, tx, ty) => {
     vr: u.owner === 0 ? T(u).vision : 0 });
   anim.cursor += anim.speed;
 };
+function recGone(u, until) {
+  if (u.carrier != null) return;   // an Bord: wird ohnehin nicht einzeln gezeichnet
+  anim.gone.push({ u: { id: u.id, type: u.type, owner: u.owner, hp: Math.max(1, u.hp), x: u.x, y: u.y }, until });
+}
+// Besitzer einer Stadt, wie er gerade gezeigt wird: Während der Wiedergabe gilt bis zum Moment der Eroberung der alte.
+function shownOwner(c, rel, playing) {
+  if (playing) for (const e of anim.events) if (e.type === 'capture' && e.cid === c.id && rel < e.t0) return Math.max(-1, e.prevShown);
+  return S.players[0].knownOwner[c.id];
+}
 // Salve eines Schlachtschiffs (Feuerunterstützung): Mündungsfeuer am Schiff, Granaten zum Zielfeld
 hooks.salvo = (b, x, y) => {
   if (!anim.rec) return;
   if (b.owner !== 0 && !seenByHuman(x, y) && !seenByHuman(b.x, b.y)) return;
   recCam(x, y);
   anim.events.push({ type: 'salvo', fx: b.x, fy: b.y, x, y, t0: anim.cursor, dur: 560 });
-  anim.cursor += 460;
+  anim.cursor += 560;   // erst die Einschläge, dann der Sturm
 };
 const LABEL_MS = 1700;
 // won: hat der Angreifer gewonnen? (Verlierer sind beim Aufruf noch nicht entfernt)
@@ -126,6 +138,8 @@ hooks.combat = (a, d, x, y, won, storm = null) => {
   recCam(x, y);
   anim.events.push({ type: 'boom', x, y, t0: anim.cursor, dur: 650, win: won ? 'att' : 'def',
     hl: (a.owner === 0 && !won) || (d && d.owner === 0 && won) });
+  const loser = won ? d : a;
+  if (loser) recGone(loser, anim.cursor + 280);   // der Verlierer verschwindet in der Explosion
   // Ergebnis aus deiner Sicht als Schriftzug über dem Feld
   let label = null;
   // d === null: Eroberungsversuch einer unbesetzten Stadt ist gescheitert
@@ -137,13 +151,14 @@ hooks.combat = (a, d, x, y, won, storm = null) => {
   if (label) anim.events.push({ type: 'label', x, y, text: label[0], tone: label[1], t0: anim.cursor + 250, dur: LABEL_MS });
   anim.cursor += Math.max(260, anim.speed * 2.5);
 };
-hooks.capture = (c, owner, prev) => {
+hooks.capture = (c, owner, prev, by = null) => {
   if (!anim.rec) return;
   if (owner !== 0 && !seenByHuman(c.x, c.y)) return;
   recCam(c.x, c.y);
   const lost = prev === 0;
-  const ev = { type: 'capture', x: c.x, y: c.y, owner, lost, t0: anim.cursor, dur: 900 };
+  const ev = { type: 'capture', x: c.x, y: c.y, cid: c.id, prevShown: S.players[0].knownOwner[c.id], owner, lost, t0: anim.cursor, dur: 900 };
   anim.events.push(ev);
+  if (by) recGone(by, ev.t0 + 100);   // der Eroberer geht erst jetzt in der Stadt auf
   // Eigene Eroberung: kein Schriftzug – das Eroberungsfenster folgt gleich nach dem Farbwechsel
   if (owner === 0) { captureQueue.push({ game: S, id: c.id, ev }); anim.cursor += Math.max(200, anim.speed * 2); return; }
   const text = lost ? tt('Stadt verloren', 'City lost') : tt('Gegner erobert', 'Enemy captures');
@@ -315,7 +330,7 @@ function render(now = performance.now()) {
 
   for (const c of S.cities) {
     if (!P.seen[idx(c.x, c.y)] && !S.over) continue;
-    ctx.drawImage(citySprite(S.over ? c.owner : P.knownOwner[c.id], TS, c.id % 2), c.x * TS, c.y * TS);
+    ctx.drawImage(citySprite(S.over ? c.owner : shownOwner(c, rel, playing), TS, c.id % 2), c.x * TS, c.y * TS);
   }
 
   const V = viewNow(rel, playing);
@@ -331,7 +346,7 @@ function render(now = performance.now()) {
       if (!inb(x, y)) continue;
       const c = cityAt(x, y);
       if (!c || !P.seen[idx(x, y)]) continue;
-      drawSupportMark(x, y, (S.over ? c.owner : P.knownOwner[c.id]) === b.owner, PLAYERS[b.owner].light);
+      drawSupportMark(x, y, (S.over ? c.owner : shownOwner(c, rel, playing)) === b.owner, PLAYERS[b.owner].light);
     }
   }
 
@@ -386,6 +401,14 @@ function render(now = performance.now()) {
     else drawToken(show, x * TS, y * TS, TS, opts);
   }
   for (const [u, [x, y]] of moving) drawToken(u, x * TS, y * TS, TS, { badge: cargoOf(u).length });
+  // Vernichtete und in einer Stadt aufgegangene Einheiten bleiben bis zu ihrem Moment sichtbar
+  if (playing) for (const g of anim.gone) {
+    if (rel >= g.until) continue;
+    const [x, y] = animPos(g.u, rel) || [g.u.x, g.u.y];
+    const still = Number.isInteger(x) && Number.isInteger(y);
+    if (still && S.cityGrid[idx(x, y)] >= 0) drawToken(g.u, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66);
+    else drawToken(g.u, x * TS, y * TS, TS);
+  }
 
   // Effekte
   if (playing) {

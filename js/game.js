@@ -219,7 +219,7 @@ function winProb(ahp, astr, dhp, dstr, p = 0.5, first = null) {
 function captureCity(c, owner, by = null, support = false) {
   const prev = c.owner;
   c.owner = owner; c.prod = 'inf'; c.progress = 0;
-  if (hooks.capture) hooks.capture(c, owner, prev);
+  if (hooks.capture) hooks.capture(c, owner, prev, by);
   if (by) killUnit(by);
   if (owner === 0) addLog(tt(`Du hast ${c.name} erobert!`, `You captured ${c.name}!`) + (by ? tt(` ${{ m: 'Der', f: 'Die', n: 'Das' }[T(by).g]} ${T(by).name} geht in der Stadt auf.`, ` Your ${T(by).name.toLowerCase()} merges into the city.`) : '')
     + (support ? tt(' Dein Schlachtschiff gab Feuerunterstützung.', ' Your battleship gave fire support.') : ''), 'good', c.x, c.y);
