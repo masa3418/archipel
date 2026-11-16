@@ -1529,6 +1529,7 @@ function tileFromEvent(e) {
 }
 
 cv.addEventListener('click', e => {
+  if (dragSwallow) { dragSwallow = false; return; }   // die linke Taste hat gerade die Karte gezogen
   if (ctxSwallow) { ctxSwallow = false; return; }
   if (enemyPlaybackRunning()) { skipAnim(); return; }
   const [x, y] = tileFromEvent(e); onTileClick(x, y, e.shiftKey);
@@ -1537,8 +1538,8 @@ cv.addEventListener('click', e => {
 // Mittlere oder rechte Maustaste gedrückt halten und ziehen verschiebt die Karte
 // 1:1 (ersetzt das beschleunigte Auto-Scrollen des Browsers). Ein kurzer
 // Rechtsklick ohne Ziehen behält seine Funktion.
-let drag = null;
-const DRAG_THRESHOLD = 4;
+let drag = null, dragSwallow = false;
+const DRAG_THRESHOLD = 4, DRAG_THRESHOLD_LEFT = 9;   // links großzügiger, damit ein Klick mit leichtem Wackeln ein Klick bleibt
 function rightClickAction(e) {
   if (patrolMode) { patrolUndo(); return; }
   if (e && S && !S.over && !anyModalOpen()) {
@@ -1637,7 +1638,14 @@ document.addEventListener('mousedown', e => {
 window.addEventListener('resize', closeCtx);
 window.addEventListener('blur', closeCtx);
 cv.addEventListener('mousedown', e => {
-  if (e.button !== 1 && e.button !== 2) return;
+  if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
+  dragSwallow = false;
+  if (e.button === 0) {
+    // Linke Taste: Ein kurzer Klick wählt und zieht wie gewohnt; erst Halten und Ziehen verschiebt die Karte
+    // (so lässt sich die Karte auch am Touchpad bewegen).
+    drag = { btn: 0, x: e.clientX, y: e.clientY, sl: wrap.scrollLeft, st: wrap.scrollTop, moved: false };
+    return;
+  }
   e.preventDefault();                       // verhindert das Auto-Scrollen
   if (enemyPlaybackRunning()) skipAnim();
   cam.active = false;
@@ -1646,8 +1654,8 @@ cv.addEventListener('mousedown', e => {
 window.addEventListener('mousemove', e => {
   if (!drag) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-  if (!drag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
-  if (!drag.moved) { drag.moved = true; cv.style.cursor = 'grabbing'; }
+  if (!drag.moved && Math.hypot(dx, dy) < (drag.btn === 0 ? DRAG_THRESHOLD_LEFT : DRAG_THRESHOLD)) return;
+  if (!drag.moved) { drag.moved = true; cam.active = false; cv.style.cursor = 'grabbing'; }
   wrap.scrollLeft = drag.sl - dx;
   wrap.scrollTop = drag.st - dy;
 });
@@ -1655,18 +1663,36 @@ window.addEventListener('mouseup', e => {
   if (!drag || e.button !== drag.btn) return;
   const d = drag; drag = null;
   cv.style.cursor = '';
+  if (d.btn === 0 && d.moved) dragSwallow = true;   // der folgende Klick gehört zum Ziehen
   if (d.btn === 2 && !d.moved) rightClickAction(e);
 });
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
-// Mausrad zoomt (zur Mausposition hin) statt zu scrollen.
-// Touchpads liefern viele kleine Schritte; die werden aufsummiert.
-let wheelAcc = 0;
+// Mausrad zoomt (zur Mausposition hin). Am Touchpad verschiebt Zwei-Finger-Wischen die Karte, die
+// Spreizgeste (meldet der Browser als Rad mit Strg) zoomt. Unterschieden wird am Signal: Ein Touchpad liefert
+// viele kleine, oft krumme oder seitliche Schritte, ein Mausrad große gerade. Einstellung `archipel-wheel`
+// (auto | zoom | pan) übersteuert die Erkennung.
+let wheelAcc = 0, padUntil = 0, wheelMode = 'auto';
+try { const m = localStorage.getItem('archipel-wheel'); if (m === 'zoom' || m === 'pan') wheelMode = m; } catch (e) {}
+function looksLikeTouchpad(e) {
+  if (e.deltaMode !== 0) return false;                       // Zeilen/Seiten: Mausrad
+  const now = performance.now();
+  const small = Math.abs(e.deltaY) < 40 && Math.abs(e.deltaX) < 40;
+  if (e.deltaX !== 0 || !Number.isInteger(e.deltaY) || (small && (e.deltaY !== 0))) { padUntil = now + 500; return true; }
+  return now < padUntil;                                     // Nachlauf einer Wischbewegung
+}
 wrap.addEventListener('wheel', e => {
   if (!S) return;
   e.preventDefault();
+  const pinch = e.ctrlKey;                                   // Spreizgeste oder Strg + Rad: immer zoomen
+  const pan = !pinch && (wheelMode === 'pan' || (wheelMode === 'auto' && looksLikeTouchpad(e)));
+  if (pan) {
+    cam.active = false;
+    wrap.scrollLeft += e.deltaX; wrap.scrollTop += e.deltaY;
+    return;
+  }
   const unit = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 400 : 1;
-  wheelAcc += e.deltaY * unit;
+  wheelAcc += e.deltaY * unit * (pinch ? 4 : 1);             // Spreizgesten liefern sehr kleine Schritte
   if (Math.abs(wheelAcc) < 60) return;
   const dir = wheelAcc < 0 ? 1 : -1;
   wheelAcc = 0;
@@ -1674,6 +1700,9 @@ wrap.addEventListener('wheel', e => {
   setZoom(TS + dir * 4, e.clientX - r.left, e.clientY - r.top);
 }, { passive: false });
 cv.addEventListener('auxclick', e => { if (e.button === 1) e.preventDefault(); });
+// Einstellung im Handbuch (Reiter „Steuerung“)
+$('wheelSel').value = wheelMode;
+$('wheelSel').onchange = () => { wheelMode = $('wheelSel').value; try { localStorage.setItem('archipel-wheel', wheelMode); } catch (e) {} };
 cv.addEventListener('mousemove', e => {
   const t = tileFromEvent(e);
   if (!hover || hover[0] !== t[0] || hover[1] !== t[1]) { hover = inb(t[0], t[1]) ? t : null; dirty = true; updateHover(); }
@@ -1744,6 +1773,11 @@ document.addEventListener('keydown', e => {
   const modalOpen = [...document.querySelectorAll('.modal')].some(m => !m.hidden);
   if (modalOpen) { if (e.key === 'Escape') closeModals(); return; }
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (e.shiftKey && KEYDIR[k] && k.startsWith('Arrow')) {   // Umschalt + Pfeiltaste: Karte verschieben
+    e.preventDefault(); cam.active = false;
+    wrap.scrollLeft += KEYDIR[k][0] * TS * 3; wrap.scrollTop += KEYDIR[k][1] * TS * 3;
+    return;
+  }
   const u = selUnit();
   if (patrolMode) {
     if (k === 'Enter') { e.preventDefault(); patrolStart(); }

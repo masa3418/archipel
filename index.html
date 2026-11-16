@@ -36,6 +36,14 @@
   aside { width: 320px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--line);
     display: flex; flex-direction: column; overflow: hidden; }
   #mini { display: block; margin: 10px auto 6px; border: 1px solid var(--line); cursor: pointer; background: #000; }
+  /* niedrige Bildschirme (Notebook): Übersichtskarte und Rundenknöpfe kleiner, damit die Einheitenkarte Platz hat */
+  @media (max-height: 800px) and (min-width: 761px) {
+    #mini { max-height: 19vh; width: auto; margin: 6px auto 4px; }
+    .turnbar { gap: 4px; margin-bottom: 6px; }
+    .turnbar button { padding: 7px; }
+    #nextUnit { padding: 5px; }
+    .power { margin-bottom: 4px; }
+  }
   .box { padding: 10px 12px; border-top: 1px solid var(--line); }
   .box h3 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
   #panel { overflow-y: auto; flex: 0 1 auto; min-height: 120px; }
@@ -239,6 +247,8 @@
   .help-matrix td.none { color: var(--muted); }
   .help-rules td:first-child, .help-keys td:first-child { white-space: nowrap; font-weight: 600; vertical-align: top; }
   .help-keys td:first-child { font-weight: 400; }
+  .help-setting { margin: 14px 0 4px; font-size: 13px; }
+  .help-setting select { width: auto; margin: 0 8px; }
   .help-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 4px 28px; }
   @media (max-width: 760px) { .dlg.help { height: 92vh; } .help-rules td:first-child, .help-keys td:first-child { white-space: normal; } }
   kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-size: 12px; }
@@ -393,8 +403,10 @@
               <tr><td data-en="Right-click your unit or city">Rechtsklick auf eigene Einheit oder Stadt</td><td data-en="menu with all commands">Menü mit allen Befehlen</td></tr>
               <tr><td data-en="Right-click elsewhere">Rechtsklick woanders</td><td data-en="clear selection">Auswahl aufheben</td></tr>
               <tr><td data-en="Shift + click">Umschalt + Klick</td><td data-en="march order even onto tiles with your own units">Marschbefehl auch auf Felder mit eigenen Einheiten</td></tr>
-              <tr><td data-en="Hold right or middle button and drag">Rechte oder mittlere Taste halten und ziehen</td><td data-en="pan the map">Karte verschieben</td></tr>
+              <tr><td data-en="Hold a mouse button and drag">Maustaste halten und ziehen</td><td data-en="pan the map (any button; a short left click still selects and moves)">Karte verschieben (jede Taste; ein kurzer Linksklick wählt und zieht weiterhin)</td></tr>
               <tr><td data-en="Mouse wheel">Mausrad</td><td data-en="zoom">zoomen</td></tr>
+              <tr><td data-en="Touchpad: two-finger swipe">Touchpad: mit zwei Fingern wischen</td><td data-en="pan the map">Karte verschieben</td></tr>
+              <tr><td data-en="Touchpad: pinch">Touchpad: zwei Finger spreizen</td><td data-en="zoom (also Ctrl + wheel)">zoomen (auch Strg + Rad)</td></tr>
               <tr><td data-en="Click a message">Klick auf eine Meldung</td><td data-en="jump to the place">zur Stelle springen</td></tr>
             </table>
           </div>
@@ -402,6 +414,7 @@
             <h3 data-en="Keys">Tasten</h3>
             <table class="help-keys">
               <tr><td><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd> <kbd>A</kbd><kbd>D</kbd> <kbd>Y</kbd><kbd>X</kbd><kbd>C</kbd></td><td data-en="move in eight directions (also arrow keys, numpad; Z works like Y)">in acht Richtungen ziehen (auch Pfeiltasten, Ziffernblock; Z wirkt wie Y)</td></tr>
+              <tr><td><kbd data-en="Shift">Umschalt</kbd> + <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd></td><td data-en="pan the map">Karte verschieben</td></tr>
               <tr><td><kbd>Enter</kbd></td><td data-en="end turn">Runde beenden</td></tr>
               <tr><td><kbd>N</kbd></td><td data-en="next waiting unit">nächste wartende Einheit</td></tr>
               <tr><td><kbd data-en="Space">Leertaste</kbd></td><td data-en="skip unit this turn">Einheit diese Runde überspringen</td></tr>
@@ -416,6 +429,13 @@
             </table>
           </div>
         </div>
+        <p class="help-setting"><label><span data-en="Mouse wheel and two-finger swipe:">Mausrad und Zwei-Finger-Wischen:</span>
+          <select id="wheelSel">
+            <option value="auto" data-en="detect automatically (wheel zooms, swipe pans)">automatisch erkennen (Rad zoomt, Wischen verschiebt)</option>
+            <option value="zoom" data-en="always zoom">immer zoomen</option>
+            <option value="pan" data-en="always pan the map">immer die Karte verschieben</option>
+          </select></label>
+          <span class="muted" data-en="Change this if the map zooms when you swipe, or pans when you turn the wheel.">Stell das um, falls die Karte beim Wischen zoomt oder beim Drehen am Rad wandert.</span></p>
         <div class="help-tip" data-lang="de"><b>Befehle halten von selbst an:</b> Marsch, Patrouille und Erkunden stoppen, sobald die Einheit eine unbekannte Stadt entdeckt, eine feindliche Stadt oder Einheit sichtet, ein U-Boot ortet (Sonarkontakt) oder einem Feind direkt gegenübersteht. Dann bist du gefragt.</div>
         <div class="help-tip" data-lang="en"><b>Orders stop by themselves:</b> march, patrol and explore stop as soon as the unit discovers an unknown city, sights an enemy city or unit, locates a submarine (sonar contact) or stands right next to an enemy. Then it is your call.</div>
       </section>

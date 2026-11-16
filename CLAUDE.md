@@ -87,6 +87,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Rundenknopf und das automatische Rundenende.
 - **Schwierigkeit** wirkt nur auf Spieler 1 (Gegner). In Simulationen spielt die KI auch
   Spieler 0 – dort ohne Fehler und ohne Kartenwissen.
+- **Karte bewegen** (ui.js): Ziehen mit jeder Maustaste (links erst ab `DRAG_THRESHOLD_LEFT`, der Klick danach wird über
+  `dragSwallow` verschluckt), Umschalt + Pfeiltasten, Klick auf die Übersichtskarte. Rad-Ereignisse: Mausrad zoomt,
+  Touchpad-Wischen verschiebt (`looksLikeTouchpad`: kleine, krumme oder seitliche Schritte), Spreizgeste = Rad mit Strg = Zoom.
+  Die Einstellung `archipel-wheel` (auto | zoom | pan, im Handbuch unter „Steuerung“) übersteuert die Erkennung.
+  Echte Touchpad-Gesten lassen sich im eingebauten Browser nur als nachgestellte Rad-Ereignisse testen.
 - **Grafik-Caches**: Gelände (`buildTerrainCache`) und Sprites hängen von der Zoomstufe `TS` ab.
 
 ## Entwickeln und testen
@@ -165,4 +170,4 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
 - Lange Ersetzungen lieber als Node-Skript im Scratchpad ausführen statt per `sed`/Heredoc oder `node -e`
   mit Backticks (Git Bash führt den Inhalt als Befehl aus).
 - `localStorage`: Autosave `archipel-save-v1`, Spielstände `archipel-slot-*` mit Index
-  `archipel-slots`, Einstellungen `archipel-*` (Ton, Zoom, Schwierigkeit, Rundenende, Sprache, Handbuch-Reiter …).
+  `archipel-slots`, Einstellungen `archipel-*` (Ton, Zoom, Schwierigkeit, Rundenende, Sprache, Handbuch-Reiter, Rad/Touchpad …).
