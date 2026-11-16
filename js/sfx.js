@@ -227,7 +227,7 @@ const Sfx = (() => {
   const RATE = { dst: 1.12, crs: 0.96, car: 0.9, bat: 0.84 };
   const LOOP_LEVEL = { march: 0.22, tank: 0.2, plane: 0.16, ship: 0.24, sub: 0.26 };
   const MOVE_LEVEL = { march: 0.95, tank: 0.85, plane: 0.75, ship: 0.95, sub: 0.9 };
-  const KIND_NAME = { march: 'Infanterie', tank: 'Panzer', plane: 'Jäger', ship: 'Schiffe', sub: 'U-Boot' };
+  const KIND_NAME = { march: tt('Infanterie', 'Infantry'), tank: tt('Panzer', 'Tank'), plane: tt('Jäger', 'Fighter'), ship: tt('Schiffe', 'Ships'), sub: tt('U-Boot', 'Submarine') };
   const bufs = {};
   let levels = { march: 1, tank: 1, plane: 1, ship: 1, sub: 1 };
   try { Object.assign(levels, JSON.parse(localStorage.getItem('archipel-levels') || '{}')); } catch (e) {}

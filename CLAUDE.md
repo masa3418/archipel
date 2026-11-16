@@ -7,7 +7,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 
 ## Zusammenarbeit
 
-- Sprache: **Deutsch** – im Gespräch, in der Oberfläche, in Kommentaren und Commit-Nachrichten.
+- Sprache: **Deutsch** – im Gespräch, in Kommentaren und Commit-Nachrichten. Das Spiel selbst ist
+  **zweisprachig (Deutsch/Englisch)**: jeden neuen sichtbaren Text in beiden Sprachen anlegen (siehe unten).
 - Der Nutzer interessiert sich für das **Ergebnis**, nicht fürs Programmieren: Änderungen
   selbstständig umsetzen, im Browser prüfen, verständlich (ohne Code-Fachjargon) berichten.
 - Spielerische Änderungen (Balancing, KI) per Simulation absichern und Zahlen nennen.
@@ -23,6 +24,13 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - Alle Skripte teilen sich den globalen Namensraum. Reihenfolge in `index.html`:
   `data.js → map.js → game.js → ai.js → gfx.js → sfx.js → ui.js`.
 - Spielzustand liegt komplett in der globalen Variable `S`.
+- **Zweisprachigkeit**: `LANG`/`EN`/`tt(deutsch, englisch)` stehen oben in `data.js`. Im Code jeden sichtbaren
+  Text als `tt('…', '…')` schreiben. Feste Texte in `index.html`: `data-en="…"` (englischer Inhalt),
+  `data-en-title`/`-placeholder`/`-aria-label`; lange Absätze doppelt mit `data-lang="de"`/`"en"`.
+  `applyLang()` (ui.js) setzt das um. Der Sprachknopf speichert `archipel-lang` und lädt die Seite neu
+  (Spiel wird vorher gesichert) – Texte dürfen daher beim Laden festgelegt werden.
+  Einheitennamen: `uname(u, 'nom'|'acc')` (Artikel je Sprache), `lc1()` für Kleinschreibung im Satz.
+  Gespeicherte Meldungen bleiben in der Sprache, in der sie entstanden sind.
 
 ## Dateien
 
@@ -92,4 +100,4 @@ Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
 - Lange Ersetzungen lieber als Node-Skript im Scratchpad ausführen statt per `sed`/Heredoc
   mit Backticks (Quoting-Probleme unter Git Bash).
 - `localStorage`: Autosave `archipel-save-v1`, Spielstände `archipel-slot-*` mit Index
-  `archipel-slots`, Einstellungen `archipel-*` (Ton, Zoom, Schwierigkeit, Rundenende …).
+  `archipel-slots`, Einstellungen `archipel-*` (Ton, Zoom, Schwierigkeit, Rundenende, Sprache …).

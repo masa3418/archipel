@@ -123,9 +123,9 @@ hooks.combat = (a, d, x, y, won, storm = null) => {
   // d === null: Eroberungsversuch einer unbesetzten Stadt ist gescheitert
   const city = cityAt(x, y);
   if (storm) label = null;   // Stadt fällt: der Schriftzug der Eroberung folgt
-  else if (a.owner === 0) label = won ? (storm === false ? ['Sieg – Stadt hält', 'good'] : ['Sieg!', 'good']) : d ? ['Verloren', 'bad'] : ['Gescheitert', 'bad'];
-  else if (d && d.owner === 0) label = won ? (storm === false ? ['Verloren – Stadt hält', 'bad'] : ['Verloren', 'bad']) : ['Abgewehrt!', 'good'];
-  else if (!d && city && city.owner === 0) label = ['Abgewehrt!', 'good'];
+  else if (a.owner === 0) label = won ? (storm === false ? [tt('Sieg – Stadt hält', 'Won – city holds'), 'good'] : [tt('Sieg!', 'Victory!'), 'good']) : d ? [tt('Verloren', 'Lost'), 'bad'] : [tt('Gescheitert', 'Failed'), 'bad'];
+  else if (d && d.owner === 0) label = won ? (storm === false ? [tt('Verloren – Stadt hält', 'Lost – city holds'), 'bad'] : [tt('Verloren', 'Lost'), 'bad']) : [tt('Abgewehrt!', 'Repelled!'), 'good'];
+  else if (!d && city && city.owner === 0) label = [tt('Abgewehrt!', 'Repelled!'), 'good'];
   if (label) anim.events.push({ type: 'label', x, y, text: label[0], tone: label[1], t0: anim.cursor + 250, dur: LABEL_MS });
   anim.cursor += Math.max(260, anim.speed * 2.5);
 };
@@ -138,7 +138,7 @@ hooks.capture = (c, owner, prev) => {
   anim.events.push(ev);
   // Eigene Eroberung: kein Schriftzug – das Eroberungsfenster folgt gleich nach dem Farbwechsel
   if (owner === 0) { captureQueue.push({ game: S, id: c.id, ev }); anim.cursor += Math.max(200, anim.speed * 2); return; }
-  const text = lost ? 'Stadt verloren' : 'Gegner erobert';
+  const text = lost ? tt('Stadt verloren', 'City lost') : tt('Gegner erobert', 'Enemy captures');
   anim.events.push({ type: 'label', x: c.x, y: c.y, text, tone: 'bad', t0: anim.cursor + 150, dur: LABEL_MS });
   anim.cursor += Math.max(200, anim.speed * 2);
 };
@@ -640,10 +640,10 @@ function needsOrders(u) {
 // Reihenfolge), die aktuelle bleibt dabei wartend
 function actNext() {
   const list = S.units.filter(needsOrders).sort((a, b) => a.id - b.id);
-  if (!list.length) { toast('Keine Einheit wartet mehr'); Sfx.play('error'); refresh(); return; }
+  if (!list.length) { toast(tt('Keine Einheit wartet mehr', 'No units waiting')); Sfx.play('error'); refresh(); return; }
   const cur = selUnit();
   const nxt = list.find(u => cur && u.id > cur.id) || list[0];
-  if (cur && nxt === cur) toast('Das ist die letzte wartende Einheit');
+  if (cur && nxt === cur) toast(tt('Das ist die letzte wartende Einheit', 'This is the last waiting unit'));
   select(nxt); centerOn(nxt.x, nxt.y);
   Sfx.play('select');
   refresh();
@@ -684,7 +684,7 @@ function autoEndStep(now) {
   if (left <= 0) { autoEndAt = 0; b.style.removeProperty('--auto'); endHumanTurn(); return; }
   b.classList.add('auto');
   b.style.setProperty('--auto', Math.min(100, 100 - left / AUTO_END_MS * 100).toFixed(1) + '%');
-  b.innerHTML = 'Runde endet gleich … <small>(Klick/Taste: abbrechen)</small>';
+  b.innerHTML = tt('Runde endet gleich … <small>(Klick/Taste: abbrechen)</small>', 'Turn ends soon … <small>(click/key: cancel)</small>');
 }
 
 function afterAction(u) {
@@ -729,17 +729,17 @@ function actLoad() {
   const u = selUnit(); if (!u || !T(u).carries) return;
   const n = loadUnits(u);
   Sfx.play(n ? 'clank' : 'error');
-  toast(n ? `${n} Einheit(en) eingeladen` : 'Nichts zum Einladen in dieser Stadt');
+  toast(n ? tt(`${n} Einheit(en) eingeladen`, `${n} unit${n === 1 ? '' : 's'} loaded`) : tt('Nichts zum Einladen in dieser Stadt', 'Nothing to load in this city'));
   refresh();
 }
 function actUnload() {
   const u = selUnit(); if (!u || !T(u).carries) return;
-  if (!cargoOf(u).length) { toast('Niemand an Bord'); return; }
+  if (!cargoOf(u).length) { toast(tt('Niemand an Bord', 'Nobody on board')); return; }
   animBegin(120);
   const n = unloadAll(u);
   animEnd();
   if (!n) Sfx.play('error');
-  toast(n ? `${n} Einheit(en) ausgeladen` : 'Kein freies Feld zum Ausladen');
+  toast(n ? tt(`${n} Einheit(en) ausgeladen`, `${n} unit${n === 1 ? '' : 's'} unloaded`) : tt('Kein freies Feld zum Ausladen', 'No free tile to unload'));
   afterAction(u);
 }
 // Heimkehr: Marsch zur nächsten erreichbaren eigenen Stadt (Schiffe: Hafenstadt)
@@ -748,13 +748,14 @@ function actHome() {
   const t = T(u);
   const ok = c => c && c.owner === 0 && (t.domain !== 'sea' || c.coastal);
   const here = cityAt(u.x, u.y);
-  if (u.carrier == null && ok(here)) { toast(t.domain === 'sea' ? 'Liegt schon im Hafen' : 'Steht schon in einer eigenen Stadt'); Sfx.play('error'); return; }
+  if (u.carrier == null && ok(here)) { toast(t.domain === 'sea' ? tt('Liegt schon im Hafen', 'Already in port') : tt('Steht schon in einer eigenen Stadt', 'Already in one of your cities')); Sfx.play('error'); return; }
   const path = bfs(u.x, u.y, makePassable(u, false, true), (x, y) => ok(cityAt(x, y)));
-  if (!path) { toast(t.domain === 'sea' ? 'Kein eigener Hafen erreichbar' : 'Keine eigene Stadt erreichbar'); Sfx.play('error'); return; }
+  if (!path) { toast(t.domain === 'sea' ? tt('Kein eigener Hafen erreichbar', 'No port of yours in reach') : tt('Keine eigene Stadt erreichbar', 'None of your cities in reach')); Sfx.play('error'); return; }
   const [x, y] = path[path.length - 1];
   if (t.fuel && path.length > u.fuel) {
     // Nicht losschicken: der Resttreibstoff bleibt dem Spieler (z. B. zum Erkunden)
-    toast(`Treibstoff reicht nicht: ${cityAt(x, y).name} ist ${path.length} Felder entfernt, Treibstoff für ${u.fuel}`);
+    toast(tt(`Treibstoff reicht nicht: ${cityAt(x, y).name} ist ${path.length} Felder entfernt, Treibstoff für ${u.fuel}`,
+      `Not enough fuel: ${cityAt(x, y).name} is ${path.length} tiles away, fuel for ${u.fuel}`));
     Sfx.play('error'); return;
   }
   Sfx.play('select');
@@ -765,8 +766,8 @@ function actCancel() { const u = selUnit(); if (u) { u.order = null; refresh(); 
 // ------------------------------------------------------------------ Patrouille
 function actExplore() {
   const u = selUnit(); if (!u) return;
-  if (u.carrier != null && T(u).domain === 'land') { toast('Erst ausladen, dann erkunden'); Sfx.play('error'); return; }
-  if (T(u).domain === 'sea' && u.type === 'trn' && cargoOf(u).length) { toast('Transporter mit Ladung erkunden nicht selbstständig'); Sfx.play('error'); return; }
+  if (u.carrier != null && T(u).domain === 'land') { toast(tt('Erst ausladen, dann erkunden', 'Unload first, then explore')); Sfx.play('error'); return; }
+  if (T(u).domain === 'sea' && u.type === 'trn' && cargoOf(u).length) { toast(tt('Transporter mit Ladung erkunden nicht selbstständig', "Loaded transports don't explore on their own")); Sfx.play('error'); return; }
   u.order = { type: 'explore' };
   Sfx.play('select');
   animBegin(120);
@@ -777,10 +778,10 @@ function actExplore() {
 
 function actPatrol() {
   const u = selUnit(); if (!u) return;
-  if (u.carrier != null) { toast('Erst ausladen, dann Patrouille festlegen'); Sfx.play('error'); return; }
+  if (u.carrier != null) { toast(tt('Erst ausladen, dann Patrouille festlegen', 'Unload first, then set a patrol')); Sfx.play('error'); return; }
   patrolMode = { id: u.id, pts: [] };
   Sfx.play('tick');
-  toast('Wegpunkte auf der Karte anklicken, Enter startet');
+  toast(tt('Wegpunkte auf der Karte anklicken, Enter startet', 'Click waypoints on the map, Enter starts'));
   refresh();
 }
 function patrolUndo() { if (patrolMode) { patrolMode.pts.pop(); refresh(); } }
@@ -802,11 +803,11 @@ function patrolAddPoint(x, y) {
   if (!u) { patrolMode = null; refresh(); return; }
   const last = patrolMode.pts.length ? patrolMode.pts[patrolMode.pts.length - 1] : [u.x, u.y];
   if (last[0] === x && last[1] === y) return;
-  if (!S.players[0].seen[idx(x, y)]) { toast('Wegpunkte nur auf erkundeten Feldern'); Sfx.play('error'); return; }
+  if (!S.players[0].seen[idx(x, y)]) { toast(tt('Wegpunkte nur auf erkundeten Feldern', 'Waypoints only on explored tiles')); Sfx.play('error'); return; }
   const c = cityAt(x, y);
-  if (c && c.owner !== 0) { toast('Wegpunkt nicht in fremden Städten'); Sfx.play('error'); return; }
+  if (c && c.owner !== 0) { toast(tt('Wegpunkt nicht in fremden Städten', 'No waypoints in foreign cities')); Sfx.play('error'); return; }
   if (!canEnterTerrain(u, x, y)) {
-    toast(T(u).domain === 'land' ? 'Wegpunkt muss an Land liegen' : 'Wegpunkt muss auf dem Wasser liegen'); Sfx.play('error'); return;
+    toast(T(u).domain === 'land' ? tt('Wegpunkt muss an Land liegen', 'Waypoint must be on land') : tt('Wegpunkt muss auf dem Wasser liegen', 'Waypoint must be on water')); Sfx.play('error'); return;
   }
   patrolMode.pts.push([x, y]);
   Sfx.play('tick');
@@ -863,11 +864,11 @@ function endHumanTurn() {
       if (u.owner !== 0 || !u.order || u.order.type !== 'sentry' || u.carrier != null) continue;
       let enemy = false;
       for (const [dx, dy] of DIRS) if (inb(u.x + dx, u.y + dy) && visibleEnemyAt(0, u.x + dx, u.y + dy)) enemy = true;
-      if (enemy) { u.order = null; addLog(`${T(u).name} meldet Feindkontakt!`, 'bad', u.x, u.y); }
+      if (enemy) { u.order = null; addLog(tt(`${T(u).name} meldet Feindkontakt!`, `${T(u).name} reports enemy contact!`), 'bad', u.x, u.y); }
     }
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'goto')) {
       // Feind ist während des Gegnerzugs herangerückt: Marsch anhalten
-      if (u.carrier == null && enemyAdjacent(u)) { u.order = null; addLog(`${T(u).name}: Marsch angehalten – Feindkontakt!`, 'bad', u.x, u.y); continue; }
+      if (u.carrier == null && enemyAdjacent(u)) { u.order = null; addLog(tt(`${T(u).name}: Marsch angehalten – Feindkontakt!`, `${T(u).name}: march stopped – enemy contact!`), 'bad', u.x, u.y); continue; }
       runGoto(u);
     }
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'patrol')) runPatrol(u);
@@ -889,8 +890,9 @@ function endHumanTurn() {
     wrap.scrollLeft = startScroll[0]; wrap.scrollTop = startScroll[1];
   } else if (!su && home) centerOn(home.x, home.y);
   anim.after = () => {
-    if (fresh.some(t => t.includes('Feindkontakt'))) Sfx.play('alarm');
-    else if (fresh.some(t => t.includes('fertiggestellt'))) Sfx.play('built');
+    // Erkennung über Schlüsselwörter der Meldungen (game.js) – in beiden Sprachen
+    if (fresh.some(t => t.toLowerCase().includes(tt('feindkontakt', 'enemy contact')))) Sfx.play('alarm');
+    else if (fresh.some(t => t.toLowerCase().includes(tt('fertiggestellt', 'completed')))) Sfx.play('built');
     if (followed && home) camTo(home.x + 0.5, home.y + 0.5, 600);
     maybeOfferEnd();
     // nichts zu tun (keine Einheit wartet) und nichts Schlimmes passiert: gleich weiter
@@ -904,7 +906,7 @@ function endHumanTurn() {
 function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
 
 function unitChip(o) {
-  const st = o.order ? ({ sentry: ' · Wache', patrol: ' · Patrouille', explore: ' · Erkundet' }[o.order.type] || ' · Marsch') : '';
+  const st = o.order ? ({ sentry: tt(' · Wache', ' · sentry'), patrol: tt(' · Patrouille', ' · patrol'), explore: tt(' · Erkundet', ' · exploring') }[o.order.type] || tt(' · Marsch', ' · marching')) : '';
   return `<span class="chip ${o.moves <= 0 ? 'done' : ''} ${o.id === sel ? 'cur' : ''}" data-unit="${o.id}">${esc(T(o).name)} ${o.hp}/${T(o).hp}${st}</span>`;
 }
 
@@ -926,71 +928,73 @@ function updatePanel() {
   if (u) {
     const t = T(u);
     const cargo = cargoOf(u);
-    let orderTxt = 'keiner';
-    if (u.order) orderTxt = u.order.type === 'sentry' ? 'Wache'
-      : u.order.type === 'explore' ? 'Erkunden'
-      : u.order.type === 'patrol' ? `Patrouille (${u.order.pts.length - 1} Wegpunkt${u.order.pts.length > 2 ? 'e' : ''})`
-      : `Marsch nach ${u.order.x},${u.order.y}`;
-    h += `<section class="pcard pc-unit"><div class="pc-head"><img class="pc-icon" src="${iconUrl('u', u.type)}" alt=""><div><h3>Einheit</h3><div class="uname">${esc(t.name)}</div></div></div>`;
+    let orderTxt = tt('keiner', 'none');
+    if (u.order) orderTxt = u.order.type === 'sentry' ? tt('Wache', 'Sentry')
+      : u.order.type === 'explore' ? tt('Erkunden', 'Explore')
+      : u.order.type === 'patrol' ? tt(`Patrouille (${u.order.pts.length - 1} Wegpunkt${u.order.pts.length > 2 ? 'e' : ''})`, `Patrol (${u.order.pts.length - 1} waypoint${u.order.pts.length > 2 ? 's' : ''})`)
+      : tt(`Marsch nach ${u.order.x},${u.order.y}`, `Go to ${u.order.x},${u.order.y}`);
+    h += `<section class="pcard pc-unit"><div class="pc-head"><img class="pc-icon" src="${iconUrl('u', u.type)}" alt=""><div><h3>${tt('Einheit', 'Unit')}</h3><div class="uname">${esc(t.name)}</div></div></div>`;
     h += `<div class="stats">
-      <span>Trefferpunkte</span><b>${u.hp} / ${t.hp}</b>
-      <span>Bewegung</span><b>${u.moves} / ${t.move}</b>
-      <span>Stärke</span><b>${t.str}</b>`;
+      <span>${tt('Trefferpunkte', 'Hit points')}</span><b>${u.hp} / ${t.hp}</b>
+      <span>${tt('Bewegung', 'Moves')}</span><b>${u.moves} / ${t.move}</b>
+      <span>${tt('Stärke', 'Strength')}</span><b>${t.str}</b>`;
     if (t.domain === 'air') {
       const dh = distHome(0, u.x, u.y);
       const warn = !isBase(u) && u.fuel - Math.max(0, u.moves) < dh;
-      h += `<span>Treibstoff</span><b class="${warn ? 'warn' : ''}">${u.fuel} / ${t.fuel}${warn ? ' ⚠ zurückfliegen!' : ''}</b>
-            <span>Nächste Basis</span><b>${dh} Felder</b>`;
+      h += `<span>${tt('Treibstoff', 'Fuel')}</span><b class="${warn ? 'warn' : ''}">${u.fuel} / ${t.fuel}${warn ? tt(' ⚠ zurückfliegen!', ' ⚠ fly back!') : ''}</b>
+            <span>${tt('Nächste Basis', 'Nearest base')}</span><b>${dh} ${tt('Felder', 'tiles')}</b>`;
     }
-    if (t.carries) h += `<span>An Bord</span><b>${cargo.length} / ${t.capacity}</b>`;
-    if (u.carrier != null) h += `<span>Ort</span><b>an Bord</b>`;
-    h += `<span>Befehl</span><b>${orderTxt}</b></div>`;
+    if (t.carries) h += `<span>${tt('An Bord', 'On board')}</span><b>${cargo.length} / ${t.capacity}</b>`;
+    if (u.carrier != null) h += `<span>${tt('Ort', 'Location')}</span><b>${tt('an Bord', 'on board')}</b>`;
+    h += `<span>${tt('Befehl', 'Order')}</span><b>${orderTxt}</b></div>`;
     if (cargo.length) h += `<div>${cargo.map(unitChip).join('')}</div>`;
     h += `<div class="row">
-      <button data-act="skip" title="Leertaste">Überspringen</button>
-      <button data-act="sentry" title="S">Wache</button>
-      <button data-act="patrol" title="P">Patrouille</button>
-      <button data-act="explore" title="R">Erkunden</button>
-      <button data-act="home" title="B – zur nächsten eigenen ${t.domain === 'sea' ? 'Hafenstadt' : 'Stadt'}">Heimkehr</button>`;
-    if (u.order) h += `<button data-act="cancel">Befehl löschen</button>`;
+      <button data-act="skip" title="${tt('Leertaste', 'Space')}">${tt('Überspringen', 'Skip')}</button>
+      <button data-act="sentry" title="S">${tt('Wache', 'Sentry')}</button>
+      <button data-act="patrol" title="P">${tt('Patrouille', 'Patrol')}</button>
+      <button data-act="explore" title="R">${tt('Erkunden', 'Explore')}</button>
+      <button data-act="home" title="${t.domain === 'sea' ? tt('B – zur nächsten eigenen Hafenstadt', 'B – to your nearest port') : tt('B – zur nächsten eigenen Stadt', 'B – to your nearest city')}">${tt('Heimkehr', 'Return home')}</button>`;
+    if (u.order) h += `<button data-act="cancel">${tt('Befehl löschen', 'Clear order')}</button>`;
     const c = cityAt(u.x, u.y);
-    if (t.carries && c && c.owner === 0) h += `<button data-act="load" title="L">Einladen</button>`;
-    if (t.carries && cargo.length) h += `<button data-act="unload" title="U">Ausladen</button>`;
+    if (t.carries && c && c.owner === 0) h += `<button data-act="load" title="L">${tt('Einladen', 'Load')}</button>`;
+    if (t.carries && cargo.length) h += `<button data-act="unload" title="U">${tt('Ausladen', 'Unload')}</button>`;
     h += `</div>`;
     if (patrolMode && patrolMode.id === u.id) {
       const n = patrolMode.pts.length;
-      h += `<div class="patrolbox"><b>Patrouille festlegen</b><br>Klicke nacheinander Wegpunkte auf der Karte (${n} gesetzt).
-        Die Einheit läuft dann dauerhaft im Kreis: Start → 1 → 2 … → Start. Bei Feindkontakt bricht sie ab und meldet sich.
-        <div class="row"><button data-act="patrolGo" class="primary" ${n ? '' : 'disabled'}>Starten ⏎</button>
-        <button data-act="patrolUndo" ${n ? '' : 'disabled'}>Letzten löschen</button>
-        <button data-act="patrolAbort">Abbrechen</button></div></div>`;
+      h += `<div class="patrolbox">${tt(`<b>Patrouille festlegen</b><br>Klicke nacheinander Wegpunkte auf der Karte (${n} gesetzt).
+        Die Einheit läuft dann dauerhaft im Kreis: Start → 1 → 2 … → Start. Bei Feindkontakt bricht sie ab und meldet sich.`,
+        `<b>Set patrol</b><br>Click waypoints on the map one after another (${n} set).
+        The unit then keeps circling: Start → 1 → 2 … → Start. On enemy contact it stops and reports.`)}
+        <div class="row"><button data-act="patrolGo" class="primary" ${n ? '' : 'disabled'}>${tt('Starten', 'Start')} ⏎</button>
+        <button data-act="patrolUndo" ${n ? '' : 'disabled'}>${tt('Letzten löschen', 'Remove last')}</button>
+        <button data-act="patrolAbort">${tt('Abbrechen', 'Cancel')}</button></div></div>`;
     }
-    if (u.carrier != null) h += `<p class="muted">Zieh die Einheit auf ein Nachbarfeld an Land, um sie auszuladen.</p>`;
+    if (u.carrier != null) h += `<p class="muted">${tt('Zieh die Einheit auf ein Nachbarfeld an Land, um sie auszuladen.', 'Move the unit onto an adjacent land tile to unload it.')}</p>`;
     h += `</section>`;
   }
   const c = selCity != null ? S.cities[selCity] : null;
   if (c && c.owner === 0) {
     const p = c.prod ? UT[c.prod] : null;
-    h += `<section class="pcard pc-city"><div class="pc-head"><img class="pc-icon" src="${iconUrl('c', c.id % 2)}" alt=""><div><h3>${u ? 'Stadt · Standort' : 'Stadt'}</h3><div class="uname">${esc(c.name)}${c.coastal ? ' <span class="muted" style="font-size:12px">· Hafen</span>' : ''}</div></div></div>`;
-    h += `<label class="muted" style="display:block;margin-top:6px">Produktion</label><select id="prodSel">`;
+    h += `<section class="pcard pc-city"><div class="pc-head"><img class="pc-icon" src="${iconUrl('c', c.id % 2)}" alt=""><div><h3>${u ? tt('Stadt · Standort', 'City · location') : tt('Stadt', 'City')}</h3><div class="uname">${esc(c.name)}${c.coastal ? ` <span class="muted" style="font-size:12px">· ${tt('Hafen', 'Port')}</span>` : ''}</div></div></div>`;
+    h += `<label class="muted" style="display:block;margin-top:6px">${tt('Produktion', 'Production')}</label><select id="prodSel">`;
     for (const k of UNIT_ORDER) {
       const ut = UT[k];
       const dis = ut.domain === 'sea' && !c.coastal;
-      h += `<option value="${k}" ${c.prod === k ? 'selected' : ''} ${dis ? 'disabled' : ''}>${ut.name} – ${ut.cost} Runden</option>`;
+      h += `<option value="${k}" ${c.prod === k ? 'selected' : ''} ${dis ? 'disabled' : ''}>${ut.name} – ${ut.cost} ${tt('Runden', 'turns')}</option>`;
     }
     h += `</select>`;
     if (p) h += `<div class="bar"><i style="width:${Math.round(c.progress / p.cost * 100)}%"></i></div>
-      <div class="muted" style="font-size:12px;margin-top:3px">Fertig in ${p.cost - c.progress} Runde(n). Ein Wechsel setzt den Fortschritt zurück.</div>`;
+      <div class="muted" style="font-size:12px;margin-top:3px">${tt(`Fertig in ${p.cost - c.progress} Runde(n). Ein Wechsel setzt den Fortschritt zurück.`, `Ready in ${p.cost - c.progress} turn${p.cost - c.progress === 1 ? '' : 's'}. Switching resets the progress.`)}</div>`;
     const inCity = topUnitsAt(c.x, c.y).filter(o => o.owner === 0);
-    if (inCity.length) h += `<div style="margin-top:8px" class="muted">In der Stadt:</div><div>${inCity.map(unitChip).join('')}</div>`;
+    if (inCity.length) h += `<div style="margin-top:8px" class="muted">${tt('In der Stadt:', 'In the city:')}</div><div>${inCity.map(unitChip).join('')}</div>`;
     h += `</section>`;
   }
   if (!u && !(c && c.owner === 0)) {
     const left = S.units.filter(needsOrders).length;
-    h += `<h3>Lage</h3>`;
-    h += left ? `<p>${left} Einheit(en) warten auf Befehle. <button data-act="next">Nächste (N)</button></p>`
-      : `<p>Alle Einheiten haben gezogen. <b>Enter</b> beendet die Runde.</p>`;
-    h += `<p class="muted">Klicke eine Einheit oder eigene Stadt an.</p>`;
+    h += `<h3>${tt('Lage', 'Situation')}</h3>`;
+    h += left ? `<p>${tt(`${left} Einheit(en) warten auf Befehle.`, `${left} unit${left === 1 ? ' is' : 's are'} waiting for orders.`)} <button data-act="next">${tt('Nächste', 'Next')} (N)</button></p>`
+      : `<p>${tt('Alle Einheiten haben gezogen. <b>Enter</b> beendet die Runde.', 'All units have moved. <b>Enter</b> ends the turn.')}</p>`;
+    h += `<p class="muted">${tt('Klicke eine Einheit oder eigene Stadt an.', 'Click one of your units or cities.')}</p>`;
   }
   el.innerHTML = h;
   const ps = $('prodSel');
@@ -1007,9 +1011,9 @@ function updateEndTurnButton() {
   b.classList.toggle('pending', left > 0);
   $('nextUnit').disabled = left === 0;
   b.innerHTML = left > 0
-    ? `Runde beenden ⏎ <small>· ${left} ${left === 1 ? 'wartet' : 'warten'}</small>`
-    : 'Runde beenden ⏎';
-  b.title = left > 0 ? 'Es gibt noch Einheiten mit Bewegungspunkten (N wählt die nächste)' : 'Alle Einheiten haben gezogen';
+    ? tt(`Runde beenden ⏎ <small>· ${left} ${left === 1 ? 'wartet' : 'warten'}</small>`, `End turn ⏎ <small>· ${left} waiting</small>`)
+    : tt('Runde beenden ⏎', 'End turn ⏎');
+  b.title = left > 0 ? tt('Es gibt noch Einheiten mit Bewegungspunkten (N wählt die nächste)', 'Some units still have moves left (N selects the next)') : tt('Alle Einheiten haben gezogen', 'All units have moved');
 }
 
 // ------------------------------------------------------------------ Kräfteverhältnis
@@ -1018,10 +1022,10 @@ function updatePower() {
   const share = a.total + b.total > 0 ? a.total / (a.total + b.total) : 0.5;
   const pct = Math.round(share * 100);
   $('powerMe').style.width = pct + '%';
-  $('powerL').textContent = 'Du ' + pct + ' %';
-  $('powerR').textContent = (100 - pct) + ' % Gegner';
-  const v = share >= OFFER_HIGH ? ['Erdrückend überlegen', 'up'] : share >= 0.65 ? ['Klar überlegen', 'up'] : share >= 0.55 ? ['Überlegen', 'up']
-    : share > 0.45 ? ['Ausgeglichen', 'flat'] : share > 0.35 ? ['Unterlegen', 'down'] : share > OFFER_LOW ? ['Stark unterlegen', 'down'] : ['Aussichtslos', 'down'];
+  $('powerL').textContent = tt('Du ', 'You ') + pct + ' %';
+  $('powerR').textContent = (100 - pct) + tt(' % Gegner', ' % enemy');
+  const v = share >= OFFER_HIGH ? [tt('Erdrückend überlegen', 'Overwhelming'), 'up'] : share >= 0.65 ? [tt('Klar überlegen', 'Clearly ahead'), 'up'] : share >= 0.55 ? [tt('Überlegen', 'Ahead'), 'up']
+    : share > 0.45 ? [tt('Ausgeglichen', 'Even'), 'flat'] : share > 0.35 ? [tt('Unterlegen', 'Behind'), 'down'] : share > OFFER_LOW ? [tt('Stark unterlegen', 'Far behind'), 'down'] : [tt('Aussichtslos', 'Hopeless'), 'down'];
   $('powerVerdict').textContent = v[0]; $('powerVerdict').className = v[1];
   // Trend gegenüber dem Beginn der letzten Runde
   const hist = S.hist || [];
@@ -1033,11 +1037,14 @@ function updatePower() {
     const d = Math.round((share - prevShare) * 100);
     tr.textContent = d > 0 ? `▲ +${d} %` : d < 0 ? `▼ ${d} %` : '● ±0';
     tr.className = d > 0 ? 'up' : d < 0 ? 'down' : 'flat';
-    tr.title = 'Veränderung seit Beginn der letzten Runde';
+    tr.title = tt('Veränderung seit Beginn der letzten Runde', 'Change since the start of the last turn');
   }
-  $('power').title = `Du: ${a.cities} Städte, ${a.units} Einheiten (Wert ${a.unitValue}) – Stärke ${a.total}\n`
+  $('power').title = tt(`Du: ${a.cities} Städte, ${a.units} Einheiten (Wert ${a.unitValue}) – Stärke ${a.total}\n`
     + `Gegner: ${b.cities} Städte, ${b.units} Einheiten (Wert ${b.unitValue}) – Stärke ${b.total}\n`
-    + 'Stärke = Wert der Einheiten (Bauzeit × Zustand) + 20 je Stadt';
+    + 'Stärke = Wert der Einheiten (Bauzeit × Zustand) + 20 je Stadt',
+    `You: ${a.cities} cities, ${a.units} units (value ${a.unitValue}) – strength ${a.total}\n`
+    + `Enemy: ${b.cities} cities, ${b.units} units (value ${b.unitValue}) – strength ${b.total}\n`
+    + 'Strength = value of units (build time × condition) + 20 per city');
   drawPowerSpark(hist, share);
 }
 
@@ -1069,35 +1076,35 @@ function drawPowerSpark(hist, share) {
 function updateHeader() {
   updateEndTurnButton();
   updatePower();
-  $('turnInfo').innerHTML = `Runde <b>${S.turn}</b>`;
+  $('turnInfo').innerHTML = `${tt('Runde', 'Turn')} <b>${S.turn}</b>`;
   updateLogHead();
   $('log').innerHTML = S.log.slice(0, 60).map(l =>
-    `<div class="${l.cls}" ${l.x != null ? `data-x="${l.x}" data-y="${l.y}"` : ''}><span class="t">R${l.t}</span>${esc(l.text)}</div>`).join('');
+    `<div class="${l.cls}" ${l.x != null ? `data-x="${l.x}" data-y="${l.y}"` : ''}><span class="t">${tt('R', 'T')}${l.t}</span>${esc(l.text)}</div>`).join('');
 }
 
 function updateHover() {
   if (!hover || !S) { $('hover').innerHTML = '&nbsp;'; return; }
   const [x, y] = hover, i = idx(x, y), P = S.players[0];
-  if (!P.seen[i]) { $('hover').textContent = `(${x},${y}) unerforscht`; return; }
-  let s = `(${x},${y}) ${S.terrain[i] ? 'Land' : 'Wasser'}`;
+  if (!P.seen[i]) { $('hover').textContent = `(${x},${y}) ${tt('unerforscht', 'unexplored')}`; return; }
+  let s = `(${x},${y}) ${S.terrain[i] ? tt('Land', 'land') : tt('Wasser', 'water')}`;
   const c = cityAt(x, y);
   if (c) {
     const o = P.knownOwner[c.id];
-    s += ` · Stadt ${c.name} (${o === 0 ? 'deine' : o === 1 ? 'feindlich' : 'neutral'})`;
+    s += tt(` · Stadt ${c.name} (${o === 0 ? 'deine' : o === 1 ? 'feindlich' : 'neutral'})`, ` · city ${c.name} (${o === 0 ? 'yours' : o === 1 ? 'enemy' : 'neutral'})`);
   }
   if (P.vis[i]) {
     const us = topUnitsAt(x, y);
-    if (us.length) s += ' · ' + us.map(o => `${o.owner === 0 ? '' : 'Feind: '}${T(o).name} ${o.hp}/${T(o).hp}`).join(', ');
+    if (us.length) s += ' · ' + us.map(o => `${o.owner === 0 ? '' : tt('Feind: ', 'Enemy: ')}${T(o).name} ${o.hp}/${T(o).hp}`).join(', ');
     const su = selUnit();
     const en = us.filter(o => o.owner !== 0);
     if (su && en.length && T(su).str > 0) {
       const d = pickDefender(en);
-      s += ` · Siegchance: ${Math.round(attackOdds(su, d, x, y) * 100)} %`;
+      s += ` · ${tt('Siegchance', 'Win chance')}: ${Math.round(attackOdds(su, d, x, y) * 100)} %`;
       const cs = combatSpec(su, d, x, y);
       if (cs.notes.length) s += ' (' + cs.notes.join(', ') + ')';
-      if (c && c.owner !== 0 && T(su).capture) s += ` · danach 50 % Eroberung: Besatzung (${us.length}) fällt, deine Einheit geht in der Stadt auf`;
+      if (c && c.owner !== 0 && T(su).capture) s += tt(` · danach 50 % Eroberung: Besatzung (${us.length}) fällt, deine Einheit geht in der Stadt auf`, ` · then 50 % capture: garrison (${us.length}) falls, your unit merges into the city`);
     } else if (su && c && c.owner !== 0 && P.knownOwner[c.id] !== 0 && T(su).capture && !en.length) {
-      s += ' · Eroberungschance: 50 % (deine Einheit geht dabei in der Stadt auf)';
+      s += tt(' · Eroberungschance: 50 % (deine Einheit geht dabei in der Stadt auf)', ' · Capture chance: 50 % (your unit merges into the city)');
     }
   }
   $('hover').textContent = s;
@@ -1114,13 +1121,24 @@ const captureQueue = [];
 function captureReadyAt(q) {
   return q.ev && anim.events.includes(q.ev) ? anim.t0 + q.ev.t0 + 450 : anim.end;
 }
-const UNIT_ROLE = {
+const UNIT_ROLE = EN ? {
+  inf: 'Captures cities · quick to build', tank: 'Captures cities · 2 tiles per turn',
+  ftr: 'Flies far · scouts and hunts', trn: 'Carries 6 land units across the sea',
+  dst: 'Fast scout · hunts submarines', sub: 'Torpedoes big ships',
+  crs: 'Sturdy and versatile', car: 'Floating base for fighters', bat: 'The strongest ship',
+} : {
   inf: 'Erobert Städte · schnell gebaut', tank: 'Erobert Städte · 2 Felder pro Zug',
   ftr: 'Fliegt weit · späht und jagt', trn: 'Bringt 6 Landeinheiten übers Meer',
   dst: 'Schneller Späher · jagt U-Boote', sub: 'Torpedo gegen große Schiffe',
   crs: 'Robust und vielseitig', car: 'Schwimmende Basis für Jäger', bat: 'Das stärkste Schiff',
 };
-const CAPTURE_CHEERS = [
+const CAPTURE_CHEERS = EN ? [
+  'The people cheer – your flag flies over the city!',
+  'A big step towards ruling the archipelago!',
+  'Your empire grows. The enemy will feel this.',
+  'Brilliant capture! Now put the new city to work for you.',
+  'A victory people will talk about for a long time.',
+] : [
   'Die Bevölkerung jubelt – deine Fahne weht über der Stadt!',
   'Ein großer Schritt zur Herrschaft über das Archipel!',
   'Dein Reich wächst. Der Gegner wird das zu spüren bekommen.',
@@ -1141,34 +1159,35 @@ function showCaptureDialog() {
 function openProdDialog(c, captured = false) {
   $('mCapture').querySelector('.cap-dlg').classList.toggle('plain', !captured);
   $('capBadge').textContent = captured ? '🏆' : '🏭';
-  $('capKicker').textContent = captured ? 'Sieg!' : 'Produktion';
-  $('capQ').textContent = captured ? 'Was soll die Stadt jetzt für dich bauen?' : 'Was soll die Stadt bauen?';
-  $('capHint').textContent = captured ? 'Ohne Wahl baut die Stadt Infanterie. Die Produktion lässt sich jederzeit über die Stadt ändern.'
-    : 'Ein Wechsel setzt den bisherigen Fortschritt zurück.';
+  $('capKicker').textContent = captured ? tt('Sieg!', 'Victory!') : tt('Produktion', 'Production');
+  $('capQ').textContent = captured ? tt('Was soll die Stadt jetzt für dich bauen?', 'What should the city build for you now?') : tt('Was soll die Stadt bauen?', 'What should the city build?');
+  $('capHint').textContent = captured ? tt('Ohne Wahl baut die Stadt Infanterie. Die Produktion lässt sich jederzeit über die Stadt ändern.', 'Without a choice the city builds infantry. You can change production any time via the city.')
+    : tt('Ein Wechsel setzt den bisherigen Fortschritt zurück.', 'Switching resets the current progress.');
   const p = c.prod ? UT[c.prod] : null;
   if (captured) {
     const mine = S.cities.filter(o => o.owner === 0).length, total = S.cities.length;
     const a = strength(0).total, b = strength(1).total;
     const pct = Math.round(a / Math.max(1, a + b) * 100);
-    $('capTitle').textContent = `${c.name} ist erobert!`;
+    $('capTitle').textContent = tt(`${c.name} ist erobert!`, `${c.name} is captured!`);
     $('capCheer').textContent = CAPTURE_CHEERS[(S.turn + c.id) % CAPTURE_CHEERS.length];
-    $('capFacts').innerHTML = `<span><b>${mine}</b> von ${total} Städten gehören dir</span><span>Kräfteverhältnis <b>${pct} %</b></span>`
-      + (c.coastal ? '<span>⚓ Hafenstadt – baut auch Schiffe</span>' : '');
+    $('capFacts').innerHTML = tt(`<span><b>${mine}</b> von ${total} Städten gehören dir</span><span>Kräfteverhältnis <b>${pct} %</b></span>`,
+        `<span><b>${mine}</b> of ${total} cities are yours</span><span>Balance of power <b>${pct} %</b></span>`)
+      + (c.coastal ? tt('<span>⚓ Hafenstadt – baut auch Schiffe</span>', '<span>⚓ Port city – builds ships too</span>') : '');
     $('capBar').style.width = Math.round(mine / total * 100) + '%';
   } else {
     const n = topUnitsAt(c.x, c.y).filter(o => o.owner === 0).length;
     const left = p ? p.cost - c.progress : 0;
     $('capTitle').textContent = c.name;
-    $('capCheer').textContent = p ? `Baut gerade ${p.name} – fertig in ${left} Runde${left === 1 ? '' : 'n'}.` : 'Baut derzeit nichts.';
-    $('capFacts').innerHTML = (c.coastal ? '<span>⚓ Hafenstadt – baut auch Schiffe</span>' : '<span>Binnenstadt – keine Schiffe</span>')
-      + '<span>' + (n ? `<b>${n}</b> Einheit${n === 1 ? '' : 'en'} in der Stadt` : 'Keine Einheiten in der Stadt') + '</span>';
+    $('capCheer').textContent = p ? tt(`Baut gerade ${p.name} – fertig in ${left} Runde${left === 1 ? '' : 'n'}.`, `Building: ${p.name.toLowerCase()} – ready in ${left} turn${left === 1 ? '' : 's'}.`) : tt('Baut derzeit nichts.', 'Not building anything.');
+    $('capFacts').innerHTML = (c.coastal ? tt('<span>⚓ Hafenstadt – baut auch Schiffe</span>', '<span>⚓ Port city – builds ships too</span>') : tt('<span>Binnenstadt – keine Schiffe</span>', '<span>Inland city – no ships</span>'))
+      + '<span>' + (n ? tt(`<b>${n}</b> Einheit${n === 1 ? '' : 'en'} in der Stadt`, `<b>${n}</b> unit${n === 1 ? '' : 's'} in the city`) : tt('Keine Einheiten in der Stadt', 'No units in the city')) + '</span>';
     $('capBar').style.width = p ? Math.round(c.progress / p.cost * 100) + '%' : '0%';
   }
   let h = '';
   for (const k of UNIT_ORDER) {
     const ut = UT[k], dis = ut.domain === 'sea' && !c.coastal;
-    h += `<button class="cap-unit${c.prod === k ? ' cur' : ''}" data-prod="${k}" ${dis ? 'disabled title="Nur in Hafenstädten"' : ''}>
-      <img src="${iconUrl('u', k)}" alt=""><b>${ut.name}</b><small>${ut.cost} Runden</small><em>${UNIT_ROLE[k] || ''}</em></button>`;
+    h += `<button class="cap-unit${c.prod === k ? ' cur' : ''}" data-prod="${k}" ${dis ? `disabled title="${tt('Nur in Hafenstädten', 'Port cities only')}"` : ''}>
+      <img src="${iconUrl('u', k)}" alt=""><b>${ut.name}</b><small>${ut.cost} ${tt('Runden', 'turns')}</small><em>${UNIT_ROLE[k] || ''}</em></button>`;
   }
   $('capUnits').innerHTML = h;
   $('capUnits').onclick = e => {
@@ -1178,7 +1197,7 @@ function openProdDialog(c, captured = false) {
     if (changed) { c.prod = btn.dataset.prod; c.progress = 0; }
     Sfx.play('select');
     closeModals();
-    if (changed || captured) addLog(`${c.name} baut jetzt ${UT[c.prod].name}.`, '', c.x, c.y);
+    if (changed || captured) addLog(tt(`${c.name} baut jetzt ${UT[c.prod].name}.`, `${c.name} now builds ${UT[c.prod].name.toLowerCase()}.`), '', c.x, c.y);
     saveGame(); refresh(); scheduleAutoEnd();
   };
   openModal('mCapture');
@@ -1203,18 +1222,20 @@ function maybeOfferEnd() {
   S.offerPause = S.turn + OFFER_PAUSE;      // gilt auch, wenn der Dialog einfach geschlossen wird
   const pct = Math.round(shareOf(last[last.length - 1]) * 100);
   const a = strength(0), b = strength(1);
-  const facts = `Du: ${a.cities} Städte, ${a.units} Einheiten · Gegner: ${b.cities} Städte, ${b.units} Einheiten`;
+  const facts = tt(`Du: ${a.cities} Städte, ${a.units} Einheiten · Gegner: ${b.cities} Städte, ${b.units} Einheiten`, `You: ${a.cities} cities, ${a.units} units · Enemy: ${b.cities} cities, ${b.units} units`);
   if (low) {
-    $('offerTitle').textContent = 'Die Lage ist aussichtslos';
-    $('offerText').innerHTML = `Seit ${OFFER_TURNS} Runden liegt deine Stärke unter ${OFFER_LOW * 100} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Willst du aufgeben?`;
-    $('offerYes').textContent = 'Aufgeben';
-    $('offerNo').textContent = 'Weiterkämpfen';
+    $('offerTitle').textContent = tt('Die Lage ist aussichtslos', 'The situation is hopeless');
+    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke unter ${OFFER_LOW * 100} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Willst du aufgeben?`,
+      `For ${OFFER_TURNS} turns your strength has been below ${OFFER_LOW * 100} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>Do you want to surrender?`);
+    $('offerYes').textContent = tt('Aufgeben', 'Surrender');
+    $('offerNo').textContent = tt('Weiterkämpfen', 'Keep fighting');
     $('offerYes').onclick = () => { closeModals(); S.over = 'lose'; S.overReason = 'surrender'; saveGame(); showGameOver(); };
   } else {
-    $('offerTitle').textContent = 'Der Sieg ist dir sicher';
-    $('offerText').innerHTML = `Seit ${OFFER_TURNS} Runden liegt deine Stärke über ${OFFER_HIGH * 100} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Der Gegner bietet die Kapitulation an. Sieg annehmen?`;
-    $('offerYes').textContent = 'Sieg annehmen';
-    $('offerNo').textContent = 'Weiterspielen';
+    $('offerTitle').textContent = tt('Der Sieg ist dir sicher', 'Victory is yours');
+    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke über ${OFFER_HIGH * 100} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Der Gegner bietet die Kapitulation an. Sieg annehmen?`,
+      `For ${OFFER_TURNS} turns your strength has been above ${OFFER_HIGH * 100} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>The enemy offers to surrender. Accept victory?`);
+    $('offerYes').textContent = tt('Sieg annehmen', 'Accept victory');
+    $('offerNo').textContent = tt('Weiterspielen', 'Play on');
     $('offerYes').onclick = () => { closeModals(); S.over = 'win'; S.overReason = 'capitulation'; saveGame(); showGameOver(); };
   }
   $('offerNo').onclick = () => { closeModals(); saveGame(); };
@@ -1223,10 +1244,10 @@ function maybeOfferEnd() {
 }
 
 function showGameOver() {
-  $('overTitle').textContent = S.over === 'win' ? 'Sieg!' : 'Niederlage';
+  $('overTitle').textContent = S.over === 'win' ? tt('Sieg!', 'Victory!') : tt('Niederlage', 'Defeat');
   $('overText').textContent = S.over === 'win'
-    ? (S.overReason === 'capitulation' ? `Der Gegner hat in Runde ${S.turn} vor deiner Übermacht kapituliert.` : `Du hast die Welt in ${S.turn} Runden erobert.`)
-    : (S.overReason === 'surrender' ? `Du hast in Runde ${S.turn} aufgegeben.` : `Der Gegner hat in Runde ${S.turn} alle deine Städte eingenommen.`);
+    ? (S.overReason === 'capitulation' ? tt(`Der Gegner hat in Runde ${S.turn} vor deiner Übermacht kapituliert.`, `The enemy surrendered to your superior force in turn ${S.turn}.`) : tt(`Du hast die Welt in ${S.turn} Runden erobert.`, `You conquered the world in ${S.turn} turns.`))
+    : (S.overReason === 'surrender' ? tt(`Du hast in Runde ${S.turn} aufgegeben.`, `You surrendered in turn ${S.turn}.`) : tt(`Der Gegner hat in Runde ${S.turn} alle deine Städte eingenommen.`, `The enemy took all your cities in turn ${S.turn}.`));
   openModal('mOver');
   Sfx.play(S.over === 'win' ? 'victory' : 'defeat');
   refresh();
@@ -1315,33 +1336,33 @@ function renderCtx() {
   const ownCity = city && city.owner === 0 ? city : null;
   const u = selUnit() && units.includes(selUnit()) ? selUnit() : null;
   if (!units.length && !ownCity) return closeCtx();
-  const status = o => o.order ? ({ sentry: 'Wache', patrol: 'Patrouille', explore: 'Erkundet', goto: 'Marsch' }[o.order.type] || '')
-    : o.moves <= 0 ? 'fertig' : o.carrier != null ? 'an Bord' : 'wartet';
+  const status = o => o.order ? (EN ? { sentry: 'sentry', patrol: 'patrol', explore: 'exploring', goto: 'marching' } : { sentry: 'Wache', patrol: 'Patrouille', explore: 'Erkundet', goto: 'Marsch' })[o.order.type] || ''
+    : o.moves <= 0 ? tt('fertig', 'done') : o.carrier != null ? tt('an Bord', 'on board') : tt('wartet', 'waiting');
   let h = '';
-  if (ownCity) h += `<div class="cmenu-head"><b>${esc(ownCity.name)}</b>${ownCity.coastal ? ' · Hafen' : ''}</div>`;
+  if (ownCity) h += `<div class="cmenu-head"><b>${esc(ownCity.name)}</b>${ownCity.coastal ? tt(' · Hafen', ' · port') : ''}</div>`;
   if (units.length > 1) {
-    if (!ownCity) h += `<div class="cmenu-head">${units.length} Einheiten auf dem Feld</div>`;
+    if (!ownCity) h += `<div class="cmenu-head">${tt(`${units.length} Einheiten auf dem Feld`, `${units.length} units on this tile`)}</div>`;
     for (const o of units) h += `<button data-cunit="${o.id}" class="${u === o ? 'cur' : ''}"><img src="${iconUrl('u', o.type)}" alt="">${esc(T(o).name)} ${o.hp}/${T(o).hp}<small>${status(o)}</small></button>`;
     h += '<hr>';
   }
   if (u) {
     const t = T(u), aboard = u.carrier != null, here = cityAt(u.x, u.y);
     const homeOk = c => c && c.owner === 0 && (t.domain !== 'sea' || c.coastal);
-    if (units.length <= 1) h += `<div class="cmenu-head"><b>${esc(t.name)}</b> · ${u.moves}/${t.move} Bewegung${t.fuel ? ` · Treibstoff ${u.fuel}` : ''}</div>`;
+    if (units.length <= 1) h += `<div class="cmenu-head"><b>${esc(t.name)}</b> · ${u.moves}/${t.move} ${tt('Bewegung', 'moves')}${t.fuel ? ` · ${tt('Treibstoff', 'fuel')} ${u.fuel}` : ''}</div>`;
     const btn = (act, label, key, dis = false) => `<button data-cact="${act}" ${dis ? 'disabled' : ''}>${label}${key ? `<kbd>${key}</kbd>` : ''}</button>`;
-    h += btn('skip', 'Überspringen', 'Leertaste', u.moves <= 0);
-    h += btn('sentry', 'Wache', 'S', !!(u.order && u.order.type === 'sentry'));
-    h += btn('explore', 'Erkunden', 'R', (aboard && t.domain === 'land') || (u.type === 'trn' && cargoOf(u).length > 0));
-    h += btn('patrol', 'Patrouille', 'P', aboard);
-    h += btn('home', t.domain === 'sea' ? 'Heimkehr (Hafen)' : 'Heimkehr', 'B', !aboard && homeOk(here));
-    if (t.carries && here && here.owner === 0) h += btn('load', 'Einladen', 'L');
-    if (t.carries && cargoOf(u).length) h += btn('unload', `Ausladen (${cargoOf(u).length})`, 'U');
-    if (u.order) h += btn('cancel', u.order.type === 'sentry' ? 'Wecken' : 'Befehl löschen', '');
+    h += btn('skip', tt('Überspringen', 'Skip'), tt('Leertaste', 'Space'), u.moves <= 0);
+    h += btn('sentry', tt('Wache', 'Sentry'), 'S', !!(u.order && u.order.type === 'sentry'));
+    h += btn('explore', tt('Erkunden', 'Explore'), 'R', (aboard && t.domain === 'land') || (u.type === 'trn' && cargoOf(u).length > 0));
+    h += btn('patrol', tt('Patrouille', 'Patrol'), 'P', aboard);
+    h += btn('home', t.domain === 'sea' ? tt('Heimkehr (Hafen)', 'Return home (port)') : tt('Heimkehr', 'Return home'), 'B', !aboard && homeOk(here));
+    if (t.carries && here && here.owner === 0) h += btn('load', tt('Einladen', 'Load'), 'L');
+    if (t.carries && cargoOf(u).length) h += btn('unload', `${tt('Ausladen', 'Unload')} (${cargoOf(u).length})`, 'U');
+    if (u.order) h += btn('cancel', u.order.type === 'sentry' ? tt('Wecken', 'Wake') : tt('Befehl löschen', 'Clear order'), '');
   }
   if (ownCity) {
     const p = ownCity.prod ? UT[ownCity.prod] : null;
     if (u) h += '<hr>';
-    h += `<button data-cact="prod"><img src="${iconUrl('c', ownCity.id % 2)}" alt="">Produktion ändern …<small>${p ? `${esc(p.name)} · ${p.cost - ownCity.progress} R.` : 'nichts'}</small></button>`;
+    h += `<button data-cact="prod"><img src="${iconUrl('c', ownCity.id % 2)}" alt="">${tt('Produktion ändern …', 'Change production …')}<small>${p ? `${esc(p.name)} · ${p.cost - ownCity.progress} ${tt('R.', 'T.')}` : tt('nichts', 'nothing')}</small></button>`;
   }
   ctxEl.innerHTML = h;
   ctxEl.hidden = false;
@@ -1437,13 +1458,13 @@ function updateLogHead() {
   if (logOpen) logSeen = S.log[0] || null;
   let n = 0;
   for (const l of S.log) { if (l === logSeen) break; n++; }
-  $('logNew').textContent = !logOpen && n ? n + ' neu' : '';
+  $('logNew').textContent = !logOpen && n ? n + tt(' neu', ' new') : '';
   const l = S.log[0], last = $('logLast');
   if (l) {
-    last.innerHTML = `<span class="t">R${l.t}</span><span class="${l.cls}">${esc(l.text)}</span>`;
+    last.innerHTML = `<span class="t">${tt('R', 'T')}${l.t}</span><span class="${l.cls}">${esc(l.text)}</span>`;
     if (l.x != null) { last.dataset.x = l.x; last.dataset.y = l.y; } else { delete last.dataset.x; delete last.dataset.y; }
     last.title = l.text;
-  } else last.innerHTML = '<span class="muted">Keine Meldungen</span>';
+  } else last.innerHTML = `<span class="muted">${tt('Keine Meldungen', 'No messages')}</span>`;
 }
 $('logHead').addEventListener('click', () => {
   logOpen = !logOpen;
@@ -1524,7 +1545,7 @@ $('bHelp').onclick = () => openModal('mHelp');
 
 function updateSoundUi() {
   $('bSound').textContent = Sfx.isMuted() ? '🔇' : '🔊';
-  $('bSound').title = Sfx.isMuted() ? 'Ton einschalten (M)' : 'Ton ausschalten (M)';
+  $('bSound').title = Sfx.isMuted() ? tt('Ton einschalten (M)', 'Sound on (M)') : tt('Ton ausschalten (M)', 'Sound off (M)');
   $('vol').value = Math.round(Sfx.volume() * 100);
 }
 function toggleSound() { Sfx.toggle(); updateSoundUi(); }
@@ -1537,16 +1558,16 @@ updateSoundUi();
 
 // ------------------------------------------------------------------ Statistik
 function renderStats() {
-  const myCities = S.cities.filter(c => c.owner === 0).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  const myCities = S.cities.filter(c => c.owner === 0).sort((a, b) => a.name.localeCompare(b.name, LANG));
   const myUnits = S.units.filter(u => u.owner === 0);
   const known = S.players[0].knownOwner;
   const enemyC = S.cities.filter(c => known[c.id] === 1).length;
   const neutralC = S.cities.filter(c => known[c.id] === -1).length;
   const idle = myCities.filter(c => !c.prod).length;
   const box = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
-  $('statSummary').innerHTML = box(diff().label, 'Schwierigkeit') + box(S.turn, 'Runde') + box(myCities.length, 'Deine Städte') + box(myUnits.length, 'Deine Einheiten')
-    + box(enemyC, 'Bekannte Feindstädte') + box(neutralC, 'Bekannte neutrale') + box(S.cities.length, 'Städte insgesamt')
-    + (idle ? box(idle, 'Städte ohne Produktion') : '');
+  $('statSummary').innerHTML = box(diff().label, tt('Schwierigkeit', 'Difficulty')) + box(S.turn, tt('Runde', 'Turn')) + box(myCities.length, tt('Deine Städte', 'Your cities')) + box(myUnits.length, tt('Deine Einheiten', 'Your units'))
+    + box(enemyC, tt('Bekannte Feindstädte', 'Known enemy cities')) + box(neutralC, tt('Bekannte neutrale', 'Known neutral')) + box(S.cities.length, tt('Städte insgesamt', 'Cities in total'))
+    + (idle ? box(idle, tt('Städte ohne Produktion', 'Cities without production')) : '');
 
   let total = [0, 0, 0];
   $('statUnits').innerHTML = UNIT_ORDER.map(k => {
@@ -1558,13 +1579,13 @@ function renderStats() {
     const builders = myCities.filter(c => c.prod === k);
     const next = builders.length ? Math.min(...builders.map(c => t.cost - c.progress)) : null;
     total[0] += list.length; total[1] += builders.length;
-    const detail = [aboard ? `${aboard} an Bord` : '', sentry ? `${sentry} Wache` : '', patrol ? `${patrol} Patrouille` : ''].filter(Boolean).join(', ');
+    const detail = [aboard ? `${aboard} ${tt('an Bord', 'on board')}` : '', sentry ? `${sentry} ${tt('Wache', 'sentry')}` : '', patrol ? `${patrol} ${tt('Patrouille', 'patrol')}` : ''].filter(Boolean).join(', ');
     return `<tr><td><span class="sym">${t.sym}</span>${t.name}</td>
       <td class="num ${list.length ? '' : 'zero'}">${list.length}</td>
       <td class="num muted">${detail || '–'}</td>
       <td class="num ${builders.length ? '' : 'zero'}">${builders.length}</td>
-      <td class="num ${next == null ? 'zero' : ''}">${next == null ? '–' : next + (next === 1 ? ' Runde' : ' Runden')}</td></tr>`;
-  }).join('') + `<tr><td><b>Gesamt</b></td><td class="num"><b>${total[0]}</b></td><td></td><td class="num"><b>${total[1]}</b></td><td></td></tr>`;
+      <td class="num ${next == null ? 'zero' : ''}">${next == null ? '–' : next + (next === 1 ? tt(' Runde', ' turn') : tt(' Runden', ' turns'))}</td></tr>`;
+  }).join('') + `<tr><td><b>${tt('Gesamt', 'Total')}</b></td><td class="num"><b>${total[0]}</b></td><td></td><td class="num"><b>${total[1]}</b></td><td></td></tr>`;
 
   $('statCities').innerHTML = myCities.map(c => {
     const p = c.prod ? UT[c.prod] : null;
@@ -1576,11 +1597,11 @@ function renderStats() {
       const dis = UT[k].domain === 'sea' && !c.coastal;
       return `<option value="${k}" ${c.prod === k ? 'selected' : ''} ${dis ? 'disabled' : ''}>${UT[k].name} (${UT[k].cost})</option>`;
     }).join('');
-    return `<tr><td><button class="citylink" data-city="${c.id}" title="Zur Stadt springen">${esc(c.name)}</button>${c.coastal ? ' <span class="muted" style="font-size:12px">Hafen</span>' : ''}</td>
+    return `<tr><td><button class="citylink" data-city="${c.id}" title="${tt('Zur Stadt springen', 'Jump to city')}">${esc(c.name)}</button>${c.coastal ? ` <span class="muted" style="font-size:12px">${tt('Hafen', 'Port')}</span>` : ''}</td>
       <td><select data-prod="${c.id}">${opts}</select></td>
-      <td class="num">${p ? (p.cost - c.progress) + (p.cost - c.progress === 1 ? ' Runde' : ' Runden') : '–'}</td>
+      <td class="num">${p ? (p.cost - c.progress) + (p.cost - c.progress === 1 ? tt(' Runde', ' turn') : tt(' Runden', ' turns')) : '–'}</td>
       <td class="num muted">${inCity || '–'}</td></tr>`;
-  }).join('') || '<tr><td colspan="4" class="muted">Du hast keine Städte mehr.</td></tr>';
+  }).join('') || `<tr><td colspan="4" class="muted">${tt('Du hast keine Städte mehr.', 'You have no cities left.')}</td></tr>`;
 }
 function openStats() { if (!S) return; renderStats(); openModal('mStats'); }
 $('bStats').onclick = openStats;
@@ -1602,15 +1623,17 @@ $('mStats').addEventListener('change', e => {
 });
 
 // ------------------------------------------------------------------ Klangtest
-const FX_NAMES = { select: 'Auswahl', tick: 'Klick', error: 'Ungültig', boom: 'Explosion', lost: 'Einheit verloren', capture: 'Stadt erobert',
+const FX_NAMES = EN ? { select: 'Select', tick: 'Click', error: 'Invalid', boom: 'Explosion', lost: 'Unit lost', capture: 'City captured',
+  cityLost: 'City lost', built: 'Unit ready', clank: 'Load/unload', endTurn: 'End of turn', alarm: 'Enemy contact', victory: 'Victory', defeat: 'Defeat' }
+  : { select: 'Auswahl', tick: 'Klick', error: 'Ungültig', boom: 'Explosion', lost: 'Einheit verloren', capture: 'Stadt erobert',
   cityLost: 'Stadt verloren', built: 'Einheit fertig', clank: 'Ein-/Ausladen', endTurn: 'Rundenende', alarm: 'Feindkontakt', victory: 'Sieg', defeat: 'Niederlage' };
 
 function renderSoundTest() {
   const pv = Sfx.previewing();
   $('sndRows').innerHTML = Sfx.kinds().map(k => `<tr>
     <td>${k.name}</td>
-    <td><button data-loop="${k.kind}" class="${pv === k.kind ? 'on' : ''}">${pv === k.kind ? '■ Stopp' : '▶ Schleife'}</button>
-        <button data-move="${k.kind}">▶ Zug</button></td>
+    <td><button data-loop="${k.kind}" class="${pv === k.kind ? 'on' : ''}">${pv === k.kind ? tt('■ Stopp', '■ Stop') : tt('▶ Schleife', '▶ Loop')}</button>
+        <button data-move="${k.kind}">${tt('▶ Zug', '▶ Move')}</button></td>
     <td><input type="range" min="0" max="200" value="${Math.round(k.level * 100)}" data-level="${k.kind}"> <span class="muted">${Math.round(k.level * 100)} %</span></td>
   </tr>`).join('');
   $('sndFx').innerHTML = Sfx.effects().filter(n => FX_NAMES[n]).map(n => `<button data-fx="${n}">▶ ${FX_NAMES[n]}</button>`).join('');
@@ -1634,18 +1657,20 @@ $('mSound').addEventListener('input', e => {
 $('bZoomIn').onclick = () => setZoom(TS + 4);
 $('bZoomOut').onclick = () => setZoom(TS - 4);
 // ------------------------------------------------------------------ Spielstände
-const SIZE_NAME = { klein: 'klein', mittel: 'mittel', gross: 'groß' };
+const SIZE_NAME = EN ? { klein: 'small', mittel: 'medium', gross: 'large' } : { klein: 'klein', mittel: 'mittel', gross: 'groß' };
 function fmtDate(t) {
   const d = new Date(t);
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const loc = EN ? 'en-GB' : 'de-DE';
+  return d.toLocaleDateString(loc, { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
 }
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 function slotDesc(m) {
   m = { ...m, turn: Math.trunc(Number(m.turn)) || 0, cities: Math.trunc(Number(m.cities)) || 0, units: Math.trunc(Number(m.units)) || 0,
     size: SIZE_NAME[m.size] ? m.size : '', over: ['win', 'lose'].includes(m.over) ? m.over : null };
-  const end = m.over === 'win' ? ' · gewonnen' : m.over === 'lose' ? ' · verloren' : '';
+  const end = m.over === 'win' ? tt(' · gewonnen', ' · won') : m.over === 'lose' ? tt(' · verloren', ' · lost') : '';
   const dl = m.difficulty && DIFFICULTY[m.difficulty] ? ' · ' + DIFFICULTY[m.difficulty].label : '';
-  return `Runde ${m.turn} · ${plural(m.cities, 'Stadt', 'Städte')} · ${plural(m.units, 'Einheit', 'Einheiten')} · Karte ${SIZE_NAME[m.size] || '?'}${dl}${end}`;
+  return EN ? `Turn ${m.turn} · ${plural(m.cities, 'city', 'cities')} · ${plural(m.units, 'unit', 'units')} · ${SIZE_NAME[m.size] || '?'} map${dl}${end}`
+    : `Runde ${m.turn} · ${plural(m.cities, 'Stadt', 'Städte')} · ${plural(m.units, 'Einheit', 'Einheiten')} · Karte ${SIZE_NAME[m.size] || '?'}${dl}${end}`;
 }
 function renderSaves() {
   const slots = listSlots();
@@ -1655,26 +1680,28 @@ function renderSaves() {
     if (j) {
       const o = JSON.parse(j);
       const m = { turn: o.turn, size: o.size, cities: o.cities.filter(c => c.owner === 0).length, units: o.units.filter(u => u.owner === 0).length, over: o.over, difficulty: o.difficulty };
-      rows += `<tr class="auto"><td>Automatisch (letzte Runde)</td><td class="muted">${slotDesc(m)}</td><td class="muted">laufend</td>
-        <td class="acts"><button data-load="auto">Laden</button><button data-export="auto" title="Als Datei herunterladen">Export</button></td></tr>`;
+      rows += `<tr class="auto"><td>${tt('Automatisch (letzte Runde)', 'Autosave (last turn)')}</td><td class="muted">${slotDesc(m)}</td><td class="muted">${tt('laufend', 'current')}</td>
+        <td class="acts"><button data-load="auto">${tt('Laden', 'Load')}</button><button data-export="auto" title="${tt('Als Datei herunterladen', 'Download as file')}">Export</button></td></tr>`;
     }
   } catch (e) {}
   rows += slots.map(m => `<tr><td>${esc(m.name)}</td><td class="muted">${slotDesc(m)}</td><td class="muted">${fmtDate(m.date)}</td>
-    <td class="acts"><button data-load="${m.id}">Laden</button><button data-over="${m.id}" title="Mit dem aktuellen Spiel überschreiben">Überschreiben</button><button data-export="${m.id}" title="Als Datei herunterladen">Export</button><button data-del="${m.id}" class="danger" title="Löschen">✕</button></td></tr>`).join('');
-  $('saveRows').innerHTML = rows || '<tr><td colspan="4" class="muted">Noch keine Spielstände.</td></tr>';
+    <td class="acts"><button data-load="${m.id}">${tt('Laden', 'Load')}</button><button data-over="${m.id}" title="${tt('Mit dem aktuellen Spiel überschreiben', 'Overwrite with the current game')}">${tt('Überschreiben', 'Overwrite')}</button><button data-export="${m.id}" title="${tt('Als Datei herunterladen', 'Download as file')}">Export</button><button data-del="${m.id}" class="danger" title="${tt('Löschen', 'Delete')}">✕</button></td></tr>`).join('');
+  $('saveRows').innerHTML = rows || `<tr><td colspan="4" class="muted">${tt('Noch keine Spielstände.', 'No saved games yet.')}</td></tr>`;
   let used = 0;
   try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('archipel')) used += (localStorage.getItem(k) || '').length; } } catch (e) {}
-  $('saveInfo').textContent = `${slots.length} gespeicherte Spielstände · belegt etwa ${(used * 2 / 1024 / 1024).toFixed(1)} MB von ca. 5 MB Browserspeicher. Export sichert einen Spielstand als Datei (z. B. für einen anderen Browser oder Rechner).`;
+  $('saveInfo').textContent = tt(`${slots.length} gespeicherte Spielstände · belegt etwa ${(used * 2 / 1024 / 1024).toFixed(1)} MB von ca. 5 MB Browserspeicher. Export sichert einen Spielstand als Datei (z. B. für einen anderen Browser oder Rechner).`,
+    `${slots.length} saved game${slots.length === 1 ? '' : 's'} · using about ${(used * 2 / 1024 / 1024).toFixed(1)} MB of roughly 5 MB browser storage. Export saves a game as a file (e.g. for another browser or computer).`);
 }
 function openSaves() {
   if (!S) return;
-  $('saveName').value = `Runde ${S.turn} – ${plural(S.cities.filter(c => c.owner === 0).length, 'Stadt', 'Städte')}`;
+  $('saveName').value = EN ? `Turn ${S.turn} – ${plural(S.cities.filter(c => c.owner === 0).length, 'city', 'cities')}`
+    : `Runde ${S.turn} – ${plural(S.cities.filter(c => c.owner === 0).length, 'Stadt', 'Städte')}`;
   renderSaves(); openModal('mSaves');
   setTimeout(() => { $('saveName').focus(); $('saveName').select(); }, 30);
 }
 function trySave(name, id) {
-  try { saveSlot(name, id); toast('Spiel gespeichert'); Sfx.play('select'); renderSaves(); return true; }
-  catch (e) { toast('Speicher voll – bitte alte Spielstände löschen oder exportieren'); Sfx.play('error'); return false; }
+  try { saveSlot(name, id); toast(tt('Spiel gespeichert', 'Game saved')); Sfx.play('select'); renderSaves(); return true; }
+  catch (e) { toast(tt('Speicher voll – bitte alte Spielstände löschen oder exportieren', 'Storage full – please delete or export old saved games')); Sfx.play('error'); return false; }
 }
 function afterSlotLoad(msg) {
   closeModals(); patrolMode = null; autoEndAt = 0;
@@ -1683,7 +1710,7 @@ function afterSlotLoad(msg) {
   if (S.over) showGameOver();
 }
 $('bSaves').onclick = openSaves;
-$('saveNew').onclick = () => trySave($('saveName').value.trim() || `Runde ${S.turn}`);
+$('saveNew').onclick = () => trySave($('saveName').value.trim() || `${tt('Runde', 'Turn')} ${S.turn}`);
 $('saveName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('saveNew').click(); } });
 $('mSaves').addEventListener('click', e => {
   const b = e.target.closest('button');
@@ -1691,19 +1718,19 @@ $('mSaves').addEventListener('click', e => {
   const d = b.dataset;
   if (d.load) {
     const ok = d.load === 'auto' ? loadGame() : (() => { try { return loadSlot(d.load); } catch (err) { return false; } })();
-    if (ok) afterSlotLoad('Spielstand geladen'); else { toast('Laden fehlgeschlagen'); Sfx.play('error'); }
+    if (ok) afterSlotLoad(tt('Spielstand geladen', 'Game loaded')); else { toast(tt('Laden fehlgeschlagen', 'Loading failed')); Sfx.play('error'); }
   } else if (d.over) {
     const m = listSlots().find(x => x.id === d.over);
-    if (m && confirm(`„${m.name}“ mit dem aktuellen Spiel (Runde ${S.turn}) überschreiben?`)) trySave(m.name, m.id);
+    if (m && confirm(tt(`„${m.name}“ mit dem aktuellen Spiel (Runde ${S.turn}) überschreiben?`, `Overwrite “${m.name}” with the current game (turn ${S.turn})?`))) trySave(m.name, m.id);
   } else if (d.del) {
     const m = listSlots().find(x => x.id === d.del);
-    if (m && confirm(`Spielstand „${m.name}“ endgültig löschen?`)) { deleteSlot(m.id); renderSaves(); toast('Gelöscht'); }
+    if (m && confirm(tt(`Spielstand „${m.name}“ endgültig löschen?`, `Delete saved game “${m.name}” for good?`))) { deleteSlot(m.id); renderSaves(); toast(tt('Gelöscht', 'Deleted')); }
   } else if (d.export) {
     const data = slotData(d.export);
     if (!data) return;
-    const m = d.export === 'auto' ? { name: 'automatisch' } : listSlots().find(x => x.id === d.export);
+    const m = d.export === 'auto' ? { name: tt('automatisch', 'autosave') } : listSlots().find(x => x.id === d.export);
     const turn = (() => { try { return JSON.parse(data).turn; } catch (err) { return ''; } })();
-    const fname = ('archipel-' + (m ? m.name : 'spielstand') + '-R' + turn).replace(/[^\w\-äöüÄÖÜß]+/g, '_') + '.json';
+    const fname = ('archipel-' + (m ? m.name : tt('spielstand', 'savegame')) + tt('-R', '-T') + turn).replace(/[^\w\-äöüÄÖÜß]+/g, '_') + '.json';
     const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
     const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
@@ -1718,15 +1745,33 @@ importPick.onchange = async () => {
     const text = await f.text();
     const backup = S;
     try { deserialize(text); } catch (err) { S = backup; buildCityGrid(); throw err; }
-    afterSlotLoad('Spielstand aus Datei geladen');
-  } catch (err) { toast('Datei ist kein gültiger Spielstand'); Sfx.play('error'); }
+    afterSlotLoad(tt('Spielstand aus Datei geladen', 'Game loaded from file'));
+  } catch (err) { toast(tt('Datei ist kein gültiger Spielstand', 'File is not a valid saved game')); Sfx.play('error'); }
 };
 $('saveImport').onclick = () => importPick.click();
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeModals);
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModals(); }));
 
+// ------------------------------------------------------------------ Sprache
+// Feste Texte der Seite: data-en (englischer Inhalt), data-en-title, data-en-placeholder, data-en-aria-label.
+// Größere Abschnitte stehen doppelt da, mit data-lang="de" bzw. "en" (per CSS ausgeblendet).
+function applyLang() {
+  document.documentElement.lang = LANG;
+  $('bLang').textContent = EN ? 'DE' : 'EN';
+  $('bLang').title = EN ? 'Auf Deutsch umschalten' : 'Switch to English';
+  if (!EN) return;
+  document.querySelectorAll('[data-en]').forEach(el => { el.innerHTML = el.dataset.en; });
+  for (const a of ['title', 'placeholder', 'aria-label'])
+    document.querySelectorAll(`[data-en-${a}]`).forEach(el => el.setAttribute(a, el.getAttribute('data-en-' + a)));
+}
+$('bLang').onclick = () => {
+  try { if (S && !S.over) saveGame(); localStorage.setItem('archipel-lang', EN ? 'de' : 'en'); } catch (e) {}
+  location.reload();
+};
+
 // ------------------------------------------------------------------ Start
 (function init() {
+  applyLang();
   let prefSize = 'mittel', prefDiff = 'normal';
   try { prefSize = localStorage.getItem('archipel-size') || 'mittel'; prefDiff = localStorage.getItem('archipel-diff') || 'normal'; } catch (e) {}
   $('sizeSel').innerHTML = Object.entries(MAP_SIZES).map(([k, v]) => `<option value="${k}" ${k === prefSize ? 'selected' : ''}>${v.label}</option>`).join('');
@@ -1734,19 +1779,20 @@ document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e =
   $('diffDesc').textContent = DIFFICULTY[$('diffSel').value].desc;
   $('diffTable').innerHTML = Object.values(DIFFICULTY).map(d => {
     const you = d.youStart.map(t => '+1 ' + UT[t].name);
-    const ai = [...d.aiStart.map(t => '+1 ' + UT[t].name), ...(d.aiCities ? ['+' + d.aiCities + ' Stadt'] : [])];
-    const start = [you.length ? 'du: ' + you.join(', ') : '', ai.length ? 'Gegner: ' + ai.join(', ') : ''].filter(Boolean).join('; ') || 'gleich';
-    return `<tr><td><b>${d.label}</b></td><td>${d.aiKnowsMap ? 'ja' : 'nein, erkundet'}</td><td>${Math.round(d.aiMistake * 100)} %</td>
-      <td>${Math.round(d.aiProd * 100)} %</td><td>${d.invadeAt} Truppen</td><td>${start}</td></tr>`;
+    const ai = [...d.aiStart.map(t => '+1 ' + UT[t].name), ...(d.aiCities ? ['+' + d.aiCities + tt(' Stadt', ' city')] : [])];
+    const start = [you.length ? tt('du: ', 'you: ') + you.join(', ') : '', ai.length ? tt('Gegner: ', 'enemy: ') + ai.join(', ') : ''].filter(Boolean).join('; ') || tt('gleich', 'equal');
+    return `<tr><td><b>${d.label}</b></td><td>${d.aiKnowsMap ? tt('ja', 'yes') : tt('nein, erkundet', 'no, explores')}</td><td>${Math.round(d.aiMistake * 100)} %</td>
+      <td>${Math.round(d.aiProd * 100)} %</td><td>${d.invadeAt} ${tt('Truppen', 'troops')}</td><td>${start}</td></tr>`;
   }).join('');
   $('unitTable').innerHTML = UNIT_ORDER.map(k => {
     const t = UT[k];
-    const extra = [t.capture ? 'erobert Städte' : '', t.noRepair ? 'wird nicht repariert' : '', t.carries ? `trägt ${t.capacity} ${t.carries === 'land' ? 'Bodentruppen' : 'Jäger'}` : '',
-      t.fuel ? `${t.fuel} Treibstoff` : '', t.str === 0 ? 'unbewaffnet' : ''].filter(Boolean).join(', ');
+    const extra = [t.capture ? tt('erobert Städte', 'captures cities') : '', t.noRepair ? tt('wird nicht repariert', 'not repaired') : '',
+      t.carries ? tt(`trägt ${t.capacity} ${t.carries === 'land' ? 'Bodentruppen' : 'Jäger'}`, `carries ${t.capacity} ${t.carries === 'land' ? 'land units' : 'fighters'}`) : '',
+      t.fuel ? `${t.fuel} ${tt('Treibstoff', 'fuel')}` : '', t.str === 0 ? tt('unbewaffnet', 'unarmed') : ''].filter(Boolean).join(', ');
     return `<tr><td>${t.sym} ${t.name}</td><td>${t.move}</td><td>${t.hp}</td><td>${t.str}</td><td>${t.cost}</td><td>${extra}</td></tr>`;
   }).join('');
   try { const z = +localStorage.getItem('archipel-zoom'); if (z >= 14 && z <= 48) TS = z; } catch (e) {}
-  if (loadGame()) { afterLoad(); addLog('Spielstand fortgesetzt.'); refresh(); }
+  if (loadGame()) { afterLoad(); addLog(tt('Spielstand fortgesetzt.', 'Game resumed.')); refresh(); }
   else { startNew('mittel'); openModal('mHelp'); }
   requestAnimationFrame(loop);
   window.addEventListener('resize', () => renderMini());

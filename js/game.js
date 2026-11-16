@@ -37,7 +37,7 @@ function newGame(sizeKey, diffKey = 'normal') {
       .sort((a, b) => cheb(a.x, a.y, aiHome.x, aiHome.y) - cheb(b.x, b.y, aiHome.x, aiHome.y))[0];
     if (near) { near.owner = 1; near.prod = 'inf'; near.progress = 0; }
   }
-  addLog('Willkommen! Erobere alle Städte der Welt.', 'good');
+  addLog(tt('Willkommen! Erobere alle Städte der Welt.', 'Welcome! Capture every city in the world.'), 'good');
   startTurn(0);
   computeVision(1);
 }
@@ -75,7 +75,15 @@ const ART = {
   nom: { 0: { m: 'Dein', f: 'Deine', n: 'Dein' }, 1: { m: 'Feindlicher', f: 'Feindliche', n: 'Feindliches' } },
   acc: { 0: { m: 'deinen', f: 'deine', n: 'dein' }, 1: { m: 'feindlichen', f: 'feindliche', n: 'feindliches' } },
 };
-function uname(u, kase = 'nom') { return `${ART[kase][u.owner][T(u).g]} ${T(u).name}`; }
+// Englisch: "Your tank" / "Enemy tank" (nom), "your tank" / "the enemy tank" (acc)
+const ART_EN = { nom: ['Your', 'Enemy'], acc: ['your', 'the enemy'] };
+function uname(u, kase = 'nom') {
+  if (EN) return `${ART_EN[kase][u.owner]} ${T(u).name.toLowerCase()}`;
+  return `${ART[kase][u.owner][T(u).g]} ${T(u).name}`;
+}
+// Ersten Buchstaben klein (für uname mitten im Satz)
+const lc1 = s => s.charAt(0).toLowerCase() + s.slice(1);
+const MSG_OCCUPIED = tt('Feld ist besetzt', 'Tile is occupied');
 
 function isBase(u) {
   if (u.carrier != null) return true;
@@ -109,7 +117,7 @@ function spendMove(u) {
     else {
       u.fuel--;
       if (u.fuel <= 0) {
-        if (u.owner === 0) addLog(`Dein Jäger ist ohne Treibstoff abgestürzt.`, 'bad', u.x, u.y);
+        if (u.owner === 0) addLog(tt('Dein Jäger ist ohne Treibstoff abgestürzt.', 'Your fighter ran out of fuel and crashed.'), 'bad', u.x, u.y);
         killUnit(u);
         return false;
       }
@@ -141,11 +149,11 @@ function combatSpec(a, d, x, y) {
   const ta = a.type, td = d.type;
   let as = T(a).str, ds = T(d).str, p = 0.5, first = null;
   const notes = [];
-  if (T(a).domain === 'sea' && cityAt(x, y)) { ds = Math.max(1, ds) * BATTERY; notes.push('Küstenbatterie'); }
-  if (ta === 'sub' && BIG_SHIPS.includes(td)) { as *= 2; first = 'att'; notes.push('Torpedo-Überraschung'); }
-  if (ta === 'dst' && td === 'sub') { first = 'att'; p = 2 / 3; notes.push('Sonar: Zerstörer trifft zuerst und öfter'); }
-  if (ta === 'sub' && td === 'dst') { ds *= 2; notes.push('Wasserbomben'); }
-  if (ta === 'ftr' && td === 'sub') { p = 2 / 3; notes.push('Luftangriff auf U-Boot'); }
+  if (T(a).domain === 'sea' && cityAt(x, y)) { ds = Math.max(1, ds) * BATTERY; notes.push(tt('Küstenbatterie', 'coastal battery')); }
+  if (ta === 'sub' && BIG_SHIPS.includes(td)) { as *= 2; first = 'att'; notes.push(tt('Torpedo-Überraschung', 'torpedo surprise')); }
+  if (ta === 'dst' && td === 'sub') { first = 'att'; p = 2 / 3; notes.push(tt('Sonar: Zerstörer trifft zuerst und öfter', 'sonar: destroyer strikes first and more often')); }
+  if (ta === 'sub' && td === 'dst') { ds *= 2; notes.push(tt('Wasserbomben', 'depth charges')); }
+  if (ta === 'ftr' && td === 'sub') { p = 2 / 3; notes.push(tt('Luftangriff auf U-Boot', 'air strike on submarine')); }
   return { as, ds, p, first, notes };
 }
 function combatStr(a, d, x, y) { const c = combatSpec(a, d, x, y); return [c.as, c.ds]; }
@@ -181,8 +189,8 @@ function captureCity(c, owner, by = null) {
   c.owner = owner; c.prod = 'inf'; c.progress = 0;
   if (hooks.capture) hooks.capture(c, owner, prev);
   if (by) killUnit(by);
-  if (owner === 0) addLog(`Du hast ${c.name} erobert!` + (by ? ` ${{ m: 'Der', f: 'Die', n: 'Das' }[T(by).g]} ${T(by).name} geht in der Stadt auf.` : ''), 'good', c.x, c.y);
-  else if (prev === 0) addLog(`${c.name} ist an den Gegner gefallen!`, 'bad', c.x, c.y);
+  if (owner === 0) addLog(tt(`Du hast ${c.name} erobert!`, `You captured ${c.name}!`) + (by ? tt(` ${{ m: 'Der', f: 'Die', n: 'Das' }[T(by).g]} ${T(by).name} geht in der Stadt auf.`, ` Your ${T(by).name.toLowerCase()} merges into the city.`) : ''), 'good', c.x, c.y);
+  else if (prev === 0) addLog(tt(`${c.name} ist an den Gegner gefallen!`, `${c.name} has fallen to the enemy!`), 'bad', c.x, c.y);
   if (owner === 1 && typeof aiChooseProduction === 'function') aiChooseProduction(c);
 }
 
@@ -202,12 +210,12 @@ function attack(u, nx, ny, enemies, city) {
   const storm = u.hp > 0 && city && city.owner !== u.owner && a.capture ? rng() < 0.5 : null;
   if (hooks.combat) hooks.combat(u, def, nx, ny, u.hp > 0, storm);   // won = Angreifer hat gewonnen
   if (u.hp <= 0) {
-    if (involved) addLog(`${aName} greift ${dName} an – und wird vernichtet.`, u.owner === 0 ? 'bad' : 'good', nx, ny);
+    if (involved) addLog(tt(`${aName} greift ${dName} an – und wird vernichtet.`, `${aName} attacks ${dName} – and is destroyed.`), u.owner === 0 ? 'bad' : 'good', nx, ny);
     killUnit(u);
     return { ok: true, died: true, combat: true };
   }
   const cargoLost = cargoOf(def).length;
-  if (involved) addLog(`${aName} greift ${dName} an – Sieg!` + (cargoLost ? ` (${cargoLost} Einheiten an Bord verloren)` : ''),
+  if (involved) addLog(tt(`${aName} greift ${dName} an – Sieg!`, `${aName} attacks ${dName} – victory!`) + (cargoLost ? tt(` (${cargoLost} Einheiten an Bord verloren)`, ` (${cargoLost} ${cargoLost === 1 ? 'unit' : 'units'} lost on board)`) : ''),
     u.owner === 0 ? 'good' : 'bad', nx, ny);
   killUnit(def);
   if (storm) {
@@ -216,11 +224,11 @@ function attack(u, nx, ny, enemies, city) {
     for (const o of garrison) { lost += 1 + cargoOf(o).length; killUnit(o); }
     relocate(u, nx, ny); u.carrier = null; u.order = null; u.moves = 0;
     captureCity(city, u.owner, u);
-    if (lost && involved) addLog(`Mit ${city.name} ${lost === 1 ? 'ging 1 weitere Einheit' : `gingen ${lost} weitere Einheiten`} unter.`,
+    if (lost && involved) addLog(tt(`Mit ${city.name} ${lost === 1 ? 'ging 1 weitere Einheit' : `gingen ${lost} weitere Einheiten`} unter.`, `${lost === 1 ? '1 more unit was' : `${lost} more units were`} lost with ${city.name}.`),
       u.owner === 0 ? 'good' : 'bad', nx, ny);
     return { ok: true, combat: true, captured: city, died: true, consumed: true };
   }
-  if (storm === false && involved) addLog(`${city.name} hält dem Sturm stand.`, u.owner === 0 ? 'bad' : 'good', nx, ny);
+  if (storm === false && involved) addLog(tt(`${city.name} hält dem Sturm stand.`, `${city.name} withstands the assault.`), u.owner === 0 ? 'bad' : 'good', nx, ny);
   const rest = topUnitsAt(nx, ny);
   if (!rest.length && !(city && city.owner !== u.owner) && canEnterTerrain(u, nx, ny)) relocate(u, nx, ny);
   const ok = spendMove(u);
@@ -230,19 +238,19 @@ function attack(u, nx, ny, enemies, city) {
 // Ein Schritt auf ein Nachbarfeld: bewegen, angreifen, erobern oder einsteigen
 function moveStep(u, nx, ny) {
   const t = T(u);
-  if (!inb(nx, ny)) return { ok: false, msg: 'Kartenrand' };
-  if (cheb(u.x, u.y, nx, ny) !== 1) return { ok: false, msg: 'Feld ist nicht benachbart' };
-  if (u.moves <= 0) return { ok: false, msg: 'Keine Bewegungspunkte mehr' };
+  if (!inb(nx, ny)) return { ok: false, msg: tt('Kartenrand', 'Edge of the map') };
+  if (cheb(u.x, u.y, nx, ny) !== 1) return { ok: false, msg: tt('Feld ist nicht benachbart', 'Tile is not adjacent') };
+  if (u.moves <= 0) return { ok: false, msg: tt('Keine Bewegungspunkte mehr', 'No moves left') };
   const city = cityAt(nx, ny);
   const here = topUnitsAt(nx, ny);
   const enemies = here.filter(o => o.owner !== u.owner);
 
   if (enemies.length) {
-    if (t.str === 0) return { ok: false, msg: `${t.name} kann nicht angreifen` };
+    if (t.str === 0) return { ok: false, msg: tt(`${t.name} kann nicht angreifen`, `${t.name} cannot attack`) };
     return attack(u, nx, ny, enemies, city);
   }
   if (city && city.owner !== u.owner) {
-    if (!t.capture) return { ok: false, msg: 'Nur Infanterie und Panzer können Städte erobern' };
+    if (!t.capture) return { ok: false, msg: tt('Nur Infanterie und Panzer können Städte erobern', 'Only infantry and tanks can capture cities') };
     u.moves = 0;
     if (rng() < 0.5) {
       relocate(u, nx, ny); u.carrier = null; u.order = null;
@@ -250,15 +258,15 @@ function moveStep(u, nx, ny) {
       return { ok: true, captured: city, died: true, consumed: true };
     }
     if (hooks.combat) hooks.combat(u, null, nx, ny, false);
-    if (u.owner === 0) addLog(`Angriff auf ${city.name} abgewehrt – ${t.name} verloren.`, 'bad', nx, ny);
-    else if (city.owner === 0) addLog(`${city.name} hat einen Angriff abgewehrt.`, 'good', nx, ny);
+    if (u.owner === 0) addLog(tt(`Angriff auf ${city.name} abgewehrt – ${t.name} verloren.`, `Attack on ${city.name} repelled – ${t.name.toLowerCase()} lost.`), 'bad', nx, ny);
+    else if (city.owner === 0) addLog(tt(`${city.name} hat einen Angriff abgewehrt.`, `${city.name} repelled an attack.`), 'good', nx, ny);
     killUnit(u);
     return { ok: true, died: true };
   }
   const ownCity = city && city.owner === u.owner;
   if (here.length && !ownCity) {
     const carrier = here.find(o => T(o).carries === t.domain && cargoOf(o).length < T(o).capacity);
-    if (!carrier) return { ok: false, msg: 'Feld ist besetzt' };
+    if (!carrier) return { ok: false, msg: MSG_OCCUPIED };
     relocate(u, nx, ny); u.carrier = carrier.id;
     if (u.owner === 0) u.order = { type: 'sentry' };
     const ok = spendMove(u);
@@ -266,8 +274,8 @@ function moveStep(u, nx, ny) {
     return { ok: true, died: !ok, boarded: carrier };
   }
   if (!canEnterTerrain(u, nx, ny)) {
-    if (t.domain === 'land') return { ok: false, msg: 'Bodentruppen können nicht ins Wasser' };
-    return { ok: false, msg: 'Schiffe können nicht an Land' };
+    if (t.domain === 'land') return { ok: false, msg: tt('Bodentruppen können nicht ins Wasser', 'Land units cannot enter water') };
+    return { ok: false, msg: tt('Schiffe können nicht an Land', 'Ships cannot go ashore') };
   }
   relocate(u, nx, ny); u.carrier = null;
   const ok = spendMove(u);
@@ -494,25 +502,25 @@ function contactCheck(u, snap, ignore = null) {
     if (skip(c.x, c.y)) continue;
     if (!snap.known.has(c.id) && P.knownOwner[c.id] !== -2) {
       if (c.owner === p) continue;
-      return c.owner < 0 ? { msg: `neue Stadt entdeckt: ${c.name}`, cls: 'good', x: c.x, y: c.y }
-                         : { msg: `feindliche Stadt entdeckt: ${c.name}`, cls: 'bad', x: c.x, y: c.y };
+      return c.owner < 0 ? { msg: tt(`neue Stadt entdeckt: ${c.name}`, `new city discovered: ${c.name}`), cls: 'good', x: c.x, y: c.y }
+                         : { msg: tt(`feindliche Stadt entdeckt: ${c.name}`, `enemy city discovered: ${c.name}`), cls: 'bad', x: c.x, y: c.y };
     }
     if (c.owner >= 0 && c.owner !== p && P.vis[idx(c.x, c.y)] && !snap.cities.has(c.id))
-      return { msg: `feindliche Stadt in Sicht: ${c.name}`, cls: 'bad', x: c.x, y: c.y };
+      return { msg: tt(`feindliche Stadt in Sicht: ${c.name}`, `enemy city in sight: ${c.name}`), cls: 'bad', x: c.x, y: c.y };
   }
   for (const o of S.units) {
     if (o.owner === p || o.carrier != null || skip(o.x, o.y) || !P.vis[idx(o.x, o.y)] || snap.units.has(o.id)) continue;
-    return { msg: `${uname(o).replace(/^F/, 'f')} gesichtet`, cls: 'bad', x: o.x, y: o.y };
+    return { msg: tt(`${lc1(uname(o))} gesichtet`, `${lc1(uname(o))} sighted`), cls: 'bad', x: o.x, y: o.y };
   }
   for (const k of adjacentEnemies(u)) {
     if (snap.adj.has(k)) continue;
     const id = +k.slice(1);
     if (k[0] === 'c') {
       const c = S.cities.find(q => q.id === id);
-      if (c && !skip(c.x, c.y)) return { msg: `Feindkontakt an ${c.name}`, cls: 'bad', x: c.x, y: c.y };
+      if (c && !skip(c.x, c.y)) return { msg: tt(`Feindkontakt an ${c.name}`, `enemy contact at ${c.name}`), cls: 'bad', x: c.x, y: c.y };
     } else {
       const o = S.units.find(q => q.id === id);
-      if (o && !skip(o.x, o.y)) return { msg: `Feindkontakt – ${uname(o).replace(/^F/, 'f')} direkt nebenan`, cls: 'bad', x: o.x, y: o.y };
+      if (o && !skip(o.x, o.y)) return { msg: tt(`Feindkontakt – ${lc1(uname(o))} direkt nebenan`, `enemy contact – ${lc1(uname(o))} right next to you`), cls: 'bad', x: o.x, y: o.y };
     }
   }
   return null;
@@ -521,7 +529,7 @@ function contactCheck(u, snap, ignore = null) {
 // Hält einen Befehl wegen Kontakt an und meldet es
 function contactStop(u, what, hit) {
   u.order = null;
-  if (u.owner === 0) addLog(`${T(u).name}: ${what} angehalten – ${hit.msg}.`, hit.cls, u.x, u.y);
+  if (u.owner === 0) addLog(tt(`${T(u).name}: ${what} angehalten – ${hit.msg}.`, `${T(u).name}: ${what} stopped – ${hit.msg}.`), hit.cls, u.x, u.y);
 }
 
 // Marschbefehl ausführen, solange Bewegungspunkte da sind
@@ -532,7 +540,7 @@ function runGoto(u) {
     if (u.x === o.x && u.y === o.y) { u.order = null; break; }
     const path = findPath(u, o.x, o.y, aiKnowsMap(u.owner));
     if (!path || !path.length) {
-      if (u.owner === 0) addLog(`${T(u).name}: kein Weg zum Ziel gefunden.`, '', u.x, u.y);
+      if (u.owner === 0) addLog(tt(`${T(u).name}: kein Weg zum Ziel gefunden.`, `${T(u).name}: no path to the destination.`), '', u.x, u.y);
       u.order = null; break;
     }
     const [nx, ny] = path[0];
@@ -540,14 +548,14 @@ function runGoto(u) {
     const r = moveStep(u, nx, ny);
     computeVision(u.owner);
     if (!r.ok) {
-      if (u.owner === 0) addLog(`${T(u).name}: Marsch unterbrochen (${r.msg}).`, '', u.x, u.y);
+      if (u.owner === 0) addLog(tt(`${T(u).name}: Marsch unterbrochen (${r.msg}).`, `${T(u).name}: march interrupted (${r.msg}).`), '', u.x, u.y);
       if (alive(u)) u.order = null;
       break;
     }
     if (r.died || r.combat || r.captured || r.boarded) { if (alive(u)) u.order = null; break; }
     if (alive(u) && u.x === o.x && u.y === o.y) { u.order = null; break; }
     const hit = contactCheck(u, snap, [o.x, o.y]);
-    if (hit) { contactStop(u, 'Marsch', hit); break; }
+    if (hit) { contactStop(u, tt('Marsch', 'march'), hit); break; }
   }
 }
 
@@ -568,7 +576,7 @@ function runPatrol(u) {
   };
   while (alive(u) && u.order && u.order.type === 'patrol' && u.moves > 0 && guard-- > 0) {
     const o = u.order;
-    if (enemyAdjacent(u)) { stop('Patrouille unterbrochen – Feindkontakt!', 'bad'); break; }
+    if (enemyAdjacent(u)) { stop(tt('Patrouille unterbrochen – Feindkontakt!', 'patrol interrupted – enemy contact!'), 'bad'); break; }
     let [tx, ty] = o.pts[o.i];
     if (u.x === tx && u.y === ty) {
       o.i = (o.i + 1) % o.pts.length;
@@ -576,7 +584,7 @@ function runPatrol(u) {
       if (u.x === tx && u.y === ty) break;   // nur ein Punkt = Standort
     }
     const path = findPath(u, tx, ty, aiKnowsMap(u.owner));
-    if (!path || !path.length) { stop('Patrouille abgebrochen – kein Weg zum Wegpunkt.'); break; }
+    if (!path || !path.length) { stop(tt('Patrouille abgebrochen – kein Weg zum Wegpunkt.', 'patrol aborted – no path to the waypoint.')); break; }
     const [nx, ny] = path[0];
     // Jäger: nur weiterfliegen, wenn der Treibstoff für den Rückweg zur Basis reicht
     if (T(u).domain === 'air' && typeof distHome === 'function') {
@@ -584,7 +592,7 @@ function runPatrol(u) {
       const base = c && c.owner === u.owner;
       if (!base && u.fuel - 1 - Math.max(0, u.moves - 1) < distHome(u.owner, nx, ny)) {
         u.order = { type: 'goto', ...nearestBase(u) };
-        if (u.owner === 0) addLog('Jäger: Patrouille abgebrochen – Treibstoff knapp, fliegt zur Basis.', '', u.x, u.y);
+        if (u.owner === 0) addLog(tt('Jäger: Patrouille abgebrochen – Treibstoff knapp, fliegt zur Basis.', 'Fighter: patrol aborted – low on fuel, flying back to base.'), '', u.x, u.y);
         runGoto(u);
         break;
       }
@@ -593,14 +601,14 @@ function runPatrol(u) {
     const r = moveStep(u, nx, ny);
     computeVision(u.owner);
     if (!r.ok) {
-      if (r.msg === 'Feld ist besetzt') break;   // eigene Einheit im Weg: nächste Runde weiter
-      stop(`Patrouille abgebrochen (${r.msg}).`);
+      if (r.msg === MSG_OCCUPIED) break;   // eigene Einheit im Weg: nächste Runde weiter
+      stop(tt(`Patrouille abgebrochen (${r.msg}).`, `patrol aborted (${r.msg}).`));
       break;
     }
     if (r.died) break;
-    if (r.combat || r.captured || r.boarded) { stop('Patrouille beendet.'); break; }
+    if (r.combat || r.captured || r.boarded) { stop(tt('Patrouille beendet.', 'patrol finished.')); break; }
     const hit = contactCheck(u, snap);
-    if (hit) { contactStop(u, 'Patrouille', hit); break; }
+    if (hit) { contactStop(u, tt('Patrouille', 'patrol'), hit); break; }
   }
 }
 
@@ -689,8 +697,8 @@ function runExplore(u) {
     if (enemyAdjacent(u)) {
       // Bodentruppen und Schiffe halten an und melden sich. Jäger melden nur –
       // in der Luft stehen bleiben würde sie den Treibstoff kosten.
-      if (!air) { stop('Erkundung unterbrochen – Feindkontakt!', 'bad'); return; }
-      if (!reported && p === 0) { addLog('Jäger meldet Feindkontakt und erkundet weiter.', 'bad', u.x, u.y); reported = true; }
+      if (!air) { stop(tt('Erkundung unterbrochen – Feindkontakt!', 'exploration interrupted – enemy contact!'), 'bad'); return; }
+      if (!reported && p === 0) { addLog(tt('Jäger meldet Feindkontakt und erkundet weiter.', 'Fighter reports enemy contact and keeps exploring.'), 'bad', u.x, u.y); reported = true; }
     }
     if (mustReturn) {
       if (isBase(u)) return;                       // getankt wird zu Rundenbeginn, dann geht es weiter
@@ -715,7 +723,7 @@ function runExplore(u) {
       // Es gäbe noch etwas zu entdecken, aber nur durch Feindnähe: diese Runde abwarten
       const risky = explorePath(u, reach, false);
       if (risky && risky.length) return;
-      stop(air ? 'Erkundung beendet – nichts Unbekanntes mehr in Reichweite.' : 'Erkundung beendet – hier gibt es nichts mehr zu entdecken.');
+      stop(air ? tt('Erkundung beendet – nichts Unbekanntes mehr in Reichweite.', 'exploration finished – nothing unknown left in range.') : tt('Erkundung beendet – hier gibt es nichts mehr zu entdecken.', 'exploration finished – nothing left to discover here.'));
       return;
     }
     const [nx, ny] = path[0];
@@ -727,9 +735,9 @@ function runExplore(u) {
     const r = moveStep(u, nx, ny);
     computeVision(p);
     if (!r.ok || r.died) return;
-    if (r.combat || r.captured) { stop('Erkundung beendet.'); return; }
+    if (r.combat || r.captured) { stop(tt('Erkundung beendet.', 'exploration finished.')); return; }
     const hit = contactCheck(u, snap);
-    if (hit) { contactStop(u, 'Erkundung', hit); return; }
+    if (hit) { contactStop(u, tt('Erkundung', 'exploration'), hit); return; }
   }
 }
 
@@ -783,7 +791,7 @@ function startTurn(p) {
     if (c.progress >= UT[c.prod].cost) {
       c.progress = Math.max(0, c.progress - UT[c.prod].cost);
       createUnit(c.prod, p, c.x, c.y);
-      if (p === 0) addLog(`${c.name}: ${UT[c.prod].name} fertiggestellt.`, '', c.x, c.y);
+      if (p === 0) addLog(tt(`${c.name}: ${UT[c.prod].name} fertiggestellt.`, `${c.name}: ${UT[c.prod].name.toLowerCase()} completed.`), '', c.x, c.y);
       else if (typeof aiChooseProduction === 'function') aiChooseProduction(c);
     }
   }
@@ -797,7 +805,7 @@ function endTurn(p) {
     u.fuel -= Math.max(0, u.moves);
     u.moves = 0;
     if (u.fuel <= 0) {
-      if (p === 0) addLog('Dein Jäger ist ohne Treibstoff abgestürzt.', 'bad', u.x, u.y);
+      if (p === 0) addLog(tt('Dein Jäger ist ohne Treibstoff abgestürzt.', 'Your fighter ran out of fuel and crashed.'), 'bad', u.x, u.y);
       killUnit(u);
     }
   }
@@ -832,14 +840,14 @@ function b64(arr) {
 function unb64(str, Type) {
   const s = atob(str), u8 = new Uint8Array(s.length);
   for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
-  if (u8.length % Type.BYTES_PER_ELEMENT) throw new Error('Ungültige Daten');
+  if (u8.length % Type.BYTES_PER_ELEMENT) throw new Error(tt('Ungültige Daten', 'Invalid data'));
   return new Type(u8.buffer);
 }
 // liest altes Format (Zahlenliste) und neues (Base64)
 const fromSaved = (v, Type) => {
   if (typeof v === 'string') return unb64(v, Type);
   if (Array.isArray(v)) return Type.from(v, x => (Number.isFinite(x) ? x : 0));
-  throw new Error('Ungültige Daten');
+  throw new Error(tt('Ungültige Daten', 'Invalid data'));
 };
 
 function serialize() {
@@ -865,9 +873,9 @@ function sanitizeState(o) {
   const str = (v, max = 80) => (typeof v === 'string' ? v.slice(0, max) : '');
   const oneOf = (v, list, d) => (list.includes(v) ? v : d);
   const W = int(o.W, 0), H = int(o.H, 0);
-  if (W < 8 || H < 8 || W > 300 || H > 300) throw new Error('Ungültige Kartengröße');
+  if (W < 8 || H < 8 || W > 300 || H > 300) throw new Error(tt('Ungültige Kartengröße', 'Invalid map size'));
   const N = W * H;
-  for (const k of ['terrain', 'elev', 'depth', 'cont']) if (!o[k] || o[k].length !== N) throw new Error('Ungültige Kartendaten');
+  for (const k of ['terrain', 'elev', 'depth', 'cont']) if (!o[k] || o[k].length !== N) throw new Error(tt('Ungültige Kartendaten', 'Invalid map data'));
   const inMap = (x, y) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < W && y < H;
   const pt = v => (Array.isArray(v) && inMap(v[0], v[1]) ? [v[0], v[1]] : null);
   for (let i = 0; i < N; i++) {
@@ -886,11 +894,11 @@ function sanitizeState(o) {
     offerPause: int(o.offerPause, 0, 0, 1e6),
   };
 
-  if (!Array.isArray(o.cities) || !o.cities.length || o.cities.length > 2000) throw new Error('Ungültige Städte');
+  if (!Array.isArray(o.cities) || !o.cities.length || o.cities.length > 2000) throw new Error(tt('Ungültige Städte', 'Invalid cities'));
   s.cities = o.cities.map((c, i) => {
     c = c || {};
     const x = int(c.x, -1), y = int(c.y, -1);
-    if (!inMap(x, y)) throw new Error('Ungültige Stadt');
+    if (!inMap(x, y)) throw new Error(tt('Ungültige Stadt', 'Invalid city'));
     return { id: i, x, y, name: str(c.name, 40) || 'Stadt ' + (i + 1), owner: oneOf(c.owner, [-1, 0, 1], -1),
       prod: UT[c.prod] ? c.prod : null, progress: num(c.progress, 0, 0, 1000), coastal: !!c.coastal };
   });
@@ -937,9 +945,9 @@ function sanitizeState(o) {
     t: int(e.t, 1, 0, 1e6), me: num(e.me, 0, 0, 1e9), en: num(e.en, 0, 0, 1e9),
   }));
 
-  if (!Array.isArray(o.players) || o.players.length !== 2) throw new Error('Ungültige Spielerdaten');
+  if (!Array.isArray(o.players) || o.players.length !== 2) throw new Error(tt('Ungültige Spielerdaten', 'Invalid player data'));
   s.players = o.players.map(P => {
-    if (!P || !P.seen || P.seen.length !== N) throw new Error('Ungültige Spielerdaten');
+    if (!P || !P.seen || P.seen.length !== N) throw new Error(tt('Ungültige Spielerdaten', 'Invalid player data'));
     const ko = new Int8Array(s.cities.length).fill(-2);
     if (P.knownOwner) for (let i = 0; i < ko.length && i < P.knownOwner.length; i++) ko[i] = Math.min(1, Math.max(-2, P.knownOwner[i]));
     for (let i = 0; i < N; i++) P.seen[i] = P.seen[i] ? 1 : 0;
@@ -952,12 +960,12 @@ function sanitizeState(o) {
 
 function deserialize(json) {
   const o = JSON.parse(json);
-  if (!o || typeof o !== 'object' || !o.terrain || !o.cities || !o.units || !o.players) throw new Error('Kein gültiger Spielstand');
+  if (!o || typeof o !== 'object' || !o.terrain || !o.cities || !o.units || !o.players) throw new Error(tt('Kein gültiger Spielstand', 'Not a valid saved game'));
   for (const [k, Type] of Object.entries(TYPED)) {
     if (k === 'elev' && o.elev && typeof o.elev.q === 'string') o.elev = Float32Array.from(unb64(o.elev.q, Uint8Array), v => v / 255);
     else o[k] = fromSaved(o[k], Type);
   }
-  if (!Array.isArray(o.players)) throw new Error('Kein gültiger Spielstand');
+  if (!Array.isArray(o.players)) throw new Error(tt('Kein gültiger Spielstand', 'Not a valid saved game'));
   o.players = o.players.map(P => ({
     seen: P && P.seen ? fromSaved(P.seen, Uint8Array) : null,
     knownOwner: P && P.knownOwner ? fromSaved(P.knownOwner, Int8Array) : null,
@@ -1003,7 +1011,7 @@ function listSlots() {
       const id = 'm' + Date.now().toString(36);
       localStorage.setItem(SLOT_PREFIX + id, old);
       const o = JSON.parse(old);
-      list.push({ id, name: 'Älterer Spielstand', date: Date.now(), turn: o.turn, size: o.size,
+      list.push({ id, name: tt('Älterer Spielstand', 'Older saved game'), date: Date.now(), turn: o.turn, size: o.size,
         cities: o.cities.filter(c => c.owner === 0).length, units: o.units.filter(u => u.owner === 0).length, over: o.over || null });
       localStorage.setItem(SLOT_INDEX, JSON.stringify(list));
       localStorage.removeItem('archipel-manual');

@@ -11,6 +11,7 @@
     --text: #e6ebf2; --muted: #8b97a8; --accent: #2f7de1; --good: #4cc38a; --bad: #ff6b61; --warn: #f2b84b;
   }
   * { box-sizing: border-box; }
+  html[lang=en] [data-lang=de], html[lang=de] [data-lang=en] { display: none !important; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
     font: 14px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
   header { height: 48px; display: flex; align-items: center; gap: 16px; padding: 0 14px;
@@ -212,13 +213,14 @@
   <h1>ARCHI<span>PEL</span></h1>
   <div id="turnInfo"></div>
   <div class="hbtns">
-    <button id="bNew">Neues Spiel</button>
-    <button id="bSaves" title="Spielstände speichern und laden">Spielstände</button>
-    <button id="bZoomOut" title="Verkleinern (-)">−</button>
-    <button id="bZoomIn" title="Vergrößern (+)">+</button>
-    <span class="snd"><button id="bSound" title="Ton (M)">🔊</button><button id="bSndTest" title="Klangtest (K)">Klänge</button><input id="vol" type="range" min="0" max="100" aria-label="Lautstärke"></span>
-    <button id="bStats" title="Statistik (I)">Statistik</button>
-    <button id="bHelp">Hilfe</button>
+    <button id="bNew" data-en="New game">Neues Spiel</button>
+    <button id="bSaves" title="Spielstände speichern und laden" data-en-title="Save and load games" data-en="Saved games">Spielstände</button>
+    <button id="bZoomOut" title="Verkleinern (-)" data-en-title="Zoom out (-)">−</button>
+    <button id="bZoomIn" title="Vergrößern (+)" data-en-title="Zoom in (+)">+</button>
+    <span class="snd"><button id="bSound" title="Ton (M)" data-en-title="Sound (M)">🔊</button><button id="bSndTest" title="Klangtest (K)" data-en-title="Sound test (K)" data-en="Sounds">Klänge</button><input id="vol" type="range" min="0" max="100" aria-label="Lautstärke" data-en-aria-label="Volume"></span>
+    <button id="bStats" title="Statistik (I)" data-en-title="Statistics (I)" data-en="Statistics">Statistik</button>
+    <button id="bHelp" data-en="Help">Hilfe</button>
+    <button id="bLang" title="Sprache wechseln / Change language">EN</button>
   </div>
 </header>
 <main>
@@ -226,18 +228,18 @@
   <aside>
     <canvas id="mini"></canvas>
     <div id="power" class="power">
-      <div class="power-head"><span>Kräfteverhältnis</span><b id="powerVerdict"></b></div>
+      <div class="power-head"><span data-en="Balance of power">Kräfteverhältnis</span><b id="powerVerdict"></b></div>
       <div class="power-bar"><i id="powerMe"></i><span class="pl" id="powerL"></span><span class="pr" id="powerR"></span></div>
       <div class="power-foot"><canvas id="powerSpark" width="190" height="26"></canvas><span id="powerTrend"></span></div>
     </div>
     <div class="turnbar">
-      <button id="nextUnit" title="Zur nächsten wartenden Einheit (N)">▶ Nächste Einheit <kbd>N</kbd></button>
-      <button id="endTurn" class="primary">Runde beenden ⏎</button>
-      <label class="autoend"><input type="checkbox" id="autoEndChk"> Automatisch beenden, wenn alle gezogen haben</label>
+      <button id="nextUnit" title="Zur nächsten wartenden Einheit (N)" data-en-title="Go to the next waiting unit (N)" data-en="▶ Next unit <kbd>N</kbd>">▶ Nächste Einheit <kbd>N</kbd></button>
+      <button id="endTurn" class="primary" data-en="End turn ⏎">Runde beenden ⏎</button>
+      <label class="autoend"><input type="checkbox" id="autoEndChk"> <span data-en="End automatically when all units have moved">Automatisch beenden, wenn alle gezogen haben</span></label>
     </div>
     <div id="panel" class="box"></div>
     <div id="logBox" class="box collapsed">
-      <h3 id="logHead" title="Meldungen ein-/ausklappen"><span class="chev">▸</span> Meldungen <span id="logNew"></span></h3>
+      <h3 id="logHead" title="Meldungen ein-/ausklappen" data-en-title="Show/hide messages"><span class="chev">▸</span> <span data-en="Messages">Meldungen</span> <span id="logNew"></span></h3>
       <div id="logLast"></div>
       <div id="log"></div>
     </div>
@@ -245,117 +247,157 @@
 </main>
 <footer id="hover">&nbsp;</footer>
 <div id="toast"></div>
-<div id="banner" hidden>Gegner zieht … <span>Klick oder beliebige Taste überspringt</span></div>
+<div id="banner" hidden data-en="Enemy is moving … <span>Click or press any key to skip</span>">Gegner zieht … <span>Klick oder beliebige Taste überspringt</span></div>
 
 <div id="mNew" class="modal" hidden>
   <div class="dlg">
-    <h2>Neues Spiel</h2>
-    <p class="muted">Eine neue Welt wird zufällig erzeugt. Das laufende Spiel geht verloren, wenn du es nicht gespeichert hast.</p>
-    <label>Kartengröße<br><select id="sizeSel"></select></label>
-    <label style="display:block;margin-top:10px">Schwierigkeit<br><select id="diffSel"></select></label>
+    <h2 data-en="New game">Neues Spiel</h2>
+    <p data-lang="de" class="muted">Eine neue Welt wird zufällig erzeugt. Das laufende Spiel geht verloren, wenn du es nicht gespeichert hast.</p>
+    <p data-lang="en" class="muted">A new world is generated at random. The current game will be lost unless you have saved it.</p>
+    <label><span data-en="Map size">Kartengröße</span><br><select id="sizeSel"></select></label>
+    <label style="display:block;margin-top:10px"><span data-en="Difficulty">Schwierigkeit</span><br><select id="diffSel"></select></label>
     <p class="muted" id="diffDesc" style="font-size:13px;margin:6px 0 0"></p>
     <div class="row" style="margin-top:14px">
-      <button class="primary" id="bStart">Los geht's</button>
-      <button data-close>Abbrechen</button>
+      <button class="primary" id="bStart" data-en="Let's go">Los geht's</button>
+      <button data-close data-en="Cancel">Abbrechen</button>
     </div>
   </div>
 </div>
 
 <div id="mHelp" class="modal" hidden>
   <div class="dlg">
-    <h2>So wird gespielt</h2>
-    <p>Die Welt besteht aus Inseln und Kontinenten. Du startest mit <b>einer Stadt</b> und einer Infanterie. Ziel: alle Städte des Gegners erobern. Zu Beginn liegt fast alles im <b>Nebel</b>: Erkunde die Karte mit deinen Einheiten.</p>
-    <p><b>Städte</b> bauen Einheiten. Nach einer Eroberung fragt das Spiel gleich, was die neue Stadt bauen soll. Später klickst du auf eine eigene Stadt (ohne gewählte Einheit), um die Produktion zu ändern. Ein Wechsel setzt den Baufortschritt zurück. Schiffe können nur Küstenstädte bauen. Neutrale (graue) und feindliche Städte erobern nur <b>Infanterie und Panzer</b>, mit 50 % Erfolgschance. <b>Jede Eroberung kostet die Einheit:</b> Gelingt sie, geht der Eroberer in der Stadt auf, und die Stadt steht danach leer, bis du Truppen nachziehst oder sie selbst etwas baut. Misslingt der Angriff auf eine leere Stadt, ist die Einheit ebenfalls verloren. Für Eroberungen lohnt sich also die billigere Infanterie, der Panzer ist die schnelle Feldtruppe. Steht eine Besatzung in der Stadt, kämpft zuerst ihr stärkster Verteidiger. Gewinnt deine Infanterie oder dein Panzer, folgt sofort der 50-%-Wurf auf die Stadt: Fällt sie, geht die <b>gesamte restliche Besatzung</b> mit unter (auch Schiffe im Hafen und Jäger). Auch dann geht deine Einheit in der Stadt auf. Hält sie, bleibt deine Einheit vor der Stadt. Große Stapel in einer Stadt sind also ein Risiko.</p>
-    <p><b>Übersee:</b> Bodentruppen fahren auf Transportern. Zieh sie auf einen Transporter neben der Küste, oder klicke im Hafen auf „Einladen“. Neben fremdem Land lädst du sie mit „Ausladen“ wieder aus.</p>
-    <p><b>Jäger</b> haben 18 Felder Treibstoff und müssen zu einer eigenen Stadt oder einem Träger zurück. Jede Runde in der Luft kostet mindestens 6 Felder Treibstoff.</p>
-    <p><b>Kampf:</b> In jeder Kampfrunde trifft eine Seite zufällig (50:50) und richtet so viel Schaden an, wie ihre Stärke beträgt. Wer zuerst keine Trefferpunkte mehr hat, verliert. Fährst du mit der Maus über einen Gegner, siehst du deine Siegchance. Einheiten in eigenen Städten werden repariert – außer <b>Panzern</b>: Ein beschädigter Panzer bleibt beschädigt. <b>Küstenbatterien:</b> Greift ein Schiff Einheiten in einer Stadt an, verteidigen diese mit doppelter Stärke. Schiffe eignen sich daher eher zur Unterstützung einer Landung als zum Belagern.</p>
-    <p><b>Stärken und Schwächen:</b> Manche Einheiten sind gegen bestimmte andere besonders wirksam. Die angezeigte Siegchance berücksichtigt das, die Fußzeile nennt den Grund.</p>
+    <h2 data-en="How to play">So wird gespielt</h2>
+    <p data-lang="de">Die Welt besteht aus Inseln und Kontinenten. Du startest mit <b>einer Stadt</b> und einer Infanterie. Ziel: alle Städte des Gegners erobern. Zu Beginn liegt fast alles im <b>Nebel</b>: Erkunde die Karte mit deinen Einheiten.</p>
+    <p data-lang="en">The world consists of islands and continents. You start with <b>one city</b> and one infantry. Goal: capture all enemy cities. At first almost everything lies in the <b>fog</b>: explore the map with your units.</p>
+    <p data-lang="de"><b>Städte</b> bauen Einheiten. Nach einer Eroberung fragt das Spiel gleich, was die neue Stadt bauen soll. Später klickst du auf eine eigene Stadt (ohne gewählte Einheit), um die Produktion zu ändern. Ein Wechsel setzt den Baufortschritt zurück. Schiffe können nur Küstenstädte bauen. Neutrale (graue) und feindliche Städte erobern nur <b>Infanterie und Panzer</b>, mit 50 % Erfolgschance. <b>Jede Eroberung kostet die Einheit:</b> Gelingt sie, geht der Eroberer in der Stadt auf, und die Stadt steht danach leer, bis du Truppen nachziehst oder sie selbst etwas baut. Misslingt der Angriff auf eine leere Stadt, ist die Einheit ebenfalls verloren. Für Eroberungen lohnt sich also die billigere Infanterie, der Panzer ist die schnelle Feldtruppe. Steht eine Besatzung in der Stadt, kämpft zuerst ihr stärkster Verteidiger. Gewinnt deine Infanterie oder dein Panzer, folgt sofort der 50-%-Wurf auf die Stadt: Fällt sie, geht die <b>gesamte restliche Besatzung</b> mit unter (auch Schiffe im Hafen und Jäger). Auch dann geht deine Einheit in der Stadt auf. Hält sie, bleibt deine Einheit vor der Stadt. Große Stapel in einer Stadt sind also ein Risiko.</p>
+    <p data-lang="en"><b>Cities</b> build units. After a capture the game immediately asks what the new city should build. Later you click on one of your cities (with no unit selected) to change its production. Switching resets the build progress. Only coastal cities can build ships. Neutral (grey) and enemy cities can only be captured by <b>infantry and tanks</b>, with a 50 % chance of success. <b>Every capture costs the unit:</b> if it succeeds, the conqueror is absorbed into the city, and the city then stands empty until you bring up troops or it builds something itself. If the attack on an empty city fails, the unit is lost as well. So infantry, being cheaper, is the better choice for captures; the tank is the fast field unit. If a garrison holds the city, its strongest defender fights first. If your infantry or tank wins, the 50 % roll for the city follows immediately: if it falls, the <b>entire remaining garrison</b> goes down with it (including ships in port and fighters). In that case, too, your unit is absorbed into the city. If the city holds, your unit stays outside. Big stacks in a city are therefore a risk.</p>
+    <p data-lang="de"><b>Übersee:</b> Bodentruppen fahren auf Transportern. Zieh sie auf einen Transporter neben der Küste, oder klicke im Hafen auf „Einladen“. Neben fremdem Land lädst du sie mit „Ausladen“ wieder aus.</p>
+    <p data-lang="en"><b>Overseas:</b> Ground troops travel on transports. Move them onto a transport next to the coast, or click “Load” in a port. Next to foreign land you unload them again with “Unload”.</p>
+    <p data-lang="de"><b>Jäger</b> haben 18 Felder Treibstoff und müssen zu einer eigenen Stadt oder einem Träger zurück. Jede Runde in der Luft kostet mindestens 6 Felder Treibstoff.</p>
+    <p data-lang="en"><b>Fighters</b> have 18 tiles of fuel and must return to one of your cities or a carrier. Every turn in the air costs at least 6 tiles of fuel.</p>
+    <p data-lang="de"><b>Kampf:</b> In jeder Kampfrunde trifft eine Seite zufällig (50:50) und richtet so viel Schaden an, wie ihre Stärke beträgt. Wer zuerst keine Trefferpunkte mehr hat, verliert. Fährst du mit der Maus über einen Gegner, siehst du deine Siegchance. Einheiten in eigenen Städten werden repariert – außer <b>Panzern</b>: Ein beschädigter Panzer bleibt beschädigt. <b>Küstenbatterien:</b> Greift ein Schiff Einheiten in einer Stadt an, verteidigen diese mit doppelter Stärke. Schiffe eignen sich daher eher zur Unterstützung einer Landung als zum Belagern.</p>
+    <p data-lang="en"><b>Combat:</b> In each combat round one side hits at random (50:50) and deals as much damage as its strength. Whoever runs out of hit points first loses. Hover over an enemy to see your win chance. Units in your own cities are repaired – except <b>tanks</b>: a damaged tank stays damaged. <b>Coastal batteries:</b> if a ship attacks units in a city, they defend with double strength. Ships are therefore better at supporting a landing than at laying siege.</p>
+    <p data-lang="de"><b>Stärken und Schwächen:</b> Manche Einheiten sind gegen bestimmte andere besonders wirksam. Die angezeigte Siegchance berücksichtigt das, die Fußzeile nennt den Grund.</p>
+    <p data-lang="en"><b>Strengths and weaknesses:</b> Some units are especially effective against certain others. The displayed win chance takes this into account, and the footer names the reason.</p>
     <table>
-      <tr><th>Wenn …</th><th>dann</th><th>Siegchance des Angreifers</th></tr>
-      <tr><td>U-Boot greift Schlachtschiff, Kreuzer oder Träger an</td><td>Torpedo-Überraschung: erster Treffer sicher, doppelte Stärke</td><td>gegen Schlachtschiff und Kreuzer 50 % (sonst 6 bzw. 13 %), gegen Träger 75 %</td></tr>
-      <tr><td>Zerstörer greift U-Boot an</td><td>Sonar: erster Treffer sicher, danach trifft der Zerstörer zu 2/3</td><td>67 % (sonst 25 %)</td></tr>
-      <tr><td>U-Boot greift Zerstörer an</td><td>Wasserbomben: Zerstörer verteidigt doppelt stark</td><td>50 % (sonst 75 %)</td></tr>
-      <tr><td>Jäger greift U-Boot an</td><td>U-Boot an der Oberfläche: Jäger trifft zu 2/3</td><td>44 % (sonst 25 %)</td></tr>
+      <tr><th data-en="If …">Wenn …</th><th data-en="then">dann</th><th data-en="Attacker's win chance">Siegchance des Angreifers</th></tr>
+      <tr><td data-en="Submarine attacks battleship, cruiser or carrier">U-Boot greift Schlachtschiff, Kreuzer oder Träger an</td><td data-en="Torpedo surprise: first hit guaranteed, double strength">Torpedo-Überraschung: erster Treffer sicher, doppelte Stärke</td><td data-en="vs. battleship and cruiser 50 % (otherwise 6 and 13 %), vs. carrier 75 %">gegen Schlachtschiff und Kreuzer 50 % (sonst 6 bzw. 13 %), gegen Träger 75 %</td></tr>
+      <tr><td data-en="Destroyer attacks submarine">Zerstörer greift U-Boot an</td><td data-en="Sonar: first hit guaranteed, then the destroyer hits 2/3 of the time">Sonar: erster Treffer sicher, danach trifft der Zerstörer zu 2/3</td><td data-en="67 % (otherwise 25 %)">67 % (sonst 25 %)</td></tr>
+      <tr><td data-en="Submarine attacks destroyer">U-Boot greift Zerstörer an</td><td data-en="Depth charges: destroyer defends with double strength">Wasserbomben: Zerstörer verteidigt doppelt stark</td><td data-en="50 % (otherwise 75 %)">50 % (sonst 75 %)</td></tr>
+      <tr><td data-en="Fighter attacks submarine">Jäger greift U-Boot an</td><td data-en="Submarine on the surface: fighter hits 2/3 of the time">U-Boot an der Oberfläche: Jäger trifft zu 2/3</td><td data-en="44 % (otherwise 25 %)">44 % (sonst 25 %)</td></tr>
     </table>
     <table>
-      <tr><th>Einheit</th><th>Bew.</th><th>TP</th><th>Stärke</th><th>Bauzeit</th><th>Besonderes</th></tr>
+      <tr><th data-en="Unit">Einheit</th><th data-en="Move">Bew.</th><th data-en="HP">TP</th><th data-en="Strength">Stärke</th><th data-en="Build time">Bauzeit</th><th data-en="Special">Besonderes</th></tr>
       <tbody id="unitTable"></tbody>
     </table>
     <details class="more">
-      <summary>Mehr über die Schwierigkeitsstufen und den Computergegner</summary>
-      <p>Die Schwierigkeit wählst du unter <b>Neues Spiel</b>. Sie verändert nur den Gegner und die Startbedingungen.
+      <summary data-en="More about the difficulty levels and the computer opponent">Mehr über die Schwierigkeitsstufen und den Computergegner</summary>
+      <p data-lang="de">Die Schwierigkeit wählst du unter <b>Neues Spiel</b>. Sie verändert nur den Gegner und die Startbedingungen.
         Würfelglück, Sichtweiten und Regeln sind auf allen Stufen gleich.</p>
+      <p data-lang="en">You choose the difficulty under <b>New game</b>. It only changes the enemy and the starting conditions.
+        Dice luck, vision ranges and rules are the same on every level.</p>
       <table>
-        <thead><tr><th>Stufe</th><th>Kennt Karte</th><th>Fehler</th><th>Bautempo</th><th>Landet ab</th><th>Start</th></tr></thead>
+        <thead><tr><th data-en="Level">Stufe</th><th data-en="Knows map">Kennt Karte</th><th data-en="Mistakes">Fehler</th><th data-en="Build speed">Bautempo</th><th data-en="Lands with">Landet ab</th><th>Start</th></tr></thead>
         <tbody id="diffTable"></tbody>
       </table>
-      <p><b>Kennt Karte:</b> Auf Leicht und Normal kennt der Gegner nur, was seine Einheiten und Städte gesehen haben,
+      <p data-lang="de"><b>Kennt Karte:</b> Auf Leicht und Normal kennt der Gegner nur, was seine Einheiten und Städte gesehen haben,
         genau wie du. Er muss erkunden: Bodentruppen laufen zum Rand des Nebels, Zerstörer und Jäger dienen als Späher.
         Auf Schwer und Brutal kennt er alle Inseln und Städte von Anfang an. Deine Einheiten sieht er auf allen Stufen
         nur in seiner Sichtweite.</p>
-      <p><b>Fehler:</b> Anteil „menschlicher“ Fehlentscheidungen. Der Gegner vergisst dann eine Einheit für eine Runde,
+      <p data-lang="en"><b>Knows map:</b> On Easy and Normal the enemy only knows what its units and cities have seen,
+        just like you. It has to explore: ground troops head for the edge of the fog, destroyers and fighters serve as scouts.
+        On Hard and Brutal it knows all islands and cities from the start. On every level it only sees your units
+        within its vision range.</p>
+      <p data-lang="de"><b>Fehler:</b> Anteil „menschlicher“ Fehlentscheidungen. Der Gegner vergisst dann eine Einheit für eine Runde,
         schätzt einen Angriff falsch ein (zu wagemutig oder zu zaghaft) oder baut etwas Unpassendes.</p>
-      <p><b>Bautempo:</b> wie schnell gegnerische Städte Einheiten fertigstellen, verglichen mit deinen.
+      <p data-lang="en"><b>Mistakes:</b> share of “human” bad decisions. The enemy then forgets a unit for a turn,
+        misjudges an attack (too bold or too timid) or builds something unsuitable.</p>
+      <p data-lang="de"><b>Bautempo:</b> wie schnell gegnerische Städte Einheiten fertigstellen, verglichen mit deinen.
         <b>Landet ab:</b> mit wie vielen Truppen an Bord ein Transporter eine Landung wagt.</p>
-      <p><b>Wie der Gegner denkt:</b> Er folgt festen Regeln je Einheit (eine Art Entscheidungsbaum) und denkt nicht voraus.
+      <p data-lang="en"><b>Build speed:</b> how fast enemy cities complete units compared with yours.
+        <b>Lands with:</b> how many troops a transport needs on board before it dares a landing.</p>
+      <p data-lang="de"><b>Wie der Gegner denkt:</b> Er folgt festen Regeln je Einheit (eine Art Entscheidungsbaum) und denkt nicht voraus.
         Vor jedem Angriff berechnet er die Siegchance und greift nur an, wenn sie hoch genug ist. Auf Leicht ist er dabei
         vorsichtiger. Seine Städte bauen zuerst Bodentruppen, solange es auf dem eigenen Kontinent noch etwas zu erobern
         gibt, danach Transporter, Nachschub und Flotte. Er hat keine übergreifende Strategie: Einheiten handeln einzeln,
         Großangriffe stimmt er nicht ab. Wer seine Kräfte bündelt, ist ihm überlegen.</p>
-      <p class="muted">In Testpartien gegen einen Computerspieler, der selbst erkunden muss und keine Fehler macht, gewann
+      <p data-lang="en"><b>How the enemy thinks:</b> It follows fixed rules for each unit (a kind of decision tree) and does not plan ahead.
+        Before every attack it calculates the win chance and only attacks if it is high enough. On Easy it is
+        more cautious. Its cities build ground troops first, as long as there is still something to capture on its own
+        continent, then transports, reinforcements and a fleet. It has no overall strategy: units act individually,
+        and it does not coordinate large attacks. If you concentrate your forces, you will outmatch it.</p>
+      <p data-lang="de" class="muted">In Testpartien gegen einen Computerspieler, der selbst erkunden muss und keine Fehler macht, gewann
         dieser auf Leicht praktisch immer, auf Normal gut die Hälfte, auf Schwer etwa ein Viertel bis ein Drittel und auf Brutal nie.
         Wie schwer es für dich ist, hängt natürlich von deiner Spielweise ab.</p>
+      <p data-lang="en" class="muted">In test games against a computer player that has to explore by itself and makes no mistakes, that player
+        won practically always on Easy, a good half of the time on Normal, about a quarter to a third on Hard and never on Brutal.
+        How hard it is for you naturally depends on your style of play.</p>
     </details>
 
-    <h3>Steuerung</h3>
-    <p>
+    <h3 data-en="Controls">Steuerung</h3>
+    <p data-lang="de">
       <b>Klick</b> auf ein Nachbarfeld: ziehen oder angreifen. <b>Klick</b> auf ein entferntes Feld: Marschbefehl (läuft über mehrere Runden). <b>Klick auf eine eigene Stadt</b> schickt die gewählte Einheit dorthin; zum Bearbeiten der Stadt erst die Auswahl aufheben (Rechtsklick oder <kbd>Esc</kbd>) und dann die Stadt anklicken. <b>Rechtsklick auf eine eigene Einheit oder Stadt</b> öffnet ein Menü mit allen Befehlen, der Auswahl unter mehreren Einheiten auf dem Feld und „Produktion ändern“. Marsch, Patrouille und Erkunden halten an, sobald die Einheit eine unbekannte Stadt entdeckt, eine feindliche Stadt oder Einheit sichtet oder ihr direkt gegenübersteht – dann bist du gefragt.
       <b>Umschalt+Klick</b>: Marschbefehl auch auf Felder mit eigenen Einheiten. <b>Rechtsklick</b> / <kbd>Esc</kbd>: Auswahl aufheben. <b>Mittlere oder rechte Maustaste gedrückt halten und ziehen</b>: Karte verschieben. <b>Mausrad</b>: zoomen.<br>
       Richtungen: <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd> / <kbd>A</kbd><kbd>D</kbd> / <kbd>Y</kbd>/<kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd>, Pfeiltasten oder Ziffernblock.<br>
       <kbd>Leertaste</kbd> Einheit überspringen · <kbd>S</kbd> Wache (Einheit wartet) · <kbd>P</kbd> Patrouille (Wegpunkte anklicken, <kbd>Enter</kbd> startet, Rechtsklick löscht den letzten) · <kbd>R</kbd> Erkunden (Einheit zieht selbstständig ins Unbekannte) · <kbd>B</kbd> Heimkehr (Marsch zur nächsten eigenen Stadt, Schiffe zum nächsten eigenen Hafen) · <kbd>N</kbd> nächste Einheit ·
       <kbd>L</kbd> Einladen · <kbd>U</kbd> Ausladen · <kbd>Enter</kbd> Runde beenden (endet auf Wunsch auch automatisch, sobald alle Einheiten gezogen haben) · <kbd>+</kbd>/<kbd>−</kbd> Zoom · <kbd>M</kbd> Ton an/aus · <kbd>K</kbd> Klangtest · <kbd>I</kbd> Statistik
     </p>
-    <p class="muted">Das Spiel speichert nach jeder Runde automatisch im Browser.</p>
-    <h3>Datenschutz</h3>
-    <p class="muted" style="font-size:13px">Archipel verwendet <b>keine Cookies</b>, <b>kein Tracking</b> und lädt <b>nichts von anderen Servern</b>
+    <p data-lang="en">
+      <b>Click</b> a neighbouring tile: move or attack. <b>Click</b> a distant tile: march order (runs over several turns). <b>Clicking one of your cities</b> sends the selected unit there; to manage the city, first clear the selection (right-click or <kbd>Esc</kbd>) and then click the city. <b>Right-clicking one of your units or cities</b> opens a menu with all commands, a choice among several units on the tile and “Change production”. March, patrol and explore stop as soon as the unit discovers an unknown city, sights an enemy city or unit, or stands right next to one – then it is your call.
+      <b>Shift+click</b>: march order even onto tiles with your own units. <b>Right-click</b> / <kbd>Esc</kbd>: clear selection. <b>Hold the middle or right mouse button and drag</b>: pan the map. <b>Mouse wheel</b>: zoom.<br>
+      Directions: <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd> / <kbd>A</kbd><kbd>D</kbd> / <kbd>Y</kbd>/<kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd>, arrow keys or numpad.<br>
+      <kbd>Space</kbd> skip unit · <kbd>S</kbd> sentry (unit waits) · <kbd>P</kbd> patrol (click waypoints, <kbd>Enter</kbd> starts, right-click removes the last one) · <kbd>R</kbd> explore (unit moves into the unknown on its own) · <kbd>B</kbd> return home (march to the nearest own city, ships to the nearest own port) · <kbd>N</kbd> next unit ·
+      <kbd>L</kbd> load · <kbd>U</kbd> unload · <kbd>Enter</kbd> end turn (can also end automatically once all units have moved) · <kbd>+</kbd>/<kbd>−</kbd> zoom · <kbd>M</kbd> sound on/off · <kbd>K</kbd> sound test · <kbd>I</kbd> statistics
+    </p>
+    <p data-lang="de" class="muted">Das Spiel speichert nach jeder Runde automatisch im Browser.</p>
+    <p data-lang="en" class="muted">The game saves automatically in your browser after every turn.</p>
+    <h3 data-en="Privacy">Datenschutz</h3>
+    <p data-lang="de" class="muted" style="font-size:13px">Archipel verwendet <b>keine Cookies</b>, <b>kein Tracking</b> und lädt <b>nichts von anderen Servern</b>
       (auch keine Schriften). Spielstände und Einstellungen werden nur in deinem Browser gespeichert (localStorage) und verlassen
       deinen Rechner nicht – außer du exportierst selbst eine Datei. Löschen kannst du sie über die Spielstände oder indem du die
       Website-Daten im Browser entfernst. Die Online-Version wird über GitHub Pages bereitgestellt; GitHub verarbeitet dabei
       technisch notwendige Daten wie die IP-Adresse
       (<a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">Datenschutzerklärung von GitHub</a>).</p>
-    <div class="row"><button class="primary" data-close>Verstanden</button></div>
+    <p data-lang="en" class="muted" style="font-size:13px">Archipel uses <b>no cookies</b>, <b>no tracking</b> and loads <b>nothing from other servers</b>
+      (not even fonts). Saved games and settings are stored only in your browser (localStorage) and never leave
+      your computer – unless you export a file yourself. You can delete them via Saved games or by removing the
+      site data in your browser. The online version is served via GitHub Pages; GitHub processes
+      technically necessary data such as the IP address
+      (<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub privacy statement</a>).</p>
+    <div class="row"><button class="primary" data-close data-en="Got it">Verstanden</button></div>
   </div>
 </div>
 
 <div id="mSound" class="modal" hidden>
   <div class="dlg">
-    <h2>Klangtest</h2>
-    <p class="muted">Hör dir jeden Klang an und stell die Lautstärke je Einheit ein. Alle Klänge werden im Spiel selbst erzeugt. Die Einstellungen werden gespeichert.</p>
+    <h2 data-en="Sound test">Klangtest</h2>
+    <p data-lang="de" class="muted">Hör dir jeden Klang an und stell die Lautstärke je Einheit ein. Alle Klänge werden im Spiel selbst erzeugt. Die Einstellungen werden gespeichert.</p>
+    <p data-lang="en" class="muted">Listen to every sound and set the volume for each unit. All sounds are generated by the game itself. Your settings are saved.</p>
     <table class="snd-table">
-      <thead><tr><th>Einheit</th><th>Anhören</th><th>Lautstärke</th></tr></thead>
+      <thead><tr><th data-en="Unit">Einheit</th><th data-en="Listen">Anhören</th><th data-en="Volume">Lautstärke</th></tr></thead>
       <tbody id="sndRows"></tbody>
     </table>
-    <h3 style="margin-top:14px">Effekte</h3>
+    <h3 style="margin-top:14px" data-en="Effects">Effekte</h3>
     <div class="row" id="sndFx"></div>
-    <div class="row" style="margin-top:16px"><button class="primary" data-close>Fertig</button></div>
+    <div class="row" style="margin-top:16px"><button class="primary" data-close data-en="Done">Fertig</button></div>
   </div>
 </div>
 
 <div id="mStats" class="modal" hidden>
   <div class="dlg wide">
-    <h2>Statistik</h2>
+    <h2 data-en="Statistics">Statistik</h2>
     <div id="statSummary" class="stat-summary"></div>
-    <h3>Einheiten und Produktion</h3>
+    <h3 data-en="Units and production">Einheiten und Produktion</h3>
     <table class="stat-table">
-      <thead><tr><th>Einheit</th><th class="num">Im Besitz</th><th class="num">davon</th><th class="num">Städte bauen</th><th class="num">Nächste fertig in</th></tr></thead>
+      <thead><tr><th data-en="Unit">Einheit</th><th class="num" data-en="Owned">Im Besitz</th><th class="num" data-en="of which">davon</th><th class="num" data-en="Cities building">Städte bauen</th><th class="num" data-en="Next ready in">Nächste fertig in</th></tr></thead>
       <tbody id="statUnits"></tbody>
     </table>
-    <h3>Deine Städte</h3>
+    <h3 data-en="Your cities">Deine Städte</h3>
     <table class="stat-table">
-      <thead><tr><th>Stadt</th><th>Produktion</th><th class="num">Fertig in</th><th class="num">Einheiten in der Stadt</th></tr></thead>
+      <thead><tr><th data-en="City">Stadt</th><th data-en="Production">Produktion</th><th class="num" data-en="Ready in">Fertig in</th><th class="num" data-en="Units in city">Einheiten in der Stadt</th></tr></thead>
       <tbody id="statCities"></tbody>
     </table>
-    <div class="row" style="margin-top:14px"><button class="primary" data-close>Schließen</button></div>
+    <div class="row" style="margin-top:14px"><button class="primary" data-close data-en="Close">Schließen</button></div>
   </div>
 </div>
 
@@ -369,19 +411,19 @@
 
 <div id="mSaves" class="modal" hidden>
   <div class="dlg wide">
-    <h2>Spielstände</h2>
+    <h2 data-en="Saved games">Spielstände</h2>
     <div class="save-new">
-      <input id="saveName" type="text" maxlength="40" placeholder="Name für den Spielstand">
-      <button class="primary" id="saveNew">Aktuelles Spiel speichern</button>
+      <input id="saveName" type="text" maxlength="40" placeholder="Name für den Spielstand" data-en-placeholder="Name for the saved game">
+      <button class="primary" id="saveNew" data-en="Save current game">Aktuelles Spiel speichern</button>
     </div>
     <table class="stat-table save-table">
-      <thead><tr><th>Name</th><th>Stand</th><th>Gespeichert</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th data-en="Progress">Stand</th><th data-en="Saved">Gespeichert</th><th></th></tr></thead>
       <tbody id="saveRows"></tbody>
     </table>
     <p class="muted" id="saveInfo" style="font-size:12px"></p>
     <div class="row" style="margin-top:10px">
-      <button id="saveImport">Aus Datei laden…</button>
-      <button class="primary" data-close>Schließen</button>
+      <button id="saveImport" data-en="Load from file…">Aus Datei laden…</button>
+      <button class="primary" data-close data-en="Close">Schließen</button>
     </div>
   </div>
 </div>
@@ -392,13 +434,13 @@
   <div class="dlg cap-dlg">
     <div class="cap-head">
       <div class="cap-badge" id="capBadge">🏆</div>
-      <div class="cap-kicker" id="capKicker">Sieg!</div>
+      <div class="cap-kicker" id="capKicker" data-en="Victory!">Sieg!</div>
       <h2 id="capTitle"></h2>
       <p id="capCheer"></p>
     </div>
     <div class="cap-facts" id="capFacts"></div>
     <div class="cap-progress"><i id="capBar"></i></div>
-    <h3 class="cap-q" id="capQ">Was soll die Stadt jetzt für dich bauen?</h3>
+    <h3 class="cap-q" id="capQ" data-en="What should the city build for you now?">Was soll die Stadt jetzt für dich bauen?</h3>
     <div class="cap-units" id="capUnits"></div>
     <p class="muted" id="capHint" style="font-size:12px;margin:10px 0 0"></p>
   </div>
@@ -408,7 +450,7 @@
   <div class="dlg" style="text-align:center">
     <h2 id="overTitle"></h2>
     <p id="overText" class="muted"></p>
-    <div class="row" style="justify-content:center"><button class="primary" id="bOverNew">Neues Spiel</button><button data-close>Karte ansehen</button></div>
+    <div class="row" style="justify-content:center"><button class="primary" id="bOverNew" data-en="New game">Neues Spiel</button><button data-close data-en="View map">Karte ansehen</button></div>
   </div>
 </div>
 

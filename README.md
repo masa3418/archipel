@@ -7,6 +7,10 @@ Truppen per Schiff übersetzen – gegen einen Computergegner.
 Läuft komplett im Browser, ohne Installation und ohne externe Bibliotheken.
 Grafik und Klänge werden im Programm erzeugt, es gibt keine Bild- oder Audiodateien.
 
+*English:* a turn-based island conquest game in the spirit of the classic 80s strategy games – explore,
+capture cities, build units and ship your troops across the sea against a computer opponent. The game
+is available in English: use the language button in the top bar.
+
 ![Archipel: Inselwelt mit Städten, eigenen Einheiten und feindlichen Schiffen vor der Küste; rechts Übersichtskarte, Kräfteverhältnis und Einheiteninfo](docs/screenshot.png)
 
 ## Spielen
@@ -19,6 +23,7 @@ exportieren. Hilfe und Tastenbelegung: Knopf **Hilfe** oder Taste `H`.
 
 ## Inhalt
 
+- Deutsch und Englisch (Sprachknopf oben in der Leiste)
 - Zufällige Karten in drei Größen mit Kontinenten, Inseln, Wäldern und Bergen
 - Nebel des Krieges, Städte erobern (50 % Chance, der Eroberer geht in der Stadt auf) und Produktion wählen
 - Neun Einheiten: Infanterie, Panzer, Jäger (mit Treibstoff), Transporter, Zerstörer,
