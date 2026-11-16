@@ -143,8 +143,9 @@ function pickDefender(list) {
 //   Sonar            – Zerstörer greift U-Boot an: Erstschlag, trifft danach zu 2/3
 //   Wasserbomben     – U-Boot greift Zerstörer an: Zerstörer verteidigt doppelt stark
 //   Luftangriff      – Jäger gegen U-Boot (an der Oberfläche): Jäger trifft zu 2/3
-//   Abgetaucht       – Schlachtschiff greift U-Boot an: trifft nur zu 1/4, das U-Boot schlägt mit
-//                      doppelter Stärke zurück (das U-Boot ist ein Konter des Schlachtschiffs)
+//   Abgetaucht       – Schlachtschiff greift getauchtes U-Boot an: trifft nur zu 1/4, das U-Boot schlägt mit
+//                      doppelter Stärke zurück (das U-Boot ist ein Konter des Schlachtschiffs).
+//                      Ein aufgetauchtes U-Boot (u.surf, nach eigenem Angriff) bekämpft es dagegen normal.
 //   Luftangriff      – Jäger gegen Schlachtschiff: trifft zu 2/3 mit dreifachem Schaden
 //                      (versenkt es selten allein, aber der Schaden bleibt – Schwärme lohnen sich)
 // Luftdeckung      – Träger mit mindestens einem Jäger an Bord schützen eigene Schiffe auf den Nachbarfeldern
@@ -191,7 +192,7 @@ function combatSpec(a, d, x, y) {
   if (ta === 'dst' && td === 'sub') { first = 'att'; p = 2 / 3; notes.push(tt('Sonar: Zerstörer trifft zuerst und öfter', 'sonar: destroyer strikes first and more often')); }
   if (ta === 'sub' && td === 'dst') { ds *= 2; notes.push(tt('Wasserbomben', 'depth charges')); }
   if (ta === 'ftr' && td === 'sub') { p = 2 / 3; notes.push(tt('Luftangriff auf U-Boot', 'air strike on submarine')); }
-  if (ta === 'bat' && td === 'sub') { p = 1 / 4; ds *= 2; notes.push(tt('U-Boot taucht ab: schwer zu treffen, Torpedo-Gegenschlag', 'submarine dives: hard to hit, torpedo counter-strike')); }
+  if (ta === 'bat' && td === 'sub' && !d.surf) { p = 1 / 4; ds *= 2; notes.push(tt('U-Boot taucht ab: schwer zu treffen, Torpedo-Gegenschlag', 'submarine dives: hard to hit, torpedo counter-strike')); }
   if (ta === 'ftr' && td === 'bat') { as *= 3; p = 2 / 3; notes.push(tt('Luftangriff auf Schlachtschiff', 'air strike on battleship')); }
   if (ta === 'ftr' && T(d).domain === 'sea' && airCover(d.owner, x, y)) { p = 1 / 3; notes.push(tt('Luftdeckung durch Träger', 'air cover from a carrier')); }
   // Feuerunterstützung/Feuerschutz betreffen nur Bodentruppen
