@@ -55,7 +55,7 @@ Archipel ${version} – offline copy
 =================================
 
 To play, double-click index.html. Nothing is installed and no internet connection is needed.
-The language button (EN/DE) is at the top right.
+The language button (🌐) is at the top right.
 
 Saved games and settings live in your browser, separate from the online version. Use
 "Saved games -> Export" and "Load from file" to move them between the two.
@@ -73,7 +73,7 @@ const next = log.indexOf('\n## ', start + 3);
 const section = log.slice(log.indexOf('\n', start) + 1, next < 0 ? undefined : next).trim();
 fs.writeFileSync(path.join(dist, 'NOTES.md'), `**Offline spielen:** \`archipel.html\` herunterladen und doppelklicken – das ganze Spiel steckt in dieser einen Datei, ohne Installation und ohne Internet. Wer lieber einzelne Dateien hat, nimmt \`archipel-offline.zip\`, entpackt es und öffnet \`index.html\`. Die Offline-Fassung hat eigene Spielstände; über „Spielstände → Export“ und „Aus Datei laden“ lassen sie sich mit der [Online-Version](https://masa3418.github.io/archipel/) austauschen.
 
-**Play offline:** download \`archipel.html\` and double-click it – the whole game is in this one file, no installation, no internet. If you prefer separate files, take \`archipel-offline.zip\`, unpack it and open \`index.html\`. The language button (EN/DE) is at the top right.
+**Play offline:** download \`archipel.html\` and double-click it – the whole game is in this one file, no installation, no internet. If you prefer separate files, take \`archipel-offline.zip\`, unpack it and open \`index.html\`. The language button (🌐) is at the top right.
 
 ${section}
 `);
