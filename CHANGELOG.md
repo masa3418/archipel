@@ -3,6 +3,25 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.3.1
+
+Das automatische Rundenende soll keine vollen Transporter mehr kosten.
+
+- **Rückfrage vor fremden Städten:** Liegt ein beladener Transporter ohne Befehl vor einer neutralen oder feindlichen Stadt,
+  fragt das Spiel, ob die Truppen angreifen sollen – angreifen, nur an Land setzen oder nicht angreifen. Die Runde endet
+  nicht, bevor du dich entschieden hast, auch wenn der Transporter selbst keinen Zug mehr hat.
+- **Angriff direkt auf der Karte:** Über der Stadt stehen ein Zielkreuz und die Chance. Ein Klick auf die Stadt oder die
+  Richtungstaste dorthin löst den Angriff vom Schiff aus, wie bisher die Taste U.
+- **„Ausladen, wenn möglich“:** neuer Schalter je Transporter für Landemanöver an freier Küste. Sobald er Land berührt,
+  werden die Truppen nacheinander zum Aussteigen angeboten, bis kein Feld mehr frei ist. Ist er leer, schaltet sich der
+  Schalter ab. Ein kleiner Pfeil an der Marke zeigt, bei welchen Transportern er an ist.
+- Wer einen Transporter ohne Zug bewegen will, dessen Truppen noch angreifen können, bekommt jetzt eine Erklärung statt
+  „Keine Bewegungspunkte mehr“
+
+*English:* the automatic end of turn no longer costs you loaded transports – the game asks before a neutral or enemy city
+whether the troops should attack, the attack can be started by clicking the city, and a new per-transport switch
+“Unload when possible” offers the troops for disembarking as soon as the transport touches land.
+
 ## 1.3.0
 
 Transporter nehmen dem Spieler Handgriffe ab.
