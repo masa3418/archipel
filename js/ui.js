@@ -3131,7 +3131,8 @@ $('bLang').onclick = () => {
   $('diffDesc').textContent = DIFFICULTY[$('diffSel').value].desc;
   let prefWorld = 'inseln';
   try { prefWorld = localStorage.getItem('archipel-world') || 'inseln'; } catch (e) {}
-  $('worldSel').innerHTML = Object.entries(WORLDS).map(([k, v]) => `<option value="${k}" ${k === prefWorld ? 'selected' : ''}>${v.label}</option>`).join('');
+  // Inselreich ist die Hauptkarte (echter Seekrieg) – Vorgabe beim ersten Spiel und in der Auswahl als empfohlen markiert
+  $('worldSel').innerHTML = Object.entries(WORLDS).map(([k, v]) => `<option value="${k}" ${k === prefWorld ? 'selected' : ''}>${v.label}${k === 'inseln' ? tt(' (empfohlen)', ' (recommended)') : ''}</option>`).join('');
   if (!WORLDS[$('worldSel').value]) $('worldSel').value = 'inseln';
   $('worldDesc').textContent = WORLDS[$('worldSel').value].desc;
   $('diffTable').innerHTML = Object.entries(DIFFICULTY).map(([dk, d]) => {

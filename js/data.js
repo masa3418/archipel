@@ -84,18 +84,19 @@ const MAP_SIZES = {
 //  perBig – Kartenfläche je großer Insel (mehr Fläche → mehr große Inseln, mindestens 2)
 //  mid   – Anteil mittlerer Inseln an den übrigen, small – größter Radius kleiner Inseln (relativ zu rBig)
 //  gap   – Mindestabstand (Wasser) zwischen geplanten Inseln
+//  massLen, massShare, minBig – Gemischt: eine Landmasse je massLen Felder Kantenlänge (mind. minBig), zusammen massShare des Landes
 //  split – geplante Inseln bleiben getrennt (Rauschen darf sie nicht verbinden), siehe generateMap
 const WORLDS = {
   inseln: { label: tt('Inselreich', 'Archipelago'),
     desc: tt('Viele mittlere und kleine Inseln, keine großen Landmassen. Ohne Schiffe kommst du nicht weit.', 'Many medium and small islands, no large land masses. You won\'t get far without ships.'),
     rBig: 0.09, perBig: 1700, mid: 0.5, small: 0.45, gap: 3.5, land: 0.33, split: true },
   gemischt: { label: tt('Gemischt', 'Mixed'),
-    desc: tt('Mindestens zwei große Landmassen, dazwischen viele kleine Inseln. Landkrieg auf dem eigenen Kontinent, Seekrieg um die Inseln.', 'At least two large land masses with many small islands in between. Land war on your own continent, naval war for the islands.'),
-    rBig: 0.15, perBig: 2000, minBig: 2, mid: 0, small: 0.3, gap: 3.5, land: 0.36, split: true },
+    desc: tt('Mehrere mittelgroße Landmassen – je größer die Karte, desto mehr –, dazwischen viele kleine Inseln. Erst das eigene Land sichern, dann über See weiter.', 'Several medium-sized land masses – the larger the map, the more – with many small islands in between. Secure your own land first, then push on by sea.'),
+    massLen: 13, massShare: 0.55, minBig: 3, mid: 0, small: 0.4, gap: 3.5, land: 0.36, split: true },
   // „kontinente“ bleibt der innere Name (ältere Spielstände), die Welt heißt jetzt Festland
   kontinente: { label: tt('Festland', 'Mainland'),
     desc: tt('Die ganze Welt ist eine Landmasse mit Binnenmeeren und Flüssen. Über die Flüsse führen Brücken, Schiffe fahren auf Seen und Flüssen.', 'The whole world is one land mass with inland seas and rivers. Bridges cross the rivers, ships sail on lakes and rivers.'),
-    festland: true },
+    festland: true, lakeR: 4, lakeArea: 650, lakeGap: 4 },   // Seeradius ab lakeR, ein See je lakeArea Felder, Landenge lakeGap
 };
 
 function mulberry32(a) {

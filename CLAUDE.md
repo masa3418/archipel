@@ -219,15 +219,19 @@ mit 3 Feldern waren es 12 bzw. 2 Siege, der schnelle Träger nützte der KI also
 | Brutal | 5 | 1 | wie Schwer, 115 % Bautempo, zweite Stadt |
 
 Partiedauer bis zur Entscheidung (Normal) ca. 210 Runden. Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
-Inselstatistik: größte Insel ≈ 15–22 % des Landes (Inselreich, je nach Kartengröße), Gemischt (`minBig: 2`): zwei gleich große Landmassen
-(je ≈ 26–37 %, Start nur dort) und viele kleine Inseln. Festland (innerer Name weiterhin `kontinente`, `festland: true`): eine Landmasse,
+Inselstatistik: größte Insel ≈ 15–22 % des Landes (Inselreich, je nach Kartengröße). Gemischt (`massLen`, `massShare`, `minBig`): gleich große
+mittelgroße Landmassen, Anzahl nach Kartengröße (klein/mittel/groß: 3/4/5, je ≈ 16–29 % des Landes, Start nur dort, Startland 8–13 Städte),
+kleine Inseln ≈ 21–30 %. Vorher zwei große Kontinente – das hieß langwieriger Landkrieg oder ein Transporter bricht durch.
+Festland (innerer Name weiterhin `kontinente`, `festland: true`, große Seen `lakeR`/`lakeArea`, Landengen `lakeGap`): eine Landmasse,
 Städtezahl gedeckelt (`N * 0.36 / 15`), Höhen über die Rangfolge verteilt (ca. 9 % Berge). Häfen nur an offenem Wasser (`openWater`,
 nicht an Flüssen; Städte ohne Küstenvorliebe → ca. 20 % Häfen). Jedes Netz aus Seen und Flüssen mündet höchstens einmal ins Meer, dazu
 Quellflüsse, die im Land enden; ohne Brücken gerechnet (4er-Nachbarschaft) muss das größte Gebiet ≥ 80 % des Landes sein. Grund: Wassermauern
 mit wenigen Brücken ergaben Stellungskriege (ein Angriff je Brücke und Runde gegen den Nachschub vieler Städte; bis 30 % offene Partien).
 KI: Binnenstädte bauen Jäger nur bis `2 + Städte/4` (`ftrCap` in `aiChooseProduction`), danach Bodentruppen – vorher Hunderte Jäger.
-Messung (Platz 0 einfach, je 96 Partien, kleine Karte, alt → neu): Gemischt Leicht 100/98 %, Normal 58/58 %, Schwer 13/20 %, Brutal 5/3 %;
-Festland (alt: Kontinente) Leicht 100/100 %, Normal 61/66 %, Schwer 21/15 %, Brutal 2/2 %, offen auf Normal 2 → 5, Partien ca. 10 Runden länger.
+Messung (Platz 0 einfach, je 96 Partien, kleine Karte, ursprünglicher Generator → jetzt): Gemischt Leicht 100/99 %, Normal 58/55 %,
+Schwer 13/17 %, Brutal 5/1 %, offen 0–1; Festland (alt: Kontinente) Leicht 100/100 %, Normal 61/67 %, Schwer 21/23 %, Brutal 2/1 %,
+offen auf Normal 2 → 6, Partien ca. 5 Runden länger. (Festland mit kleinen Seen hatte Schwer 15 % – große Seen geben dem Angreifer
+über Wasser wieder Möglichkeiten.)
 Inselreich (`split: true` in `WORLDS`, `generateMap`): Jedes Landfeld gehört zur geplanten Insel mit dem höchsten Wert 1 − d/R (`own`);
 stoßen Felder verschiedener Inseln aneinander (auch über Eck), wird das schwächere Wasser. Vorher ließ das Küstenrauschen Inseln
 zusammenwachsen (größte Insel Ø 31–42 %, bis 76 %). Startinseln: Ø 4,8–5,7 Städte, mindestens 4. Die Tabelle oben stammt noch vom alten

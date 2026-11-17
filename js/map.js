@@ -39,7 +39,7 @@ function generateMap(W, H, seed, worldKey = 'inseln') {
   }
   const raw = new Float32Array(N);
   const own = new Int16Array(N).fill(-1);   // Inselwelten: geplante Insel, zu der das Feld gehört (höchster Wert 1 - d/R)
-  let landFrac = 0.37, fixedElev = null;
+  let landFrac = 0.37, fixedElev = null, massCount = 0;
   if (world.festland) {
     // Festland: Die ganze Karte ist eine Landmasse – schmaler Küstensaum am Rand, Binnenmeere und Flüsse.
     // Flüsse sind ein Feld breit; in Abständen macht ein Fluss einen Schritt über Eck. Dort berühren sich die Ufer an einer Ecke:
@@ -52,12 +52,15 @@ function generateMap(W, H, seed, worldKey = 'inseln') {
       if (e < 1 + nCoast(x, y) * 2.4) water[y * W + x] = 1;
     }
     // Binnenmeere: elliptisch, mit unregelmäßigem Ufer, mit Abstand zueinander und zum Rand
-    const lakes = [], nLakes = Math.max(3, Math.round(N / 420));
+    // Große Binnenmeere, damit Kreuzer und Schlachtschiffe an Landengen und Brücken mitreden; zwischen ihnen bleiben schmale
+    // Landengen (Abstand LAKE_GAP) – die Engstellen der Karte
+    const LAKE_GAP = Number(world.lakeGap) || 4;
+    const lakes = [], nLakes = Math.max(3, Math.round(N / (world.lakeArea || 560)));
     for (let k = 0; k < nLakes; k++) {
-      const R = 2 + r() * 2.6, st = 0.65 + r() * 0.7, ang = r() * Math.PI;
+      const R = (world.lakeR || 3.2) + r() * 3, st = 0.65 + r() * 0.7, ang = r() * Math.PI;
       for (let t = 0; t < 120; t++) {
-        const x = 7 + r() * (W - 14), y = 7 + r() * (H - 14);
-        if (lakes.some(o => Math.hypot(o.x - x, o.y - y) < o.R + R + 6)) continue;
+        const x = 6 + r() * (W - 12), y = 6 + r() * (H - 12);
+        if (lakes.some(o => Math.hypot(o.x - x, o.y - y) < o.R + R + LAKE_GAP)) continue;
         lakes.push({ x, y, R, st, c: Math.cos(ang), s: Math.sin(ang) });
         break;
       }
@@ -198,11 +201,15 @@ function generateMap(W, H, seed, worldKey = 'inseln') {
     // Inselwelten: Inseln werden geplant (wenige große, einige mittlere, viele kleine)
     // und mit Abstand zueinander verteilt; Rauschen macht die Küsten unregelmäßig.
     landFrac = world.land;
-    const A = W * H, Rb = Math.sqrt(A) * world.rBig;
+    const A = W * H;
+    // Gemischt (massLen): mehrere gleich große, mittelgroße Landmassen – ihre Zahl wächst mit der Kartengröße (eine je massLen Felder
+    // Kantenlänge, mindestens minBig), zusammen tragen sie massShare des Landes; der Rest sind kleine Inseln
+    const nBig = world.massLen ? Math.max(world.minBig, Math.round(Math.sqrt(A) / world.massLen)) : Math.max(2, Math.round(A / world.perBig));
+    const Rb = world.massLen ? Math.sqrt(world.massShare * landFrac * A / (nBig * Math.PI)) : Math.sqrt(A) * world.rBig;
+    massCount = world.massLen ? nBig : 0;
     const plan = [];
-    const nBig = Math.max(2, Math.round(A / world.perBig));
-    // Gemischt (minBig): gleich große Landmassen, damit beide Startkontinente fair sind
-    for (let k = 0; k < nBig; k++) plan.push(Rb * (world.minBig ? 0.98 + r() * 0.04 : 0.9 + r() * 0.25));
+    // Gemischt: gleich große Landmassen, damit die Startkontinente fair sind
+    for (let k = 0; k < nBig; k++) plan.push(Rb * (world.massLen ? 0.98 + r() * 0.04 : 0.9 + r() * 0.25));
     let est = plan.reduce((s, q) => s + Math.PI * q * q, 0);
     for (let k = 0; est < A * landFrac * 1.15 && k < 400; k++) {
       const q = r() < world.mid ? Rb * (0.5 + r() * 0.25) : 1.2 + r() * Rb * world.small;
@@ -210,8 +217,11 @@ function generateMap(W, H, seed, worldKey = 'inseln') {
     }
     const isl = [];
     for (const R of plan) {
-      const st = 0.75 + r() * 0.55, ext = R * Math.max(st, 1 / st);
-      const mx = Math.min(ext + 2, W / 2 - 1), my = Math.min(ext + 2, H / 2 - 1);
+      // Landmassen (Gemischt) rundlicher und näher am Rand, damit auch auf der kleinen Karte drei mit Abstand Platz finden
+      const mass = world.massLen && R >= Rb * 0.9;
+      const st = mass ? 0.85 + r() * 0.3 : 0.75 + r() * 0.55, ext = R * Math.max(st, 1 / st);
+      const edge = mass ? ext * 0.6 + 2 : ext + 2;
+      const mx = Math.min(edge, W / 2 - 1), my = Math.min(edge, H / 2 - 1);
       for (let t = 0; t < 200; t++) {
         const x = mx + r() * (W - 2 * mx), y = my + r() * (H - 2 * my);
         if (isl.some(o => Math.hypot(o.x - x, o.y - y) < o.ext + ext + world.gap)) continue;
@@ -220,8 +230,8 @@ function generateMap(W, H, seed, worldKey = 'inseln') {
         break;
       }
     }
-    // Gemischt: Die großen Landmassen müssen wirklich alle Platz gefunden haben (mindestens zwei), sonst neuer Versuch
-    if (world.minBig && isl.filter(o => o.R >= Rb * 0.9).length < Math.min(nBig, world.minBig)) return null;
+    // Gemischt: Die Landmassen müssen alle Platz gefunden haben, sonst neuer Versuch
+    if (world.massLen && isl.filter(o => o.R >= Rb * 0.9).length < nBig) return null;
     const n1 = layer(Math.max(3, Rb / 1.5)), n2 = layer(Math.max(2, Rb / 3.5)), n3 = layer(Math.max(1.5, Rb / 7));
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       let v = -1, best = -Infinity;
@@ -367,9 +377,9 @@ function generateMap(W, H, seed, worldKey = 'inseln') {
     const k = land.lab[c.y * W + c.x];
     perCont.set(k, (perCont.get(k) || 0) + 1);
   }
-  // Gemischt: Start nur auf den beiden größten Landmassen (nicht auf einer kleinen Insel)
-  const bigTwo = world.minBig ? [...perCont.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(e => e[0]) : null;
-  const eligible = cities.filter(c => c.coastal && perCont.get(land.lab[c.y * W + c.x]) >= 4 && (!bigTwo || bigTwo.includes(land.lab[c.y * W + c.x])));
+  // Gemischt: Start nur auf den Landmassen (den massCount größten), nicht auf einer kleinen Insel
+  const masses = massCount ? [...perCont.entries()].sort((a, b) => b[1] - a[1]).slice(0, massCount).map(e => e[0]) : null;
+  const eligible = cities.filter(c => c.coastal && perCont.get(land.lab[c.y * W + c.x]) >= 4 && (!masses || masses.includes(land.lab[c.y * W + c.x])));
   if (eligible.length < 2) return null;
   let best = null, bestScore = -1;
   for (let a = 0; a < eligible.length; a++) for (let b = a + 1; b < eligible.length; b++) {
