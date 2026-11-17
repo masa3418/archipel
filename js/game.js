@@ -14,14 +14,30 @@ function mkPlayer(W, H, nc) {
   return { seen: new Uint8Array(W * H), vis: new Uint8Array(W * H), sonar: new Uint8Array(W * H), knownOwner: new Int8Array(nc).fill(-2) };
 }
 
-function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln') {
+// Kartennummer: Startwert des Kartengenerators (0 … SEED_MAX-1). Gleiche Nummer + Größe + Welt = gleiche Welt (Städte, Startplätze).
+// Die KI würfelt davon unabhängig. Ändert sich der Generator in einer neuen Version, kann dieselbe Nummer eine andere Welt ergeben.
+const SEED_MAX = 1e9;
+// Eingabe → Kartennummer: Ziffern (Leerzeichen erlaubt) direkt, jeder andere Text über einen Hash; leer → null (zufällig)
+function parseSeed(v) {
+  const s = String(v == null ? '' : v).trim();
+  if (!s) return null;
+  const digits = s.replace(/[\s.]/g, '');
+  if (/^\d+$/.test(digits)) return Number(digits.slice(-9)) % SEED_MAX;
+  let h = 2166136261;   // FNV-1a
+  for (const ch of s.toLowerCase()) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  return h % SEED_MAX;
+}
+const fmtSeed = n => String(n).padStart(9, '0').replace(/(\d{3})(?=\d)/g, '$1 ');   // 042 113 907
+
+function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln', seedIn = null) {
   const sz = MAP_SIZES[sizeKey] || MAP_SIZES.mittel;
   if (!WORLDS[worldKey]) worldKey = 'inseln';
-  let m = null, seed = Math.floor(Math.random() * 1e9);
+  const seed0 = seedIn != null ? seedIn : Math.floor(Math.random() * SEED_MAX);
+  let m = null, seed = seed0;
   for (let k = 0; !m && k < 200; k++) m = generateMap(sz.w, sz.h, seed + k, worldKey);
   S = {
     W: m.W, H: m.H, size: sizeKey, terrain: m.terrain, elev: m.elev, depth: m.depth, cont: m.cont,
-    cities: m.cities, units: [], nextId: 1, turn: 1, cur: 0, log: [], over: null, difficulty: DIFFICULTY[diffKey] ? diffKey : 'normal', world: worldKey,
+    cities: m.cities, units: [], nextId: 1, turn: 1, cur: 0, log: [], over: null, difficulty: DIFFICULTY[diffKey] ? diffKey : 'normal', world: worldKey, seed: seed0,
     players: [mkPlayer(m.W, m.H, m.cities.length), mkPlayer(m.W, m.H, m.cities.length)],
     kills: [{}, {}], wasted: [{}, {}], killsFrom: 1,   // Statistik: zerstörte Einheiten je Spieler und Typ, siehe killUnit
     built: [{}, {}], builtFrom: 1,                    // Statistik: in Städten gebaute Einheiten je Spieler und Typ (startTurn)
@@ -1300,6 +1316,7 @@ function sanitizeState(o) {
     size: oneOf(o.size, Object.keys(MAP_SIZES), 'mittel'),
     difficulty: oneOf(o.difficulty, Object.keys(DIFFICULTY), 'normal'),
     world: oneOf(o.world, Object.keys(WORLDS), 'kontinente'),   // ältere Spielstände: bisherige Welt
+    seed: isNum(o.seed) ? int(o.seed, 0, 0, SEED_MAX - 1) : null,   // Kartennummer (ältere Spielstände: unbekannt)
     turn: int(o.turn, 1, 1, 1e6), cur: oneOf(o.cur, [0, 1], 0),
     over: oneOf(o.over, ['win', 'lose'], null),
     overReason: oneOf(o.overReason, ['surrender', 'capitulation'], undefined),

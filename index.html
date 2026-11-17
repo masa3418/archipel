@@ -239,6 +239,10 @@
   .patrolbox { margin-top: 8px; padding: 8px 10px; border: 1px solid #2f6f66; background: #12302c; border-radius: 8px; font-size: 13px; }
   .patrolbox b { color: #7fe0d0; }
   .dlg.wide { max-width: 760px; }
+  .seedrow { display: flex; gap: 8px; align-items: center; }
+  .seedrow input { flex: 1; min-width: 0; margin: 0; background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 8px; font: inherit; font-variant-numeric: tabular-nums; letter-spacing: .03em; }
+  .seedrow button { white-space: nowrap; }
   /* Zeitraffer */
   .tl-dlg { padding: 16px 20px; }
   .tl-dlg h2 { margin-bottom: 2px; }
@@ -509,6 +513,10 @@
     <p class="muted" id="worldDesc" style="font-size:13px;margin:6px 0 0"></p>
     <label style="display:block;margin-top:10px"><span data-en="Difficulty">Schwierigkeit</span><br><select id="diffSel"></select></label>
     <p class="muted" id="diffDesc" style="font-size:13px;margin:6px 0 0"></p>
+    <label style="display:block;margin-top:10px"><span data-en="Map number">Kartennummer</span><br>
+      <span class="seedrow"><input id="seedIn" type="text" maxlength="40" autocomplete="off" spellcheck="false" placeholder="leer = zufällige Welt" data-en-placeholder="empty = random world">
+      <button type="button" id="seedSame" title="Kartennummer, Größe und Welt der aktuellen Partie übernehmen" data-en-title="Take the map number, size and world of the current game" data-en="This world again">Diese Welt noch einmal</button></span></label>
+    <p class="muted" style="font-size:13px;margin:6px 0 0" data-en="Same number, size and world = same map, e.g. to play it again or to compare with friends. Words work too.">Gleiche Nummer, Größe und Welt ergeben dieselbe Karte – etwa um sie noch einmal zu spielen oder mit Freunden zu vergleichen. Auch Wörter gehen.</p>
     <div class="row" style="margin-top:14px">
       <button class="primary" id="bStart" data-en="Let's go">Los geht's</button>
       <button data-close data-en="Cancel">Abbrechen</button>

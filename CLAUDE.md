@@ -113,6 +113,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   der ganzen Partie, rechts Eckdaten und je Typ gebaut/verloren für beide Seiten (nach dem Ende alles aufgedeckt). Nach dem Spielende öffnen
   Menü „Zeitraffer“ und Taste T dieses Fenster. Gebaute Einheiten: `S.built[p][typ]` (in `startTurn`), `S.builtFrom` wie `killsFrom`.
   Verloren = vom Gegner zerstört + `S.wasted`. Eroberte Städte: `overCityMoves` aus `S.tl.own`.
+- **Kartennummer** (`S.seed`, game.js): Startwert des Kartengenerators; `newGame(size, diff, world, seed)`, `parseSeed` (Ziffern direkt, Text per Hash,
+  leer = zufällig), `fmtSeed` (Dreiergruppen). Gleiche Nummer + Größe + Welt = gleiche Karte, Städte und Startplätze (nicht die KI-Züge).
+  Eingabe und „Diese Welt noch einmal“ im Fenster „Neues Spiel“, Anzeige in Statistik und Abschlussfenster. Der Generator darf nur
+  `mulberry32(seed)` nutzen, nie `Math.random` – sonst stimmt die Nummer nicht mehr. Ältere Spielstände: `seed = null`.
 - **Neues Feld im Spielzustand** → in `sanitizeState` (game.js) aufnehmen, sonst wird es beim
   Laden verworfen. Spielstände aus Dateien sind nicht vertrauenswürdig (siehe `SECURITY.md`);
   Werte aus `S` nie ungeprüft per `innerHTML` ausgeben, Texte mit `esc()` maskieren.

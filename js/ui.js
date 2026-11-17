@@ -2122,7 +2122,8 @@ function showGameOver(quiet = false) {
     + box(vs(cities(0), cities(1)), tt('Städte am Ende', 'Cities at the end'))
     + box(vs(cm.won[0], cm.won[1]), tt('Städte erobert', 'Cities captured'))
     + box(vs(sum(built[0]), sum(built[1])), tt('Einheiten gebaut', 'Units built'))
-    + box(vs(sum(kills[0]), sum(kills[1])), tt('Einheiten zerstört', 'Units destroyed'));
+    + box(vs(sum(kills[0]), sum(kills[1])), tt('Einheiten zerstört', 'Units destroyed'))
+    + (S.seed != null ? box(fmtSeed(S.seed), tt('Kartennummer', 'Map number')) : '');
 
   // je Einheitentyp
   const cell = n => `<td class="num ${n ? '' : 'zero'}">${n}</td>`;
@@ -2323,13 +2324,13 @@ try { const sp = localStorage.getItem('archipel-tlspeed'); if (sp && [...$('tlSp
 $('tlSpeed').onchange = e => { try { localStorage.setItem('archipel-tlspeed', e.target.value); } catch (err) {} };
 $('bTime').onclick = () => openTimelapse();
 
-function startNew(size, diffKey, worldKey) {
+function startNew(size, diffKey, worldKey, seed = null) {   // seed: Kartennummer (null = zufällig)
   prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
   resetCheatFog();   // jede neue oder geladene Partie beginnt mit Nebel
   if (!diffKey) { try { diffKey = localStorage.getItem('archipel-diff') || 'normal'; } catch (e) { diffKey = 'normal'; } }
   if (!worldKey) { try { worldKey = localStorage.getItem('archipel-world') || 'inseln'; } catch (e) { worldKey = 'inseln'; } }
   setTimeout(() => { logSeen = S.log[0] || null; updateLogHead(); }, 0);
-  newGame(size, diffKey, worldKey);
+  newGame(size, diffKey, worldKey, seed);
   sel = null; selCity = null; hover = null; updateHover();
   resizeCanvas();
   selectNext();
@@ -2835,18 +2836,24 @@ document.addEventListener('keydown', e => {
 }, true);
 window.addEventListener('resize', closeMenu);
 
-$('bNew').onclick = () => openModal('mNew');
+$('bNew').onclick = () => { $('seedIn').value = ''; openModal('mNew'); };
+// „Diese Welt noch einmal“: Nummer, Größe und Welt der laufenden Partie eintragen (ältere Spielstände kennen ihre Nummer nicht)
+$('seedIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('bStart').click(); } });
+$('seedSame').onclick = () => {
+  if (!S || S.seed == null) { toast(tt('Diese Partie stammt aus einer älteren Version und hat keine Kartennummer', 'This game comes from an older version and has no map number')); return; }
+  $('seedIn').value = fmtSeed(S.seed); $('sizeSel').value = S.size; $('worldSel').value = S.world; $('worldSel').onchange();
+};
 $('bStart').onclick = () => {
   try {
     localStorage.setItem('archipel-diff', $('diffSel').value); localStorage.setItem('archipel-size', $('sizeSel').value);
     localStorage.setItem('archipel-world', $('worldSel').value);
   } catch (e) {}
-  closeModals(); startNew($('sizeSel').value, $('diffSel').value, $('worldSel').value);
+  closeModals(); startNew($('sizeSel').value, $('diffSel').value, $('worldSel').value, parseSeed($('seedIn').value));
   Sfx.play('start');   // nur hier (Klick des Spielers): Browser spielen Ton erst nach einer Benutzeraktion
 };
 $('diffSel').onchange = () => { $('diffDesc').textContent = DIFFICULTY[$('diffSel').value].desc; };
 $('worldSel').onchange = () => { $('worldDesc').textContent = WORLDS[$('worldSel').value].desc; };
-$('bOverNew').onclick = () => { closeModals(); openModal('mNew'); };
+$('bOverNew').onclick = () => { closeModals(); $('bNew').onclick(); };
 $('bHelp').onclick = () => openHelp();
 
 function updateSoundUi() {
@@ -2873,7 +2880,8 @@ function renderStats() {
   const box = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
   $('statSummary').innerHTML = box(diff().label, tt('Schwierigkeit', 'Difficulty')) + box(S.turn, tt('Runde', 'Turn')) + box(myCities.length, tt('Deine Städte', 'Your cities')) + box(myUnits.length, tt('Deine Einheiten', 'Your units'))
     + box(enemyC, tt('Bekannte Feindstädte', 'Known enemy cities')) + box(neutralC, tt('Bekannte neutrale', 'Known neutral')) + box(S.cities.length, tt('Städte insgesamt', 'Cities in total'))
-    + (idle ? box(idle, tt('Städte ohne Produktion', 'Cities without production')) : '');
+    + (idle ? box(idle, tt('Städte ohne Produktion', 'Cities without production')) : '')
+    + (S.seed != null ? box(fmtSeed(S.seed), tt('Kartennummer', 'Map number')) : '');
 
   let total = [0, 0, 0];
   $('statUnits').innerHTML = UNIT_ORDER.map(k => {
