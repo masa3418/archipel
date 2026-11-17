@@ -106,10 +106,12 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Mausrad/Touchpad, Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Schwelle fürs Angebot zum vorzeitigen Ende (`offerPct`, `archipel-offer`,
   0 = nie, Standard 10 %; `maybeOfferEnd`), automatisches Rundenende. Neue Einstellungen dort einhängen, nicht in die Kopfzeile oder Seitenleiste.
   Die Hinweiszeile `#hover` (Feld unter der Maus, Siegchance) steht über der Karte (`#infoBar` in `#mapCol`, so breit wie die Karte);
-  während der Gegner zieht, liegt dort `#banner` („Gegner zieht …“) darüber. Meldungen fürs Spielgeschehen gehören an diese eine Stelle.
+  während die Zeitleiste nach dem Rundenende läuft, liegt dort `#banner` darüber – erst „Gegner zieht …“, ab `anim.ownFrom`
+  (eigene Märsche/Patrouillen der neuen Runde) „Deine Einheiten führen ihre Befehle aus …“ (`updateBanner`). Meldungen fürs Spielgeschehen gehören an diese eine Stelle.
 - **Produktionsansicht** (ui.js): `prodView`, umgeschaltet mit `setProdView(on)` (Schalter in der Seitenleiste, Taste V).
   `render()` zeichnet dann nach dem Nebel nur `drawProdView()` (Symbol, Fortschrittsring, Restzeit je eigener Stadt) und
-  bricht ab; Klicks öffnen `openProdDialog`, Einheitentasten sind gesperrt. Rundenende, „Nächste Einheit“, neues Spiel und
+  bricht ab; Klicks öffnen `openProdDialog`, Einheitentasten sind gesperrt. Direkt unter dem Schalter steht die Tabelle `#prodStats`
+  (`updateProdStats`: je Typ im Bau, nächste fertig in, vorhanden). Rundenende, „Nächste Einheit“, neues Spiel und
   Laden schalten zurück. Der Zustand wird nicht gespeichert.
 - **Wegeansicht** (ui.js): `pathView`, umgeschaltet mit `setPathView(on)` (dritter Knopf des Ansichtsschalters, Taste G). Anders als
   die Produktionsansicht nur eine zusätzliche Ebene unter den Einheiten – das Spiel läuft normal weiter, sie bleibt über Runden an.

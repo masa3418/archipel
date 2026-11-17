@@ -36,6 +36,7 @@ const anim = { rec: false, cursor: 0, speed: 110, events: [], byUnit: new Map(),
 function animBegin(speed, follow = false) {
   anim.rec = true; anim.cursor = 0; anim.speed = speed; anim.events = []; anim.gone = []; anim.skippable = false;
   anim.follow = follow;
+  anim.ownFrom = null;   // Zeitpunkt in der Zeitleiste, ab dem die eigenen Einheiten ihre Befehle ausführen (siehe updateBanner)
   // Sichtstand vor der Aufzeichnung: neu aufgedeckte Felder erscheinen erst,
   // wenn die eigene Einheit in der Wiedergabe dort ankommt
   if (S) { anim.seen0 = S.players[0].seen.slice(); anim.vis0 = S.players[0].vis.slice(); }
@@ -88,6 +89,7 @@ function animEnd(maxMs = 3500) {
   if (end > maxMs) {
     const f = maxMs / end;
     for (const e of anim.events) { e.t0 *= f; e.dur = Math.max(40, e.dur * f); }
+    if (anim.ownFrom != null) anim.ownFrom *= f;
     end = maxMs;
   }
   anim.byUnit = new Map();
@@ -387,6 +389,7 @@ function updateViewSwitch() {
   $('vUnits').classList.toggle('on', !prodView && !pathView);
   $('vProd').classList.toggle('on', prodView);
   $('vPaths').classList.toggle('on', pathView);
+  document.querySelector('aside').classList.toggle('prodmode', prodView);
 }
 function setPathView(on) {
   on = !!on && !!S;
@@ -801,8 +804,23 @@ function skipAnim() {
 }
 function enemyPlaybackRunning(now = performance.now()) { return anim.skippable && animActive(now); }
 
+// Hinweis über der Karte, solange die Zeitleiste nach dem Rundenende läuft: erst „Gegner zieht …“, dann – sobald die
+// eigenen Einheiten ihre Befehle ausführen (Marsch, Patrouille, Erkunden) – „Deine Einheiten führen ihre Befehle aus …“.
+let bannerMode = null;
+function updateBanner(now) {
+  const mode = !enemyPlaybackRunning(now) ? null : anim.ownFrom != null && now - anim.t0 >= anim.ownFrom ? 'own' : 'enemy';
+  if (mode === bannerMode) return;
+  bannerMode = mode;
+  const b = $('banner');
+  b.hidden = !mode;
+  if (!mode) return;
+  b.classList.toggle('own', mode === 'own');
+  b.innerHTML = (mode === 'own' ? tt('Deine Einheiten führen ihre Befehle aus …', 'Your units are carrying out their orders …') : tt('Gegner zieht …', 'Enemy is moving …'))
+    + ' <span>' + tt('Klick oder beliebige Taste überspringt', 'Click or press any key to skip') + '</span>';
+}
+
 function loop(now) {
-  $('banner').hidden = !enemyPlaybackRunning(now);
+  updateBanner(now);
   requestAnimationFrame(loop);
   if (S) {
     pendingCenterStep(now);
@@ -1179,6 +1197,8 @@ function endHumanTurn() {
     endTurn(1);
     S.turn++;
     startTurn(0);
+    // Ab hier folgen in der Zeitleiste die eigenen Einheiten mit ihren Befehlen – der Hinweis über der Karte wechselt dann
+    const ownMark = anim.cursor, ownCount = anim.events.length;
     // Wachen wecken, wenn Feinde in der Nähe sind
     for (const u of S.units) {
       if (u.owner !== 0 || !u.order || u.order.type !== 'sentry' || u.carrier != null) continue;
@@ -1193,6 +1213,7 @@ function endHumanTurn() {
     }
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'patrol')) runPatrol(u);
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'explore')) runExplore(u);
+    if (anim.events.length > ownCount) anim.ownFrom = ownMark;
     computeVision(0);
   }
   animEnd(12000);
@@ -1240,25 +1261,43 @@ function iconUrl(kind, v) {
   return iconCache[key];
 }
 
-// Seitenleiste in der Produktionsansicht: was wird wie oft gebaut, und wann ist das Nächste fertig
-function prodPanel() {
+// Tabelle direkt unter dem Ansichtsschalter (nur in der Produktionsansicht): je Einheitentyp, wie viele Städte ihn bauen,
+// wann die nächste fertig wird und wie viele es schon gibt. Typen, die weder gebaut werden noch vorhanden sind, fehlen.
+function updateProdStats() {
+  const el = $('prodStats');
+  el.hidden = !prodView || !S;
+  if (el.hidden) return;
   const mine = S.cities.filter(c => c.owner === 0 && c.prod && UT[c.prod]);
-  let h = `<section class="pcard pc-city"><div class="pc-head"><img class="pc-icon" src="${iconUrl('c', 0)}" alt=""><div><h3>${tt('Produktion', 'Production')}</h3>
-    <div class="uname">${tt(`${mine.length} ${mine.length === 1 ? 'Stadt' : 'Städte'}`, `${mine.length} ${mine.length === 1 ? 'city' : 'cities'}`)}</div></div></div><div class="stats">`;
+  const units = S.units.filter(u => u.owner === 0);
+  const idle = S.cities.filter(c => c.owner === 0).length - mine.length;
+  const num = (v, show = v) => `<td class="num${v ? '' : ' zero'}">${show}</td>`;
+  let rows = '', tb = 0, te = 0;
   for (const k of UNIT_ORDER) {
-    const cs = mine.filter(c => c.prod === k);
-    if (!cs.length) continue;
-    const next = Math.min(...cs.map(prodLeft));
-    h += `<span>${cs.length} × ${esc(UT[k].name)}</span><b>${tt(`nächste in ${next} ${next === 1 ? 'Runde' : 'Runden'}`, `next in ${next} ${next === 1 ? 'turn' : 'turns'}`)}</b>`;
+    const cs = mine.filter(c => c.prod === k), n = units.filter(u => u.type === k).length;
+    if (!cs.length && !n) continue;
+    tb += cs.length; te += n;
+    const next = cs.length ? Math.min(...cs.map(prodLeft)) : 0;
+    rows += `<tr><td><img src="${iconUrl('u', k)}" alt="">${esc(UT[k].name)}</td>${num(cs.length)}${num(next, next ? next + ' ' + tt('R.', 'T.') : '–')}${num(n)}</tr>`;
   }
-  h += `</div><p class="muted" style="font-size:12px;margin:8px 0 0">${tt('Die Zahl an jeder Stadt nennt die Runden bis zur Fertigstellung, der Ring den Fortschritt. Klick auf eine Stadt ändert ihre Produktion. Taste V oder der Schalter oben führt zurück zu den Einheiten.',
-    'The number at each city is the turns until completion, the ring shows the progress. Click a city to change its production. Press V or use the switch above to return to the units.')}</p></section>`;
-  return h;
+  el.innerHTML = `<table><thead><tr><th>${tt('Einheit', 'Unit')}</th>
+      <th class="num" title="${tt('So viele Städte bauen diesen Typ gerade', 'This many cities are building this type')}">${tt('im Bau', 'building')}</th>
+      <th class="num" title="${tt('Runden, bis die nächste Einheit dieses Typs fertig ist', 'Turns until the next unit of this type is ready')}">${tt('nächste', 'next')}</th>
+      <th class="num" title="${tt('So viele Einheiten dieses Typs hast du', 'You own this many units of this type')}">${tt('vorhanden', 'owned')}</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr><td>${tt('Gesamt', 'Total')}</td>${num(tb)}<td></td>${num(te)}</tr></tfoot></table>`
+    + (idle ? `<div class="idle">${tt(`${idle} ${idle === 1 ? 'Stadt baut' : 'Städte bauen'} nichts`, `${idle} ${idle === 1 ? 'city is' : 'cities are'} building nothing`)}</div>` : '');
+}
+
+// Seitenleiste in der Produktionsansicht: kurze Erklärung (die Zahlen stehen in der Tabelle unter dem Schalter)
+function prodPanel() {
+  return `<p class="muted" style="font-size:12px;margin:0">${tt('Auf der Karte: Die Zahl an jeder Stadt nennt die Runden bis zur Fertigstellung, der Ring den Fortschritt. Klick auf eine Stadt ändert ihre Produktion. Taste V oder der Schalter oben führt zurück zu den Einheiten.',
+    'On the map: the number at each city is the turns until completion, the ring shows the progress. Click a city to change its production. Press V or use the switch above to return to the units.')}</p>`;
 }
 
 function updatePanel() {
   const el = $('panel');
   updatePathLegend();
+  updateProdStats();
   if (!S) { el.innerHTML = ''; return; }
   if (prodView) { el.innerHTML = prodPanel(); return; }
   let h = '';
