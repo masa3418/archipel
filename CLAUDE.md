@@ -41,7 +41,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | Datei | Inhalt |
 |---|---|
 | `js/data.js` | Sprache `LANG`/`tt()`, Einheitentypen `UT` (inkl. `stealth`, `sonar`), `UNIT_ORDER`, `DIRS`, Spielerfarben, `MAP_SIZES`, Weltarten `WORLDS`, Schwierigkeitsgrade `DIFFICULTY` (inkl. `skill`) + `diff()`, `aiKnowsMap(p)`, `aiMistake(p)` |
-| `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen, Kontinente aus Value-Noise; Städte, faire Startpositionen |
+| `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen (getrennt mit `split`), Festland (`festland`: Küstensaum, Binnenmeere, Flüsse mit Brücken); Städte, faire Startpositionen |
 | `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung `captureChance`/`cityDefenders`, Unterstützung `fireSupport`/`airCover`, Produktion, Sicht `computeVision`/`canSee`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
 | `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
 | `js/gfx.js` | Gelände-Rendering, Einheiten-Abzeichen (SVG-Pfade → Sprites), Stadtgrafik |
@@ -175,7 +175,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Wegpunkt (`o.rf`) heißt „außer Reichweite“ und beendet die Patrouille. Früher brach der Jäger hier ab und stand ohne Befehl in der Stadt.
 - **Stege** (gfx.js, `buildTerrain`): Berühren sich zwei Landfelder nur an einer Ecke, dürfen Bodentruppen diagonal hinüber und Schiffe
   diagonal hindurch (Bewegung in 8 Richtungen, keine Sperre an Ecken). Die Karte zeigt das mit abgerundeten Ecken und einem kleinen Holzsteg.
-  Kommt je Karte nur etwa einmal vor (0–5). Wer die Regel an Ecken ändert, muss auch diese Darstellung und den Handbuchsatz anpassen.
+  In Inselwelten selten (0–5 je Karte); auf dem Festland sind es die Brücken über die Flüsse (Flussschritt über Eck alle 2–4 Felder, im Schnitt 5 / 11 / 21 je Karte nach Größe).
+  Wer die Regel an Ecken ändert, muss auch diese Darstellung, den Festland-Generator und den Handbuchsatz anpassen.
 - **Grafik-Caches**: Gelände (`buildTerrainCache`) und Sprites hängen von der Zoomstufe `TS` ab.
 
 ## Entwickeln und testen
@@ -218,7 +219,15 @@ mit 3 Feldern waren es 12 bzw. 2 Siege, der schnelle Träger nützte der KI also
 | Brutal | 5 | 1 | wie Schwer, 115 % Bautempo, zweite Stadt |
 
 Partiedauer bis zur Entscheidung (Normal) ca. 210 Runden. Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
-Inselstatistik: größte Insel ≈ 15–22 % des Landes (Inselreich, je nach Kartengröße), ≈ 50–60 % (Gemischt), ≈ 75–85 % (Kontinente).
+Inselstatistik: größte Insel ≈ 15–22 % des Landes (Inselreich, je nach Kartengröße), Gemischt (`minBig: 2`): zwei gleich große Landmassen
+(je ≈ 26–37 %, Start nur dort) und viele kleine Inseln. Festland (innerer Name weiterhin `kontinente`, `festland: true`): eine Landmasse,
+Städtezahl gedeckelt (`N * 0.36 / 15`), Höhen über die Rangfolge verteilt (ca. 9 % Berge). Häfen nur an offenem Wasser (`openWater`,
+nicht an Flüssen; Städte ohne Küstenvorliebe → ca. 20 % Häfen). Jedes Netz aus Seen und Flüssen mündet höchstens einmal ins Meer, dazu
+Quellflüsse, die im Land enden; ohne Brücken gerechnet (4er-Nachbarschaft) muss das größte Gebiet ≥ 80 % des Landes sein. Grund: Wassermauern
+mit wenigen Brücken ergaben Stellungskriege (ein Angriff je Brücke und Runde gegen den Nachschub vieler Städte; bis 30 % offene Partien).
+KI: Binnenstädte bauen Jäger nur bis `2 + Städte/4` (`ftrCap` in `aiChooseProduction`), danach Bodentruppen – vorher Hunderte Jäger.
+Messung (Platz 0 einfach, je 96 Partien, kleine Karte, alt → neu): Gemischt Leicht 100/98 %, Normal 58/58 %, Schwer 13/20 %, Brutal 5/3 %;
+Festland (alt: Kontinente) Leicht 100/100 %, Normal 61/66 %, Schwer 21/15 %, Brutal 2/2 %, offen auf Normal 2 → 5, Partien ca. 10 Runden länger.
 Inselreich (`split: true` in `WORLDS`, `generateMap`): Jedes Landfeld gehört zur geplanten Insel mit dem höchsten Wert 1 − d/R (`own`);
 stoßen Felder verschiedener Inseln aneinander (auch über Eck), wird das schwächere Wasser. Vorher ließ das Küstenrauschen Inseln
 zusammenwachsen (größte Insel Ø 31–42 %, bis 76 %). Startinseln: Ø 4,8–5,7 Städte, mindestens 4. Die Tabelle oben stammt noch vom alten

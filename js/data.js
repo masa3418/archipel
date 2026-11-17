@@ -90,10 +90,12 @@ const WORLDS = {
     desc: tt('Viele mittlere und kleine Inseln, keine großen Landmassen. Ohne Schiffe kommst du nicht weit.', 'Many medium and small islands, no large land masses. You won\'t get far without ships.'),
     rBig: 0.09, perBig: 1700, mid: 0.5, small: 0.45, gap: 3.5, land: 0.33, split: true },
   gemischt: { label: tt('Gemischt', 'Mixed'),
-    desc: tt('Einige große Inseln und ein paar kleine dazwischen.', 'Several large islands with a few small ones in between.'),
-    rBig: 0.16, perBig: 1500, mid: 0.5, small: 0.3, gap: 3, land: 0.35 },
-  kontinente: { label: tt('Kontinente', 'Continents'),
-    desc: tt('Eine oder zwei riesige Landmassen. Viel Landkrieg, Schiffe sind Nebensache.', 'One or two huge land masses. Lots of land warfare, ships play a minor role.') },
+    desc: tt('Mindestens zwei große Landmassen, dazwischen viele kleine Inseln. Landkrieg auf dem eigenen Kontinent, Seekrieg um die Inseln.', 'At least two large land masses with many small islands in between. Land war on your own continent, naval war for the islands.'),
+    rBig: 0.15, perBig: 2000, minBig: 2, mid: 0, small: 0.3, gap: 3.5, land: 0.36, split: true },
+  // „kontinente“ bleibt der innere Name (ältere Spielstände), die Welt heißt jetzt Festland
+  kontinente: { label: tt('Festland', 'Mainland'),
+    desc: tt('Die ganze Welt ist eine Landmasse mit Binnenmeeren und Flüssen. Über die Flüsse führen Brücken, Schiffe fahren auf Seen und Flüssen.', 'The whole world is one land mass with inland seas and rivers. Bridges cross the rivers, ships sail on lakes and rivers.'),
+    festland: true },
 };
 
 function mulberry32(a) {

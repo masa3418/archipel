@@ -128,13 +128,16 @@ function aiChooseProduction(c) {
   const targetsHere = knownTargets(p).filter(o => S.cont[idx(o.x, o.y)] === here).length;
   const scouts = cnt('dst') + cnt('ftr');
   const fog = unexplored(p);
+  // Jäger statt Schiffe nur in Maßen: auf dem Festland liegen die meisten Städte im Binnenland und bauten sonst Hunderte Jäger
+  const ftrCap = cnt('ftr') + S.cities.filter(o => o.owner === p && o !== c && o.prod === 'ftr').length >= 2 + Math.floor(ncity / 4);
+  const inland = () => (ftrCap ? (rng() < 0.3 && ncity > 2 ? 'tank' : 'inf') : 'ftr');
   if (targets.has(here) && landHere < targetsHere * 3 + 4) {
     // Können ≥ 1: Panzer nur gegen Städte des Gegners (die verteidigt sein können) – für neutrale
     // Städte reicht die halb so teure Infanterie
     const tankOk = !sk || knownTargets(p).some(o => S.cont[idx(o.x, o.y)] === here && knownOwnerOf(p, o) >= 0);
     prod = tankOk && rng() < 0.25 && ncity > 2 ? 'tank' : 'inf';
   } else if (targets.has(here)) {
-    prod = c.coastal ? (rng() < 0.2 ? 'sub' : rng() < 0.5 ? 'dst' : 'crs') : 'ftr';   // jedes fünfte Schiff ein U-Boot (kostet laut Messung nichts)
+    prod = c.coastal ? (rng() < 0.2 ? 'sub' : rng() < 0.5 ? 'dst' : 'crs') : inland();   // jedes fünfte Schiff ein U-Boot (kostet laut Messung nichts)
   } else if (!knows && contHasFrontier(p, here) && landHere < 3) {
     prod = 'inf';                                   // eigenen Kontinent zu Fuß erkunden
   } else if (!knows && fog > 0.3 && scouts < 1 + Math.floor(ncity / 5)) {
@@ -153,7 +156,7 @@ function aiChooseProduction(c) {
       prod = counterPick(p);
     }
   } else {
-    prod = rng() < 0.6 ? 'inf' : 'ftr';
+    prod = rng() < 0.6 ? 'inf' : inland();
   }
   // Können ≥ 1: Eine bedrohte Stadt ohne Bodentruppen baut zuerst Infanterie
   const plan = planFor(p);

@@ -43,7 +43,7 @@ erklärt in sechs Reitern erste Schritte, Einheiten, Kampf, Steuerung und den Ge
 ## Inhalt
 
 - Deutsch und Englisch (Sprachknopf oben in der Leiste)
-- Zufällige Karten in drei Größen und drei Weltarten (Inselreich, Gemischt, Kontinente) mit Wäldern und Bergen
+- Zufällige Karten in drei Größen und drei Weltarten (Inselreich, Gemischt, Festland mit Binnenmeeren und Flüssen) mit Wäldern und Bergen
 - Nebel des Krieges, Städte erobern (50 % Chance, der Eroberer geht in der Stadt auf) und Produktion wählen
 - Neun Einheiten: Infanterie, Panzer, Jäger (mit Treibstoff), Transporter, Zerstörer,
   U-Boot, Kreuzer, Träger, Schlachtschiff
