@@ -123,6 +123,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Animationen**: Regeln melden Bewegungen/Kämpfe/Eroberungen über `hooks` (game.js); `ui.js`
   zeichnet sie zwischen `animBegin()`/`animEnd()` als Zeitleiste auf. Gegnerzüge sind
   überspringbar, die Kamera folgt (`recCam`).
+  Tempo: Einstellung „Wiedergabe der Züge“ (`replay`, `REPLAY`, `archipel-replay`: slow/normal/fast/off; Vorgabe off bei
+  prefers-reduced-motion) skaliert `animBegin`-Tempo, Kamerafahrten (`anim.camMs`) und die Obergrenze in `animEnd`; „off“ setzt die Zeitleiste
+  sofort auf den Endstand. Kamerabewegungen außerhalb der Zeitleiste immer über `pan()` (bei „off“ ohne Schwenk), nicht direkt `camTo`.
+  Während der Wiedergabe nach dem Rundenende bleibt die Karte stehen; erst danach geht es zur nächsten eigenen Einheit.
 - **„Wartende“ Einheiten**: `needsOrders(u)` in ui.js steuert „Nächste Einheit“, die Zahl am
   Rundenknopf und das automatische Rundenende.
 - **Schwierigkeit** wirkt nur auf Spieler 1 (Gegner). In Simulationen spielt die KI auch

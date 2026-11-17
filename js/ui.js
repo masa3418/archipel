@@ -33,7 +33,20 @@ function buildTerrainCache() {
 // ebenso behält eine eroberte Stadt bis dahin ihre alte Farbe (siehe shownOwner).
 const anim = { rec: false, cursor: 0, speed: 110, events: [], byUnit: new Map(), gone: [], t0: 0, end: 0 };
 
+// Wiedergabe der Züge (Menü, archipel-replay): Tempo aller Bewegungen und Kamerafahrten – langsam, normal, schnell oder aus.
+// „aus“: keine Bewegungen, keine Kamerafahrten (Einheiten stehen sofort am Ziel), die Karte springt nur, wenn sie muss.
+// Für Menschen, die schnelles Hin und Her auf dem Bildschirm schlecht vertragen. Vorgabe „aus“, wenn das Betriebssystem
+// reduzierte Bewegung wünscht (prefers-reduced-motion).
+const REPLAY = { slow: { f: 1.8, cam: 1.7 }, normal: { f: 1, cam: 1 }, fast: { f: 0.5, cam: 0.7 }, off: { f: 1, cam: 1 } };
+let replay = 'normal';
+try {
+  const v = localStorage.getItem('archipel-replay');
+  if (REPLAY[v]) replay = v;
+  else if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) replay = 'off';
+} catch (e) {}
 function animBegin(speed, follow = false) {
+  speed *= REPLAY[replay].f;
+  anim.camMs = CAM_MS * REPLAY[replay].cam;
   anim.rec = true; anim.cursor = 0; anim.speed = speed; anim.events = []; anim.gone = []; anim.skippable = false;
   anim.follow = follow;
   anim.ownFrom = null;   // Zeitpunkt in der Zeitleiste, ab dem die eigenen Einheiten ihre Befehle ausführen (siehe updateBanner)
@@ -63,8 +76,8 @@ function recCam(x1, y1, x2 = x1, y2 = y1) {
   if (!anim.rec || !anim.follow) return;
   if (inVirtualView(x1, y1) && inVirtualView(x2, y2)) return;
   const [cx, cy] = clampCenter(x2 + 0.5, y2 + 0.5);
-  anim.events.push({ type: 'cam', cx, cy, t0: anim.cursor, dur: CAM_MS });
-  anim.cursor += CAM_MS + 80;
+  anim.events.push({ type: 'cam', cx, cy, t0: anim.cursor, dur: anim.camMs });
+  anim.cursor += anim.camMs + 80;
   anim.vcx = cx; anim.vcy = cy;
 }
 const cam = { active: false };
@@ -73,6 +86,18 @@ function camTo(cx, cy, dur) {
   cam.sx = wrap.scrollLeft; cam.sy = wrap.scrollTop;
   cam.tx = cx * TS - wrap.clientWidth / 2; cam.ty = cy * TS - wrap.clientHeight / 2;
   cam.t0 = performance.now(); cam.dur = dur; cam.active = true;
+}
+// Kamera zu einem Punkt außerhalb der Zeitleiste (zur nächsten Einheit, Zentrieren …): weich im eingestellten Tempo,
+// bei „Wiedergabe aus“ ohne Schwenk
+function pan(cx, cy, dur) {
+  if (replay === 'off') {
+    cam.active = false;
+    [cx, cy] = clampCenter(cx, cy);
+    wrap.scrollLeft = cx * TS - wrap.clientWidth / 2; wrap.scrollTop = cy * TS - wrap.clientHeight / 2;
+    dirty = true;
+    return;
+  }
+  camTo(cx, cy, dur * REPLAY[replay].cam);
 }
 function camStep(now) {
   if (!cam.active) return;
@@ -84,6 +109,7 @@ function camStep(now) {
 }
 function animEnd(maxMs = 3500) {
   anim.rec = false;
+  maxMs *= REPLAY[replay].f;
   let end = 0;
   for (const e of anim.events) end = Math.max(end, e.t0 + e.dur);
   if (end > maxMs) {
@@ -101,6 +127,7 @@ function animEnd(maxMs = 3500) {
   anim.coreEnd = 0;
   for (const e of anim.events) if (e.type !== 'label') anim.coreEnd = Math.max(anim.coreEnd, e.t0 + e.dur);
   anim.t0 = performance.now(); anim.end = anim.t0 + end;
+  if (replay === 'off') { anim.t0 = -1e9; anim.end = 0; }   // Wiedergabe aus: gleich der Endstand (Klänge und Kamera entfallen)
   dirty = true;
 }
 function animActive(now) { return now < anim.end + 30; }
@@ -1025,7 +1052,7 @@ function centerOn(x, y, force = false) {
 // Weicher Schwenk auf ein Feld, falls es nicht schon gut sichtbar ist (always: immer in die Mitte)
 function focusOn(x, y, always = false) {
   if (!always && inViewMargin(x, y)) { cam.active = false; return; }
-  camTo(x + 0.5, y + 0.5, 450);
+  pan(x + 0.5, y + 0.5, 450);
 }
 // Knopf ⌖ / Taste F: Karte auf die ausgewählte Einheit (bzw. Stadt) zentrieren – nach dem Umsehen auf der Karte
 function actFocus() {
@@ -1081,7 +1108,7 @@ function pendingCenterStep(now) {
   const pc = pendingCenter; pendingCenter = null;
   const u = selUnit();
   if (!u || u.id !== pc.id) return;
-  if (!inViewMargin(u.x, u.y)) camTo(u.x + 0.5, u.y + 0.5, 550);
+  if (!inViewMargin(u.x, u.y)) pan(u.x + 0.5, u.y + 0.5, 550);
 }
 
 // Beladener Transporter neben einer neutralen oder feindlichen Stadt: Seine Truppen haben ihren Zug noch und können vom Schiff aus
@@ -1428,14 +1455,14 @@ function endHumanTurn() {
   let badNews = false;
   for (const l of S.log) { if (l === logMark) break; fresh.push(l.text); if (l.cls === 'bad') badNews = true; }
   const followed = anim.events.some(e => e.type === 'cam');
-  const replay = anim.events.length > 0;   // es gibt etwas zu sehen (Gegnerzüge, eigene Befehle)
+  const hasReplay = anim.events.length > 0 && replay !== "off";   // es gibt etwas zu sehen (Gegnerzüge, eigene Befehle)
   checkGameOver();
   saveGame();
   // Während der Wiedergabe bleibt die Karte, wo sie war (sonst liefen Gegnerzüge im bisherigen Ausschnitt ungesehen ab,
   // weil die Karte sofort zur nächsten eigenen Einheit sprang); danach weich zur eigenen Einheit
-  selectNext(!replay);
+  selectNext(!hasReplay);
   const su = selUnit(), home = su || S.cities.find(c => c.owner === 0);
-  if (replay) {
+  if (hasReplay) {
     wrap.scrollLeft = startScroll[0]; wrap.scrollTop = startScroll[1];
   } else if (!su && home) centerOn(home.x, home.y);
   anim.after = () => {
@@ -1443,8 +1470,8 @@ function endHumanTurn() {
     if (fresh.some(t => t.toLowerCase().includes(tt('feindkontakt', 'enemy contact')))) Sfx.play('alarm');
     else if (fresh.some(t => t.toLowerCase().includes(tt('fertiggestellt', 'completed')))) Sfx.play('built');
     const back = selUnit() || home;   // die Auswahl kann sich inzwischen geändert haben
-    if (followed && back) camTo(back.x + 0.5, back.y + 0.5, 600);
-    else if (replay && back) focusOn(back.x, back.y);   // nur, wenn die Einheit nicht ohnehin gut zu sehen ist
+    if (followed && hasReplay && back) pan(back.x + 0.5, back.y + 0.5, 600);
+    else if (back) focusOn(back.x, back.y);   // nur, wenn die Einheit nicht ohnehin gut zu sehen ist
     maybeOfferEnd();
     // nichts zu tun (keine Einheit wartet) und nichts Schlimmes passiert: gleich weiter
     if (!badNews) scheduleAutoEnd();
@@ -2801,6 +2828,12 @@ $('powerChk').onchange = e => {
   applyPower(); if (S) updatePower();
 };
 applyPower();
+$('replaySel').value = replay;
+$('replaySel').onchange = e => {
+  replay = REPLAY[e.target.value] ? e.target.value : 'normal';
+  try { localStorage.setItem('archipel-replay', replay); } catch (err) {}
+  if (replay === 'off') skipAnim();   // eine laufende Wiedergabe sofort beenden
+};
 $('offerSel').value = String(offerPct);
 $('offerSel').onchange = e => {
   offerPct = Number(e.target.value) || 0;

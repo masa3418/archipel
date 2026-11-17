@@ -446,6 +446,13 @@
   <h4 data-en="Settings">Einstellungen</h4>
   <label class="ms"><span data-en="Volume">Lautstärke</span><input id="vol" type="range" min="0" max="100"></label>
   <button id="bSndTest" class="mi" title="Klänge anhören und je Einheit einstellen" data-en-title="Listen to the sounds and adjust them per unit"><span data-en="Sound test">Klangtest</span><kbd>K</kbd></button>
+  <label class="ms" title="Wie schnell Bewegungen und Kamerafahrten abgespielt werden – beim Zug des Gegners, bei Märschen und Patrouillen und bei eigenen Zügen. „Aus“: keine Bewegungen und keine Kamerafahrten, die Einheiten stehen sofort am Ziel. Für alle, die schnelles Hin und Her auf dem Bildschirm nicht gut vertragen." data-en-title="How fast movements and camera pans are played – during the enemy's turn, for marches and patrols and for your own moves. “Off”: no movements and no camera pans, units are at their destination at once. For anyone who does not cope well with fast back-and-forth on the screen."><span data-en="Replay of moves">Wiedergabe der Züge</span>
+    <select id="replaySel">
+      <option value="slow" data-en="slow">langsam</option>
+      <option value="normal" data-en="normal">normal</option>
+      <option value="fast" data-en="fast">schnell</option>
+      <option value="off" data-en="off (no movement)">aus (ohne Bewegung)</option>
+    </select></label>
   <label class="ms" title="Umstellen, falls die Karte beim Wischen zoomt oder beim Drehen am Rad wandert" data-en-title="Change this if the map zooms when you swipe, or pans when you turn the wheel"><span data-en="Wheel / touchpad">Mausrad / Touchpad</span>
     <select id="wheelSel">
       <option value="auto" data-en="automatic">automatisch</option>
@@ -714,6 +721,7 @@
             <p class="muted" data-en="Tip: in the ☰ Menu you can show the most important keys directly on the map (“Show keyboard shortcuts on the map”).">Tipp: Im ☰ Menü kannst du die wichtigsten Tasten direkt auf der Karte einblenden („Tastenkürzel auf der Karte einblenden“).</p>
           </div>
         </div>
+        <p class="help-setting"><span data-en="<b>Replay of moves:</b> in the <b>☰ Menu</b> under “Settings” you choose how fast movements and camera pans are shown – slow, normal, fast or off. “Off” shows no movement at all: units are at their destination at once and the map only moves when it has to. Helpful if fast back-and-forth on the screen bothers you; if your system is set to reduce motion, the game starts with “off”."><b>Wiedergabe der Züge:</b> Im <b>☰ Menü</b> unter „Einstellungen“ legst du fest, wie schnell Bewegungen und Kamerafahrten gezeigt werden – langsam, normal, schnell oder aus. „Aus“ zeigt gar keine Bewegung: Die Einheiten stehen sofort am Ziel, die Karte bewegt sich nur, wenn sie muss. Hilfreich, wenn dir schnelles Hin und Her auf dem Bildschirm nicht bekommt; ist in deinem System „Bewegung reduzieren“ eingestellt, beginnt das Spiel mit „aus“.</span></p>
         <p class="help-setting"><span data-en="<b>Mouse wheel and two-finger swipe:</b> normally the game detects by itself whether you turn a wheel (zooms) or swipe (pans). You can choose it yourself in the <b>☰ Menu</b> under “Settings”."><b>Mausrad und Zwei-Finger-Wischen:</b> Normalerweise erkennt das Spiel selbst, ob du am Rad drehst (zoomt) oder wischst (verschiebt). Im <b>☰ Menü</b> unter „Einstellungen“ kannst du das festlegen.</span>
           <span class="muted" data-en="Change this if the map zooms when you swipe, or pans when you turn the wheel. Some touchpads send exactly the same signal as a mouse wheel – then only “always pan” helps; zooming still works by pinching, with Ctrl + wheel or with + and −.">Stell das um, falls die Karte beim Wischen zoomt oder beim Drehen am Rad wandert. Manche Touchpads senden genau dasselbe Signal wie ein Mausrad – dann hilft nur „immer verschieben“; zoomen geht weiterhin mit Spreizen, Strg + Rad oder + und −.</span><br>
           <span class="muted" id="wheelInfo"></span></p>
