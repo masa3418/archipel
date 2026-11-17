@@ -67,6 +67,51 @@ const Sfx = (() => {
   const notes = (list, type, gain, step, len) =>
     list.forEach((f, i) => tone({ f, type, gain, dur: len, at: i * step, attack: 0.01 }));
 
+  // ---- Bausteine für die längeren Stücke (Sieg, Niederlage) ----
+  // Gehaltene Stimme: zwei leicht verstimmte Oszillatoren durch einen Tiefpass, Hüllkurve mit Anstieg, Halten, Ausklingen,
+  // auf Wunsch Vibrato. cutoff/cutEnd: Klangfarbe (Blech öffnet sich beim Anblasen), detune in Cent.
+  function voice({ f, at = 0, dur = 0.4, gain = 0.06, type = 'sawtooth', cutoff = 1800, cutEnd = null, q = 0.7,
+    attack = 0.03, release = 0.25, detune = 7, vib = 0 }) {
+    const t = ac.currentTime + at, end = t + dur;
+    const fl = ac.createBiquadFilter(); fl.type = 'lowpass'; fl.Q.value = q;
+    fl.frequency.setValueAtTime(cutoff * 0.35, t);
+    fl.frequency.exponentialRampToValueAtTime(cutoff, t + Math.max(0.02, attack * 1.5));
+    if (cutEnd) fl.frequency.exponentialRampToValueAtTime(cutEnd, end + release);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(gain, t + attack);
+    g.gain.setValueAtTime(gain, end);
+    g.gain.exponentialRampToValueAtTime(0.0001, end + release);
+    fl.connect(g); g.connect(master);
+    let lfo = null;
+    if (vib) {
+      lfo = ac.createOscillator(); lfo.frequency.value = 5.2;
+      const lg = ac.createGain(); lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(vib, t + Math.min(0.4, dur));
+      lfo.connect(lg); lfo.start(t); lfo.stop(end + release + 0.05);
+      lfo.gainNode = lg;
+    }
+    for (const d of detune ? [-detune, detune] : [0]) {
+      const o = ac.createOscillator(); o.type = type;
+      o.frequency.setValueAtTime(f, t); o.detune.setValueAtTime(d, t);
+      if (lfo) lfo.gainNode.connect(o.detune);
+      o.connect(fl); o.start(t); o.stop(end + release + 0.05);
+    }
+  }
+  const chord = (fs, opts) => fs.forEach(f => voice({ ...opts, f }));
+  // Pauke: tiefer Ton mit leicht fallender Tonhöhe plus gedämpfter Schlag
+  function timp(f, at, gain = 0.35, dur = 1.1) {
+    tone({ f, f2: f * 0.94, type: 'sine', dur, gain, attack: 0.004, at });
+    tone({ f: f * 1.5, f2: f * 1.42, type: 'sine', dur: dur * 0.5, gain: gain * 0.25, attack: 0.004, at });
+    noise({ dur: 0.12, f: 500, gain: gain * 0.5, attack: 0.002, at });
+  }
+  // Wirbel: immer dichtere, lautere Schläge bis zum Zielzeitpunkt
+  function roll(f, at, len, g0, g1) {
+    const n = Math.round(len / 0.055);
+    for (let i = 0; i < n; i++) timp(f, at + i * 0.055, g0 + (g1 - g0) * i / n, 0.35);
+  }
+  // Becken: Rauschen im Höhenbereich, anschwellend (swell) oder als Schlag
+  const cymbal = (at, dur, gain = 0.12, swell = 0.005) => noise({ dur, filter: 'highpass', f: 5200, f2: 3800, q: 0.5, gain, attack: swell, at });
+
   const SOUNDS = {
     select: () => tone({ f: 880, f2: 990, type: 'sine', dur: 0.07, gain: 0.07 }),
     tick: () => tone({ f: 520, type: 'triangle', dur: 0.05, gain: 0.05 }),
@@ -90,11 +135,45 @@ const Sfx = (() => {
     clank: () => { noise({ dur: 0.08, filter: 'bandpass', f: 2200, q: 4, gain: 0.25 }); tone({ f: 310, f2: 260, type: 'triangle', dur: 0.15, gain: 0.08 }); },
     endTurn: () => { tone({ f: 140, f2: 55, type: 'sine', dur: 0.35, gain: 0.35 }); noise({ dur: 0.12, f: 900, gain: 0.12 }); },
     alarm: () => notes([660, 880, 660], 'square', 0.04, 0.12, 0.1),
+    // Siegesfanfare (ca. 8 s): Paukenwirbel, Blechbläser-Melodie über C – F – G – G7 – C, Beckenschlag, langer Schlussakkord
     victory: () => {
-      notes([523, 523, 523, 659, 784, 659, 784, 1047], 'triangle', 0.13, 0.13, 0.25);
-      tone({ f: 262, type: 'sine', dur: 1.6, gain: 0.08, at: 0.5 });
+      const m = k => 440 * Math.pow(2, (k - 69) / 12);   // MIDI-Notennummer → Hz (60 = C4)
+      roll(m(43), 0, 0.8, 0.05, 0.3);
+      cymbal(0.05, 0.85, 0.06, 0.75);
+      const lead = (k, at, dur, vib = 0) => voice({ f: m(k), at, dur, gain: 0.075, cutoff: 2800, attack: 0.025, release: 0.12, detune: 5, vib });
+      [[67, 0.80, 0.13], [72, 0.95, 0.13], [76, 1.10, 0.13], [79, 1.25, 0.5, 9],
+       [76, 1.80, 0.13], [79, 1.95, 0.13], [81, 2.10, 0.45, 9],
+       [79, 2.60, 0.24], [77, 2.85, 0.13], [76, 3.00, 0.13], [74, 3.15, 0.45, 9],
+       [67, 3.65, 0.13], [71, 3.80, 0.13], [74, 3.95, 0.13], [77, 4.10, 0.3],
+       [76, 4.45, 0.13], [74, 4.60, 0.13], [79, 4.75, 0.13]].forEach(([k, at, d, v]) => lead(k, at, d, v));
+      voice({ f: m(84), at: 4.9, dur: 2.0, gain: 0.08, cutoff: 3000, cutEnd: 1200, attack: 0.03, release: 1.0, detune: 5, vib: 12 });
+      const pad = (ks, at, dur, rel = 0.15) => chord(ks.map(m), { at, dur, gain: 0.026, cutoff: 1500, attack: 0.04, release: rel, detune: 8 });
+      pad([48, 55, 60, 64], 0.8, 0.95);
+      pad([41, 57, 60, 65], 1.8, 0.75);
+      pad([43, 55, 59, 62], 2.6, 1.0);
+      pad([43, 53, 59, 62], 3.65, 1.05);
+      pad([36, 48, 55, 60, 64, 67], 4.9, 2.0, 1.4);
+      timp(m(48), 0.8); timp(m(41), 1.8, 0.3); timp(m(43), 2.6, 0.3); timp(m(43), 3.65, 0.28);
+      roll(m(43), 4.4, 0.5, 0.06, 0.25);
+      timp(m(36), 4.9, 0.5, 1.8);
+      cymbal(4.9, 2.6, 0.14);
+      [84, 88, 91, 96].forEach((k, i) => tone({ f: m(k), type: 'triangle', dur: 0.5, gain: 0.03, at: 5.0 + i * 0.07 }));
     },
-    defeat: () => notes([392, 370, 349, 330, 262], 'triangle', 0.12, 0.28, 0.45),
+    // Niederlage (ca. 8 s): getragene Streicherakkorde a-Moll – F – d-Moll – E – a-Moll, einsames Horn, gedämpfte Trauertrommel
+    defeat: () => {
+      const m = k => 440 * Math.pow(2, (k - 69) / 12);
+      noise({ dur: 7.5, f: 260, gain: 0.05, attack: 1.5 });   // dunkler Wind im Hintergrund
+      const pad = (ks, at, dur, rel = 0.5) => chord(ks.map(m), { at, dur, gain: 0.024, cutoff: 850, attack: 0.5, release: rel, detune: 10 });
+      pad([45, 52, 57, 60], 0.0, 1.9);
+      pad([41, 48, 53, 57], 1.9, 1.2);
+      pad([38, 50, 53, 57], 3.1, 1.2);
+      pad([40, 47, 52, 56], 4.3, 1.1);
+      pad([33, 45, 52, 57, 60], 5.4, 1.6, 2.2);
+      const horn = (k, at, dur) => voice({ f: m(k), at, dur, gain: 0.07, type: 'triangle', cutoff: 1400, attack: 0.09, release: 0.35, detune: 3, vib: 10 });
+      [[64, 0.3, 0.85], [62, 1.2, 0.45], [60, 1.7, 0.6], [57, 2.4, 0.6],
+       [62, 3.1, 0.45], [60, 3.6, 0.35], [59, 4.0, 0.25], [56, 4.3, 0.95], [57, 5.4, 1.9]].forEach(([k, at, d]) => horn(k, at, d));
+      for (const [at, g] of [[0, 0.22], [1.9, 0.2], [3.1, 0.2], [4.3, 0.22], [5.4, 0.3]]) timp(m(33), at, g, 1.4);
+    },
   };
 
   function play(name, minGap = 0) {
