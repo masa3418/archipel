@@ -37,11 +37,15 @@ const anim = { rec: false, cursor: 0, speed: 110, events: [], byUnit: new Map(),
 // „aus“: keine Bewegungen, keine Kamerafahrten (Einheiten stehen sofort am Ziel), die Karte springt nur, wenn sie muss.
 // Für Menschen, die schnelles Hin und Her auf dem Bildschirm schlecht vertragen. Vorgabe „aus“, wenn das Betriebssystem
 // reduzierte Bewegung wünscht (prefers-reduced-motion).
-const REPLAY = { slow: { f: 1.8, cam: 1.7 }, normal: { f: 1, cam: 1 }, fast: { f: 0.5, cam: 0.7 }, off: { f: 1, cam: 1 } };
+// Die ersten Stufen waren zu hektisch: das frühere „langsam“ ist jetzt „normal“, das frühere „normal“ heißt „schnell“, dazu ein
+// ruhigeres „langsam“. Gespeichert unter archipel-replay2; eine alte Wahl (archipel-replay) wird so übernommen, dass das Tempo bleibt.
+const REPLAY = { slow: { f: 2.6, cam: 2.4 }, normal: { f: 1.8, cam: 1.7 }, fast: { f: 1, cam: 1 }, off: { f: 1, cam: 1 } };
 let replay = 'normal';
 try {
-  const v = localStorage.getItem('archipel-replay');
+  const v = localStorage.getItem('archipel-replay2');
+  const old = { slow: 'normal', normal: 'fast', fast: 'fast', off: 'off' }[localStorage.getItem('archipel-replay')];
   if (REPLAY[v]) replay = v;
+  else if (old) replay = old;
   else if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) replay = 'off';
 } catch (e) {}
 function animBegin(speed, follow = false) {
@@ -2831,7 +2835,7 @@ applyPower();
 $('replaySel').value = replay;
 $('replaySel').onchange = e => {
   replay = REPLAY[e.target.value] ? e.target.value : 'normal';
-  try { localStorage.setItem('archipel-replay', replay); } catch (err) {}
+  try { localStorage.setItem('archipel-replay2', replay); } catch (err) {}
   if (replay === 'off') skipAnim();   // eine laufende Wiedergabe sofort beenden
 };
 $('offerSel').value = String(offerPct);
