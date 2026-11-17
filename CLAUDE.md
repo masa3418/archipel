@@ -83,6 +83,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Einheitenkarten (`UNIT_INFO`, `UNIT_ROLE`) und die Tabelle „Wer schlägt wen“ (`oddsMatrix` über `attackOdds`) entstehen
   in `buildHelp()` aus den Spieldaten – Prozentwerte nie von Hand in die Hilfe schreiben. Neue Sonderregeln als Zeile in der
   Tabelle `.help-rules` (Reiter „Kampf“) ergänzen, den Einheitentext in `UNIT_INFO`.
+- **Kräfteverhältnis**: `strength(p)` (game.js) = Wert der Einheiten (Bauzeit × Trefferpunkte-Anteil) + `CITY_VALUE` je Stadt. Ein Klick auf
+  den Balken öffnet `openPower`/`renderPower` (ui.js) mit der Rechnung: eigene Einheiten je Typ. Vom Gegner standardmäßig nur der
+  Prozentwert; erst mit dem Haken „Zahlen des Gegners aufdecken“ (`spoiler`, `archipel-spoiler`) nennen Fenster, Hinweistext des Balkens
+  und die Frage nach dem vorzeitigen Ende seine Städte und den Gesamtwert seiner Einheiten – nie die Typen (das verriete Einheiten im Nebel).
+  Neue Anzeigen mit Zahlen des Gegners an `spoiler` hängen. Ändert sich die Formel, das Fenster mit anpassen.
 - **Zerstörte Einheiten** (Statistik): `killUnit(u, by)` zählt mit – `by` = Spieler, der zerstört hat (→ `S.kills[by][typ]`), `-1` = ohne
   Gegner verloren (Absturz, neutrale Stadt → `S.wasted[besitzer][typ]`), ohne Angabe nichts (Eroberer wird Besatzung). Wer eine neue
   Stelle einbaut, an der Einheiten sterben, gibt `by` an. `S.killsFrom` = Runde, ab der gezählt wird (ältere Spielstände: ab dem Laden).

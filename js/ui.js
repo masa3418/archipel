@@ -1422,6 +1422,10 @@ function updateEndTurnButton() {
 // Abschaltbar im Menü (Einstellung archipel-power): Dann fehlen der Balken in der Seitenleiste und die Angabe im Eroberungsfenster.
 let showPower = true;
 try { showPower = localStorage.getItem('archipel-power') !== '0'; } catch (e) {}
+// Spoiler (Haken im Fenster „Kräfteverhältnis“, archipel-spoiler): Erst dann nennen Fenster, Hinweistext des Balkens und die
+// Frage nach dem vorzeitigen Ende die Zahlen des Gegners (Städte, Einheiten). Ohne Spoiler bleibt es beim Prozentwert.
+let spoiler = false;
+try { spoiler = localStorage.getItem('archipel-spoiler') === '1'; } catch (e) {}
 function applyPower() { $('power').style.display = showPower ? '' : 'none'; }
 function updatePower() {
   const a = strength(0), b = strength(1);
@@ -1446,13 +1450,74 @@ function updatePower() {
     tr.title = tt('Veränderung seit Beginn der letzten Runde', 'Change since the start of the last turn');
   }
   $('power').title = tt(`Du: ${a.cities} Städte, ${a.units} Einheiten (Wert ${a.unitValue}) – Stärke ${a.total}\n`
-    + `Gegner: ${b.cities} Städte, ${b.units} Einheiten (Wert ${b.unitValue}) – Stärke ${b.total}\n`
-    + 'Stärke = Wert der Einheiten (Bauzeit × Zustand) + 20 je Stadt',
+    + (spoiler ? `Gegner: ${b.cities} Städte, ${b.units} Einheiten (Wert ${b.unitValue}) – Stärke ${b.total}\n` : `Gegner: ${100 - pct} % der gesamten Stärke\n`)
+    + 'Stärke = Wert der Einheiten (Bauzeit × Zustand) + 20 je Stadt\nKlick: die genaue Rechnung',
     `You: ${a.cities} cities, ${a.units} units (value ${a.unitValue}) – strength ${a.total}\n`
-    + `Enemy: ${b.cities} cities, ${b.units} units (value ${b.unitValue}) – strength ${b.total}\n`
-    + 'Strength = value of units (build time × condition) + 20 per city');
+    + (spoiler ? `Enemy: ${b.cities} cities, ${b.units} units (value ${b.unitValue}) – strength ${b.total}\n` : `Enemy: ${100 - pct} % of the total strength\n`)
+    + 'Strength = value of units (build time × condition) + 20 per city\nClick: the exact calculation');
   drawPowerSpark(hist, share);
 }
+
+// Fenster „Kräfteverhältnis“ (Klick auf den Balken): die Rechnung hinter der Prozentzahl. Die eigenen Einheiten stehen je Typ da.
+// Vom Gegner zeigt es ohne Spoiler nur den Anteil; aufgedeckt (spoiler) auch Städte und Gesamtwert der Einheiten – nie die Typen,
+// das verriete, was im Nebel steht, etwa getarnte U-Boote.
+function renderPower() {
+  const a = strength(0), b = strength(1), sum = a.total + b.total;
+  const pct = sum > 0 ? Math.round(a.total / sum * 100) : 50;
+  const f1 = v => (Math.round(v * 10) / 10).toLocaleString(LANG, { maximumFractionDigits: 1 });
+  const box = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
+  const row = (l, x, y) => `<tr><td>${l}</td><td class="num">${x}</td><td class="num">${y}</td></tr>`;
+  const un = n => `${n} ${tt(n === 1 ? 'Einheit' : 'Einheiten', n === 1 ? 'unit' : 'units')}`;
+  const hid = `<span class="muted" title="${tt('Verdeckt – unten lässt sich das aufdecken', 'Hidden – you can reveal it below')}">${tt('verdeckt', 'hidden')}</span>`;
+  let h = `<div class="stat-summary">${box(pct + ' %', tt('Dein Anteil', 'Your share'))}${box((100 - pct) + ' %', tt('Anteil des Gegners', 'Enemy share'))}${box(a.total, tt('Deine Stärke', 'Your strength'))}`
+    + (spoiler ? box(b.total, tt('Stärke des Gegners', 'Enemy strength')) : '') + `${box(esc($('powerVerdict').textContent), tt('Lage', 'Situation'))}</div>`;
+
+  h += `<h3>${tt('Die Rechnung', 'The calculation')}</h3><table class="stat-table">
+    <thead><tr><th></th><th class="num">${tt('Du', 'You')}</th><th class="num">${tt('Gegner', 'Enemy')}</th></tr></thead><tbody>`
+    + row(tt(`Städte, je ${CITY_VALUE}`, `Cities, ${CITY_VALUE} each`), `${a.cities} × ${CITY_VALUE} = <b>${a.cities * CITY_VALUE}</b>`, spoiler ? `${b.cities} × ${CITY_VALUE} = <b>${b.cities * CITY_VALUE}</b>` : hid)
+    + row(tt('Wert der Einheiten', 'Value of the units'), `${un(a.units)} = <b>${a.unitValue}</b>`, spoiler ? `${un(b.units)} = <b>${b.unitValue}</b>` : hid)
+    + row(`<b>${tt('Stärke', 'Strength')}</b>`, `${a.cities * CITY_VALUE} + ${a.unitValue} = <b>${a.total}</b>`, spoiler ? `${b.cities * CITY_VALUE} + ${b.unitValue} = <b>${b.total}</b>` : hid)
+    + row(`<b>${tt('Anteil', 'Share')}</b>`, spoiler && sum > 0 ? `${a.total} ÷ ${sum} = <b>${pct} %</b>` : `<b>${pct} %</b>`, spoiler && sum > 0 ? `${b.total} ÷ ${sum} = <b>${100 - pct} %</b>` : `<b>${100 - pct} %</b>`)
+    + `</tbody></table>
+    <label class="spoiler"><input type="checkbox" id="spoilerChk" ${spoiler ? 'checked' : ''}> <span>${tt('Zahlen des Gegners aufdecken <span class="muted">– Spoiler: verrät, wie viele Städte und Einheiten er hat, auch die im Nebel</span>',
+      'Reveal the enemy\'s numbers <span class="muted">– spoiler: gives away how many cities and units he has, including those in the fog</span>')}</span></label>`;
+
+  const mine = S.units.filter(u => u.owner === 0);
+  h += `<h3>${tt('Deine Einheiten im Einzelnen', 'Your units in detail')}</h3><table class="stat-table">
+    <thead><tr><th>${tt('Einheit', 'Unit')}</th><th class="num">${tt('Anzahl', 'Number')}</th><th class="num">${tt('Bauzeit', 'Build time')}</th><th class="num">${tt('Wert', 'Value')}</th></tr></thead><tbody>`;
+  for (const k of UNIT_ORDER) {
+    const t = UT[k], list = mine.filter(u => u.type === k);
+    if (!list.length) continue;
+    const val = list.reduce((s, u) => s + t.cost * u.hp / t.hp, 0), dmg = list.filter(u => u.hp < t.hp).length;
+    h += `<tr><td><span class="sym">${t.sym}</span>${t.name}</td><td class="num">${list.length}</td><td class="num">${t.cost}</td>
+      <td class="num">${dmg ? `<span class="muted">${tt(`${dmg} beschädigt, voll wären es ${list.length * t.cost}`, `${dmg} damaged, ${list.length * t.cost} at full health`)} · </span>` : ''}<b>${f1(val)}</b></td></tr>`;
+  }
+  h += (mine.length ? '' : `<tr><td colspan="4" class="muted">${tt('Du hast keine Einheiten.', 'You have no units.')}</td></tr>`)
+    + `<tr><td><b>${tt('Gesamt (gerundet)', 'Total (rounded)')}</b></td><td class="num"><b>${mine.length}</b></td><td></td><td class="num"><b>${a.unitValue}</b></td></tr></tbody></table>`;
+
+  const hi = 100 - offerPct;
+  h += `<h3>${tt('So wird gezählt', 'How it is counted')}</h3><ul class="power-notes">
+    <li>${tt('Stärke = Wert der Einheiten + 20 je Stadt. Dein Anteil ist deine Stärke geteilt durch die Stärke beider Seiten zusammen.',
+      'Strength = value of the units + 20 per city. Your share is your strength divided by the strength of both sides together.')}</li>
+    <li>${tt('Der Wert einer Einheit ist ihre Bauzeit in Runden. Beschädigte Einheiten zählen anteilig nach ihren Trefferpunkten, Einheiten an Bord zählen mit.',
+      'The value of a unit is its build time in turns. Damaged units count in proportion to their hit points; units on board are included.')}</li>
+    <li>${tt('Beim Gegner zählt alles mit, auch was im Nebel liegt. Deshalb siehst du von ihm zunächst nur den Anteil. Aufgedeckt kommen seine Städte und der Gesamtwert seiner Einheiten dazu – nie aber, welche Einheiten es sind.',
+      'For the enemy everything counts, including what is hidden in the fog. That is why at first you only see his share. Revealed, his cities and the total value of his units are added – but never which units they are.')}</li>
+    <li>${tt('Einstufung nach deinem Anteil: ab 90 % erdrückend überlegen · ab 65 % klar überlegen · ab 55 % überlegen · über 45 % ausgeglichen · über 35 % unterlegen · über 10 % stark unterlegen · sonst aussichtslos.',
+      'Rating by your share: from 90 % overwhelming · from 65 % clearly ahead · from 55 % ahead · above 45 % even · above 35 % behind · above 10 % far behind · otherwise hopeless.')}</li>
+    <li>${offerPct ? tt(`Liegt dein Anteil fünf Runden in Folge unter ${offerPct} % oder über ${hi} %, bietet das Spiel das vorzeitige Ende an (einstellbar im ☰ Menü).`,
+      `If your share stays below ${offerPct} % or above ${hi} % for five turns in a row, the game offers an early end (adjustable in the ☰ Menu).`)
+      : tt('Das Angebot zum vorzeitigen Ende ist abgeschaltet (☰ Menü).', 'The offer of an early end is switched off (☰ Menu).')}</li>
+  </ul>`;
+  $('powerCalc').innerHTML = h;
+  $('spoilerChk').onchange = e => {
+    spoiler = e.target.checked;
+    try { localStorage.setItem('archipel-spoiler', spoiler ? '1' : '0'); } catch (err) {}
+    updatePower(); renderPower();
+  };
+}
+function openPower() { if (!S) return; closeCtx(); renderPower(); openModal('mPower'); }
+$('power').onclick = openPower;
 
 function drawPowerSpark(hist, share) {
   const c = $('powerSpark'), g = c.getContext('2d');
@@ -1757,7 +1822,8 @@ function maybeOfferEnd() {
   S.offerPause = S.turn + OFFER_PAUSE;      // gilt auch, wenn der Dialog einfach geschlossen wird
   const pct = Math.round(shareOf(last[last.length - 1]) * 100);
   const a = strength(0), b = strength(1);
-  const facts = tt(`Du: ${a.cities} Städte, ${a.units} Einheiten · Gegner: ${b.cities} Städte, ${b.units} Einheiten`, `You: ${a.cities} cities, ${a.units} units · Enemy: ${b.cities} cities, ${b.units} units`);
+  const facts = tt(`Du: ${a.cities} Städte, ${a.units} Einheiten`, `You: ${a.cities} cities, ${a.units} units`)
+    + (spoiler ? tt(` · Gegner: ${b.cities} Städte, ${b.units} Einheiten`, ` · Enemy: ${b.cities} cities, ${b.units} units`) : '');
   if (low) {
     $('offerTitle').textContent = tt('Die Lage ist aussichtslos', 'The situation is hopeless');
     $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke unter ${offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Willst du aufgeben?`,
