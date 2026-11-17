@@ -3,6 +3,19 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.2.4
+
+Fehlerkorrektur.
+
+- **Jäger-Patrouille:** Eine Patrouille mit Jägern endete nach dem ersten Tankflug – der Jäger stand danach ohne Befehl
+  in der Stadt. Jetzt fliegt er rechtzeitig zum Tanken in die nächste eigene Stadt und setzt die Patrouille beim selben
+  Wegpunkt fort. Liegt ein Wegpunkt außer Reichweite (mehr als 8 Felder von der nächsten Stadt), bricht er mit einer
+  Meldung ab und fliegt heim.
+
+*English:* bug fix – a fighter patrol used to end after the first refuelling flight, leaving the fighter in the city
+without orders. Fighters now refuel in your nearest city and carry on with the patrol; a waypoint out of range ends
+the patrol with a message.
+
 ## 1.2.3
 
 - **Stege:** Wo sich Land nur an einer Ecke berührt, zeigt die Karte jetzt abgerundete Ecken und einen kleinen Holzsteg.
