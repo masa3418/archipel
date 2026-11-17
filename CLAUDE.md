@@ -117,6 +117,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   leer = zufällig), `fmtSeed` (Dreiergruppen). Gleiche Nummer + Größe + Welt = gleiche Karte, Städte und Startplätze (nicht die KI-Züge).
   Eingabe und „Diese Welt noch einmal“ im Fenster „Neues Spiel“, Anzeige in Statistik und Abschlussfenster. Der Generator darf nur
   `mulberry32(seed)` nutzen, nie `Math.random` – sonst stimmt die Nummer nicht mehr. Ältere Spielstände: `seed = null`.
+- **Spielstände** (ui.js `renderSaves`): nach Partie gruppiert über `S.gameId` (bei `newGame` vergeben, ältere Partien in `afterLoad`; in den
+  Metadaten als `game`, dazu `world`/`seed` aus `saveSummary`). Laufende Partie oben und offen, sonst zugeklappt (`saveOpen`); ohne Kennung →
+  „Ältere Spielstände“. Suchfeld ab 7 Ständen, `data-delgame` löscht alle Stände einer Partie.
 - **Neues Feld im Spielzustand** → in `sanitizeState` (game.js) aufnehmen, sonst wird es beim
   Laden verworfen. Spielstände aus Dateien sind nicht vertrauenswürdig (siehe `SECURITY.md`);
   Werte aus `S` nie ungeprüft per `innerHTML` ausgeben, Texte mit `esc()` maskieren.

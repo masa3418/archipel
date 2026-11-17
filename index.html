@@ -356,6 +356,23 @@
   .save-new { display: flex; gap: 8px; margin-bottom: 12px; }
   .save-new input { flex: 1; min-width: 0; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
   .save-table td { vertical-align: middle; }
+  .save-list { max-height: min(52vh, 460px); overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
+  .save-list > .save-table { margin-top: 0; }
+  .save-filter { margin: -4px 0 10px; }
+  .save-filter input { width: 100%; box-sizing: border-box; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+  .sg { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; background: rgba(255,255,255,.015); }
+  .sg > summary { display: flex; align-items: center; gap: 10px; padding: 7px 10px; cursor: pointer; list-style: none; }
+  .sg > summary::-webkit-details-marker { display: none; }
+  .sg > summary::before { content: '▸'; color: var(--muted); width: 10px; }
+  .sg[open] > summary::before { content: '▾'; }
+  .sg-t { font-weight: 600; }
+  .sg-i { font-size: 12.5px; flex: 1; }
+  .sg-cur { font-size: 11px; color: #8fc0ff; border: 1px solid #2f5f9e; border-radius: 10px; padding: 0 7px; }
+  .sg .save-table { margin: 0 0 4px; }
+  .sg .save-table td:first-child { padding-left: 28px; }
+  .save-table td.nm { font-weight: 500; }
+  .save-table td.dt { white-space: nowrap; }
+  .save-table .acts button.ic, .sg-del { padding: 2px 7px; min-width: 28px; }
   .save-table .acts { text-align: right; white-space: nowrap; }
   .save-table .acts button { padding: 3px 8px; font-size: 13px; margin-left: 4px; }
   .save-table .auto td:first-child { color: #8fc0ff; }
@@ -973,10 +990,8 @@
       <input id="saveName" type="text" maxlength="40" placeholder="Name für den Spielstand" data-en-placeholder="Name for the saved game">
       <button class="primary" id="saveNew" data-en="Save current game">Aktuelles Spiel speichern</button>
     </div>
-    <table class="stat-table save-table">
-      <thead><tr><th>Name</th><th data-en="Progress">Stand</th><th data-en="Saved">Gespeichert</th><th></th></tr></thead>
-      <tbody id="saveRows"></tbody>
-    </table>
+    <div class="save-filter" id="saveFilterRow" hidden><input id="saveFilter" type="search" maxlength="40" placeholder="Spielstand suchen …" data-en-placeholder="Search saved games …"></div>
+    <div id="saveList" class="save-list"></div>
     <p class="muted" id="saveInfo" style="font-size:12px"></p>
     <div class="row" style="margin-top:10px">
       <button id="saveImport" data-en="Load from file…">Aus Datei laden…</button>

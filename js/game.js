@@ -38,6 +38,7 @@ function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln', seedIn = null
   S = {
     W: m.W, H: m.H, size: sizeKey, terrain: m.terrain, elev: m.elev, depth: m.depth, cont: m.cont,
     cities: m.cities, units: [], nextId: 1, turn: 1, cur: 0, log: [], over: null, difficulty: DIFFICULTY[diffKey] ? diffKey : 'normal', world: worldKey, seed: seed0,
+    gameId: 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),   // Kennung der Partie (Spielstände gruppieren)
     players: [mkPlayer(m.W, m.H, m.cities.length), mkPlayer(m.W, m.H, m.cities.length)],
     kills: [{}, {}], wasted: [{}, {}], killsFrom: 1,   // Statistik: zerstörte Einheiten je Spieler und Typ, siehe killUnit
     built: [{}, {}], builtFrom: 1,                    // Statistik: in Städten gebaute Einheiten je Spieler und Typ (startTurn)
@@ -1317,6 +1318,7 @@ function sanitizeState(o) {
     difficulty: oneOf(o.difficulty, Object.keys(DIFFICULTY), 'normal'),
     world: oneOf(o.world, Object.keys(WORLDS), 'kontinente'),   // ältere Spielstände: bisherige Welt
     seed: isNum(o.seed) ? int(o.seed, 0, 0, SEED_MAX - 1) : null,   // Kartennummer (ältere Spielstände: unbekannt)
+    gameId: typeof o.gameId === 'string' && /^[a-z0-9]{1,24}$/.test(o.gameId) ? o.gameId : null,   // Kennung der Partie (ältere: keine)
     turn: int(o.turn, 1, 1, 1e6), cur: oneOf(o.cur, [0, 1], 0),
     over: oneOf(o.over, ['win', 'lose'], null),
     overReason: oneOf(o.overReason, ['surrender', 'capitulation'], undefined),
@@ -1459,7 +1461,7 @@ function hasSave(key = SAVE_KEY) {
 // ---- benannte Spielstände
 function saveSummary() {
   return {
-    turn: S.turn, size: S.size, difficulty: S.difficulty || 'normal',
+    turn: S.turn, size: S.size, difficulty: S.difficulty || 'normal', world: S.world, seed: S.seed, game: S.gameId || null,
     cities: S.cities.filter(c => c.owner === 0).length,
     units: S.units.filter(u => u.owner === 0).length,
     over: S.over || null,

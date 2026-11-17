@@ -2375,6 +2375,7 @@ function startNew(size, diffKey, worldKey, seed = null) {   // seed: Kartennumme
 }
 
 function afterLoad() {
+  if (!S.gameId) S.gameId = 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);   // ältere Partie: ab jetzt gruppierbar
   landCheck = true;
   prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
   resetCheatFog();   // jede neue oder geladene Partie beginnt mit Nebel
@@ -3036,38 +3037,74 @@ function fmtDate(t) {
   return d.toLocaleDateString(loc, { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
 }
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
-function slotDesc(m) {
+function slotDesc(m, short = false) {   // short: ohne Karte und Stufe (stehen in der Überschrift der Partie)
   m = { ...m, turn: Math.trunc(Number(m.turn)) || 0, cities: Math.trunc(Number(m.cities)) || 0, units: Math.trunc(Number(m.units)) || 0,
     size: SIZE_NAME[m.size] ? m.size : '', over: ['win', 'lose'].includes(m.over) ? m.over : null };
   const end = m.over === 'win' ? tt(' · gewonnen', ' · won') : m.over === 'lose' ? tt(' · verloren', ' · lost') : '';
   const dl = m.difficulty && DIFFICULTY[m.difficulty] ? ' · ' + DIFFICULTY[m.difficulty].label : '';
+  if (short) return EN ? `Turn ${m.turn} · ${plural(m.cities, 'city', 'cities')} · ${plural(m.units, 'unit', 'units')}${end}` : `Runde ${m.turn} · ${plural(m.cities, 'Stadt', 'Städte')} · ${plural(m.units, 'Einheit', 'Einheiten')}${end}`;
   return EN ? `Turn ${m.turn} · ${plural(m.cities, 'city', 'cities')} · ${plural(m.units, 'unit', 'units')} · ${SIZE_NAME[m.size] || '?'} map${dl}${end}`
     : `Runde ${m.turn} · ${plural(m.cities, 'Stadt', 'Städte')} · ${plural(m.units, 'Einheit', 'Einheiten')} · Karte ${SIZE_NAME[m.size] || '?'}${dl}${end}`;
 }
+// Spielstände nach Partie gruppiert (meta.game = S.gameId): die laufende Partie zuerst und aufgeklappt, die übrigen nach letztem
+// Speicherdatum und zugeklappt; Spielstände ohne Kennung (ältere Versionen) unter „Ältere Spielstände“. Ab sieben Spielständen ein
+// Suchfeld (Name). Je Zeile „Laden“ und kleine Knöpfe für Überschreiben, Export, Löschen; je Partie „Alle löschen“.
+const saveOpen = new Set();   // aufgeklappte Partien (bleibt beim Neuzeichnen erhalten)
+function saveGroupTitle(m) {
+  const w = WORLDS[m.world] ? WORLDS[m.world].label : '';
+  const sz = SIZE_NAME[m.size] || '';
+  const dl = m.difficulty && DIFFICULTY[m.difficulty] ? DIFFICULTY[m.difficulty].label : '';
+  return [w, sz, dl].filter(Boolean).join(' · ') || tt('Partie', 'Game');
+}
 function renderSaves() {
   const slots = listSlots();
-  let rows = '';
+  const q = ($('saveFilter').value || '').trim().toLowerCase();
+  $('saveFilterRow').hidden = slots.length < 7;
+  const row = m => `<tr><td class="nm">${esc(m.name)}</td><td class="muted">${slotDesc(m, true)}</td><td class="muted dt">${fmtDate(m.date)}</td>
+    <td class="acts"><button class="primary" data-load="${m.id}">${tt('Laden', 'Load')}</button><button class="ic" data-over="${m.id}" title="${tt('Mit dem aktuellen Spiel überschreiben', 'Overwrite with the current game')}">⟳</button><button class="ic" data-export="${m.id}" title="${tt('Als Datei herunterladen', 'Download as file')}">⤓</button><button class="ic danger" data-del="${m.id}" title="${tt('Löschen', 'Delete')}">✕</button></td></tr>`;
+  let h = '';
   try {
     const j = localStorage.getItem(SAVE_KEY);
-    if (j) {
+    if (j && !q) {
       const o = JSON.parse(j);
       const m = { turn: o.turn, size: o.size, cities: o.cities.filter(c => c.owner === 0).length, units: o.units.filter(u => u.owner === 0).length, over: o.over, difficulty: o.difficulty };
-      rows += `<tr class="auto"><td>${tt('Automatisch (letzte Runde)', 'Autosave (last turn)')}</td><td class="muted">${slotDesc(m)}</td><td class="muted">${tt('laufend', 'current')}</td>
-        <td class="acts"><button data-load="auto">${tt('Laden', 'Load')}</button><button data-export="auto" title="${tt('Als Datei herunterladen', 'Download as file')}">Export</button></td></tr>`;
+      h += `<table class="stat-table save-table"><tr class="auto"><td class="nm">${tt('Automatisch (letzte Runde)', 'Autosave (last turn)')}</td><td class="muted">${slotDesc(m)}</td><td class="muted dt">${tt('laufend', 'current')}</td>
+        <td class="acts"><button class="primary" data-load="auto">${tt('Laden', 'Load')}</button><button class="ic" data-export="auto" title="${tt('Als Datei herunterladen', 'Download as file')}">⤓</button></td></tr></table>`;
     }
   } catch (e) {}
-  rows += slots.map(m => `<tr><td>${esc(m.name)}</td><td class="muted">${slotDesc(m)}</td><td class="muted">${fmtDate(m.date)}</td>
-    <td class="acts"><button data-load="${m.id}">${tt('Laden', 'Load')}</button><button data-over="${m.id}" title="${tt('Mit dem aktuellen Spiel überschreiben', 'Overwrite with the current game')}">${tt('Überschreiben', 'Overwrite')}</button><button data-export="${m.id}" title="${tt('Als Datei herunterladen', 'Download as file')}">Export</button><button data-del="${m.id}" class="danger" title="${tt('Löschen', 'Delete')}">✕</button></td></tr>`).join('');
-  $('saveRows').innerHTML = rows || `<tr><td colspan="4" class="muted">${tt('Noch keine Spielstände.', 'No saved games yet.')}</td></tr>`;
+  // Gruppen bilden
+  const groups = new Map();
+  for (const m of slots) {
+    if (q && !String(m.name).toLowerCase().includes(q)) continue;
+    const k = typeof m.game === 'string' ? m.game : '_old';
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(m);
+  }
+  const cur = S && S.gameId;
+  const keys = [...groups.keys()].sort((x, y) => (y === cur) - (x === cur) || (x === '_old') - (y === '_old') || groups.get(y)[0].date - groups.get(x)[0].date);
+  for (const k of keys) {
+    const list = groups.get(k), m0 = list[0];
+    const open = q || k === cur || saveOpen.has(k) || keys.length === 1;
+    const title = k === '_old' ? tt('Ältere Spielstände', 'Older saved games') : esc(saveGroupTitle(m0));
+    const seed = k !== '_old' && Number.isFinite(m0.seed) ? ` · ${tt('Karte', 'map')} ${fmtSeed(m0.seed)}` : '';
+    const now = k === cur ? `<span class="sg-cur">${tt('laufende Partie', 'current game')}</span>` : '';
+    h += `<details class="sg" data-game="${esc(k)}" ${open ? 'open' : ''}><summary><span class="sg-t">${title}</span>${now}<span class="muted sg-i">${plural(list.length, tt('Spielstand', 'saved game'), tt('Spielstände', 'saved games'))} · ${tt('zuletzt', 'last')} ${fmtDate(m0.date)}${seed}</span>
+      <button class="ic danger sg-del" data-delgame="${esc(k)}" title="${tt('Alle Spielstände dieser Partie löschen', 'Delete all saved games of this game')}">✕</button></summary>
+      <table class="stat-table save-table">${list.map(row).join('')}</table></details>`;
+  }
+  if (!slots.length) h += `<p class="muted">${tt('Noch keine Spielstände.', 'No saved games yet.')}</p>`;
+  else if (q && !groups.size) h += `<p class="muted">${tt('Kein Spielstand passt zur Suche.', 'No saved game matches the search.')}</p>`;
+  $('saveList').innerHTML = h;
   let used = 0;
   try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('archipel')) used += (localStorage.getItem(k) || '').length; } } catch (e) {}
-  $('saveInfo').textContent = tt(`${slots.length} gespeicherte Spielstände · belegt etwa ${(used * 2 / 1024 / 1024).toFixed(1)} MB von ca. 5 MB Browserspeicher. Export sichert einen Spielstand als Datei (z. B. für einen anderen Browser oder Rechner).`,
-    `${slots.length} saved game${slots.length === 1 ? '' : 's'} · using about ${(used * 2 / 1024 / 1024).toFixed(1)} MB of roughly 5 MB browser storage. Export saves a game as a file (e.g. for another browser or computer).`);
+  $('saveInfo').textContent = tt(`${slots.length} gespeicherte Spielstände · belegt etwa ${(used * 2 / 1024 / 1024).toFixed(1)} MB von ca. 5 MB Browserspeicher. Export (⤓) sichert einen Spielstand als Datei, ⟳ überschreibt ihn mit dem aktuellen Spiel.`,
+    `${slots.length} saved game${slots.length === 1 ? '' : 's'} · using about ${(used * 2 / 1024 / 1024).toFixed(1)} MB of roughly 5 MB browser storage. Export (⤓) saves a game as a file, ⟳ overwrites it with the current game.`);
 }
 function openSaves() {
   if (!S) return;
   $('saveName').value = EN ? `Turn ${S.turn} – ${plural(S.cities.filter(c => c.owner === 0).length, 'city', 'cities')}`
     : `Runde ${S.turn} – ${plural(S.cities.filter(c => c.owner === 0).length, 'Stadt', 'Städte')}`;
+  $('saveFilter').value = '';
   renderSaves(); openModal('mSaves');
   setTimeout(() => { $('saveName').focus(); $('saveName').select(); }, 30);
 }
@@ -3089,6 +3126,15 @@ $('mSaves').addEventListener('click', e => {
   const b = e.target.closest('button');
   if (!b) return;
   const d = b.dataset;
+  if (d.delgame) {
+    e.preventDefault();   // nicht auf-/zuklappen
+    const list = listSlots().filter(m => (typeof m.game === 'string' ? m.game : '_old') === d.delgame);
+    if (list.length && confirm(tt(`Alle ${list.length} Spielstände dieser Partie endgültig löschen?`, `Delete all ${list.length} saved games of this game for good?`))) {
+      for (const m of list) deleteSlot(m.id);
+      renderSaves(); toast(tt(`${list.length} Spielstände gelöscht`, `${list.length} saved games deleted`));
+    }
+    return;
+  }
   if (d.load) {
     const ok = d.load === 'auto' ? loadGame() : (() => { try { return loadSlot(d.load); } catch (err) { return false; } })();
     if (ok) afterSlotLoad(tt('Spielstand geladen', 'Game loaded')); else { toast(tt('Laden fehlgeschlagen', 'Loading failed')); Sfx.play('error'); }
@@ -3109,6 +3155,8 @@ $('mSaves').addEventListener('click', e => {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 });
+$('saveFilter').addEventListener('input', renderSaves);
+$('saveList').addEventListener('toggle', e => { const g = e.target.dataset && e.target.dataset.game; if (g) { if (e.target.open) saveOpen.add(g); else saveOpen.delete(g); } }, true);
 const importPick = document.createElement('input');
 importPick.type = 'file'; importPick.accept = '.json,application/json';
 importPick.onchange = async () => {
