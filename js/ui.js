@@ -2842,6 +2842,7 @@ $('bStart').onclick = () => {
     localStorage.setItem('archipel-world', $('worldSel').value);
   } catch (e) {}
   closeModals(); startNew($('sizeSel').value, $('diffSel').value, $('worldSel').value);
+  Sfx.play('start');   // nur hier (Klick des Spielers): Browser spielen Ton erst nach einer Benutzeraktion
 };
 $('diffSel').onchange = () => { $('diffDesc').textContent = DIFFICULTY[$('diffSel').value].desc; };
 $('worldSel').onchange = () => { $('worldDesc').textContent = WORLDS[$('worldSel').value].desc; };
@@ -2942,9 +2943,9 @@ $('mStats').addEventListener('change', e => {
 
 // ------------------------------------------------------------------ Klangtest
 const FX_NAMES = EN ? { select: 'Select', tick: 'Click', error: 'Invalid', boom: 'Explosion', salvo: 'Battleship salvo', lost: 'Unit lost', capture: 'City captured',
-  cityLost: 'City lost', built: 'Unit ready', clank: 'Load/unload', endTurn: 'End of turn', alarm: 'Enemy contact', victory: 'Victory', defeat: 'Defeat' }
+  cityLost: 'City lost', built: 'Unit ready', clank: 'Load/unload', endTurn: 'End of turn', alarm: 'Enemy contact', start: 'Game start (Grieg)', victory: 'Victory', defeat: 'Defeat' }
   : { select: 'Auswahl', tick: 'Klick', error: 'Ungültig', boom: 'Explosion', salvo: 'Schlachtschiff-Salve', lost: 'Einheit verloren', capture: 'Stadt erobert',
-  cityLost: 'Stadt verloren', built: 'Einheit fertig', clank: 'Ein-/Ausladen', endTurn: 'Rundenende', alarm: 'Feindkontakt', victory: 'Sieg', defeat: 'Niederlage' };
+  cityLost: 'Stadt verloren', built: 'Einheit fertig', clank: 'Ein-/Ausladen', endTurn: 'Rundenende', alarm: 'Feindkontakt', start: 'Spielstart (Grieg)', victory: 'Sieg', defeat: 'Niederlage' };
 
 function renderSoundTest() {
   const pv = Sfx.previewing();

@@ -135,6 +135,32 @@ const Sfx = (() => {
     clank: () => { noise({ dur: 0.08, filter: 'bandpass', f: 2200, q: 4, gain: 0.25 }); tone({ f: 310, f2: 260, type: 'triangle', dur: 0.15, gain: 0.08 }); },
     endTurn: () => { tone({ f: 140, f2: 55, type: 'sine', dur: 0.35, gain: 0.35 }); noise({ dur: 0.12, f: 900, gain: 0.12 }); },
     alarm: () => notes([660, 880, 660], 'square', 0.04, 0.12, 0.1),
+    // Spielstart (ca. 5 s): Anfang der „Morgenstimmung“ aus Peer Gynt von Edvard Grieg (1875; gemeinfrei, Grieg † 1907) –
+    // Flötenmelodie in E-Dur über gehaltenen Streichern, dazu leises Meeresrauschen. Nur die Noten, eigene Klangerzeugung.
+    start: () => {
+      const m = k => 440 * Math.pow(2, (k - 69) / 12);
+      const e8 = 0.18;   // Achtel
+      noise({ dur: 5.2, f: 700, f2: 380, gain: 0.035, attack: 1.2 });   // Brandung
+      noise({ dur: 2.2, f: 520, gain: 0.025, attack: 0.9, at: 2.4 });
+      // sol mi re do re mi | sol mi re do re mi re mi | sol mi sol la mi la | sol mi re do
+      const SO = 83, MI = 80, RE = 78, DO = 76, LA = 85, h = e8 / 2;
+      const mel = [[SO, e8], [MI, e8], [RE, e8], [DO, e8], [RE, e8], [MI, e8],
+        [SO, e8], [MI, e8], [RE, e8], [DO, e8], [RE, h], [MI, h], [RE, h], [MI, h],
+        [SO, e8], [MI, e8], [SO, e8], [LA, e8], [MI, e8], [LA, e8],
+        [SO, e8], [MI, e8], [RE, e8], [DO, e8 * 5]];
+      let t = 0.35;
+      for (const [k, d] of mel) {
+        voice({ f: m(k), at: t, dur: d * 0.92, gain: 0.07, type: 'triangle', cutoff: 2600, attack: 0.035, release: d > e8 ? 0.9 : 0.09, detune: 3, vib: d > e8 ? 9 : 0 });
+        noise({ dur: 0.06, filter: 'bandpass', f: m(k) * 2, q: 2, gain: 0.012, attack: 0.01, at: t });   // Anblasgeräusch
+        t += d;
+      }
+      // Streicher: E-Dur, im dritten Takt A-Dur, zum Schluss wieder E-Dur
+      const bar = e8 * 6, t0 = 0.35;
+      const pad = (ks, at, dur, rel = 0.3) => chord(ks.map(m), { at, dur, gain: 0.018, cutoff: 1100, attack: 0.35, release: rel, detune: 9 });
+      pad([52, 59, 64, 68], t0 - 0.2, bar * 2 + 0.2);
+      pad([45, 57, 61, 64], t0 + bar * 2, bar);
+      pad([40, 52, 59, 64, 68], t0 + bar * 3, bar + 0.5, 1.4);
+    },
     // Siegesfanfare (ca. 8 s): Paukenwirbel, Blechbläser-Melodie über C – F – G – G7 – C, Beckenschlag, langer Schlussakkord
     victory: () => {
       const m = k => 440 * Math.pow(2, (k - 69) / 12);   // MIDI-Notennummer → Hz (60 = C4)
