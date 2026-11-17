@@ -1273,6 +1273,17 @@ function doMove(u, x, y) {
 
 function doGoto(u, x, y) {
   if (u.moves <= 0 && landingPending(u)) { explainLanding(u); return; }   // kein Marschbefehl aus Versehen, solange die Truppen noch angreifen können
+  // Jäger: Ziel weiter als der Treibstoff reicht → ablehnen (er stürzte unterwegs ab); kommt er hin, aber nicht zurück → warnen
+  if (T(u).fuel) {
+    const p = findPath(u, x, y, false);
+    if (p && p.length > u.fuel) {
+      toast(tt(`Treibstoff reicht nicht: Ziel ${p.length} Felder entfernt, Treibstoff für ${u.fuel}`, `Not enough fuel: target ${p.length} tiles away, fuel for ${u.fuel}`), 2600);
+      Sfx.play('error'); return;
+    }
+    const c = cityAt(x, y);
+    if (p && !(c && c.owner === 0) && u.fuel - p.length < distHome(0, x, y))
+      toast(tt('Achtung: Von dort reicht der Treibstoff nicht mehr bis zur nächsten Stadt oder zum Träger.', 'Careful: from there the fuel will not reach the nearest city or carrier.'), 3200);
+  }
   u.order = { type: 'goto', x, y };
   animBegin(95);
   runGoto(u);

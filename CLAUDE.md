@@ -183,6 +183,12 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   in game.js): Berührt der Transporter Land, werden die Truppen geweckt und zählen als wartend, solange sie von Bord können – statt des
   Fensters. Leer schaltet sich der Status ab. Kennzeichen: Pfeil unten links an der Marke (`opts.landing`). Träger laden wie bisher
   einmalig (`loadUnits`). Die KI nutzt beides nicht.
+- **Marsch und Engstellen** (`runGoto`, `ownBlocks`, `GOTO_WAIT` in game.js): Versperren nur eigene Einheiten den Weg (Kolonne vor Brücke
+  oder Wasserstraße), rückt die Einheit bis an den Stau vor und wartet – höchstens 5 Runden, dann Abbruch mit Meldung; Patrouillen warten ohne
+  Grenze. Prüfung über `findPath(…, ignoreOwn = true)`. Jäger warten nie. `doGoto` (ui.js) lehnt Jägermärsche über den Treibstoff hinaus ab
+  und warnt, wenn vom Ziel keine Basis erreichbar ist. Testfälle (Brücke, Fluss, Nebel, Stau, Feind) liefen als Node-Skript mit Kleinkarten.
+  Schiffe im Nebel: `FOG_COST` (2) je unerforschtem Feld direkt neben bekanntem Land (`fogMask` in `findPath`) – sonst planten sie quer
+  durch Inseln, deren Ende im Nebel lag (Umwege in 6 Testfällen 26 → 10 Felder, bei Wasser im Nebel unverändert 0).
 - **Patrouille ist ein Dauerbefehl** (`runPatrol`, game.js): endet nur durch den Spieler, Feindkontakt oder einen unerreichbaren Wegpunkt.
   Jäger tanken zwischendurch selbst: Reicht der Treibstoff nach dem nächsten Schritt nicht mehr für den Heimweg (+1 Feld Reserve),
   fliegt er zur nächsten Stadt (`o.refuel`, `refuelBase`) und macht danach beim selben Wegpunkt weiter. Zweimal Umkehren für denselben

@@ -762,9 +762,25 @@ function makePassable(u, knowAll, ignoreOwn = false) {
 // gewählt, der am nächsten an der direkten Linie Start–Ziel bleibt
 // (winziger Aufschlag je Schritt für den Abstand zur Linie; die Schrittzahl
 // hat immer Vorrang).
-function findPath(u, tx, ty, knowAll = false) {
+// Schiffe: Aufschlag FOG_COST je unerforschtem Feld direkt neben bekanntem Land – dort geht die Küste vermutlich weiter. Sonst plant
+// ein Schiff quer durch eine Insel, deren Ende noch im Nebel liegt, und dreht erst davor ab. Gemessen (6 Fälle mit Land im Nebel,
+// 5 mit Wasser im Nebel): Umwege 26 → 10 Felder, bei Wasser im Nebel keine zusätzlichen; Aufschlag auf alle unerforschten Felder
+// half nicht, höhere Werte verlängerten Fahrten durch unbekanntes Wasser. Bodentruppen und Jäger: kein Aufschlag.
+const FOG_COST = 2;
+// ignoreOwn: eigene Einheiten zählen nicht als Hindernis (Prüfung „versperren nur eigene Einheiten den Weg?“)
+function findPath(u, tx, ty, knowAll = false, ignoreOwn = false) {
   if (u.x === tx && u.y === ty) return [];
-  const passable = makePassable(u, knowAll);
+  const passable = makePassable(u, knowAll, ignoreOwn);
+  const seen = S.players[u.owner].seen, fogCost = !knowAll && T(u).domain === 'sea' ? FOG_COST : 0;
+  let fogMask = null;   // unerforschte Felder direkt neben bekanntem Land
+  if (fogCost) {
+    fogMask = new Uint8Array(S.W * S.H);
+    for (let i = 0; i < fogMask.length; i++) {
+      if (seen[i]) continue;
+      const x = i % S.W, y = (i / S.W) | 0;
+      for (const [dx, dy] of DIRS) { const j = idx(x + dx, y + dy); if (inb(x + dx, y + dy) && seen[j] && S.terrain[j]) { fogMask[i] = 1; break; } }
+    }
+  }
   const W = S.W, N = S.W * S.H, sx = u.x, sy = u.y;
   const lx = tx - sx, ly = ty - sy, len = Math.hypot(lx, ly) || 1;
   const EPS = 1e-5;
@@ -805,7 +821,9 @@ function findPath(u, tx, ty, knowAll = false) {
       if (nx < 0 || ny < 0 || nx >= W || ny >= S.H) continue;
       const ni = ny * W + nx;
       if (ni !== goal && !passable(nx, ny, ni)) continue;
-      const nc = c + 1 + EPS * dev(nx, ny);
+      // Schiffe: Unerforschtes direkt neben bekanntem Land kostet extra (vermutlich Küste) – bekannte Wege werden vorgezogen,
+      // Unbekanntes nur, wenn es deutlich kürzer ist (siehe FOG_COST)
+      const nc = c + 1 + (fogMask && fogMask[ni] ? fogCost : 0) + EPS * dev(nx, ny);
       if (nc < cost[ni]) { cost[ni] = nc; prev[ni] = cur; push([nc, ni]); }
     }
   }
@@ -884,16 +902,38 @@ function contactStop(u, what, hit) {
 }
 
 // Marschbefehl ausführen, solange Bewegungspunkte da sind
+const GOTO_WAIT = 5;   // so viele Runden wartet ein Marsch, wenn nur eigene Einheiten den Weg versperren
+// Steht auf (x, y) eine eigene Einheit, auf die u nicht ziehen kann? (Städte nehmen beliebig viele auf; Einsteigen geht)
+function ownBlocks(u, x, y) {
+  if (cityAt(x, y)) return false;
+  return topUnitsAt(x, y).some(o => o.owner === u.owner && !(T(o).carries === T(u).domain && cargoOf(o).length < T(o).capacity));
+}
 function runGoto(u) {
   let guard = 50;
   while (alive(u) && u.order && u.order.type === 'goto' && u.moves > 0 && guard-- > 0) {
     const o = u.order;
     if (u.x === o.x && u.y === o.y) { u.order = null; break; }
-    const path = findPath(u, o.x, o.y, aiKnowsMap(u.owner));
+    let path = findPath(u, o.x, o.y, aiKnowsMap(u.owner));
+    // Versperren nur eigene Einheiten den Weg (Kolonne vor einer Brücke oder Engstelle): so weit wie möglich vorrücken und
+    // dann warten – höchstens GOTO_WAIT Runden, damit die Einheit nicht unbemerkt ewig steht. Jäger warten nicht (in der Luft
+    // kostet Warten Treibstoff).
+    if ((!path || !path.length) && T(u).domain !== 'air') {
+      const p2 = findPath(u, o.x, o.y, aiKnowsMap(u.owner), true);
+      if (p2 && p2.length) {
+        if (!ownBlocks(u, p2[0][0], p2[0][1])) path = p2;
+        else {
+          o.wait = (o.wait || 0) + 1;
+          if (o.wait <= GOTO_WAIT) break;
+          if (u.owner === 0) addLog(tt(`${T(u).name}: Marsch abgebrochen – der Weg ist seit ${GOTO_WAIT} Runden von eigenen Einheiten versperrt.`, `${T(u).name}: march cancelled – the way has been blocked by your own units for ${GOTO_WAIT} turns.`), '', u.x, u.y);
+          u.order = null; break;
+        }
+      }
+    }
     if (!path || !path.length) {
       if (u.owner === 0) addLog(tt(`${T(u).name}: kein Weg zum Ziel gefunden.`, `${T(u).name}: no path to the destination.`), '', u.x, u.y);
       u.order = null; break;
     }
+    o.wait = 0;
     const [nx, ny] = path[0];
     const snap = contactSnap(u);
     const r = sailStep(u, nx, ny);   // Transporter nimmt beim Auslaufen die wartenden Truppen mit
@@ -943,6 +983,12 @@ function runPatrol(u) {
         if (u.x === tx && u.y === ty) break;   // nur ein Punkt = Standort
       }
       path = findPath(u, tx, ty, aiKnowsMap(u.owner));
+      // nur eigene Einheiten im Weg (z. B. auf einer Brücke): so weit wie möglich vorrücken, dann warten – die Patrouille
+      // bleibt ein Dauerbefehl
+      if ((!path || !path.length) && !air) {
+        const p2 = findPath(u, tx, ty, aiKnowsMap(u.owner), true);
+        if (p2 && p2.length) { if (ownBlocks(u, p2[0][0], p2[0][1])) break; path = p2; }
+      }
       if (!path || !path.length) { stop(tt('Patrouille abgebrochen – kein Weg zum Wegpunkt.', 'patrol aborted – no path to the waypoint.')); break; }
       if (air) {
         const [qx, qy] = path[0], c = cityAt(qx, qy);
