@@ -2775,7 +2775,8 @@ function openSaves() {
   setTimeout(() => { $('saveName').focus(); $('saveName').select(); }, 30);
 }
 function trySave(name, id) {
-  try { saveSlot(name, id); toast(tt('Spiel gespeichert', 'Game saved')); Sfx.play('select'); renderSaves(); return true; }
+  // Erfolg: Fenster schließen (weiterspielen); bei vollem Speicher bleibt es offen, damit man alte Stände löschen kann
+  try { saveSlot(name, id); closeModals(); toast(tt(`Gespeichert: „${name}“`, `Saved: “${name}”`), 2200); Sfx.play('select'); return true; }
   catch (e) { toast(tt('Speicher voll – bitte alte Spielstände löschen oder exportieren', 'Storage full – please delete or export old saved games')); Sfx.play('error'); return false; }
 }
 function afterSlotLoad(msg) {
