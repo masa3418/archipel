@@ -83,7 +83,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Einheitenkarten (`UNIT_INFO`, `UNIT_ROLE`) und die Tabelle „Wer schlägt wen“ (`oddsMatrix` über `attackOdds`) entstehen
   in `buildHelp()` aus den Spieldaten – Prozentwerte nie von Hand in die Hilfe schreiben. Neue Sonderregeln als Zeile in der
   Tabelle `.help-rules` (Reiter „Kampf“) ergänzen, den Einheitentext in `UNIT_INFO`.
-- **Schummeln „Nebel aus“**: `CHEAT_FOG` (game.js), geschaltet mit `setCheatFog` (ui.js, Haken im Menü, `archipel-cheat-fog`). `computeVision(0)`
+- **Schummeln „Nebel aus“**: `CHEAT_FOG` (game.js), geschaltet mit `setCheatFog` (ui.js, Haken im Menü mit Rückfrage `askCheatFog`; wird nicht gemerkt,
+  `resetCheatFog` in `startNew`/`afterLoad` – jede neue oder geladene Partie beginnt mit Nebel). `computeVision(0)`
   legt dann das echte Kartengedächtnis in `P.real` (`seen`, `knownOwner`) ab und füllt `seen`/`vis`/`sonar` mit 1; `serialize` sichert immer
   das echte. Beim Abschalten kehrt der Nebel zurück. Wer `P.seen`/`P.knownOwner` schreibt, muss `P.real` beachten (bisher schreibt nur
   `computeVision`). In Simulationen bleibt der Schalter aus. Anzeige: Schildchen `.cheat` neben der Rundenzahl.

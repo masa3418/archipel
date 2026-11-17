@@ -1856,6 +1856,7 @@ function showGameOver() {
 
 function startNew(size, diffKey, worldKey) {
   prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
+  resetCheatFog();   // jede neue oder geladene Partie beginnt mit Nebel
   if (!diffKey) { try { diffKey = localStorage.getItem('archipel-diff') || 'normal'; } catch (e) { diffKey = 'normal'; } }
   if (!worldKey) { try { worldKey = localStorage.getItem('archipel-world') || 'inseln'; } catch (e) { worldKey = 'inseln'; } }
   setTimeout(() => { logSeen = S.log[0] || null; updateLogHead(); }, 0);
@@ -1871,6 +1872,7 @@ function startNew(size, diffKey, worldKey) {
 
 function afterLoad() {
   prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
+  resetCheatFog();   // jede neue oder geladene Partie beginnt mit Nebel
   logSeen = S.log[0] || null;
   if (!S.hist) S.hist = [];
   if (!S.hist.length) recordStrength();
@@ -2203,17 +2205,35 @@ $('vUnits').onclick = () => { setProdView(false); setPathView(false); };
 $('vPaths').onclick = () => setPathView(!pathView);
 $('vProd').onclick = () => setProdView(true);
 // ------------------------------------------------------------------ Schummeln: Nebel aus
-// Haken im Menü (archipel-cheat-fog, wird gemerkt). Regeln: CHEAT_FOG/computeVision in game.js. Solange er gesetzt ist, steht
-// neben der Rundenzahl ein Schildchen „Nebel aus“ – ein Klick darauf schaltet ihn wieder ab.
+// Haken im Menü. Regeln: CHEAT_FOG/computeVision in game.js. Solange er gesetzt ist, steht neben der Rundenzahl ein Schildchen
+// „Nebel aus“ – ein Klick darauf schaltet ihn wieder ab. Vor dem Aufdecken fragt das Spiel nach (askCheatFog): Was man einmal
+// gesehen hat, weiß man. Deshalb wird der Haken auch nicht gemerkt – jede neue oder geladene Partie beginnt mit Nebel
+// (resetCheatFog in startNew/afterLoad).
 function setCheatFog(on) {
   CHEAT_FOG = !!on;
-  try { localStorage.setItem('archipel-cheat-fog', CHEAT_FOG ? '1' : '0'); } catch (err) {}
   $('cheatFogChk').checked = CHEAT_FOG;
   if (S) { computeVision(0); refresh(); updateHover(); }
 }
-try { CHEAT_FOG = localStorage.getItem('archipel-cheat-fog') === '1'; } catch (e) {}
-$('cheatFogChk').checked = CHEAT_FOG;
-$('cheatFogChk').onchange = e => setCheatFog(e.target.checked);
+function resetCheatFog() { CHEAT_FOG = false; $('cheatFogChk').checked = false; }
+function askCheatFog() {
+  if (!S) return;
+  $('offerTitle').textContent = tt('Wirklich die ganze Karte aufdecken?', 'Really reveal the whole map?');
+  $('offerText').innerHTML = tt('Du siehst dann alle Inseln und Städte, alle Einheiten des Gegners und jeden seiner Züge.<br><br>Was du einmal gesehen hast, weißt du – auch wenn du den Nebel danach wieder einschaltest. Das kann dir den Spaß an dieser Partie nehmen.',
+    'You will then see all islands and cities, all enemy units and every one of his moves.<br><br>What you have seen once, you know – even if you switch the fog back on afterwards. This can spoil the fun of this game.');
+  // der hervorgehobene Knopf ist die sichere Wahl
+  $('offerYes').textContent = tt('Nebel behalten', 'Keep the fog');
+  $('offerNo').textContent = tt('Ja, aufdecken', 'Yes, reveal');
+  $('offerYes').onclick = () => closeModals();
+  $('offerNo').onclick = () => { closeModals(); Sfx.play('tick'); setCheatFog(true); };
+  openModal('mOffer');
+}
+try { localStorage.removeItem('archipel-cheat-fog'); } catch (e) {}   // frühere Fassung hat den Haken gemerkt
+$('cheatFogChk').checked = false;
+$('cheatFogChk').onchange = e => {
+  if (!e.target.checked) { setCheatFog(false); return; }
+  e.target.checked = false;   // erst nach der Rückfrage
+  closeMenu(); askCheatFog();
+};
 
 $('powerChk').checked = showPower;
 $('powerChk').onchange = e => {
