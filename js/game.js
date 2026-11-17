@@ -1136,6 +1136,31 @@ function recordStrength() {
   if (S.hist.length > 1000) S.hist.shift();
 }
 
+// Zeitraffer (ui.js: openTimelapse): Verlauf der Partie, je Runde zu Beginn des Zugs des Menschen und beim Spielende festgehalten.
+//   S.tl.from  – Runde, ab der aufgezeichnet wird (ältere Spielstände: ab dem Laden)
+//   S.tl.seen  – je Feld die Runde, in der der Mensch es zuerst gesehen hat (0 = nie); Uint16Array, gespeichert als Base64
+//   S.tl.own   – echte Besitzwechsel der Städte [Runde, Stadt, Besitzer]; Anfangszustand als Einträge der Runde „from“
+//   S.tl.know  – was der Mensch über die Besitzer wusste (knownOwner) [Runde, Stadt, Besitzer]; Anfangszustand wie oben
+// Während der Partie zeigt der Zeitraffer nur seen/know (sonst verriete er den Gegner im Nebel), am Ende own und die ganze Karte.
+// Bei „Nebel aus“ zählt das echte Kartengedächtnis (P.real).
+const TL_MAX_EVENTS = 20000;
+function tlState(list, n) {   // Stand nach allen Einträgen einer Liste (Besitzer je Stadt, -2 = noch kein Eintrag)
+  const r = new Array(n).fill(-2);
+  for (const e of list) r[e[1]] = e[2];
+  return r;
+}
+function recordTimeline() {
+  const P = S.players[0], seen = (P.real || P).seen, known = (P.real || P).knownOwner, t = S.turn;
+  if (!S.tl || !S.tl.seen || S.tl.seen.length !== seen.length) S.tl = { from: t, seen: new Uint16Array(seen.length), own: [], know: [] };
+  const tl = S.tl;
+  for (let i = 0; i < seen.length; i++) if (seen[i] && !tl.seen[i]) tl.seen[i] = t;
+  const own = tlState(tl.own, S.cities.length), kn = tlState(tl.know, S.cities.length);
+  for (const c of S.cities) {
+    if (own[c.id] !== c.owner && tl.own.length < TL_MAX_EVENTS) tl.own.push([t, c.id, c.owner]);
+    if (known[c.id] !== -2 && kn[c.id] !== known[c.id] && tl.know.length < TL_MAX_EVENTS) tl.know.push([t, c.id, known[c.id]]);
+  }
+}
+
 // Meldet einmal, wenn ein sichtbares feindliches Schlachtschiff neben einer eigenen Stadt liegt
 // (nicht gespeichert: nach dem Laden wird einmal erneut gewarnt)
 let batWarned = { game: null, keys: new Set() };
@@ -1178,7 +1203,7 @@ function startTurn(p) {
     }
   }
   computeVision(p);
-  if (p === 0) { recordStrength(); warnBattleships(); }
+  if (p === 0) { recordStrength(); recordTimeline(); warnBattleships(); }
 }
 
 function endTurn(p) {
@@ -1238,6 +1263,7 @@ function serialize() {
     if (k === 'cityGrid') continue;
     o[k] = TYPED[k] ? b64(S[k]) : S[k];
   }
+  if (S.tl) o.tl = { from: S.tl.from, seen: b64(S.tl.seen), own: S.tl.own, know: S.tl.know };   // Zeitraffer
   // Höhe nur für die Grafik: 256 Stufen genügen
   o.elev = { q: b64(Uint8Array.from(S.elev, v => Math.round(Math.max(0, Math.min(1, v)) * 255))) };
   // Sichtbereiche werden beim Laden neu berechnet
@@ -1344,6 +1370,23 @@ function sanitizeState(o) {
   });
   s.kills = tally(o.kills); s.wasted = tally(o.wasted);
   s.killsFrom = Array.isArray(o.kills) ? int(o.killsFrom, 1, 1, 1e6) : s.turn;
+
+  // Zeitraffer (siehe recordTimeline). Fehlt er oder passt er nicht, beginnt die Aufzeichnung beim Laden neu.
+  s.tl = null;
+  if (o.tl && typeof o.tl === 'object' && typeof o.tl.seen === 'string') {
+    try {
+      const seen = unb64(o.tl.seen, Uint16Array);
+      if (seen.length === N) {
+        const nc = s.cities.length;
+        for (let i = 0; i < N; i++) if (seen[i] > s.turn) seen[i] = s.turn;
+        const ev = v => (Array.isArray(v) ? v.slice(0, TL_MAX_EVENTS) : [])
+          .filter(e => Array.isArray(e) && isNum(e[0]) && isNum(e[1]) && isNum(e[2]) && e[1] >= 0 && e[1] < nc)
+          .map(e => [int(e[0], 1, 0, s.turn), int(e[1], 0, 0, nc - 1), int(e[2], -1, -1, 1)])
+          .sort((a, b) => a[0] - b[0]);   // der Zeitraffer liest die Einträge der Reihe nach
+        s.tl = { from: int(o.tl.from, 1, 1, s.turn), seen, own: ev(o.tl.own), know: ev(o.tl.know) };
+      }
+    } catch (e) { s.tl = null; }
+  }
 
   if (!Array.isArray(o.players) || o.players.length !== 2) throw new Error(tt('Ungültige Spielerdaten', 'Invalid player data'));
   s.players = o.players.map(P => {

@@ -103,6 +103,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Zerstörte Einheiten** (Statistik): `killUnit(u, by)` zählt mit – `by` = Spieler, der zerstört hat (→ `S.kills[by][typ]`), `-1` = ohne
   Gegner verloren (Absturz, neutrale Stadt → `S.wasted[besitzer][typ]`), ohne Angabe nichts (Eroberer wird Besatzung). Wer eine neue
   Stelle einbaut, an der Einheiten sterben, gibt `by` an. `S.killsFrom` = Runde, ab der gezählt wird (ältere Spielstände: ab dem Laden).
+- **Zeitraffer**: `recordTimeline()` (game.js, in `startTurn(0)`, `afterLoad`, `showGameOver`) schreibt `S.tl` mit: `from` (ältere Spielstände:
+  ab dem Laden), `seen` (Uint16Array: Runde der Entdeckung je Feld, als Base64 gespeichert – Sonderfall in `serialize`), `own` (echte
+  Besitzwechsel) und `know` (Wissen des Menschen) als `[Runde, Stadt, Besitzer]`, chronologisch. `openTimelapse` (ui.js, Menü, Taste T,
+  Spielende-Fenster) zeigt während der Partie nur `seen`/`know`, nach dem Ende `own` und die ganze Karte; Umland = nächste Stadt
+  auf derselben Insel (`tlZone`, ≤ 4 Felder). Kurve aus `S.hist`, folgt `showPower`. Spielstand wird dadurch 5–20 kB größer (klein–groß).
 - **Neues Feld im Spielzustand** → in `sanitizeState` (game.js) aufnehmen, sonst wird es beim
   Laden verworfen. Spielstände aus Dateien sind nicht vertrauenswürdig (siehe `SECURITY.md`);
   Werte aus `S` nie ungeprüft per `innerHTML` ausgeben, Texte mit `esc()` maskieren.

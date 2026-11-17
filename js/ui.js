@@ -2077,6 +2077,7 @@ function maybeOfferEnd() {
 }
 
 function showGameOver() {
+  recordStrength(); recordTimeline();   // Endstand für Kurve und Zeitraffer
   $('overTitle').textContent = S.over === 'win' ? tt('Sieg!', 'Victory!') : tt('Niederlage', 'Defeat');
   $('overText').textContent = S.over === 'win'
     ? (S.overReason === 'capitulation' ? tt(`Der Gegner hat in Runde ${S.turn} vor deiner Übermacht kapituliert.`, `The enemy surrendered to your superior force in turn ${S.turn}.`) : tt(`Du hast die Welt in ${S.turn} Runden erobert.`, `You conquered the world in ${S.turn} turns.`))
@@ -2085,6 +2086,180 @@ function showGameOver() {
   Sfx.play(S.over === 'win' ? 'victory' : 'defeat');
   refresh();
 }
+
+// ------------------------------------------------------------------ Zeitraffer
+// Spielt den Verlauf der Partie Runde für Runde ab (Aufzeichnung: recordTimeline in game.js, Kurve aus S.hist): entdeckte Karte,
+// Städte und ihr Umland in der Farbe des Besitzers, darunter das Kräfteverhältnis. Während der Partie nur, was der Mensch zur
+// jeweiligen Zeit wusste (sonst verriete der Zeitraffer den Gegner im Nebel); nach dem Spielende die ganze Wahrheit.
+// Die Kurve folgt der Einstellung „Kräfteverhältnis anzeigen“ (am Spielende immer sichtbar). Menü, Taste T, Spielende-Fenster.
+const tlv = { t: 1, from: 1, to: 1, play: false, last: 0, acc: 0, s: 8, zone: null, truth: false, off: null };
+// Umland: jedes Landfeld gehört zur nächstgelegenen Stadt auf derselben Insel (höchstens 4 Schritte entfernt)
+function tlZone() {
+  const z = new Int16Array(S.W * S.H).fill(-1);
+  let q = [];
+  for (const c of S.cities) { const i = idx(c.x, c.y); z[i] = c.id; q.push(i); }
+  for (let step = 1; step <= 4 && q.length; step++) {
+    const nq = [];
+    for (const i of q) {
+      const x = i % S.W, y = (i - x) / S.W;
+      for (const [dx, dy] of DIRS) {
+        const nx = x + dx, ny = y + dy;
+        if (!inb(nx, ny)) continue;
+        const j = idx(nx, ny);
+        if (!S.terrain[j] || z[j] >= 0) continue;
+        z[j] = z[i]; nq.push(j);
+      }
+    }
+    q = nq;
+  }
+  return z;
+}
+function tlOwnersAt(list, t) {   // Besitzer je Stadt zur Runde t (-2 = unbekannt / noch kein Eintrag)
+  const r = new Array(S.cities.length).fill(-2);
+  for (const e of list) { if (e[0] > t) break; r[e[1]] = e[2]; }
+  return r;
+}
+function openTimelapse() {
+  if (!S) return;
+  closeMenu(); closeCtx();
+  recordTimeline();
+  if (!S.tl) return;
+  tlv.truth = !!S.over;
+  tlv.from = S.tl.from; tlv.to = Math.max(S.turn, tlv.from);
+  tlv.zone = tlZone();
+  const s = Math.max(3, Math.floor(Math.min(720 / S.W, 450 / S.H)));
+  tlv.s = s;
+  const m = $('tlMap'); m.width = S.W * s; m.height = S.H * s;
+  tlv.off = document.createElement('canvas'); tlv.off.width = S.W; tlv.off.height = S.H;
+  const sl = $('tlSlider'); sl.min = tlv.from; sl.max = tlv.to;
+  $('tlNote').textContent = (tlv.truth
+    ? tt('Die Partie ist vorbei – der Zeitraffer zeigt die ganze Karte und alle Städte, auch was im Nebel lag.', 'The game is over – the time-lapse shows the whole map and every city, including what lay in the fog.')
+    : tt('Gezeigt wird nur, was du zur jeweiligen Zeit wusstest. Nach dem Spielende siehst du hier die ganze Wahrheit.', 'Only what you knew at the time is shown. After the game ends you will see the whole truth here.'))
+    + (tlv.from > 1 ? ' ' + tt(`Aufgezeichnet seit Runde ${tlv.from} (älterer Spielstand).`, `Recorded since turn ${tlv.from} (older save).`) : '');
+  $('tlCurve').hidden = !(showPower || tlv.truth);
+  openModal('mTime');
+  tlSet(tlv.from);
+  tlPlay(tlv.to > tlv.from);
+}
+function tlSet(t) {
+  tlv.t = Math.max(tlv.from, Math.min(tlv.to, Math.round(t)));
+  $('tlSlider').value = tlv.t;
+  tlDraw();
+}
+function tlPlay(on) {
+  if (on && tlv.t >= tlv.to) tlv.t = tlv.from;   // am Ende: von vorn
+  tlv.play = !!on;
+  $('tlPlay').textContent = tlv.play ? '❚❚ ' + tt('Pause', 'Pause') : '▶ ' + tt('Abspielen', 'Play');
+  if (tlv.play) { tlv.last = performance.now(); tlv.acc = 0; requestAnimationFrame(tlTick); }
+}
+function tlTick(now) {
+  if (!tlv.play) return;
+  if ($('mTime').hidden) { tlv.play = false; return; }
+  tlv.acc += (now - tlv.last) / 1000 * (+$('tlSpeed').value || 5);
+  tlv.last = now;
+  if (tlv.acc >= 1) {
+    const step = Math.floor(tlv.acc); tlv.acc -= step;
+    tlSet(tlv.t + step);
+    if (tlv.t >= tlv.to) { tlPlay(false); return; }
+  }
+  requestAnimationFrame(tlTick);
+}
+function tlDraw() {
+  const t = tlv.t, tl = S.tl, W = S.W, H = S.H, N = W * H, s = tlv.s;
+  const owners = tlOwnersAt(tlv.truth ? tl.own : tl.know, t);
+  // Besitzwechsel genau in dieser Runde (weißer Ring) – nicht, wenn eine Stadt nur neu entdeckt wurde
+  const prev = t > tlv.from ? tlOwnersAt(tlv.truth ? tl.own : tl.know, t - 1) : owners;
+  const fresh = new Set(S.cities.filter(c => prev[c.id] !== -2 && prev[c.id] !== owners[c.id]).map(c => c.id));
+  // Gelände in Feldauflösung, dann vergrößert
+  const octx = tlv.off.getContext('2d'), img = octx.createImageData(W, H), px = img.data;
+  const tint = [[60, 140, 245], [235, 72, 62]];   // Umland: kräftig, damit es sich vom dunklen Wasser abhebt
+  let seenN = 0;
+  for (let i = 0; i < N; i++) {
+    const known = tlv.truth || (tl.seen[i] && tl.seen[i] <= t);
+    let c = [8, 11, 16];
+    if (known) {
+      if (tl.seen[i] && tl.seen[i] <= t) seenN++;
+      c = S.terrain[i] ? [92, 138, 72] : [22, 46, 74];
+      const zc = tlv.zone[i];
+      const o = zc >= 0 ? owners[zc] : -2;
+      if (S.terrain[i] && o >= 0) c = c.map((v, k) => Math.round(v * 0.3 + tint[o][k] * 0.7));
+    }
+    px[i * 4] = c[0]; px[i * 4 + 1] = c[1]; px[i * 4 + 2] = c[2]; px[i * 4 + 3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+  const m = $('tlMap'), ctx = m.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(tlv.off, 0, 0, W * s, H * s);
+  // Städte
+  const cnt = { 0: 0, 1: 0, '-1': 0, unk: 0 };
+  const r = Math.max(2.5, s * 0.6);
+  for (const c of S.cities) {
+    const o = owners[c.id];
+    if (o === -2) { cnt.unk++; continue; }
+    cnt[o]++;
+    const cx = c.x * s + s / 2, cy = c.y * s + s / 2;
+    if (fresh.has(c.id)) {
+      ctx.beginPath(); ctx.arc(cx, cy, r + Math.max(3, s * 0.45), 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = Math.max(1.5, s * 0.18); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = ownerPal(o).color; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 1; ctx.stroke();
+  }
+  $('tlTurn').textContent = tt(`Runde ${t}`, `Turn ${t}`);
+  const dot = o => `<i style="background:${ownerPal(o).color}"></i>`;
+  const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
+  $('tlStats').innerHTML = `<span>${dot(0)}${tt('Du', 'You')}: ${plural(cnt[0], tt('Stadt', 'city'), tt('Städte', 'cities'))}</span>`
+    + `<span>${dot(1)}${tt('Gegner', 'Enemy')}: ${cnt[1]}</span>`
+    + `<span>${dot(-1)}${tt('neutral', 'neutral')}: ${cnt[-1]}</span>`
+    + (tlv.truth ? '' : `<span>${tt('unbekannt', 'unknown')}: ${cnt.unk}</span>`)
+    + (tlv.truth ? '' : `<span>${tt('entdeckt', 'explored')}: ${Math.round(seenN / N * 100)} %</span>`);
+  tlCurve();
+}
+// Kräfteverhältnis über die Runden: Anteil „Du“ blau von unten, Gegner rot darüber, Strich bei der gezeigten Runde
+function tlCurve() {
+  const cv2 = $('tlCurve');
+  if (cv2.hidden) return;
+  const w = cv2.clientWidth || 720, h = 54, dpr = window.devicePixelRatio || 1;
+  if (cv2.width !== Math.round(w * dpr)) { cv2.width = Math.round(w * dpr); cv2.height = Math.round(h * dpr); }
+  const ctx = cv2.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const hist = (S.hist || []).filter(e => e.t >= tlv.from && e.t <= tlv.to);
+  const span = Math.max(1, tlv.to - tlv.from);
+  const X = t => (t - tlv.from) / span * (w - 2) + 1;
+  ctx.fillStyle = '#5a1f1c'; ctx.fillRect(0, 0, w, h);
+  if (hist.length) {
+    ctx.beginPath(); ctx.moveTo(X(hist[0].t), h);
+    for (const e of hist) ctx.lineTo(X(e.t), h - e.me / Math.max(1, e.me + e.en) * h);
+    ctx.lineTo(X(hist[hist.length - 1].t), h); ctx.closePath();
+    ctx.fillStyle = '#2f7de1'; ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, h / 2 + 0.5); ctx.lineTo(w, h / 2 + 0.5); ctx.stroke(); ctx.setLineDash([]);
+  const x = X(tlv.t);
+  ctx.fillStyle = '#fff'; ctx.fillRect(Math.round(x) - 1, 0, 2, h);
+  const e = hist.filter(o => o.t <= tlv.t).pop();
+  if (e) {
+    const pct = Math.round(e.me / Math.max(1, e.me + e.en) * 100);
+    ctx.font = '600 12px system-ui, sans-serif'; ctx.textBaseline = 'top';
+    const txt = tt(`Du ${pct} %`, `You ${pct} %`), tw = ctx.measureText(txt).width;
+    const tx = Math.min(Math.max(4, x + 6), w - tw - 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(tx - 3, 3, tw + 6, 16);
+    ctx.fillStyle = '#fff'; ctx.fillText(txt, tx, 5);
+  }
+}
+$('tlPlay').onclick = () => tlPlay(!tlv.play);
+$('tlSlider').oninput = e => { tlPlay(false); tlSet(+e.target.value); };
+$('tlCurve').onclick = e => {
+  const r = e.currentTarget.getBoundingClientRect();
+  tlPlay(false); tlSet(tlv.from + (e.clientX - r.left) / r.width * (tlv.to - tlv.from));
+};
+$('tlMap').onclick = () => tlPlay(!tlv.play);
+try { const sp = localStorage.getItem('archipel-tlspeed'); if (sp && [...$('tlSpeed').options].some(o => o.value === sp)) $('tlSpeed').value = sp; else $('tlSpeed').value = '5'; } catch (e) { $('tlSpeed').value = '5'; }
+$('tlSpeed').onchange = e => { try { localStorage.setItem('archipel-tlspeed', e.target.value); } catch (err) {} };
+$('bTime').onclick = openTimelapse;
+$('bOverTime').onclick = () => { closeModals(); openTimelapse(); };
 
 function startNew(size, diffKey, worldKey) {
   prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
@@ -2112,6 +2287,7 @@ function afterLoad() {
   sel = null; selCity = null; hover = null; updateHover();
   resizeCanvas();
   computeVision(0);
+  recordTimeline();   // ältere Spielstände ohne Zeitraffer: Aufzeichnung beginnt jetzt
   selectNext();
   const u = selUnit();
   const c = S.cities.find(c => c.owner === 0);
@@ -2397,6 +2573,10 @@ document.addEventListener('keydown', e => {
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   const modalOpen = [...document.querySelectorAll('.modal')].some(m => !m.hidden);
+  if (modalOpen && !$('mTime').hidden) {   // Zeitraffer: Leertaste spielt/hält an, Pfeile gehen eine Runde vor/zurück
+    if (e.key === ' ') { e.preventDefault(); tlPlay(!tlv.play); return; }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); tlPlay(false); tlSet(tlv.t + (e.key === 'ArrowRight' ? 1 : -1)); return; }
+  }
   if (modalOpen) { if (e.key === 'Escape') closeModals(); return; }
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (e.shiftKey && KEYDIR[k] && k.startsWith('Arrow')) {   // Umschalt + Pfeiltaste: Karte verschieben
@@ -2408,7 +2588,7 @@ document.addEventListener('keydown', e => {
   if (k === 'g') { setPathView(!pathView); return; }
   if (prodView) {   // in der Produktionsansicht gibt es keine Einheitenbefehle
     if (k === 'Escape') { setProdView(false); return; }
-    if (!['+', '-', 'f', 'h', '?', 'm', 'k', 'i', 'Enter'].includes(k)) return;
+    if (!['+', '-', 'f', 'h', '?', 'm', 'k', 'i', 't', 'Enter'].includes(k)) return;
   }
   if (rallyMode) { if (k === 'Escape') rallyAbort(); return; }
   const u = selUnit();
@@ -2437,6 +2617,7 @@ document.addEventListener('keydown', e => {
     case 'm': toggleSound(); break;
     case 'k': openSoundTest(); break;
     case 'i': openStats(); break;
+    case 't': openTimelapse(); break;
   }
 });
 
@@ -2537,6 +2718,7 @@ function updateKeyLegend() {
       row(enter, tt('Runde beenden', 'end turn'), !S.over),
       row(esc_, tt('Auswahl aufheben', 'clear selection')),
       row(kb('H') + kb('I'), tt('Handbuch · Statistik', 'handbook · statistics')),
+      row(kb('T'), tt('Zeitraffer der Partie', 'time-lapse of the game')),
       row(kb('M') + kb('K'), tt('Ton an/aus · Klangtest', 'sound on/off · sound test')),
     ]);
   }

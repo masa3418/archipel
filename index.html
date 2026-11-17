@@ -239,6 +239,21 @@
   .patrolbox { margin-top: 8px; padding: 8px 10px; border: 1px solid #2f6f66; background: #12302c; border-radius: 8px; font-size: 13px; }
   .patrolbox b { color: #7fe0d0; }
   .dlg.wide { max-width: 760px; }
+  /* Zeitraffer */
+  .tl-dlg { padding: 16px 20px; }
+  .tl-dlg h2 { margin-bottom: 2px; }
+  .tl-dlg #tlNote { margin: 0 0 8px; font-size: 13px; }
+  #tlMap { display: block; margin: 0 auto; max-width: 100%; max-height: calc(100vh - 300px); border-radius: 6px; image-rendering: pixelated; cursor: pointer; }
+  .tl-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 8px 0 4px; font-size: 13px; color: var(--muted); }
+  .tl-stats b { color: var(--text); font-size: 15px; min-width: 92px; }
+  #tlStats { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .tl-stats i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  #tlCurve { display: block; width: 100%; height: 54px; cursor: pointer; }
+  #tlCurve[hidden] { display: none; }
+  .tl-ctrl { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .tl-ctrl #tlPlay { min-width: 96px; }
+  .tl-ctrl input[type=range] { flex: 1; accent-color: var(--accent); }
+  .tl-ctrl select { width: auto; margin: 0; }
   .cap-dlg { max-width: 640px; border-color: #8a6a24; box-shadow: 0 0 0 1px #3a2f17, 0 20px 60px rgba(0,0,0,.5), 0 0 60px rgba(242,184,75,.18); }
   .cap-head { text-align: center; margin: -20px -24px 12px; padding: 18px 24px 12px; border-radius: 12px 12px 0 0;
     background: radial-gradient(ellipse at 50% 0%, rgba(242,184,75,.28), transparent 70%); }
@@ -394,6 +409,7 @@
   <button id="bNew" class="mi"><span data-en="New game">Neues Spiel</span></button>
   <button id="bSaves" class="mi" title="Spielstände speichern und laden" data-en-title="Save and load games"><span data-en="Saved games">Spielstände</span></button>
   <button id="bStats" class="mi"><span data-en="Statistics">Statistik</span><kbd>I</kbd></button>
+  <button id="bTime" class="mi" title="Die Partie im Zeitraffer: wie sich Karte und Reiche Runde für Runde entwickelt haben" data-en-title="The game as a time-lapse: how the map and the empires developed turn by turn"><span data-en="Time-lapse">Zeitraffer</span><kbd>T</kbd></button>
   <h4 data-en="Settings">Einstellungen</h4>
   <label class="ms"><span data-en="Volume">Lautstärke</span><input id="vol" type="range" min="0" max="100"></label>
   <button id="bSndTest" class="mi" title="Klänge anhören und je Einheit einstellen" data-en-title="Listen to the sounds and adjust them per unit"><span data-en="Sound test">Klangtest</span><kbd>K</kbd></button>
@@ -656,6 +672,7 @@
               <tr><td><kbd>+</kbd> <kbd>−</kbd></td><td data-en="zoom">Zoom</td></tr>
               <tr><td><kbd>F</kbd></td><td data-en="centre the map on the selected unit (also the crosshair button at the top) – handy after looking around the map">Karte auf die ausgewählte Einheit zentrieren (auch der Knopf mit dem Fadenkreuz oben) – praktisch, nachdem du dich auf der Karte umgesehen hast</td></tr>
               <tr><td><kbd>H</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>K</kbd></td><td data-en="handbook · statistics · sound on/off · sound test">Handbuch · Statistik · Ton an/aus · Klangtest</td></tr>
+              <tr><td><kbd>T</kbd></td><td data-en="time-lapse: the game so far, turn by turn – during the game only what you knew at the time, after the end the whole map (space plays/pauses, ← → step)">Zeitraffer: die Partie bisher, Runde für Runde – während des Spiels nur, was du damals wusstest, nach dem Ende die ganze Karte (Leertaste spielt/hält an, ← → Schritt)</td></tr>
             </table>
             <p class="muted" data-en="Tip: in the ☰ Menu you can show the most important keys directly on the map (“Show keyboard shortcuts on the map”).">Tipp: Im ☰ Menü kannst du die wichtigsten Tasten direkt auf der Karte einblenden („Tastenkürzel auf der Karte einblenden“).</p>
           </div>
@@ -815,6 +832,26 @@
   </div>
 </div>
 
+<div id="mTime" class="modal" hidden>
+  <div class="dlg wide tl-dlg">
+    <h2 data-en="Time-lapse">Zeitraffer</h2>
+    <p id="tlNote" class="muted"></p>
+    <canvas id="tlMap" title="Klick: abspielen / anhalten (Leertaste) · ← → eine Runde zurück / vor" data-en-title="Click: play / pause (Space) · ← → one turn back / forward"></canvas>
+    <div class="tl-stats"><b id="tlTurn"></b><span id="tlStats"></span></div>
+    <canvas id="tlCurve" width="720" height="54" title="Kräfteverhältnis – Klick springt zu dieser Runde" data-en-title="Balance of power – click jumps to this turn"></canvas>
+    <div class="tl-ctrl">
+      <button id="tlPlay" class="primary"></button>
+      <input type="range" id="tlSlider" min="1" max="1" step="1">
+      <select id="tlSpeed" title="Geschwindigkeit" data-en-title="Speed">
+        <option value="2" data-en="slow">langsam</option>
+        <option value="5" data-en="normal">normal</option>
+        <option value="12" data-en="fast">schnell</option>
+      </select>
+      <button data-close data-en="Close">Schließen</button>
+    </div>
+  </div>
+</div>
+
 <div id="mLanding" class="modal" hidden>
   <div class="dlg" style="text-align:center;max-width:520px">
     <h2 id="landTitle"></h2>
@@ -872,7 +909,7 @@
   <div class="dlg" style="text-align:center">
     <h2 id="overTitle"></h2>
     <p id="overText" class="muted"></p>
-    <div class="row" style="justify-content:center"><button class="primary" id="bOverNew" data-en="New game">Neues Spiel</button><button data-close data-en="View map">Karte ansehen</button></div>
+    <div class="row" style="justify-content:center"><button class="primary" id="bOverNew" data-en="New game">Neues Spiel</button><button id="bOverTime" data-en="Watch time-lapse">Zeitraffer ansehen</button><button data-close data-en="View map">Karte ansehen</button></div>
   </div>
 </div>
 
