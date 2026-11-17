@@ -38,6 +38,7 @@ function generateMap(W, H, seed, worldKey = 'inseln') {
     };
   }
   const raw = new Float32Array(N);
+  const own = new Int16Array(N).fill(-1);   // Inselwelten: geplante Insel, zu der das Feld gehört (höchster Wert 1 - d/R)
   let landFrac = 0.37;
   if (!world.rBig) {
     // Kontinente: großflächiges Rauschen, ergibt wenige riesige Landmassen
@@ -78,13 +79,15 @@ function generateMap(W, H, seed, worldKey = 'inseln') {
     }
     const n1 = layer(Math.max(3, Rb / 1.5)), n2 = layer(Math.max(2, Rb / 3.5)), n3 = layer(Math.max(1.5, Rb / 7));
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      let v = -1;
-      for (const o of isl) {
+      let v = -1, best = -Infinity;
+      for (let k = 0; k < isl.length; k++) {
+        const o = isl[k];
         const dx = x - o.x, dy = y - o.y;
-        if (Math.abs(dx) > o.ext * 1.6 + 2 || Math.abs(dy) > o.ext * 1.6 + 2) continue;
         const u = dx * o.c + dy * o.s, w = -dx * o.s + dy * o.c;
-        const d = Math.hypot(u / o.st, w * o.st);
-        v = Math.max(v, 1 - d / o.R);
+        const sc = 1 - Math.hypot(u / o.st, w * o.st) / o.R;
+        if (sc > best) { best = sc; own[y * W + x] = k; }
+        if (Math.abs(dx) > o.ext * 1.6 + 2 || Math.abs(dy) > o.ext * 1.6 + 2) continue;
+        v = Math.max(v, sc);
       }
       v += (n1(x, y) - 0.5) * 0.8 + (n2(x, y) - 0.5) * 0.5 + (n3(x, y) - 0.5) * 0.2;
       const e = Math.min(x, W - 1 - x, y, H - 1 - y);
@@ -104,6 +107,25 @@ function generateMap(W, H, seed, worldKey = 'inseln') {
     terrain[i] = !border && raw[i] > thr ? 1 : 0;
     elev[i] = raw[i] - thr;
     if (elev[i] > maxE) maxE = elev[i];
+  }
+  if (world.split) {
+    // Inselreich: Das Rauschen der Küsten darf geplante Inseln nicht zu großen zusammenwachsen lassen. Stoßen Felder
+    // verschiedener Inseln aneinander (auch über Eck), wird das schwächere Wasser – es bleibt immer ein Kanal dazwischen.
+    for (let changed = true, pass = 0; changed && pass < 6; pass++) {
+      changed = false;
+      for (let i = 0; i < N; i++) {
+        if (!terrain[i]) continue;
+        const x = i % W, y = (i / W) | 0;
+        for (const [dx, dy] of DIRS) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+          const j = ny * W + nx;
+          if (!terrain[j] || own[j] === own[i]) continue;
+          terrain[raw[i] < raw[j] ? i : j] = 0; changed = true;
+          if (!terrain[i]) break;
+        }
+      }
+    }
   }
   for (let i = 0; i < N; i++) elev[i] = terrain[i] ? elev[i] / maxE : 0;
 

@@ -84,10 +84,11 @@ const MAP_SIZES = {
 //  perBig – Kartenfläche je großer Insel (mehr Fläche → mehr große Inseln, mindestens 2)
 //  mid   – Anteil mittlerer Inseln an den übrigen, small – größter Radius kleiner Inseln (relativ zu rBig)
 //  gap   – Mindestabstand (Wasser) zwischen geplanten Inseln
+//  split – geplante Inseln bleiben getrennt (Rauschen darf sie nicht verbinden), siehe generateMap
 const WORLDS = {
   inseln: { label: tt('Inselreich', 'Archipelago'),
-    desc: tt('Viele Inseln, nur wenige große. Ohne Schiffe kommst du nicht weit.', 'Many islands, only a few large ones. You won\'t get far without ships.'),
-    rBig: 0.12, perBig: 1700, mid: 0.3, small: 0.35, gap: 3.5, land: 0.33 },
+    desc: tt('Viele mittlere und kleine Inseln, keine großen Landmassen. Ohne Schiffe kommst du nicht weit.', 'Many medium and small islands, no large land masses. You won\'t get far without ships.'),
+    rBig: 0.09, perBig: 1700, mid: 0.5, small: 0.45, gap: 3.5, land: 0.33, split: true },
   gemischt: { label: tt('Gemischt', 'Mixed'),
     desc: tt('Einige große Inseln und ein paar kleine dazwischen.', 'Several large islands with a few small ones in between.'),
     rBig: 0.16, perBig: 1500, mid: 0.5, small: 0.3, gap: 3, land: 0.35 },

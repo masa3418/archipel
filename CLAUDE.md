@@ -218,7 +218,12 @@ mit 3 Feldern waren es 12 bzw. 2 Siege, der schnelle Träger nützte der KI also
 | Brutal | 5 | 1 | wie Schwer, 115 % Bautempo, zweite Stadt |
 
 Partiedauer bis zur Entscheidung (Normal) ca. 210 Runden. Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
-Inselstatistik: größte Insel ≈ 30–40 % des Landes (Inselreich), ≈ 50–60 % (Gemischt), ≈ 75–85 % (Kontinente).
+Inselstatistik: größte Insel ≈ 15–22 % des Landes (Inselreich, je nach Kartengröße), ≈ 50–60 % (Gemischt), ≈ 75–85 % (Kontinente).
+Inselreich (`split: true` in `WORLDS`, `generateMap`): Jedes Landfeld gehört zur geplanten Insel mit dem höchsten Wert 1 − d/R (`own`);
+stoßen Felder verschiedener Inseln aneinander (auch über Eck), wird das schwächere Wasser. Vorher ließ das Küstenrauschen Inseln
+zusammenwachsen (größte Insel Ø 31–42 %, bis 76 %). Startinseln: Ø 4,8–5,7 Städte, mindestens 4. Die Tabelle oben stammt noch vom alten
+Generator; im Inselreich allein (je 96–288 Partien, alt → neu): Leicht 99 → 99 %, Normal 66 → 54 %, Schwer 26 → 24 %, Brutal 4 → 3 %,
+Partien ca. 10 Runden länger, offen auf Normal 1 → 3 % (meist schon entschieden, nur die letzten Inseln fehlen).
 
 ### KI messen
 

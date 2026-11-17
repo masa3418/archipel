@@ -296,6 +296,8 @@
   .over-facts div { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; }
   .over-facts b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .over-facts span { font-size: 11px; color: var(--muted); }
+  .over-facts div:has(.seedv) { grid-column: span 2; }   /* Kartennummer braucht mehr Platz */
+  .over-facts b .seedv { font-size: inherit; color: var(--text); }
   .over-dlg i.me, .over-units .me { color: #8fc0ff; font-style: normal; }
   .over-dlg i.en, .over-units .en { color: #ff9d96; font-style: normal; }
   .over-units { font-size: 12px; margin: 4px 0; }

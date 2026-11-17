@@ -2123,7 +2123,7 @@ function showGameOver(quiet = false) {
     + box(vs(cm.won[0], cm.won[1]), tt('Städte erobert', 'Cities captured'))
     + box(vs(sum(built[0]), sum(built[1])), tt('Einheiten gebaut', 'Units built'))
     + box(vs(sum(kills[0]), sum(kills[1])), tt('Einheiten zerstört', 'Units destroyed'))
-    + (S.seed != null ? box(fmtSeed(S.seed), tt('Kartennummer', 'Map number')) : '');
+    + (S.seed != null ? box('<span class="seedv">' + fmtSeed(S.seed) + '</span>', tt('Kartennummer', 'Map number')) : '');
 
   // je Einheitentyp
   const cell = n => `<td class="num ${n ? '' : 'zero'}">${n}</td>`;
