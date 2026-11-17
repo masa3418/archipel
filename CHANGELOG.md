@@ -3,6 +3,23 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.3.0
+
+Transporter nehmen dem Spieler Handgriffe ab.
+
+- **Mitnehmen beim Auslaufen:** Verlässt ein Transporter eine eigene Stadt, nimmt er die Infanterie und Panzer, die dort
+  warten (ohne Befehl oder auf Wache), von selbst mit, soweit der Laderaum reicht. Es genügt also, Truppen in einer Stadt
+  zu sammeln und mit dem Transporter hindurchzufahren. Wer in einer eigenen Stadt selbst auslädt, lässt die Truppen dort.
+- **Laden bis voll** (Taste L): Der Transporter bleibt liegen und nimmt auf, was in seiner Stadt oder direkt neben ihm
+  wartet – auch in den folgenden Runden, bis er voll ist. Der Befehl geht jetzt überall, nicht nur im Hafen.
+- **Sofortangriff vom Schiff:** Liegt der Transporter neben einer neutralen oder feindlichen Stadt, greifen die Truppen mit
+  „Ausladen“ (Taste U) direkt vom Schiff aus an – erst Infanterie, dann Panzer, bis die Stadt fällt. Bisher kostete das
+  Aussteigen ihren Zug, und der Angriff kam erst in der nächsten Runde. „Nur an Land setzen“ gibt es weiterhin.
+
+*English:* transports now do more by themselves – they take waiting infantry and tanks along when leaving one of your
+cities, “Load until full” (L) keeps them in place until the hold is full, and next to a neutral or enemy city “Unload”
+(U) makes the troops attack straight from the ship instead of a turn later.
+
 ## 1.2.4
 
 Fehlerkorrektur.
