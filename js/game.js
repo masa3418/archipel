@@ -721,7 +721,8 @@ function runGoto(u) {
   }
 }
 
-// Patrouille: läuft die Wegpunkte im Kreis ab (Start -> P1 -> ... -> Pn -> Start ...)
+// Patrouille: läuft die Wegpunkte im Kreis ab (Start -> P1 -> ... -> Pn -> Start ...), bis der Spieler sie aufhebt oder ein
+// Feind auftaucht. Jäger tanken zwischendurch von selbst (siehe runPatrol).
 function enemyAdjacent(u) {
   for (const [dx, dy] of DIRS) {
     const x = u.x + dx, y = u.y + dy;
@@ -739,31 +740,51 @@ function runPatrol(u) {
   while (alive(u) && u.order && u.order.type === 'patrol' && u.moves > 0 && guard-- > 0) {
     const o = u.order;
     if (enemyAdjacent(u)) { stop(tt('Patrouille unterbrochen – Feindkontakt!', 'patrol interrupted – enemy contact!'), 'bad'); break; }
-    let [tx, ty] = o.pts[o.i];
-    if (u.x === tx && u.y === ty) {
-      o.i = (o.i + 1) % o.pts.length;
-      [tx, ty] = o.pts[o.i];
-      if (u.x === tx && u.y === ty) break;   // nur ein Punkt = Standort
-    }
-    const path = findPath(u, tx, ty, aiKnowsMap(u.owner));
-    if (!path || !path.length) { stop(tt('Patrouille abgebrochen – kein Weg zum Wegpunkt.', 'patrol aborted – no path to the waypoint.')); break; }
-    const [nx, ny] = path[0];
-    // Jäger: nur weiterfliegen, wenn der Treibstoff für den Rückweg zur Basis reicht
-    if (T(u).domain === 'air' && typeof distHome === 'function') {
-      const c = cityAt(nx, ny);
-      const base = c && c.owner === u.owner;
-      if (!base && u.fuel - 1 - Math.max(0, u.moves - 1) < distHome(u.owner, nx, ny)) {
-        u.order = { type: 'goto', ...nearestBase(u) };
-        if (u.owner === 0) addLog(tt('Jäger: Patrouille abgebrochen – Treibstoff knapp, fliegt zur Basis.', 'Fighter: patrol aborted – low on fuel, flying back to base.'), '', u.x, u.y);
-        runGoto(u);
-        break;
+    // Jäger tanken zwischendurch: Reicht der Treibstoff nach dem nächsten Schritt nicht mehr sicher für den Rückweg, fliegt
+    // der Jäger zur nächsten Basis (o.refuel) und setzt die Patrouille danach beim selben Wegpunkt fort – sie bleibt ein
+    // Dauerbefehl. Muss er zweimal hintereinander für denselben Wegpunkt umkehren (o.rf), liegt der außer Reichweite.
+    const air = T(u).domain === 'air' && typeof distHome === 'function';
+    if (o.refuel && isBase(u)) o.refuel = false;   // getankt
+    let path = null;
+    if (!o.refuel) {
+      let [tx, ty] = o.pts[o.i];
+      if (u.x === tx && u.y === ty) {
+        o.i = (o.i + 1) % o.pts.length; o.rf = -1;
+        [tx, ty] = o.pts[o.i];
+        if (u.x === tx && u.y === ty) break;   // nur ein Punkt = Standort
+      }
+      path = findPath(u, tx, ty, aiKnowsMap(u.owner));
+      if (!path || !path.length) { stop(tt('Patrouille abgebrochen – kein Weg zum Wegpunkt.', 'patrol aborted – no path to the waypoint.')); break; }
+      if (air) {
+        const [qx, qy] = path[0], c = cityAt(qx, qy);
+        // nach dem Schritt muss der Treibstoff für den Heimweg reichen, mit einem Feld Reserve für Umwege
+        if (!(c && c.owner === u.owner) && u.fuel - 1 < distHome(u.owner, qx, qy) + 1) {
+          if (o.rf === o.i) {   // unerreichbar: Patrouille aufgeben und heimfliegen, statt ohne Befehl in der Luft zu bleiben
+            u.order = { type: 'goto', ...refuelBase(u) };
+            if (u.owner === 0) addLog(tt(`${T(u).name}: Patrouille abgebrochen – Wegpunkt außer Reichweite, fliegt zur Basis.`, `${T(u).name}: patrol aborted – waypoint out of range, flying back to base.`), '', u.x, u.y);
+            runGoto(u);
+            break;
+          }
+          o.refuel = true; o.rf = o.i;
+        }
       }
     }
+    if (o.refuel) {
+      const b = refuelBase(u);
+      path = findPath(u, b.x, b.y, aiKnowsMap(u.owner));
+      if (!path || !path.length) { stop(tt('Patrouille abgebrochen – kein Weg zur Basis.', 'patrol aborted – no path to the base.')); break; }
+    }
+    const [nx, ny] = path[0];
     const snap = contactSnap(u);
     const r = moveStep(u, nx, ny);
     computeVision(u.owner);
     if (!r.ok) {
-      if (r.msg === MSG_OCCUPIED) break;   // eigene Einheit im Weg: nächste Runde weiter
+      if (r.msg === MSG_OCCUPIED) {
+        // eigene Einheit auf dem Wegpunkt: Schiffe und Bodentruppen warten bis zur nächsten Runde; ein Jäger kann nicht in der
+        // Luft warten (ungenutzte Bewegung kostet Treibstoff) und nimmt gleich den nächsten Wegpunkt
+        if (air && !o.refuel && o.pts.length > 1) { o.i = (o.i + 1) % o.pts.length; continue; }
+        break;
+      }
       stop(tt(`Patrouille abgebrochen (${r.msg}).`, `patrol aborted (${r.msg}).`));
       break;
     }
@@ -903,6 +924,14 @@ function runExplore(u) {
   }
 }
 
+// Wohin ein Jäger auf Patrouille zum Tanken fliegt: zur nächsten eigenen Stadt, solange der Treibstoff dafür reicht – von dort
+// geht die Patrouille weiter. Nur wenn keine Stadt erreichbar ist, zur nächsten Basis überhaupt (auch ein Träger; die Landung
+// dort beendet die Patrouille).
+function refuelBase(u) {
+  let best = null, bd = 1e9;
+  for (const c of S.cities) if (c.owner === u.owner) { const d = cheb(u.x, u.y, c.x, c.y); if (d < bd) { bd = d; best = { x: c.x, y: c.y }; } }
+  return best && bd <= u.fuel ? best : nearestBase(u);
+}
 function nearestBase(u) {
   let best = null, bd = 1e9;
   for (const c of S.cities) if (c.owner === u.owner) {
@@ -1103,6 +1132,7 @@ function sanitizeState(o) {
     else if (od && od.type === 'patrol' && Array.isArray(od.pts)) {
       const pts = od.pts.slice(0, 50).map(pt).filter(Boolean), start = pt(od.start);
       if (pts.length && start) order = { type: 'patrol', start, pts, i: int(od.i, 0, 0, pts.length - 1) };
+      if (order && od.refuel === true) order.refuel = true;   // Jäger war gerade auf dem Weg zum Tanken
     }
     const nu = { id, type: u.type, owner: oneOf(u.owner, [0, 1], 0), x, y,
       hp: num(u.hp, t.hp, 0.01, t.hp), moves: int(u.moves, 0, 0, t.move), fuel: num(u.fuel, t.fuel || 0, 0, t.fuel || 0),

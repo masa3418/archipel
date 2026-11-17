@@ -133,6 +133,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Fertigstellung (Zielfeld für den Typ betretbar, Weg vorhanden, Jäger nur zu eigener Stadt in Treibstoff-Reichweite).
   Produktion immer über `setProduction` (game.js) bzw. `changeProd` (ui.js) umstellen: Das löscht das Marschziel, weil es für den
   alten Typ galt; auch eine Eroberung löscht es. Gesetzt wird es über Stadtkarte oder Kontextmenü (`actRally`, `rallyMode`, Klick aufs Zielfeld).
+- **Patrouille ist ein Dauerbefehl** (`runPatrol`, game.js): endet nur durch den Spieler, Feindkontakt oder einen unerreichbaren Wegpunkt.
+  Jäger tanken zwischendurch selbst: Reicht der Treibstoff nach dem nächsten Schritt nicht mehr für den Heimweg (+1 Feld Reserve),
+  fliegt er zur nächsten Stadt (`o.refuel`, `refuelBase`) und macht danach beim selben Wegpunkt weiter. Zweimal Umkehren für denselben
+  Wegpunkt (`o.rf`) heißt „außer Reichweite“ und beendet die Patrouille. Früher brach der Jäger hier ab und stand ohne Befehl in der Stadt.
 - **Stege** (gfx.js, `buildTerrain`): Berühren sich zwei Landfelder nur an einer Ecke, dürfen Bodentruppen diagonal hinüber und Schiffe
   diagonal hindurch (Bewegung in 8 Richtungen, keine Sperre an Ecken). Die Karte zeigt das mit abgerundeten Ecken und einem kleinen Holzsteg.
   Kommt je Karte nur etwa einmal vor (0–5). Wer die Regel an Ecken ändert, muss auch diese Darstellung und den Handbuchsatz anpassen.
