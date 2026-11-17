@@ -2778,7 +2778,13 @@ $('cheatFogChk').onchange = e => {
 // (keine Einheit ausgewählt, kein Transporter, Produktionsansicht …), ist abgeblendet; beim Festlegen einer Patrouille oder eines
 // Marschziels stehen nur dessen Tasten da. Wird in refresh() aufgefrischt. Tasten selbst: keydown-Handler weiter unten.
 let showKeys = false;
-try { showKeys = localStorage.getItem('archipel-keys') === '1'; } catch (e) {}
+// Neue Spieler (erster Besuch, Willkommensfenster noch nicht gesehen) bekommen die Legende eingeblendet; die Wahl wird gemerkt,
+// wer sie wegklickt, sieht sie nicht wieder. Wer schon spielt und nie etwas eingestellt hat, behält „aus“.
+try {
+  const v = localStorage.getItem('archipel-keys');
+  if (v === null && !welcomeSeen()) { showKeys = true; localStorage.setItem('archipel-keys', '1'); }
+  else showKeys = v === '1';
+} catch (e) {}
 function setShowKeys(on) {
   showKeys = !!on;
   try { localStorage.setItem('archipel-keys', showKeys ? '1' : '0'); } catch (e) {}
