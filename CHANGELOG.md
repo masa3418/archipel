@@ -3,6 +3,48 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.5.1
+
+Ruhigeres Bild, aufgeräumte Fenster, nichts geht mehr verloren.
+
+**Bewegung auf dem Bildschirm**
+
+- **Wiedergabe der Züge** (Einstellungen): langsam, normal, schnell oder aus. Gilt für Gegnerzüge, eigene Märsche und
+  Patrouillen, eigene Züge und die Kamerafahrten. „Aus“ zeigt keine Bewegung – die Einheiten stehen sofort am Ziel, die Karte
+  bewegt sich nur, wenn sie muss. Für alle, die schnelles Hin und Her auf dem Bildschirm nicht gut vertragen; ist im System
+  „Bewegung reduzieren“ eingestellt, beginnt das Spiel mit „aus“. Das neue „normal“ ist ruhiger als bisher.
+- Beim Gegnerzug springt die Karte nicht mehr vorzeitig zur eigenen Einheit – Gegnerzüge im aktuellen Ausschnitt blieben
+  sonst ungesehen.
+
+**Fenster und Menü**
+
+- **Einstellungen** im eigenen Fenster, nach Ton, Anzeige, Spielablauf, Steuerung und Schummeln geordnet, mit einem
+  erklärenden Satz je Einstellung. Das ☰ Menü ist wieder kurz und hat einen Eintrag „Kräfteverhältnis“.
+- **Spielstände** nach Partie gruppiert (Welt, Größe, Stufe, Kartennummer), die laufende oben; kompakte Zeilen, Suche ab
+  sieben Spielständen, ganze Partie löschen.
+- **Statistik:** Welt und Kartennummer stehen vorn.
+
+**Speichern**
+
+- Das Spiel speichert jetzt **nach jedem Zug** und beim Schließen der Seite – nach dem Neuladen geht es genau dort weiter.
+  Ein verlorener Kampf lässt sich damit nicht mehr durch Neuladen wiederholen.
+- **Strg+S** (Mac ⌘+S) öffnet die Spielstände; nochmals drücken oder Enter speichert.
+
+**Tasten**
+
+- Die Taste K (Klangtest) entfällt; N wirkt auch in der Produktionsansicht; das Handbuch nennt alle Tasten vollständig.
+- Neue Spieler sehen die Tastenlegende über der Karte von Anfang an (wegklicken wird gemerkt).
+
+**Online als App**
+
+- Die Online-Version lässt sich in Chrome und Edge als App installieren (eigenes Fenster, Symbol im Startmenü) und startet
+  danach auch ohne Internet. Die Offline-Fassung bleibt, wie sie ist.
+
+*English:* a calmer screen and tidier windows. A new setting “Replay of moves” (slow, normal, fast, off) controls all movement
+and camera pans – “off” shows no movement at all, and it is the default if your system asks for reduced motion. Settings
+have their own window, saved games are grouped by game, the game saves after every move, and Ctrl+S opens the saved games.
+The online version can be installed as an app in Chrome and Edge.
+
 ## 1.5.0
 
 Neue Welten, Zeitraffer und ein würdiges Spielende.
