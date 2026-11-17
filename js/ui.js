@@ -2928,10 +2928,14 @@ function renderStats() {
   const neutralC = S.cities.filter(c => known[c.id] === -1).length;
   const idle = myCities.filter(c => !c.prod).length;
   const box = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
-  $('statSummary').innerHTML = box(diff().label, tt('Schwierigkeit', 'Difficulty')) + box(S.turn, tt('Runde', 'Turn')) + box(myCities.length, tt('Deine Städte', 'Your cities')) + box(myUnits.length, tt('Deine Einheiten', 'Your units'))
+  // Welt und Kartennummer gleich nach der Schwierigkeit – zum Weitergeben oder für „Diese Welt noch einmal“; ältere Partien kennen keine Nummer
+  const wd = WORLDS[S.world], sz = MAP_SIZES[S.size];
+  $('statSummary').innerHTML = box(diff().label, tt('Schwierigkeit', 'Difficulty'))
+    + box(esc(wd ? wd.label : '–'), tt('Welt', 'World') + (sz ? ' · ' + esc(sz.label.split(' ')[0]) : ''))
+    + (S.seed != null ? box(fmtSeed(S.seed), tt('Kartennummer', 'Map number')) : box('–', tt('Kartennummer (älterer Spielstand)', 'Map number (older save)')))
+    + box(S.turn, tt('Runde', 'Turn')) + box(myCities.length, tt('Deine Städte', 'Your cities')) + box(myUnits.length, tt('Deine Einheiten', 'Your units'))
     + box(enemyC, tt('Bekannte Feindstädte', 'Known enemy cities')) + box(neutralC, tt('Bekannte neutrale', 'Known neutral')) + box(S.cities.length, tt('Städte insgesamt', 'Cities in total'))
-    + (idle ? box(idle, tt('Städte ohne Produktion', 'Cities without production')) : '')
-    + (S.seed != null ? box(fmtSeed(S.seed), tt('Kartennummer', 'Map number')) : '');
+    + (idle ? box(idle, tt('Städte ohne Produktion', 'Cities without production')) : '');
 
   let total = [0, 0, 0];
   $('statUnits').innerHTML = UNIT_ORDER.map(k => {
