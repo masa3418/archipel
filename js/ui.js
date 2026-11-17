@@ -229,6 +229,14 @@ function drawToken(u, px, py, size, opts = {}) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(String(opts.badge), bx, by + 0.5);
   }
+  if (opts.landing) {   // „Ausladen, wenn möglich“ ist an: kleiner Pfeil unten links
+    const r = Math.max(5, size * 0.16), bx = px + r * 0.9, by = py + size - r * 0.9;
+    ctx.fillStyle = 'rgba(20,28,40,0.9)'; ctx.beginPath(); ctx.arc(bx, by, r, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#f2b84b'; ctx.lineWidth = Math.max(1.5, size / 18); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(bx, by - r * 0.5); ctx.lineTo(bx, by + r * 0.45);
+    ctx.moveTo(bx - r * 0.42, by + r * 0.02); ctx.lineTo(bx, by + r * 0.5); ctx.lineTo(bx + r * 0.42, by + r * 0.02); ctx.stroke();
+    ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+  }
   if (opts.sentry) {
     const r = Math.max(5, size * 0.16), bx = px + r * 0.9, by = py + r * 0.9;
     ctx.fillStyle = 'rgba(20,28,40,0.9)';
@@ -298,8 +306,11 @@ function drawFog(P = S.players[0]) {
 
 function moveHints(u) {
   const out = [];
-  if (!u || u.moves <= 0) return out;
+  if (!u) return out;
   const t = T(u);
+  // Beladener Transporter: Städte, die seine Truppen vom Schiff aus stürmen können (auch wenn er selbst keinen Zug mehr hat)
+  if (t.carries === 'land' && u.owner === 0) for (const o of assaultOptions(u)) out.push([o.city.x, o.city.y, 'attack']);
+  if (u.moves <= 0) return out;
   for (const [dx, dy] of DIRS) {
     const x = u.x + dx, y = u.y + dy;
     if (!inb(x, y) || !S.players[0].seen[idx(x, y)]) continue;
@@ -611,6 +622,7 @@ function render(now = performance.now()) {
       goto: own && show.order && show.order.type === 'goto',
       patrol: own && show.order && show.order.type === 'patrol',
       explore: own && show.order && show.order.type === 'explore',
+      landing: own && !!show.landing,
     };
     if (inCity) drawToken(show, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66, opts);
     else drawToken(show, x * TS, y * TS, TS, opts);
@@ -720,6 +732,20 @@ function render(now = performance.now()) {
       }
     }
     ring(su.x, su.y);
+    // Sturm vom Schiff: Über jeder Stadt, die die Truppen des gewählten Transporters angreifen können, steht die Chance –
+    // dauerhaft und pulsierend, damit man auf der Karte sieht, was jetzt möglich ist (Klick auf die Stadt oder Taste U)
+    if (T(su).carries === 'land' && su.owner === 0) for (const o of assaultOptions(su)) {
+      const txt = '⚔ ' + Math.round(o.chance * 100) + ' %', hx = o.city.x, hy = o.city.y;
+      ctx.font = `700 ${Math.max(11, Math.round(TS * 0.42))}px system-ui, sans-serif`;
+      const w = ctx.measureText(txt).width + 12, h = Math.max(16, TS * 0.6);
+      const bx = hx * TS + TS / 2 - w / 2, by = hy * TS - h - 3 - pulse * TS * 0.08;
+      roundRectPath(ctx, bx, by, w, h, h / 2);
+      ctx.fillStyle = 'rgba(15,20,28,0.92)'; ctx.fill();
+      ctx.strokeStyle = `rgba(255,95,85,${0.55 + 0.4 * pulse})`; ctx.lineWidth = Math.max(1.5, TS / 18); ctx.stroke();
+      ctx.fillStyle = o.chance >= 0.5 ? '#7ee2ae' : '#ff8a80';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(txt, hx * TS + TS / 2, by + h / 2 + 0.5);
+    }
   } else if (selCity != null && !su) {
     const c = S.cities[selCity];
     if (c) ring(c.x, c.y); else selCity = null;
@@ -819,10 +845,92 @@ function updateBanner(now) {
     + ' <span>' + tt('Klick oder beliebige Taste überspringt', 'Click or press any key to skip') + '</span>';
 }
 
+// ------------------------------------------------------------------ Landemanöver: „Ausladen, wenn möglich“
+// Je Transporter einschaltbar (u.landing, Standard aus). Sobald der Transporter Land berührt, werden seine Truppen geweckt und
+// nacheinander zum Aussteigen angeboten – solange ein freies Landfeld, eine eigene Stadt oder (für Infanterie und Panzer) eine
+// fremde Stadt angrenzt (canDisembark in game.js). Weil die Truppen damit als wartend zählen, endet die Runde nicht von selbst,
+// während ein voller Transporter ungeschützt an der Küste liegt. Ist er leer, schaltet sich der Status von selbst ab.
+// landingUpdate() bringt alle Transporter auf Stand und liefert die erste Einheit, die jetzt aussteigen kann.
+function landingUpdate() {
+  let first = null;
+  if (!S) return null;
+  for (const tr of S.units) {
+    if (tr.owner !== 0 || !tr.landing) continue;
+    const cargo = cargoOf(tr);
+    if (!cargo.length) { delete tr.landing; continue; }
+    for (const o of cargo) {
+      if (T(o).domain !== 'land') continue;
+      if (canDisembark(o, tr)) {
+        if (o.order && o.order.type === 'sentry') o.order = null;      // wecken
+        if (!first && needsOrders(o)) first = o;
+      } else if (!o.order) o.order = { type: 'sentry' };               // nichts mehr frei oder kein Zug: weiterschlafen
+    }
+  }
+  return first;
+}
+function actLanding() {
+  const u = selUnit(); if (!u || T(u).carries !== 'land') return;
+  if (u.landing) {
+    delete u.landing;
+    for (const o of cargoOf(u)) if (!o.order) o.order = { type: 'sentry' };
+    toast(tt('Ausladen, wenn möglich: aus', 'Unload when possible: off'));
+  } else {
+    if (!cargoOf(u).length) { toast(tt('Niemand an Bord', 'Nobody on board')); Sfx.play('error'); return; }
+    u.landing = true;
+    const first = landingUpdate();
+    toast(tt('Ausladen, wenn möglich: an – an Land werden die Truppen von selbst zum Aussteigen angeboten', 'Unload when possible: on – at the coast the troops are offered for disembarking by themselves'), 3500);
+    if (first) select(first);
+  }
+  Sfx.play('tick');
+  refresh(); scheduleAutoEnd();
+}
+
+// ------------------------------------------------------------------ Rückfrage: Angriff vom Schiff
+// Liegt ein beladener Transporter ohne Befehl vor einer neutralen oder feindlichen Stadt, fragt das Spiel einmal je Runde,
+// ob die Truppen angreifen sollen – beim Ankommen und zu Rundenbeginn, sobald keine Animation und kein anderes Fenster offen
+// ist (landingStep in der Hauptschleife). „Nicht angreifen“ gilt für diese Runde (u.noAssault); wer das Fenster nur schließt,
+// entscheidet später – der Transporter wartet dann weiter, und die Runde endet nicht von selbst.
+let landCheck = false;
+function openLandingDialog(u) {
+  const tg = assaultTarget(u);
+  if (!tg) return;
+  u.landAsked = S.turn;
+  select(u);
+  refresh();
+  const cnt = {};
+  for (const o of cargoOf(u)) cnt[o.type] = (cnt[o.type] || 0) + 1;
+  const list = UNIT_ORDER.filter(k => cnt[k]).map(k => `${cnt[k]} × ${UT[k].name}`).join(', ');
+  const name = esc(tg.city.name), pct = Math.round(tg.chance * 100), neutral = tg.city.owner === -1;
+  $('landTitle').textContent = tt(`Vor ${tg.city.name}: angreifen?`, `Off ${tg.city.name}: attack?`);
+  $('landText').innerHTML = tt(`Dein Transporter liegt vor der ${neutral ? 'neutralen' : 'feindlichen'} Stadt <b>${name}</b>. An Bord: ${list}.<br><br>Die Truppen können sofort vom Schiff aus angreifen – erst Infanterie, dann Panzer, bis die Stadt fällt. Chance des ersten Angriffs: <b>${pct} %</b>.`,
+    `Your transport lies off the ${neutral ? 'neutral' : 'enemy'} city of <b>${name}</b>. On board: ${list}.<br><br>The troops can attack straight from the ship – infantry first, then tanks, until the city falls. Chance of the first attack: <b>${pct} %</b>.`);
+  $('landYes').textContent = '⚔ ' + tt('Angreifen', 'Attack');
+  $('landShore').textContent = tt('Nur an Land setzen', 'Just put ashore');
+  $('landNo').textContent = tt('Nicht angreifen', 'Do not attack');
+  $('landYes').onclick = () => { closeModals(); const t2 = alive(u) ? assaultTarget(u) : null; if (t2) doAssault(u, t2.city); };
+  $('landShore').onclick = () => { closeModals(); if (alive(u)) { sel = u.id; actUnload(true); } };
+  $('landNo').onclick = () => {
+    closeModals();
+    u.noAssault = S.turn;                      // für diese Runde entschieden
+    if (!needsOrders(u)) selectNext();
+    refresh(); scheduleAutoEnd();
+  };
+  Sfx.play('tick');
+  openModal('mLanding');
+}
+function landingStep(now) {
+  if (!landCheck || !S || S.over) return;
+  if (animActive(now) || anyModalOpen() || captureQueue.length || patrolMode || rallyMode) return;
+  const u = S.units.find(o => o.landAsked !== S.turn && landingPending(o));
+  if (!u) { landCheck = false; return; }
+  openLandingDialog(u);
+}
+
 function loop(now) {
   updateBanner(now);
   requestAnimationFrame(loop);
   if (S) {
+    landingStep(now);
     pendingCenterStep(now);
     autoEndStep(now);
     playAnimSounds(now);
@@ -884,10 +992,10 @@ function selUnit() {
   return u;
 }
 
-function toast(msg) {
+function toast(msg, ms = 1800) {
   const t = $('toast');
   t.textContent = msg; t.classList.add('show');
-  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 1800);
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), ms);
 }
 
 function centerOn(x, y, force = false) {
@@ -949,7 +1057,7 @@ function pendingCenterStep(now) {
 // an Land setzt oder ihn überspringt. Sonst endete die Runde von selbst, und der Transporter läge eine Gegnerrunde lang
 // schutzlos vor der Stadt.
 function landingPending(u) {
-  return u.owner === 0 && !u.skip && !u.order && u.carrier == null && T(u).carries === 'land' && !!assaultTarget(u);
+  return u.owner === 0 && !u.skip && !u.order && u.carrier == null && T(u).carries === 'land' && !u.landing && u.noAssault !== S.turn && !!assaultTarget(u);
 }
 function needsOrders(u) {
   if (landingPending(u)) return true;
@@ -961,7 +1069,7 @@ function needsOrders(u) {
     if (!tr) return false;
     const c = cityAt(tr.x, tr.y);
     if (c && c.owner === 0) return false;
-    return DIRS.some(([dx, dy]) => inb(tr.x + dx, tr.y + dy) && S.terrain[idx(tr.x + dx, tr.y + dy)] === 1);
+    return canDisembark(u, tr);   // freies Landfeld, eigene Stadt oder (Infanterie/Panzer) fremde Stadt daneben
   }
   return true;
 }
@@ -1019,6 +1127,13 @@ function autoEndStep(now) {
 
 function afterAction(u) {
   computeVision(0);
+  landCheck = true;   // liegt jetzt ein beladener Transporter vor einer fremden Stadt? (Rückfrage, siehe landingStep)
+  const landFirst = landingUpdate();   // „Ausladen, wenn möglich“: Truppen wecken bzw. Status abschalten, wenn leer
+  if (landFirst && u && alive(u) && u.landing && landFirst.carrier === u.id) {   // der Transporter hat gerade Land berührt
+    if (checkGameOver()) showGameOver();
+    select(landFirst); refresh(); scheduleAutoEnd();
+    return;
+  }
   if (checkGameOver()) { showGameOver(); }
   if (!u || !alive(u) || u.order || (u.moves <= 0 && !landingPending(u))) {
     // Erst zu Ende ansehen lassen, was gerade passiert ist (Kampf, Eroberung),
@@ -1037,14 +1152,33 @@ function refresh() { dirty = true; pathCache = null; rallyCache = null; renderMi
 // ------------------------------------------------------------------ Aktionen
 // geortete getauchte U-Boote des Gegners (für die Meldung „Sonarkontakt“ nach einem eigenen Zug)
 function locatedSubs() { return S.units.filter(o => o.owner !== 0 && o.carrier == null && T(o).stealth && !o.surf && canSee(0, o)); }
+// Sturm vom Schiff auf eine bestimmte Stadt (Knopf, Taste U, Klick auf die Stadt, Richtungstaste)
+function doAssault(u, city) {
+  animBegin(140);
+  const r = assaultFrom(u, city);
+  animEnd();
+  if (!r.captured) toast(tt(`Angriff auf ${city.name} abgewehrt`, `Attack on ${city.name} repelled`));
+  afterAction(u);
+}
+// Der Transporter liegt vor einer fremden Stadt und hat selbst keinen Zug mehr: sagen, was jetzt geht
+function explainLanding(u) {
+  const tg = assaultTarget(u);
+  toast(tt(`Der Transporter hat in dieser Runde keinen Zug mehr. Seine Truppen können noch angreifen: Klick auf ${tg.city.name} oder Taste U – Leertaste überspringt.`,
+    `The transport has no moves left this turn. Its troops can still attack: click ${tg.city.name} or press U – Space skips.`), 5000);
+  Sfx.play('error');
+}
 function doMove(u, x, y) {
+  if (T(u).carries === 'land' && u.owner === 0) {
+    const opt = assaultOptions(u).find(o => o.city.x === x && o.city.y === y);
+    if (opt) { doAssault(u, opt.city); return; }                       // Klick oder Richtungstaste auf die Stadt
+    if (u.moves <= 0 && landingPending(u)) { explainLanding(u); return; }
+  }
   u.order = null;
   const before = new Set(locatedSubs().map(o => o.id));
   animBegin(120);
   const r = sailStep(u, x, y);   // wie moveStep; ein Transporter nimmt beim Auslaufen die wartenden Truppen der Stadt mit
   animEnd();
   if (!r.ok) { toast(r.msg); Sfx.play('error'); }
-  else if (landingPending(u) && !r.picked) { const tg = assaultTarget(u); toast(tt(`Vor ${tg.city.name}: Die Truppen an Bord können sofort angreifen (U)`, `Off ${tg.city.name}: the troops on board can attack right away (U)`)); }
   else if (r.picked) { toast(tt(`${r.picked === 1 ? '1 Einheit' : r.picked + ' Einheiten'} aus der Stadt mitgenommen (${cargoOf(u).length}/${T(u).capacity})`, `${r.picked === 1 ? '1 unit' : r.picked + ' units'} taken along from the city (${cargoOf(u).length}/${T(u).capacity})`)); Sfx.play('clank'); }
   else if (r.boarded) Sfx.play('clank');
   afterAction(u);
@@ -1056,6 +1190,7 @@ function doMove(u, x, y) {
 }
 
 function doGoto(u, x, y) {
+  if (u.moves <= 0 && landingPending(u)) { explainLanding(u); return; }   // kein Marschbefehl aus Versehen, solange die Truppen noch angreifen können
   u.order = { type: 'goto', x, y };
   animBegin(95);
   runGoto(u);
@@ -1095,14 +1230,7 @@ function actUnload(landOnly = false) {
   const u = selUnit(); if (!u || !T(u).carries) return;
   if (!cargoOf(u).length) { toast(tt('Niemand an Bord', 'Nobody on board')); return; }
   const tgt = landOnly === true ? null : assaultTarget(u);
-  if (tgt) {
-    animBegin(140);
-    const r = assaultFrom(u, tgt.city);
-    animEnd();
-    if (!r.captured) toast(tt(`Angriff auf ${tgt.city.name} abgewehrt`, `Attack on ${tgt.city.name} repelled`));
-    afterAction(u);
-    return;
-  }
+  if (tgt) { doAssault(u, tgt.city); return; }
   animBegin(120);
   const n = unloadAll(u);
   animEnd();
@@ -1251,12 +1379,14 @@ function endHumanTurn() {
     }
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'patrol')) runPatrol(u);
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'explore')) runExplore(u);
+    landingUpdate();   // „Ausladen, wenn möglich“: Truppen an der Küste wecken, damit sie als wartend zählen
     // Transporter mit „Laden bis voll“: zuletzt, damit auch gerade angekommene Einheiten an Bord gehen
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'load')) runLoad(u);
     if (anim.events.length > ownCount) anim.ownFrom = ownMark;
     computeVision(0);
   }
   animEnd(12000);
+  landCheck = true;   // Rückfrage für Transporter, die jetzt vor einer fremden Stadt liegen
   anim.skippable = anim.events.length > 0;
   const fresh = [];
   let badNews = false;
@@ -1390,6 +1520,7 @@ function updatePanel() {
     // Transporter: „Laden bis voll“ geht überall (Stadt und Nachbarfelder); Träger laden wie bisher nur in der eigenen Stadt
     if (t.carries === 'land') h += `<button data-act="load" title="${tt('L – bleibt liegen, bis er voll ist, und nimmt wartende Bodentruppen aus seiner Stadt und von den Nachbarfeldern an Bord. Ohne diesen Befehl nimmt er beim Verlassen einer eigenen Stadt mit, was dort wartet.', 'L – stays put until full, taking waiting land units on board from its city and the adjacent tiles. Without this order it takes along whatever is waiting when it leaves one of your cities.')}" ${(u.order && u.order.type === 'load') || cargo.length >= t.capacity ? 'disabled' : ''}>${tt('Laden bis voll', 'Load until full')}</button>`;
     else if (t.carries && c && c.owner === 0) h += `<button data-act="load" title="L">${tt('Einladen', 'Load')}</button>`;
+    if (t.carries === 'land') h += `<button data-act="landing" class="${u.landing ? 'on' : ''}" ${!u.landing && !cargo.length ? 'disabled' : ''} title="${tt('Landemanöver: Sobald der Transporter Land berührt, werden die Truppen an Bord von selbst zum Aussteigen angeboten, bis kein Feld mehr frei ist. So endet die Runde nicht, während ein voller Transporter an der Küste liegt. Schaltet sich ab, wenn er leer ist.', 'Landing manoeuvre: as soon as the transport touches land, the troops on board are offered for disembarking by themselves until no tile is free. This way the turn does not end while a full transport lies at the coast. Switches off when it is empty.')}">${u.landing ? '☑' : '☐'} ${tt('Ausladen, wenn möglich', 'Unload when possible')}</button>`;
     let landTgt = null;
     if (t.carries && cargo.length) {
       const tgt = landTgt = t.carries === 'land' ? assaultTarget(u) : null;
@@ -1398,7 +1529,7 @@ function updatePanel() {
         : `<button data-act="unload" title="U">${tt('Ausladen', 'Unload')}</button>`;
     }
     h += `</div>`;
-    if (landTgt) h += `<div class="landnote">${tt(`Die Truppen an Bord haben ihren Zug noch: Angriff auf ${esc(landTgt.city.name)} mit <kbd>U</kbd> – oder mit der Leertaste überspringen.`, `The troops on board still have their move: attack ${esc(landTgt.city.name)} with <kbd>U</kbd> – or press Space to skip.`)}</div>`;
+    if (landTgt) h += `<div class="landnote">${tt(`Die Truppen an Bord haben ihren Zug noch: Klick auf ${esc(landTgt.city.name)} oder <kbd>U</kbd> greift an – die Leertaste überspringt.`, `The troops on board still have their move: click ${esc(landTgt.city.name)} or press <kbd>U</kbd> to attack – Space skips.`)}</div>`;
     if (patrolMode && patrolMode.id === u.id) {
       const n = patrolMode.pts.length;
       h += `<div class="patrolbox">${tt(`<b>Patrouille festlegen</b><br>Klicke nacheinander Wegpunkte auf der Karte (${n} gesetzt).
@@ -1671,6 +1802,12 @@ function updateHover() {
       s += tt(` · Eroberungschance: ${pc} %${why} (deine Einheit geht dabei in der Stadt auf)`, ` · Capture chance: ${pc} %${why} (your unit merges into the city)`) + sinkTxt;
     }
   }
+  // gewählter Transporter mit Truppen: Die Stadt lässt sich vom Schiff aus stürmen
+  const hs = selUnit();
+  if (c && hs && hs.owner === 0 && T(hs).carries === 'land') {
+    const op = assaultOptions(hs).find(o => o.city === c);
+    if (op) s += tt(` · Klick oder U: Die Truppen stürmen vom Schiff aus – ${Math.round(op.chance * 100)} %`, ` · Click or U: the troops storm the city from the ship – ${Math.round(op.chance * 100)} %`);
+  }
   $('hover').textContent = s;
 }
 
@@ -1921,6 +2058,7 @@ function startNew(size, diffKey, worldKey) {
 }
 
 function afterLoad() {
+  landCheck = true;
   prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
   resetCheatFog();   // jede neue oder geladene Partie beginnt mit Nebel
   logSeen = S.log[0] || null;
@@ -2014,6 +2152,7 @@ function renderCtx() {
     h += btn('explore', tt('Erkunden', 'Explore'), 'R', (aboard && t.domain === 'land') || (u.type === 'trn' && cargoOf(u).length > 0));
     h += btn('patrol', tt('Patrouille', 'Patrol'), 'P', aboard);
     h += btn('home', t.domain === 'sea' ? tt('Heimkehr (Hafen)', 'Return home (port)') : tt('Heimkehr', 'Return home'), 'B', !aboard && homeOk(here));
+    if (t.carries === 'land') h += btn('landing', `${u.landing ? '☑' : '☐'} ${tt('Ausladen, wenn möglich', 'Unload when possible')}`, '', !u.landing && !cargoOf(u).length);
     if (t.carries === 'land') h += btn('load', tt('Laden bis voll', 'Load until full'), 'L', !!(u.order && u.order.type === 'load') || cargoOf(u).length >= t.capacity);
     else if (t.carries && here && here.owner === 0) h += btn('load', tt('Einladen', 'Load'), 'L');
     if (t.carries && cargoOf(u).length) {
@@ -2052,7 +2191,7 @@ ctxEl.addEventListener('click', e => {
   const u = selUnit();
   if (b.dataset.cact === 'help') { if (u) openHelp(null, u.type); return; }
   if (u && u.order && u.order.type === 'sentry' && b.dataset.cact !== 'sentry' && b.dataset.cact !== 'cancel') u.order = null;
-  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, unloadLand: () => actUnload(true), cancel: actCancel, patrol: actPatrol, explore: actExplore, home: actHome })[b.dataset.cact]();
+  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, unloadLand: () => actUnload(true), landing: actLanding, cancel: actCancel, patrol: actPatrol, explore: actExplore, home: actHome })[b.dataset.cact]();
 });
 // Klick daneben schließt das Menü (und löst sonst nichts aus)
 document.addEventListener('mousedown', e => {
@@ -2162,7 +2301,7 @@ $('panel').addEventListener('click', e => {
   if (chip) { const u = unitById(+chip.dataset.unit); if (u) { select(u); refresh(); } return; }
   const b = e.target.closest('[data-act]');
   if (!b) return;
-  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, unloadLand: () => actUnload(true), cancel: actCancel, next: actNext, patrol: actPatrol, patrolGo: patrolStart, patrolUndo: patrolUndo, patrolAbort: patrolAbort, explore: actExplore, home: actHome,
+  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, unloadLand: () => actUnload(true), landing: actLanding, cancel: actCancel, next: actNext, patrol: actPatrol, patrolGo: patrolStart, patrolUndo: patrolUndo, patrolAbort: patrolAbort, explore: actExplore, home: actHome,
     rally: () => actRally(S.cities[selCity]), rallyclear: () => rallyClear(S.cities[selCity]), rallyabort: rallyAbort })[b.dataset.act]();
 });
 // ------------------------------------------------------------------ Meldungen ein-/ausklappen

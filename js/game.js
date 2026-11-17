@@ -457,16 +457,30 @@ function runLoad(u) {
   return n;
 }
 
+// Kann die Einheit o von ihrem Transporter tr aus jetzt von Bord gehen? Dazu braucht sie ihren Zug und ein Ziel daneben: ein
+// freies Landfeld, eine eigene Stadt oder – für Infanterie und Panzer – eine neutrale/feindliche Stadt (Angriff vom Schiff).
+function canDisembark(o, tr) {
+  if (o.moves <= 0) return false;
+  for (const [dx, dy] of DIRS) {
+    const x = tr.x + dx, y = tr.y + dy;
+    if (!inb(x, y) || !canEnterTerrain(o, x, y)) continue;
+    const c = cityAt(x, y);
+    if (c) { if (c.owner === o.owner || T(o).capture) return true; continue; }
+    if (!topUnitsAt(x, y).some(q => q.owner === o.owner || canSee(o.owner, q))) return true;   // freies Feld
+  }
+  return false;
+}
+
 // Sturm vom Schiff: Liegt ein Transporter neben einer neutralen oder feindlichen Stadt, greifen die eroberungsfähigen Einheiten
 // an Bord sie direkt an – ohne Umweg über ein Nachbarfeld, der ihren Zug kosten und den Angriff um eine Runde verschieben würde.
 // assaultTarget wählt die Stadt mit den besten Aussichten (Siegchance gegen den Verteidiger × Eroberungschance).
 function assaultTroops(u) {
   return cargoOf(u).filter(o => T(o).capture && o.moves > 0).sort((a, b) => T(a).cost - T(b).cost);   // erst Infanterie, dann Panzer
 }
-function assaultTarget(u) {
-  const troops = assaultTroops(u);
-  if (!troops.length) return null;
-  let best = null;
+// alle Städte, die sich vom Transporter u aus stürmen lassen, die aussichtsreichste zuerst
+function assaultOptions(u) {
+  const troops = assaultTroops(u), out = [];
+  if (!troops.length) return out;
   for (const [dx, dy] of DIRS) {
     const x = u.x + dx, y = u.y + dy;
     if (!inb(x, y)) continue;
@@ -474,10 +488,11 @@ function assaultTarget(u) {
     if (!c || c.owner === u.owner) continue;
     const foes = cityDefenders(troops[0], c, topUnitsAt(x, y).filter(o => o.owner !== u.owner && canSee(u.owner, o)));
     const chance = (foes.length ? attackOdds(troops[0], pickDefender(foes), x, y) : 1) * captureChance(u.owner, c);
-    if (!best || chance > best.chance) best = { city: c, chance, troops: troops.length };
+    out.push({ city: c, chance, troops: troops.length });
   }
-  return best;
+  return out.sort((a, b) => b.chance - a.chance);
 }
+function assaultTarget(u) { return assaultOptions(u)[0] || null; }
 // Greift der Reihe nach an, bis die Stadt fällt; wer danach noch an Bord ist, bleibt dort (für das nächste Ziel).
 function assaultFrom(u, city) {
   let attacks = 0;
@@ -1245,6 +1260,7 @@ function sanitizeState(o) {
     if (isNum(u.wait)) nu.wait = int(u.wait, 0, 0, 1000);
     if (u.surf === true && UT[u.type].stealth) nu.surf = true;
     if (u.dropped === true && UT[u.type].carries) nu.dropped = true;
+    if (u.landing === true && UT[u.type].carries === 'land') nu.landing = true;   // „Ausladen, wenn möglich“
     units.push(nu);
   }
   // Ladung nur an existierenden Trägern

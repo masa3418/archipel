@@ -137,8 +137,14 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Bodentruppen (`waitingTroops`: ohne Befehl oder auf Wache) aus der Stadt und von den Nachbarfeldern, endet, wenn er voll ist.
   `sailStep` (statt `moveStep` in `doMove` und `runGoto`): Verlässt ein Transporter des Spielers eine eigene Stadt, nimmt er die wartenden
   Truppen mit; hat er dort gerade ausgeladen (`u.dropped`), nicht. Beim Einlaufen bleibt die Ladung an Bord. „Ausladen“ neben einer neutralen/feindlichen Stadt ist ein Sturm vom Schiff (`assaultTarget`, `assaultFrom`):
-  erst Infanterie, dann Panzer, bis die Stadt fällt; der Rest bleibt an Bord. `actUnload(true)` setzt nur an Land. `landingPending(u)` (ui.js): Ein beladener Transporter neben einer
-  fremden Stadt gilt als wartend (`needsOrders`), auch ohne eigenen Zug – die Runde endet erst, wenn der Spieler angreift oder überspringt. Träger laden wie bisher
+  erst Infanterie, dann Panzer, bis die Stadt fällt; der Rest bleibt an Bord. `actUnload(true)` setzt nur an Land. Auslöser: Knopf, Taste U, Klick oder Richtungstaste auf die Stadt (`doAssault` über `doMove`);
+  über der Stadt steht pulsierend die Chance (`assaultOptions`). `landingPending(u)` (ui.js): Ein beladener Transporter neben einer
+  fremden Stadt gilt als wartend (`needsOrders`), auch ohne eigenen Zug – die Runde endet erst, wenn der Spieler entschieden hat. Dazu fragt ein Fenster
+  einmal je Runde und Transporter (`landingStep` in der Hauptschleife, `openLandingDialog`, `u.landAsked`/`u.noAssault` = Rundennummer, nicht gespeichert):
+  Angreifen, nur an Land setzen oder nicht angreifen. Ein Transporter mit Befehl (Wache, Marsch, Laden) wird nicht gefragt.
+  „Ausladen, wenn möglich“ (`u.landing`, je Transporter, Standard aus, wird gespeichert; `actLanding`, `landingUpdate` in ui.js, `canDisembark`
+  in game.js): Berührt der Transporter Land, werden die Truppen geweckt und zählen als wartend, solange sie von Bord können – statt des
+  Fensters. Leer schaltet sich der Status ab. Kennzeichen: Pfeil unten links an der Marke (`opts.landing`). Träger laden wie bisher
   einmalig (`loadUnits`). Die KI nutzt beides nicht.
 - **Patrouille ist ein Dauerbefehl** (`runPatrol`, game.js): endet nur durch den Spieler, Feindkontakt oder einen unerreichbaren Wegpunkt.
   Jäger tanken zwischendurch selbst: Reicht der Treibstoff nach dem nächsten Schritt nicht mehr für den Heimweg (+1 Feld Reserve),
