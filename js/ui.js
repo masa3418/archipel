@@ -752,7 +752,10 @@ function render(now = performance.now()) {
   }
   if (hover) {
     const [hx, hy] = hover;
-    const en = su && S.players[0].vis[idx(hx, hy)] ? topUnitsAt(hx, hy).filter(o => o.owner !== 0 && canSee(0, o)) : [];
+    // nur Gegner, die die Einheit hier wirklich angreifen kann (wie in der Hinweiszeile): keine U-Boote für Bodentruppen,
+    // kein Land für Zerstörer & Co., keine Schiffe im Hafen, wenn Bodentruppen die Stadt angreifen
+    const seen = su && S.players[0].vis[idx(hx, hy)] ? topUnitsAt(hx, hy).filter(o => o.owner !== 0 && canSee(0, o)) : [];
+    const en = seen.length ? cityDefenders(su, cityAt(hx, hy), seen).filter(o => canStrike(su, o)) : [];
     ctx.strokeStyle = en.length ? 'rgba(255,110,100,0.9)' : 'rgba(255,255,255,0.45)';
     ctx.lineWidth = en.length ? 2 : 1;
     roundRectPath(ctx, hx * TS + 1.5, hy * TS + 1.5, TS - 3, TS - 3, TS * 0.15); ctx.stroke();
