@@ -1428,12 +1428,14 @@ function endHumanTurn() {
   let badNews = false;
   for (const l of S.log) { if (l === logMark) break; fresh.push(l.text); if (l.cls === 'bad') badNews = true; }
   const followed = anim.events.some(e => e.type === 'cam');
+  const replay = anim.events.length > 0;   // es gibt etwas zu sehen (Gegnerzüge, eigene Befehle)
   checkGameOver();
   saveGame();
-  selectNext();
+  // Während der Wiedergabe bleibt die Karte, wo sie war (sonst liefen Gegnerzüge im bisherigen Ausschnitt ungesehen ab,
+  // weil die Karte sofort zur nächsten eigenen Einheit sprang); danach weich zur eigenen Einheit
+  selectNext(!replay);
   const su = selUnit(), home = su || S.cities.find(c => c.owner === 0);
-  if (followed) {
-    // Kamera bleibt erst, wo sie war; nach der Wiedergabe zurück zur eigenen Einheit
+  if (replay) {
     wrap.scrollLeft = startScroll[0]; wrap.scrollTop = startScroll[1];
   } else if (!su && home) centerOn(home.x, home.y);
   anim.after = () => {
@@ -1442,6 +1444,7 @@ function endHumanTurn() {
     else if (fresh.some(t => t.toLowerCase().includes(tt('fertiggestellt', 'completed')))) Sfx.play('built');
     const back = selUnit() || home;   // die Auswahl kann sich inzwischen geändert haben
     if (followed && back) camTo(back.x + 0.5, back.y + 0.5, 600);
+    else if (replay && back) focusOn(back.x, back.y);   // nur, wenn die Einheit nicht ohnehin gut zu sehen ist
     maybeOfferEnd();
     // nichts zu tun (keine Einheit wartet) und nichts Schlimmes passiert: gleich weiter
     if (!badNews) scheduleAutoEnd();
