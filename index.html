@@ -66,7 +66,25 @@
   .menu .ms.chk { justify-content: flex-start; gap: 8px; cursor: pointer; }
   .menu .ms.chk input { accent-color: var(--accent); margin: 0; flex-shrink: 0; }
   main { display: flex; height: calc(100% - 48px); }
-  #mapCol { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  #mapCol { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+  /* Tastenlegende über der Karte (Menü → „Tastenkürzel auf der Karte“); Klicks gehen durch, außer auf das Schließkreuz */
+  .keylegend { position: absolute; left: 10px; bottom: 20px; z-index: 3; max-width: calc(100% - 20px); max-height: calc(100% - 46px); overflow: hidden;
+    column-width: 175px; column-gap: 20px; width: 400px; padding: 8px 12px 6px; background: rgba(13, 17, 23, .88); border: 1px solid #3d4b5e;
+    border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, .45); font-size: 12px; color: var(--text); pointer-events: none; }
+  .keylegend[hidden] { display: none; }
+  .keylegend .kl-x { position: absolute; top: 3px; right: 4px; pointer-events: auto; background: none; border: 0; color: var(--muted);
+    font-size: 15px; line-height: 1; padding: 2px 5px; cursor: pointer; }
+  .keylegend .kl-x:hover { color: var(--text); }
+  .keylegend .kl-g { break-inside: avoid; margin-bottom: 6px; }
+  .keylegend h5 { margin: 0 0 3px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  .keylegend .kl-row { display: flex; align-items: center; gap: 7px; min-height: 19px; }
+  .keylegend .kl-row > span:first-child { flex: 0 0 auto; min-width: 60px; white-space: nowrap; }
+  .keylegend .kl-row { line-height: 1.25; }
+  .keylegend .kl-row.off { opacity: .35; }
+  .keylegend kbd { font-size: 11px; padding: 0 4px; margin-right: 2px; }
+  .keylegend .kl-pad { display: inline-grid; grid-template-columns: repeat(3, 17px); gap: 2px; }
+  .keylegend .kl-pad kbd { margin: 0; padding: 0; text-align: center; }
+  .keylegend .kl-pad i { display: block; width: 7px; height: 7px; margin: auto; border-radius: 50%; background: var(--accent); }
   #mapWrap { flex: 1; min-height: 0; overflow: auto; position: relative; background: #070a0f; }
   #map { display: block; cursor: crosshair; image-rendering: auto; }
   aside { width: 320px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--line);
@@ -396,6 +414,7 @@
       <option value="25">25 %</option>
       <option value="30">30 %</option>
     </select></label>
+  <label class="ms chk" title="Blendet unten links auf der Karte die wichtigsten Tasten ein. Was gerade nicht geht, ist abgeblendet." data-en-title="Shows the most important keys at the bottom left of the map. What is not possible right now is dimmed."><input type="checkbox" id="keysChk"> <span data-en="Show keyboard shortcuts on the map">Tastenkürzel auf der Karte einblenden</span></label>
   <label class="ms chk"><input type="checkbox" id="autoEndChk"> <span data-en="End the turn automatically when all units have moved">Runde automatisch beenden, wenn alle gezogen haben</span></label>
   <h4 data-en="Cheats">Schummeln</h4>
   <label class="ms chk" title="Du siehst die ganze Karte, alle Städte und alle Einheiten des Gegners, auch getauchte U-Boote, und alle seine Züge. Praktisch, um dem Gegner beim Spielen zuzusehen. Abgeschaltet kehrt der Nebel zurück." data-en-title="You see the whole map, all cities and all enemy units, including submerged submarines, and all his moves. Handy for watching how the enemy plays. Switched off, the fog returns."><input type="checkbox" id="cheatFogChk"> <span data-en="Fog of war off – see the whole map and the enemy">Nebel des Krieges aus – ganze Karte und Gegner sichtbar</span></label>
@@ -407,6 +426,7 @@
       <div id="banner" hidden data-en="Enemy is moving … <span>Click or press any key to skip</span>">Gegner zieht … <span>Klick oder beliebige Taste überspringt</span></div>
     </div>
     <div id="mapWrap"><canvas id="map"></canvas></div>
+    <div id="keyLegend" class="keylegend" hidden></div>
   </div>
   <aside>
     <canvas id="mini"></canvas>
@@ -637,6 +657,7 @@
               <tr><td><kbd>F</kbd></td><td data-en="centre the map on the selected unit (also the crosshair button at the top) – handy after looking around the map">Karte auf die ausgewählte Einheit zentrieren (auch der Knopf mit dem Fadenkreuz oben) – praktisch, nachdem du dich auf der Karte umgesehen hast</td></tr>
               <tr><td><kbd>H</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>K</kbd></td><td data-en="handbook · statistics · sound on/off · sound test">Handbuch · Statistik · Ton an/aus · Klangtest</td></tr>
             </table>
+            <p class="muted" data-en="Tip: in the ☰ Menu you can show the most important keys directly on the map (“Show keyboard shortcuts on the map”).">Tipp: Im ☰ Menü kannst du die wichtigsten Tasten direkt auf der Karte einblenden („Tastenkürzel auf der Karte einblenden“).</p>
           </div>
         </div>
         <p class="help-setting"><span data-en="<b>Mouse wheel and two-finger swipe:</b> normally the game detects by itself whether you turn a wheel (zooms) or swipe (pans). You can choose it yourself in the <b>☰ Menu</b> under “Settings”."><b>Mausrad und Zwei-Finger-Wischen:</b> Normalerweise erkennt das Spiel selbst, ob du am Rad drehst (zoomt) oder wischst (verschiebt). Im <b>☰ Menü</b> unter „Einstellungen“ kannst du das festlegen.</span>

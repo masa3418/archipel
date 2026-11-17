@@ -1179,7 +1179,7 @@ function afterAction(u) {
   scheduleAutoEnd();
 }
 
-function refresh() { dirty = true; pathCache = null; rallyCache = null; renderMini(); updatePanel(); updateHeader(); }
+function refresh() { dirty = true; pathCache = null; rallyCache = null; renderMini(); updatePanel(); updateHeader(); updateKeyLegend(); }
 
 // ------------------------------------------------------------------ Aktionen
 // geortete getauchte U-Boote des Gegners (für die Meldung „Sonarkontakt“ nach einem eigenen Zug)
@@ -2472,6 +2472,76 @@ $('cheatFogChk').onchange = e => {
   e.target.checked = false;   // erst nach der Rückfrage
   closeMenu(); askCheatFog();
 };
+
+// ------------------------------------------------------------------ Tastenlegende über der Karte
+// Einblendbar im Menü (archipel-keys), schließbar mit dem Kreuz. Zeigt die Tastenkürzel passend zur Lage: Was gerade nicht geht
+// (keine Einheit ausgewählt, kein Transporter, Produktionsansicht …), ist abgeblendet; beim Festlegen einer Patrouille oder eines
+// Marschziels stehen nur dessen Tasten da. Wird in refresh() aufgefrischt. Tasten selbst: keydown-Handler weiter unten.
+let showKeys = false;
+try { showKeys = localStorage.getItem('archipel-keys') === '1'; } catch (e) {}
+function setShowKeys(on) {
+  showKeys = !!on;
+  try { localStorage.setItem('archipel-keys', showKeys ? '1' : '0'); } catch (e) {}
+  $('keysChk').checked = showKeys;
+  updateKeyLegend();
+}
+function updateKeyLegend() {
+  const box = $('keyLegend');
+  box.hidden = !showKeys || !S;
+  if (box.hidden) return;
+  const kb = k => `<kbd>${k}</kbd>`;
+  const row = (keys, label, ok = true) => `<div class="kl-row${ok ? '' : ' off'}"><span>${keys}</span>${label}</div>`;
+  const grp = (title, rows) => `<div class="kl-g"><h5>${title}</h5>${rows.join('')}</div>`;
+  const esc_ = kb('Esc'), enter = kb('Enter');
+  let h = `<button class="kl-x" title="${tt('Ausblenden (im Menü wieder einschalten)', 'Hide (switch on again in the menu)')}">×</button>`;
+  if (patrolMode) {
+    h += grp(tt('Patrouille festlegen', 'Setting a patrol'), [
+      row(tt('Klick', 'Click'), tt('Wegpunkt setzen', 'add waypoint')),
+      row(enter, tt('Patrouille starten', 'start the patrol')),
+      row(kb(tt('Rücktaste', 'Backspace')), tt('letzten löschen (auch Rechtsklick)', 'remove last (also right-click)')),
+      row(esc_, tt('abbrechen', 'cancel')),
+    ]);
+  } else if (rallyMode) {
+    h += grp(tt('Marschziel setzen', 'Setting a rally point'), [
+      row(tt('Klick', 'Click'), tt('Zielfeld wählen', 'choose the destination')),
+      row(esc_, tt('abbrechen', 'cancel')),
+    ]);
+  } else {
+    const u = !S.over && !prodView ? selUnit() : null;
+    const own = !!u && u.owner === 0;
+    const car = own && T(u).carries;
+    const pad = `<span class="kl-pad">${['Q', 'W', 'E', 'A', '', 'D', EN ? 'Z' : 'Y', 'X', 'C'].map(k => k ? kb(k) : '<i></i>').join('')}</span>`;
+    h += grp(tt('Bewegen', 'Move'), [
+      row(pad, tt('ziehen (auch Pfeile, Ziffernblock)', 'move (also arrows, numpad)'), own),
+      row(kb('⇧') + kb('←'), tt('Karte verschieben', 'pan the map')),
+      row(kb('+') + kb('−'), tt('zoomen', 'zoom')),
+      row(kb('F'), tt('Einheit zentrieren', 'centre on unit'), !!(selUnit() || selCity != null)),
+    ]);
+    h += grp(tt('Einheit', 'Unit'), [
+      row(kb('N'), tt('nächste Einheit', 'next unit'), !prodView),
+      row(kb(tt('Leer', 'Space')), tt('überspringen', 'skip'), own),
+      row(kb('S'), tt('Wache', 'sentry'), own),
+      row(kb('R'), tt('erkunden', 'explore'), own),
+      row(kb('P'), tt('Patrouille', 'patrol'), own),
+      row(kb('B'), tt('Heimkehr', 'return home'), own),
+      row(kb('L') + kb('U'), car === 'air' ? tt('Jäger laden / ausladen', 'load / unload fighters') : tt('laden / ausladen, Angriff', 'load / unload, attack'), !!car),
+    ]);
+    h += grp(tt('Ansicht', 'View'), [
+      row(kb('V'), prodView ? tt('zurück zur Karte (auch Esc)', 'back to the map (also Esc)') : tt('Produktionsansicht', 'production view')),
+      row(kb('G'), tt('Wegeansicht', 'route view')),
+    ]);
+    h += grp(tt('Spiel', 'Game'), [
+      row(enter, tt('Runde beenden', 'end turn'), !S.over),
+      row(esc_, tt('Auswahl aufheben', 'clear selection')),
+      row(kb('H') + kb('I'), tt('Handbuch · Statistik', 'handbook · statistics')),
+      row(kb('M') + kb('K'), tt('Ton an/aus · Klangtest', 'sound on/off · sound test')),
+    ]);
+  }
+  box.innerHTML = h;
+  box.querySelector('.kl-x').onclick = () => { setShowKeys(false); toast(tt('Tastenkürzel ausgeblendet – im ☰ Menü wieder einschalten', 'Shortcuts hidden – switch them on again in the ☰ menu'), 2500); };
+}
+$('keysChk').checked = showKeys;
+$('keysChk').onchange = e => setShowKeys(e.target.checked);
 
 $('powerChk').checked = showPower;
 $('powerChk').onchange = e => {

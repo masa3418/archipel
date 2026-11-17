@@ -121,7 +121,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Kopfzeile und Menü**: Oben stehen nur Runde + Stufe (`updateHeader`), `☰ Menü`, Zoom, Zentrieren (Fadenkreuz/Taste F, `actFocus` → `focusOn`), Ton, Handbuch, Sprache. Seltenes liegt im
   Menü `#menu` (`openMenu`/`closeMenu`, ui.js): Neues Spiel, Spielstände, Statistik sowie die Einstellungen Lautstärke, Klangtest,
   Mausrad/Touchpad, Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Schwelle fürs Angebot zum vorzeitigen Ende (`offerPct`, `archipel-offer`,
-  0 = nie, Standard 10 %; `maybeOfferEnd`), automatisches Rundenende. Neue Einstellungen dort einhängen, nicht in die Kopfzeile oder Seitenleiste.
+  0 = nie, Standard 10 %; `maybeOfferEnd`), Tastenlegende über der Karte (`showKeys`, `archipel-keys`, Standard aus; `updateKeyLegend`
+  in `refresh()`, blendet ab, was gerade nicht geht – neue Tastenkürzel dort und in der Tastentabelle des Handbuchs eintragen), automatisches Rundenende. Neue Einstellungen dort einhängen, nicht in die Kopfzeile oder Seitenleiste.
   Die Hinweiszeile `#hover` (Feld unter der Maus, Siegchance) steht über der Karte (`#infoBar` in `#mapCol`, so breit wie die Karte);
   während die Zeitleiste nach dem Rundenende läuft, liegt dort `#banner` darüber – erst „Gegner zieht …“, ab `anim.ownFrom`
   (eigene Märsche/Patrouillen der neuen Runde) „Deine Einheiten führen ihre Befehle aus …“ (`updateBanner`). Meldungen fürs Spielgeschehen gehören an diese eine Stelle.
