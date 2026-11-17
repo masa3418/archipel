@@ -73,6 +73,41 @@ function killUnit(u, by) {
   if (rec) rec[u.type] = (rec[u.type] || 0) + 1;
 }
 
+// Produktion einer Stadt umstellen: Der Fortschritt beginnt neu, und das Marschziel (es galt für den alten Typ) entfällt.
+function setProduction(c, type) {
+  if (!UT[type] || c.prod === type) return false;
+  c.prod = type; c.progress = 0; c.rally = null;
+  return true;
+}
+
+// Marschziel einer Stadt (c.rally = [x, y], setzt nur der Mensch): Eine dort fertiggestellte Einheit bekommt sofort den
+// Marschbefehl dorthin. rallyCheck prüft mit einer gedachten Einheit des Typs, ob das Ziel taugt – beim Setzen (ui.js)
+// und noch einmal bei der Fertigstellung. Jäger nur zu einer eigenen Stadt in Reichweite, sonst stürzten sie ab.
+function rallyCheck(c, type, x, y) {
+  const t = UT[type];
+  if (!t || !inb(x, y)) return { ok: false, msg: tt('Kein gültiges Feld', 'Not a valid tile') };
+  if (x === c.x && y === c.y) return { ok: false, msg: tt('Das ist die Stadt selbst', 'That is the city itself') };
+  const probe = { id: -1, type, owner: c.owner, x: c.x, y: c.y, carrier: null, fuel: t.fuel || 0 };
+  // Das Zielfeld selbst muss der Typ betreten können (soweit das Gelände bekannt ist) – die Wegsuche lässt das Ziel immer zu
+  if (S.players[c.owner].seen[idx(x, y)] && !canEnterTerrain(probe, x, y))
+    return { ok: false, msg: tt(`${t.name} kann dieses Feld nicht betreten`, `${t.name} cannot enter this tile`) };
+  const path = findPath(probe, x, y, aiKnowsMap(c.owner));
+  if (!path || !path.length) return { ok: false, msg: tt(`Kein Weg dorthin für ${t.name}`, `No path there for ${t.name.toLowerCase()}`) };
+  if (t.domain === 'air') {
+    const tc = cityAt(x, y);
+    if (!tc || tc.owner !== c.owner) return { ok: false, msg: tt('Jäger brauchen als Marschziel eine eigene Stadt', 'Fighters need one of your cities as rally point') };
+    if (path.length > t.fuel) return { ok: false, msg: tt(`Zu weit für Jäger: ${path.length} Felder, Treibstoff für ${t.fuel}`, `Too far for fighters: ${path.length} tiles, fuel for ${t.fuel}`) };
+  }
+  return { ok: true, path };
+}
+function applyRally(c, u) {
+  if (!c.rally) return;
+  const r = rallyCheck(c, u.type, c.rally[0], c.rally[1]);
+  if (r.ok) u.order = { type: 'goto', x: c.rally[0], y: c.rally[1] };
+  else if (u.owner === 0) addLog(tt(`${c.name}: Marschziel nicht erreichbar (${r.msg}) – ${T(u).name} wartet auf Befehle.`,
+    `${c.name}: rally point out of reach (${r.msg}) – ${T(u).name.toLowerCase()} is waiting for orders.`), '', c.x, c.y);
+}
+
 function addLog(text, cls = '', x = null, y = null) {
   S.log.unshift({ t: S.turn, text, cls, x, y });
   if (S.log.length > 100) S.log.pop();
@@ -241,7 +276,7 @@ function winProb(ahp, astr, dhp, dstr, p = 0.5, first = null) {
 // Das bremst den Vormarsch: Jede Eroberung kostet eine Einheit.
 function captureCity(c, owner, by = null, support = false) {
   const prev = c.owner;
-  c.owner = owner; c.prod = 'inf'; c.progress = 0;
+  c.owner = owner; c.prod = 'inf'; c.progress = 0; c.rally = null;
   if (hooks.capture) hooks.capture(c, owner, prev, by);
   if (by) killUnit(by);
   if (owner === 0) addLog(tt(`Du hast ${c.name} erobert!`, `You captured ${c.name}!`) + (by ? tt(` ${{ m: 'Der', f: 'Die', n: 'Das' }[T(by).g]} ${T(by).name} geht in der Stadt auf.`, ` Your ${T(by).name.toLowerCase()} merges into the city.`) : '')
@@ -915,11 +950,11 @@ function startTurn(p) {
   }
   for (const c of S.cities) {
     if (c.owner !== p || !c.prod) continue;
-    if (UT[c.prod].domain === 'sea' && !c.coastal) { c.prod = 'inf'; c.progress = 0; }
+    if (UT[c.prod].domain === 'sea' && !c.coastal) { c.prod = 'inf'; c.progress = 0; c.rally = null; }
     c.progress += p === 1 ? diff().aiProd : 1;
     if (c.progress >= UT[c.prod].cost) {
       c.progress = Math.max(0, c.progress - UT[c.prod].cost);
-      createUnit(c.prod, p, c.x, c.y);
+      applyRally(c, createUnit(c.prod, p, c.x, c.y));   // Marschziel der Stadt, falls gesetzt
       if (p === 0) addLog(tt(`${c.name}: ${UT[c.prod].name} fertiggestellt.`, `${c.name}: ${UT[c.prod].name.toLowerCase()} completed.`), '', c.x, c.y);
       else if (typeof aiChooseProduction === 'function') aiChooseProduction(c);
     }
@@ -1030,7 +1065,8 @@ function sanitizeState(o) {
     const x = int(c.x, -1), y = int(c.y, -1);
     if (!inMap(x, y)) throw new Error(tt('Ungültige Stadt', 'Invalid city'));
     return { id: i, x, y, name: str(c.name, 40) || 'Stadt ' + (i + 1), owner: oneOf(c.owner, [-1, 0, 1], -1),
-      prod: UT[c.prod] ? c.prod : null, progress: num(c.progress, 0, 0, 1000), coastal: !!c.coastal };
+      prod: UT[c.prod] ? c.prod : null, progress: num(c.progress, 0, 0, 1000), coastal: !!c.coastal,
+      rally: c.owner === 0 ? pt(c.rally) : null };
   });
 
   const units = [];

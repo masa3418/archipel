@@ -347,8 +347,8 @@ function setProdView(on) {
   on = !!on && !!S;
   if (on === prodView) return;
   prodView = on;
-  if (on) { sel = null; selCity = null; if (patrolMode) patrolAbort(); closeCtx(); }
-  $('vUnits').classList.toggle('on', !on); $('vProd').classList.toggle('on', on);
+  if (on) { pathView = false; rallyMode = null; sel = null; selCity = null; if (patrolMode) patrolAbort(); closeCtx(); }
+  updateViewSwitch();
   if (S) { refresh(); updateHover(); }
 }
 const prodLeft = c => Math.max(1, Math.ceil(UT[c.prod].cost - c.progress));
@@ -374,6 +374,137 @@ function drawProdView() {
     roundRectPath(ctx, bx - w / 2, by - h / 2, w, h, h / 2); ctx.fillStyle = '#f2b84b'; ctx.fill();
     ctx.fillStyle = '#1b1406'; ctx.fillText(txt, bx, by + 0.5);
   }
+}
+
+// ------------------------------------------------------------------ Wegeansicht und Marschziele
+// Wegeansicht (Schalter in der Seitenleiste, Taste G): zeichnet unter den Einheiten alle laufenden Märsche (weiß),
+// Patrouillen (türkis) und die Marschziele der Städte (gelb). Anders als die Produktionsansicht ist sie nur eine
+// zusätzliche Ebene – das Spiel läuft normal weiter, und sie bleibt an, bis man sie abschaltet.
+// Die Wege werden nur nach Änderungen neu berechnet (refresh() verwirft pathCache), nicht in jedem Bild.
+let pathView = false, pathCache = null, rallyCache = null;
+let rallyMode = null;   // { city: id } – der nächste Klick auf die Karte setzt das Marschziel dieser Stadt
+function updateViewSwitch() {
+  $('vUnits').classList.toggle('on', !prodView && !pathView);
+  $('vProd').classList.toggle('on', prodView);
+  $('vPaths').classList.toggle('on', pathView);
+}
+function setPathView(on) {
+  on = !!on && !!S;
+  if (on === pathView) return;
+  if (on) setProdView(false);
+  pathView = on;
+  updateViewSwitch();
+  if (S) { refresh(); updateHover(); }
+}
+function rallyRoute(c) {
+  const r = c.prod ? rallyCheck(c, c.prod, c.rally[0], c.rally[1]) : { ok: false };
+  return { kind: 'rally', pts: [[c.x, c.y], ...(r.ok ? r.path : [c.rally])], bad: !r.ok };
+}
+function buildPathCache() {
+  const list = [];
+  for (const c of S.cities) if (c.owner === 0 && c.rally) list.push(rallyRoute(c));
+  for (const u of S.units) {
+    if (u.owner !== 0 || u.carrier != null || !u.order) continue;
+    if (u.order.type === 'goto') {
+      const path = findPath(u, u.order.x, u.order.y);
+      list.push({ kind: 'goto', pts: [[u.x, u.y], ...(path && path.length ? path : [[u.order.x, u.order.y]])] });
+    } else if (u.order.type === 'patrol') {
+      list.push({ kind: 'patrol', pts: [u.order.start, ...u.order.pts.slice(0, -1)], at: [u.x, u.y], next: u.order.pts[u.order.i] });
+    }
+  }
+  return list;
+}
+// Farbe und Strichmuster je Art (Muster in Feldbreiten) – unterscheidbar auch ohne Farbe: Striche, Punkte, Strich-Punkt
+const ROUTE_STYLE = { goto: ['255,255,255', [0.24, 0.16]], patrol: ['127,224,208', [0.02, 0.17]], rally: ['242,184,75', [0.34, 0.13, 0.03, 0.13]] };
+function drawRoute(r) {
+  const [rgb, dash] = ROUTE_STYLE[r.kind], col = `rgba(${r.bad ? '255,120,110' : rgb},0.92)`;
+  const c = p => [p[0] * TS + TS / 2, p[1] * TS + TS / 2];
+  const w = Math.max(2, TS / 13), edge = 'rgba(8,12,18,0.7)';
+  ctx.save();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  const line = (pts, close) => {
+    ctx.beginPath(); ctx.moveTo(...c(pts[0]));
+    for (let k = 1; k < pts.length; k++) ctx.lineTo(...c(pts[k]));
+    if (close) ctx.closePath();
+    // dunkler Rand, damit die Linie auf Sand, Wiese und Wasser gleich gut zu sehen ist
+    ctx.setLineDash([]); ctx.strokeStyle = 'rgba(8,12,18,0.45)'; ctx.lineWidth = w + 2.5; ctx.stroke();
+    ctx.setLineDash(dash.map(d => d * TS)); ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke();
+    ctx.setLineDash([]);
+  };
+  if (r.kind === 'patrol') {
+    if (r.at && r.next && (r.at[0] !== r.next[0] || r.at[1] !== r.next[1])) line([r.at, r.next], false);   // Weg zum nächsten Wegpunkt
+    line(r.pts, r.pts.length > 2);
+    r.pts.forEach((p, k) => {   // Wegpunkte; der Startpunkt ist hohl
+      const [x, y] = c(p);
+      ctx.beginPath(); ctx.arc(x, y, TS * 0.11, 0, 7);
+      ctx.fillStyle = k === 0 ? 'rgba(12,17,24,0.9)' : col; ctx.fill();
+      ctx.strokeStyle = k === 0 ? col : edge; ctx.lineWidth = k === 0 ? Math.max(1.5, TS / 16) : 1; ctx.stroke();
+    });
+  } else {
+    line(r.pts, false);
+    const [ex, ey] = c(r.pts[r.pts.length - 1]);
+    if (r.kind === 'goto') {   // Pfeilspitze in Marschrichtung
+      const [px, py] = c(r.pts[Math.max(0, r.pts.length - 2)]);
+      if (px !== ex || py !== ey) {
+        const a = Math.atan2(ey - py, ex - px), s = TS * 0.3;
+        ctx.beginPath(); ctx.moveTo(ex + Math.cos(a) * s * 0.6, ey + Math.sin(a) * s * 0.6);
+        ctx.lineTo(ex + Math.cos(a + 2.5) * s, ey + Math.sin(a + 2.5) * s); ctx.lineTo(ex + Math.cos(a - 2.5) * s, ey + Math.sin(a - 2.5) * s);
+        ctx.closePath(); ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = edge; ctx.lineWidth = 1; ctx.stroke();
+      }
+    } else {   // Marschziel: Fähnchen
+      const s = TS * 0.36, mx = ex - s * 0.4;
+      ctx.beginPath(); ctx.moveTo(mx, ey + s * 0.75); ctx.lineTo(mx, ey - s);
+      ctx.strokeStyle = edge; ctx.lineWidth = Math.max(3.5, TS / 8); ctx.stroke();
+      ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, TS / 16); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(mx, ey - s); ctx.lineTo(mx + s * 1.15, ey - s * 0.55); ctx.lineTo(mx, ey - s * 0.1); ctx.closePath();
+      ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = edge; ctx.lineWidth = 1; ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+// Legende mit Anzahl unter dem Ansichtsschalter (nur in der Wegeansicht)
+function updatePathLegend() {
+  const el = $('pathLegend');
+  el.hidden = !pathView || !S;
+  if (el.hidden) return;
+  if (!pathCache) pathCache = buildPathCache();
+  const n = k => pathCache.filter(r => r.kind === k).length;
+  const g = n('goto'), p = n('patrol'), r = n('rally');
+  const ex = S.units.filter(u => u.owner === 0 && u.carrier == null && u.order && u.order.type === 'explore').length;
+  el.innerHTML = `<span><i class="pl-goto"></i>${g} ${tt(g === 1 ? 'Marsch' : 'Märsche', g === 1 ? 'march' : 'marches')}</span>`
+    + `<span><i class="pl-patrol"></i>${p} ${tt(p === 1 ? 'Patrouille' : 'Patrouillen', p === 1 ? 'patrol' : 'patrols')}</span>`
+    + `<span><i class="pl-rally"></i>${r} ${tt(r === 1 ? 'Marschziel' : 'Marschziele', r === 1 ? 'rally point' : 'rally points')}</span>`
+    + (ex ? `<span>${tt(`${ex} ${ex === 1 ? 'Einheit erkundet' : 'Einheiten erkunden'} (ohne festen Weg)`, `${ex} ${ex === 1 ? 'unit is' : 'units are'} exploring (no fixed route)`)}</span>` : '');
+}
+
+// Marschziel einer Stadt: Einheiten, die dort fertig werden, marschieren sofort dorthin (Regeln: rallyCheck/applyRally in game.js).
+// Gesetzt wird es über die Stadtkarte oder das Kontextmenü, dann mit einem Klick auf das Zielfeld.
+function actRally(c) {
+  if (!c || c.owner !== 0 || !c.prod) return;
+  if (patrolMode) patrolAbort();
+  setProdView(false);
+  closeCtx();
+  rallyMode = { city: c.id }; sel = null; selCity = c.id;
+  Sfx.play('tick');
+  refresh(); updateHover();
+}
+function rallyAbort() { if (!rallyMode) return; rallyMode = null; refresh(); updateHover(); }
+function rallySet(x, y) {
+  const c = S.cities[rallyMode.city];
+  if (!c || c.owner !== 0) { rallyMode = null; refresh(); return; }
+  const r = rallyCheck(c, c.prod, x, y);
+  if (!r.ok) { toast(r.msg); Sfx.play('error'); return; }   // der Modus bleibt: anderes Feld wählen oder Esc
+  c.rally = [x, y]; rallyMode = null;
+  Sfx.play('select');
+  saveGame(); refresh(); updateHover();
+}
+function rallyClear(c) { if (!c || !c.rally) return; c.rally = null; Sfx.play('tick'); saveGame(); refresh(); }
+// Produktion umstellen (alle Stellen der Oberfläche): Das Marschziel galt für den bisherigen Typ und entfällt.
+function changeProd(c, k) {
+  const had = !!c.rally;
+  if (!setProduction(c, k)) return false;
+  if (had) toast(tt('Marschziel gelöscht – es galt für die bisherige Produktion.', 'Rally point cleared – it applied to the previous production.'));
+  return true;
 }
 
 function render(now = performance.now()) {
@@ -416,6 +547,19 @@ function render(now = performance.now()) {
       covered.add(i);
       drawSupportMark(s.x, s.y, true, PLAYERS[c.owner].light);
     }
+  }
+
+  // Wegeansicht: alle Märsche, Patrouillen und Marschziele – sonst nur das Marschziel der gewählten Stadt
+  if (pathView) {
+    if (!pathCache) pathCache = buildPathCache();
+    for (const r of pathCache) drawRoute(r);
+  } else if (selCity != null && S.cities[selCity] && S.cities[selCity].owner === 0 && S.cities[selCity].rally) {
+    if (!rallyCache || rallyCache.id !== selCity) rallyCache = { id: selCity, route: rallyRoute(S.cities[selCity]) };
+    drawRoute(rallyCache.route);
+  }
+  if (rallyMode && hover && S.cities[rallyMode.city]) {   // Vorschau beim Wählen eines Marschziels
+    const rc = S.cities[rallyMode.city];
+    drawRoute({ kind: 'rally', pts: [[rc.x, rc.y], hover] });
   }
 
   const su = selUnit();
@@ -758,6 +902,7 @@ function resizeCanvas() {
 
 function select(u, center = true) {
   if (patrolMode && (!u || u.id !== patrolMode.id)) patrolMode = null;
+  rallyMode = null;
   if (!u) { sel = null; return; }
   sel = u.id;
   if (u.order && u.order.type === 'sentry') u.order = null;
@@ -826,7 +971,7 @@ let autoEnd = true;
 try { autoEnd = localStorage.getItem('archipel-autoend') !== '0'; } catch (e) {}
 let autoEndAt = 0;
 function scheduleAutoEnd() {
-  if (!autoEnd || !S || S.over || patrolMode) return;
+  if (!autoEnd || !S || S.over || patrolMode || rallyMode) return;
   if (S.units.some(needsOrders)) return;
   if ([...document.querySelectorAll('.modal')].some(m => !m.hidden)) return;
   autoEndAt = Math.max(performance.now(), anim.end, pendingCenter ? pendingCenter.at : 0) + AUTO_END_MS;
@@ -861,7 +1006,7 @@ function afterAction(u) {
   scheduleAutoEnd();
 }
 
-function refresh() { dirty = true; renderMini(); updatePanel(); updateHeader(); }
+function refresh() { dirty = true; pathCache = null; rallyCache = null; renderMini(); updatePanel(); updateHeader(); }
 
 // ------------------------------------------------------------------ Aktionen
 // geortete getauchte U-Boote des Gegners (für die Meldung „Sonarkontakt“ nach einem eigenen Zug)
@@ -987,6 +1132,7 @@ function onTileClick(x, y, shift) {
     if (c && c.owner === 0) { Sfx.play('tick'); openProdDialog(c); }
     return;
   }
+  if (rallyMode) { if (S && inb(x, y)) rallySet(x, y); return; }
   if (patrolMode) { patrolAddPoint(x, y); return; }
   if (!S || !inb(x, y)) return;
   const u = selUnit();
@@ -1019,6 +1165,7 @@ function onTileClick(x, y, shift) {
 function endHumanTurn() {
   if (!S || S.over) return;
   setProdView(false);
+  rallyMode = null;
   autoEndAt = 0;
   sel = null;
   Sfx.play('endTurn');
@@ -1111,6 +1258,7 @@ function prodPanel() {
 
 function updatePanel() {
   const el = $('panel');
+  updatePathLegend();
   if (!S) { el.innerHTML = ''; return; }
   if (prodView) { el.innerHTML = prodPanel(); return; }
   let h = '';
@@ -1190,6 +1338,18 @@ function updatePanel() {
       <div class="muted" style="font-size:12px;margin-top:3px">${tt(`Fertig in ${p.cost - c.progress} Runde(n). Ein Wechsel setzt den Fortschritt zurück.`, `Ready in ${p.cost - c.progress} turn${p.cost - c.progress === 1 ? '' : 's'}. Switching resets the progress.`)}</div>`;
     const inCity = topUnitsAt(c.x, c.y).filter(o => o.owner === 0);
     if (inCity.length) h += `<div style="margin-top:8px" class="muted">${tt('In der Stadt:', 'In the city:')}</div><div>${inCity.map(unitChip).join('')}</div>`;
+    // Marschziel: Einheiten aus dieser Stadt marschieren nach der Fertigstellung sofort dorthin
+    if (p) {
+      const rTip = tt('Jede Einheit, die hier fertig wird, marschiert sofort zu diesem Feld. Wird gelöscht, wenn du die Produktion umstellst.', 'Every unit completed here marches to this tile at once. Cleared when you change the production.');
+      if (rallyMode && rallyMode.city === c.id) {
+        h += `<div class="rally on"><span>⚑ ${tt('Marschziel wählen: Klick auf das Zielfeld', 'Choose the rally point: click the target tile')}</span><button data-act="rallyabort">${tt('Abbrechen', 'Cancel')}</button></div>`;
+      } else if (c.rally) {
+        const tc = cityAt(c.rally[0], c.rally[1]), d = cheb(c.x, c.y, c.rally[0], c.rally[1]);
+        const where = tc && S.players[0].knownOwner[tc.id] !== -2 ? esc(tc.name) : `(${c.rally[0]},${c.rally[1]})`;
+        h += `<div class="rally" title="${rTip}"><span>⚑ ${tt('Marschziel', 'Rally point')}: <b>${where}</b> <span class="muted">· ${d} ${tt(d === 1 ? 'Feld' : 'Felder', d === 1 ? 'tile' : 'tiles')}</span></span>
+          <span><button data-act="rally">${tt('Ändern', 'Change')}</button> <button data-act="rallyclear">${tt('Löschen', 'Clear')}</button></span></div>`;
+      } else h += `<div class="rally"><button data-act="rally" title="${rTip}">⚑ ${tt('Marschziel setzen …', 'Set rally point …')}</button></div>`;
+    }
     h += `</section>`;
   }
   if (!u && !(c && c.owner === 0)) {
@@ -1202,7 +1362,7 @@ function updatePanel() {
   el.innerHTML = h;
   const ps = $('prodSel');
   if (ps) ps.onchange = () => {
-    if (c.prod !== ps.value) { c.prod = ps.value; c.progress = 0; }
+    changeProd(c, ps.value);
     refresh();
   };
 }
@@ -1293,6 +1453,13 @@ function updateHeader() {
 }
 
 function updateHover() {
+  if (rallyMode && S && S.cities[rallyMode.city]) {   // ein Marschziel wird gerade gewählt
+    const c = S.cities[rallyMode.city];
+    dirty = true;
+    $('hover').textContent = tt(`Marschziel für ${c.name} (${UT[c.prod].name}): Zielfeld anklicken · Esc oder Rechtsklick bricht ab`,
+      `Rally point for ${c.name} (${UT[c.prod].name.toLowerCase()}): click the target tile · Esc or right-click cancels`) + (hover ? ` · (${hover[0]},${hover[1]})` : '');
+    return;
+  }
   if (!hover || !S) {   // Maus nicht über der Karte: kurzer Hinweis, wozu die Zeile da ist
     $('hover').textContent = S ? tt('Zeig auf ein Feld der Karte – hier steht, was dort ist.', 'Point at a map tile – this line tells you what is there.') : ' ';
     return;
@@ -1436,7 +1603,7 @@ function openProdDialog(c, captured = false) {
     const btn = e.target.closest('[data-prod]');
     if (!btn || btn.disabled) return;
     const changed = c.prod !== btn.dataset.prod;
-    if (changed) { c.prod = btn.dataset.prod; c.progress = 0; }
+    if (changed) changeProd(c, btn.dataset.prod);
     Sfx.play('select');
     closeModals();
     if (changed || captured) addLog(tt(`${c.name} baut jetzt ${UT[c.prod].name}.`, `${c.name} now builds ${UT[c.prod].name.toLowerCase()}.`), '', c.x, c.y);
@@ -1583,7 +1750,7 @@ function showGameOver() {
 }
 
 function startNew(size, diffKey, worldKey) {
-  if (prodView) { prodView = false; $('vUnits').classList.add('on'); $('vProd').classList.remove('on'); }
+  prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
   if (!diffKey) { try { diffKey = localStorage.getItem('archipel-diff') || 'normal'; } catch (e) { diffKey = 'normal'; } }
   if (!worldKey) { try { worldKey = localStorage.getItem('archipel-world') || 'inseln'; } catch (e) { worldKey = 'inseln'; } }
   setTimeout(() => { logSeen = S.log[0] || null; updateLogHead(); }, 0);
@@ -1598,7 +1765,7 @@ function startNew(size, diffKey, worldKey) {
 }
 
 function afterLoad() {
-  if (prodView) { prodView = false; $('vUnits').classList.add('on'); $('vProd').classList.remove('on'); }
+  prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
   logSeen = S.log[0] || null;
   if (!S.hist) S.hist = [];
   if (!S.hist.length) recordStrength();
@@ -1631,6 +1798,7 @@ cv.addEventListener('click', e => {
 let drag = null, dragSwallow = false;
 const DRAG_THRESHOLD = 4, DRAG_THRESHOLD_LEFT = 9;   // links großzügiger, damit ein Klick mit leichtem Wackeln ein Klick bleibt
 function rightClickAction(e) {
+  if (rallyMode) { rallyAbort(); return; }
   if (prodView) { if (e && S) { const [x, y] = tileFromEvent(e); onTileClick(x, y, false); } return; }
   if (patrolMode) { patrolUndo(); return; }
   if (e && S && !S.over && !anyModalOpen()) {
@@ -1698,6 +1866,8 @@ function renderCtx() {
     const p = ownCity.prod ? UT[ownCity.prod] : null;
     if (u) h += '<hr>';
     h += `<button data-cact="prod"><img src="${iconUrl('c', ownCity.id % 2)}" alt="">${tt('Produktion ändern …', 'Change production …')}<small>${p ? `${esc(p.name)} · ${p.cost - ownCity.progress} ${tt('R.', 'T.')}` : tt('nichts', 'nothing')}</small></button>`;
+    if (ownCity.prod) h += `<button data-cact="rally"><span class="cglyph">⚑</span>${ownCity.rally ? tt('Marschziel ändern …', 'Change rally point …') : tt('Marschziel setzen …', 'Set rally point …')}</button>`;
+    if (ownCity.rally) h += `<button data-cact="rallyclear"><span class="cglyph">✕</span>${tt('Marschziel löschen', 'Clear rally point')}</button>`;
   }
   ctxEl.innerHTML = h;
   ctxEl.hidden = false;
@@ -1714,6 +1884,8 @@ ctxEl.addEventListener('click', e => {
   if (!b || b.disabled) return;
   const city = cmenu ? cityAt(cmenu.x, cmenu.y) : null;
   closeCtx();
+  if (b.dataset.cact === 'rally') { actRally(city); return; }
+  if (b.dataset.cact === 'rallyclear') { rallyClear(city); return; }
   if (b.dataset.cact === 'prod') { if (city && city.owner === 0) { Sfx.play('tick'); openProdDialog(city); } return; }
   const u = selUnit();
   if (b.dataset.cact === 'help') { if (u) openHelp(null, u.type); return; }
@@ -1828,7 +2000,8 @@ $('panel').addEventListener('click', e => {
   if (chip) { const u = unitById(+chip.dataset.unit); if (u) { select(u); refresh(); } return; }
   const b = e.target.closest('[data-act]');
   if (!b) return;
-  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, cancel: actCancel, next: actNext, patrol: actPatrol, patrolGo: patrolStart, patrolUndo: patrolUndo, patrolAbort: patrolAbort, explore: actExplore, home: actHome })[b.dataset.act]();
+  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, cancel: actCancel, next: actNext, patrol: actPatrol, patrolGo: patrolStart, patrolUndo: patrolUndo, patrolAbort: patrolAbort, explore: actExplore, home: actHome,
+    rally: () => actRally(S.cities[selCity]), rallyclear: () => rallyClear(S.cities[selCity]), rallyabort: rallyAbort })[b.dataset.act]();
 });
 // ------------------------------------------------------------------ Meldungen ein-/ausklappen
 let logOpen = false, logSeen = null;   // logSeen: neueste Meldung beim letzten Hinsehen
@@ -1885,10 +2058,12 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (k === 'v') { setProdView(!prodView); return; }
+  if (k === 'g') { setPathView(!pathView); return; }
   if (prodView) {   // in der Produktionsansicht gibt es keine Einheitenbefehle
     if (k === 'Escape') { setProdView(false); return; }
     if (!['+', '-', 'h', '?', 'm', 'k', 'i', 'Enter'].includes(k)) return;
   }
+  if (rallyMode) { if (k === 'Escape') rallyAbort(); return; }
   const u = selUnit();
   if (patrolMode) {
     if (k === 'Enter') { e.preventDefault(); patrolStart(); }
@@ -1919,7 +2094,8 @@ document.addEventListener('keydown', e => {
 
 $('endTurn').onclick = endHumanTurn;
 $('nextUnit').onclick = () => { setProdView(false); actNext(); };
-$('vUnits').onclick = () => setProdView(false);
+$('vUnits').onclick = () => { setProdView(false); setPathView(false); };
+$('vPaths').onclick = () => setPathView(!pathView);
 $('vProd').onclick = () => setProdView(true);
 $('powerChk').checked = showPower;
 $('powerChk').onchange = e => {
@@ -2067,7 +2243,7 @@ $('mStats').addEventListener('change', e => {
   const id = e.target.dataset.prod;
   if (id == null) return;
   const c = S.cities[+id];
-  if (c.prod !== e.target.value) { c.prod = e.target.value; c.progress = 0; Sfx.play('tick'); }
+  if (changeProd(c, e.target.value)) Sfx.play('tick');
   renderStats(); refresh();
 });
 
