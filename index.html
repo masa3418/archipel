@@ -20,6 +20,17 @@
   header h1 span { color: var(--accent); }
   #turnInfo { color: var(--muted); font-variant-numeric: tabular-nums; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #turnInfo b { color: var(--text); font-weight: 600; }
+  /* Schwierigkeitsstufe neben der Rundenzahl */
+  .lvl { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; border: 1px solid; cursor: pointer; vertical-align: 1px; }
+  .lvl:hover { filter: brightness(1.3); }
+  #diffTable tr.cur td { background: #1b2f4b; }
+  #diffTable tr.cur td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  #diffTable .cur-note { display: none; font-size: 12px; color: var(--muted); }
+  #diffTable tr.cur .cur-note { display: block; }
+  .lvl-leicht { color: #8fe0b8; border-color: #2f6f55; background: #14302a; }
+  .lvl-normal { color: #a9c8f5; border-color: #3d6aa8; background: #1b2f4b; }
+  .lvl-schwer { color: #ffd98a; border-color: #8a6a1c; background: #3a2f17; }
+  .lvl-brutal { color: #ffc5c0; border-color: #8a3a35; background: #3a1b19; }
   button { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
     padding: 6px 10px; font: inherit; cursor: pointer; }
   button:hover { border-color: #3d4b5e; background: #232d3b; }
@@ -30,13 +41,29 @@
   /* Handbuch und Sprache: hervorgehoben, damit man sie findet */
   .hbtns .hl { border-color: #3d6aa8; background: #1b2f4b; font-weight: 600; white-space: nowrap; }
   .hbtns .hl:hover { background: #24406a; border-color: #5b8fd6; }
-  .hbtns .hl .ico { margin-right: 6px; }
-  @media (max-width: 980px) { .hbtns .hl .lbl { display: none; } .hbtns .hl .ico { margin-right: 0; } }
-  .snd { display: inline-flex; align-items: center; gap: 4px; }
-  #vol { width: 70px; accent-color: var(--accent); }
-  @media (max-width: 900px) { #vol { display: none; } }
-  main { display: flex; height: calc(100% - 48px - 26px); }
-  #mapWrap { flex: 1; overflow: auto; position: relative; background: #070a0f; }
+  .hbtns .ico { margin-right: 6px; }
+  .hbtns button { white-space: nowrap; }
+  #bMenu.open { background: #232d3b; border-color: #5b8fd6; }
+  @media (max-width: 800px) { .hbtns .lbl { display: none; } .hbtns .ico { margin-right: 0; } }
+  @media (max-width: 900px) { header { gap: 8px; padding: 0 8px; } .hbtns { gap: 4px; } }
+  /* Menü der Kopfzeile: selten Gebrauchtes (Spiel, Einstellungen) */
+  .menu { position: fixed; z-index: 20; width: 290px; max-width: calc(100vw - 16px); background: var(--panel); border: 1px solid #3d4b5e;
+    border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.55); padding: 6px; font-size: 13px; }
+  .menu[hidden] { display: none; }
+  .menu h4 { margin: 5px 8px 3px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  .menu h4:not(:first-child) { margin-top: 7px; padding-top: 10px; border-top: 1px solid var(--line); margin-left: 0; margin-right: 0; padding-left: 8px; }
+  .menu .mi { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left;
+    background: none; border: 0; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
+  .menu .mi:hover { background: var(--panel2); }
+  .menu .ms { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 8px; }
+  .menu .ms:not(.chk) > span { white-space: nowrap; }
+  .menu .ms input[type=range] { width: 130px; accent-color: var(--accent); }
+  .menu .ms select { width: auto; max-width: 150px; margin: 0; padding: 3px 6px; font-size: 13px; }
+  .menu .ms.chk { justify-content: flex-start; gap: 8px; cursor: pointer; }
+  .menu .ms.chk input { accent-color: var(--accent); margin: 0; flex-shrink: 0; }
+  main { display: flex; height: calc(100% - 48px); }
+  #mapCol { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  #mapWrap { flex: 1; min-height: 0; overflow: auto; position: relative; background: #070a0f; }
   #map { display: block; cursor: crosshair; image-rendering: auto; }
   aside { width: 320px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--line);
     display: flex; flex-direction: column; overflow: hidden; }
@@ -124,16 +151,17 @@
   #endTurn.pending:hover { background: #4a3b1b; }
   #endTurn small { font-weight: 400; opacity: .85; }
   #endTurn.auto { background: linear-gradient(90deg, #3f8cf0 var(--auto, 0%), #1f4f8f var(--auto, 0%)); }
-  .autoend { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; }
-  .autoend input { accent-color: var(--accent); margin: 0; }
-  footer { height: 26px; line-height: 26px; padding: 0 12px; background: var(--panel); border-top: 1px solid var(--line);
+  /* Hinweiszeile über der Karte (so breit wie die Karte): was unter der Maus liegt, Siegchancen.
+     Während der Gegner zieht, liegt an derselben Stelle der Hinweis „Gegner zieht …“ darüber. */
+  #infoBar { position: relative; height: 26px; flex-shrink: 0; background: #111720; border-bottom: 1px solid var(--line); }
+  #hover { height: 25px; line-height: 25px; padding: 0 14px;
     color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #toast { position: fixed; left: 50%; top: 60px; transform: translateX(-50%); background: #2b1d1d; color: #ffd2cd;
     border: 1px solid #6a3431; padding: 8px 14px; border-radius: 8px; pointer-events: none; opacity: 0; transition: opacity .2s; z-index: 5; }
   #toast.show { opacity: 1; }
-  #banner { position: fixed; left: calc(50% - 160px); bottom: 40px; transform: translateX(-50%); background: rgba(22,28,37,.92); color: var(--text);
-    border: 1px solid #6a3431; border-left: 4px solid #d9433b; padding: 8px 14px; border-radius: 8px; z-index: 4; pointer-events: none; white-space: nowrap; }
-  #banner span { color: var(--muted); margin-left: 8px; font-size: 13px; }
+  #banner { position: absolute; inset: 0; padding: 0 14px 0 10px; line-height: 25px; background: #2a1719; color: #ffd2cd; font-weight: 600;
+    border-left: 4px solid #d9433b; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #banner span { color: var(--muted); margin-left: 8px; font-size: 13px; font-weight: 400; }
   #banner[hidden] { display: none; }
   .modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
   .modal[hidden] { display: none; }
@@ -273,9 +301,9 @@
   @media (max-width: 760px) { .dlg.help { height: 92vh; } .help-rules td:first-child, .help-keys td:first-child { white-space: normal; } }
   kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-size: 12px; }
   @media (max-width: 760px) {
-    #banner { left: 50%; white-space: normal; text-align: center; }
     html, body { overflow: auto; }
     main { flex-direction: column; height: auto; }
+    #mapCol { flex: none; }
     #mapWrap { height: 60vh; flex: none; }
     aside { width: 100%; border-left: 0; }
     #panel { max-height: none; }
@@ -289,18 +317,49 @@
   <h1>ARCHI<span>PEL</span></h1>
   <div id="turnInfo"></div>
   <div class="hbtns">
-    <button id="bNew" data-en="New game">Neues Spiel</button>
-    <button id="bSaves" title="Spielstände speichern und laden" data-en-title="Save and load games" data-en="Saved games">Spielstände</button>
+    <button id="bMenu" title="Menü: Spiel und Einstellungen" data-en-title="Menu: game and settings" aria-haspopup="true" aria-expanded="false"><span class="ico">☰</span><span class="lbl" data-en="Menu">Menü</span></button>
     <button id="bZoomOut" title="Verkleinern (-)" data-en-title="Zoom out (-)">−</button>
     <button id="bZoomIn" title="Vergrößern (+)" data-en-title="Zoom in (+)">+</button>
-    <span class="snd"><button id="bSound" title="Ton (M)" data-en-title="Sound (M)">🔊</button><button id="bSndTest" title="Klangtest (K)" data-en-title="Sound test (K)" data-en="Sounds">Klänge</button><input id="vol" type="range" min="0" max="100" aria-label="Lautstärke" data-en-aria-label="Volume"></span>
-    <button id="bStats" title="Statistik (I)" data-en-title="Statistics (I)" data-en="Statistics">Statistik</button>
+    <button id="bSound" title="Ton (M)" data-en-title="Sound (M)">🔊</button>
     <button id="bHelp" class="hl" title="Handbuch öffnen (H)" data-en-title="Open the handbook (H)"><span class="ico">❔</span><span class="lbl" data-en="Handbook">Handbuch</span></button>
     <button id="bLang" class="hl" title="Sprache wechseln / Change language"><span class="ico">🌐</span><span class="lbl" id="bLangLbl">English</span></button>
   </div>
 </header>
+<div id="menu" class="menu" hidden>
+  <h4 data-en="Game">Spiel</h4>
+  <button id="bNew" class="mi"><span data-en="New game">Neues Spiel</span></button>
+  <button id="bSaves" class="mi" title="Spielstände speichern und laden" data-en-title="Save and load games"><span data-en="Saved games">Spielstände</span></button>
+  <button id="bStats" class="mi"><span data-en="Statistics">Statistik</span><kbd>I</kbd></button>
+  <h4 data-en="Settings">Einstellungen</h4>
+  <label class="ms"><span data-en="Volume">Lautstärke</span><input id="vol" type="range" min="0" max="100"></label>
+  <button id="bSndTest" class="mi" title="Klänge anhören und je Einheit einstellen" data-en-title="Listen to the sounds and adjust them per unit"><span data-en="Sound test">Klangtest</span><kbd>K</kbd></button>
+  <label class="ms" title="Umstellen, falls die Karte beim Wischen zoomt oder beim Drehen am Rad wandert" data-en-title="Change this if the map zooms when you swipe, or pans when you turn the wheel"><span data-en="Wheel / touchpad">Mausrad / Touchpad</span>
+    <select id="wheelSel">
+      <option value="auto" data-en="automatic">automatisch</option>
+      <option value="zoom" data-en="always zoom">immer zoomen</option>
+      <option value="pan" data-en="always pan">immer verschieben</option>
+    </select></label>
+  <label class="ms chk" title="Balken „Du / Gegner“ in der Seitenleiste. Ausgeschaltet weißt du nicht, wie stark der Gegner ist." data-en-title="The “You / enemy” bar in the side panel. Switched off, you do not know how strong the enemy is."><input type="checkbox" id="powerChk"> <span data-en="Show balance of power">Kräfteverhältnis anzeigen</span></label>
+  <label class="ms" title="Liegt deine Stärke fünf Runden lang unter diesem Anteil, bietet das Spiel das Aufgeben an – liegt die des Gegners darunter, den vorzeitigen Sieg." data-en-title="If your strength stays below this share for five turns, the game offers to surrender – if the enemy's does, it offers an early victory."><span data-en="Offer early end below">Vorzeitiges Ende unter</span>
+    <select id="offerSel">
+      <option value="0" data-en="never">nie</option>
+      <option value="5">5 %</option>
+      <option value="10">10 %</option>
+      <option value="15">15 %</option>
+      <option value="20">20 %</option>
+      <option value="25">25 %</option>
+      <option value="30">30 %</option>
+    </select></label>
+  <label class="ms chk"><input type="checkbox" id="autoEndChk"> <span data-en="End the turn automatically when all units have moved">Runde automatisch beenden, wenn alle gezogen haben</span></label>
+</div>
 <main>
-  <div id="mapWrap"><canvas id="map"></canvas></div>
+  <div id="mapCol">
+    <div id="infoBar">
+      <div id="hover">&nbsp;</div>
+      <div id="banner" hidden data-en="Enemy is moving … <span>Click or press any key to skip</span>">Gegner zieht … <span>Klick oder beliebige Taste überspringt</span></div>
+    </div>
+    <div id="mapWrap"><canvas id="map"></canvas></div>
+  </div>
   <aside>
     <canvas id="mini"></canvas>
     <div id="power" class="power">
@@ -315,7 +374,6 @@
     <div class="turnbar">
       <button id="nextUnit" title="Zur nächsten wartenden Einheit (N)" data-en-title="Go to the next waiting unit (N)" data-en="▶ Next unit <kbd>N</kbd>">▶ Nächste Einheit <kbd>N</kbd></button>
       <button id="endTurn" class="primary" data-en="End turn ⏎">Runde beenden ⏎</button>
-      <label class="autoend"><input type="checkbox" id="autoEndChk"> <span data-en="End automatically when all units have moved">Automatisch beenden, wenn alle gezogen haben</span></label>
     </div>
     <div id="panel" class="box"></div>
     <div id="logBox" class="box collapsed">
@@ -325,9 +383,7 @@
     </div>
   </aside>
 </main>
-<footer id="hover">&nbsp;</footer>
 <div id="toast"></div>
-<div id="banner" hidden data-en="Enemy is moving … <span>Click or press any key to skip</span>">Gegner zieht … <span>Klick oder beliebige Taste überspringt</span></div>
 
 <div id="mNew" class="modal" hidden>
   <div class="dlg">
@@ -430,8 +486,8 @@
       </section>
 
       <section data-pane="combat" hidden>
-        <p data-lang="de">In jeder Kampfrunde trifft eine Seite zufällig (50:50) und richtet so viel Schaden an, wie ihre Stärke beträgt. Wer keine Trefferpunkte mehr hat, verliert. <b>Fahr mit der Maus über einen Gegner:</b> Die Fußzeile zeigt deine Siegchance und nennt den Grund für Zu- oder Abschläge. Einheiten in eigenen Städten werden repariert, Panzer nicht.</p>
-        <p data-lang="en">In each combat round one side hits at random (50:50) and deals as much damage as its strength. Whoever runs out of hit points loses. <b>Hover over an enemy:</b> the footer shows your win chance and names the reason for any bonus or penalty. Units in your own cities are repaired, tanks are not.</p>
+        <p data-lang="de">In jeder Kampfrunde trifft eine Seite zufällig (50:50) und richtet so viel Schaden an, wie ihre Stärke beträgt. Wer keine Trefferpunkte mehr hat, verliert. <b>Fahr mit der Maus über einen Gegner:</b> Die Zeile über der Karte zeigt deine Siegchance und nennt den Grund für Zu- oder Abschläge. Einheiten in eigenen Städten werden repariert, Panzer nicht.</p>
+        <p data-lang="en">In each combat round one side hits at random (50:50) and deals as much damage as its strength. Whoever runs out of hit points loses. <b>Hover over an enemy:</b> the line above the map shows your win chance and names the reason for any bonus or penalty. Units in your own cities are repaired, tanks are not.</p>
         <h3 data-en="Who beats whom">Wer schlägt wen</h3>
         <p class="muted" data-lang="de">Siegchance des Angreifers (Zeile) gegen den Verteidiger (Spalte), beide unbeschädigt, auf offenem Feld. Die Werte berechnet das Spiel aus den geltenden Regeln.</p>
         <p class="muted" data-lang="en">Win chance of the attacker (row) against the defender (column), both undamaged, in the open. The game calculates the values from the current rules.</p>
@@ -490,12 +546,7 @@
             </table>
           </div>
         </div>
-        <p class="help-setting"><label><span data-en="Mouse wheel and two-finger swipe:">Mausrad und Zwei-Finger-Wischen:</span>
-          <select id="wheelSel">
-            <option value="auto" data-en="detect automatically (wheel zooms, swipe pans)">automatisch erkennen (Rad zoomt, Wischen verschiebt)</option>
-            <option value="zoom" data-en="always zoom">immer zoomen</option>
-            <option value="pan" data-en="always pan the map">immer die Karte verschieben</option>
-          </select></label>
+        <p class="help-setting"><span data-en="<b>Mouse wheel and two-finger swipe:</b> normally the game detects by itself whether you turn a wheel (zooms) or swipe (pans). You can choose it yourself in the <b>☰ Menu</b> under “Settings”."><b>Mausrad und Zwei-Finger-Wischen:</b> Normalerweise erkennt das Spiel selbst, ob du am Rad drehst (zoomt) oder wischst (verschiebt). Im <b>☰ Menü</b> unter „Einstellungen“ kannst du das festlegen.</span>
           <span class="muted" data-en="Change this if the map zooms when you swipe, or pans when you turn the wheel. Some touchpads send exactly the same signal as a mouse wheel – then only “always pan” helps; zooming still works by pinching, with Ctrl + wheel or with + and −.">Stell das um, falls die Karte beim Wischen zoomt oder beim Drehen am Rad wandert. Manche Touchpads senden genau dasselbe Signal wie ein Mausrad – dann hilft nur „immer verschieben“; zoomen geht weiterhin mit Spreizen, Strg + Rad oder + und −.</span><br>
           <span class="muted" id="wheelInfo"></span></p>
         <div class="help-tip" data-lang="de"><b>Befehle halten von selbst an:</b> Marsch, Patrouille und Erkunden stoppen, sobald die Einheit eine unbekannte Stadt entdeckt, eine feindliche Stadt oder Einheit sichtet, ein U-Boot ortet (Sonarkontakt) oder einem Feind direkt gegenübersteht. Dann bist du gefragt.</div>
@@ -503,9 +554,9 @@
       </section>
 
       <section data-pane="ai" hidden>
-        <p data-lang="de">Die Schwierigkeit wählst du unter <b>Neues Spiel</b>. Sie verändert nur den Gegner und die Startbedingungen.
+        <p data-lang="de">Die Schwierigkeit wählst du im <b>☰ Menü</b> unter <b>Neues Spiel</b>; die Stufe der laufenden Partie steht oben neben der Rundenzahl und ist in der Tabelle markiert. Sie verändert nur den Gegner und die Startbedingungen.
           Würfelglück, Sichtweiten und Regeln sind auf allen Stufen gleich.</p>
-        <p data-lang="en">You choose the difficulty under <b>New game</b>. It only changes the enemy and the starting conditions.
+        <p data-lang="en">You choose the difficulty in the <b>☰ Menu</b> under <b>New game</b>; the level of the current game is shown at the top next to the turn number and is marked in the table. It only changes the enemy and the starting conditions.
           Dice luck, vision ranges and rules are the same on every level.</p>
         <table>
           <thead><tr><th data-en="Level">Stufe</th><th data-en="Play style">Spielweise</th><th data-en="Knows map">Kennt Karte</th><th data-en="Mistakes">Fehler</th><th data-en="Build speed">Bautempo</th><th data-en="Lands with">Landet ab</th><th>Start</th></tr></thead>
@@ -555,8 +606,8 @@
 
       <section data-pane="about" hidden>
         <h3 data-en="Saving">Speichern</h3>
-        <p data-lang="de">Das Spiel speichert nach jeder Runde automatisch im Browser. Unter <b>Spielstände</b> legst du beliebig viele benannte Stände an, exportierst sie als Datei und lädst sie wieder.</p>
-        <p data-lang="en">The game saves automatically in your browser after every turn. Under <b>Saved games</b> you can keep any number of named saves, export them as files and load them again.</p>
+        <p data-lang="de">Das Spiel speichert nach jeder Runde automatisch im Browser. Im <b>☰ Menü</b> unter <b>Spielstände</b> legst du beliebig viele benannte Stände an, exportierst sie als Datei und lädst sie wieder.</p>
+        <p data-lang="en">The game saves automatically in your browser after every turn. In the <b>☰ Menu</b> under <b>Saved games</b> you can keep any number of named saves, export them as files and load them again.</p>
         <p><button id="bWelcomeAgain" data-en="Show the welcome window again">Willkommensfenster noch einmal zeigen</button></p>
         <h3 data-en="Language">Sprache</h3>
         <p data-lang="de">Der Knopf <b>🌐 English</b> oben rechts schaltet auf Englisch um, <b>🌐 Deutsch</b> zurück auf Deutsch. Das laufende Spiel bleibt erhalten.</p>

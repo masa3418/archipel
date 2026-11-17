@@ -1220,6 +1220,10 @@ function updateEndTurnButton() {
 }
 
 // ------------------------------------------------------------------ Kräfteverhältnis
+// Abschaltbar im Menü (Einstellung archipel-power): Dann fehlen der Balken in der Seitenleiste und die Angabe im Eroberungsfenster.
+let showPower = true;
+try { showPower = localStorage.getItem('archipel-power') !== '0'; } catch (e) {}
+function applyPower() { $('power').style.display = showPower ? '' : 'none'; }
 function updatePower() {
   const a = strength(0), b = strength(1);
   const share = a.total + b.total > 0 ? a.total / (a.total + b.total) : 0.5;
@@ -1227,8 +1231,8 @@ function updatePower() {
   $('powerMe').style.width = pct + '%';
   $('powerL').textContent = tt('Du ', 'You ') + pct + ' %';
   $('powerR').textContent = (100 - pct) + tt(' % Gegner', ' % enemy');
-  const v = share >= OFFER_HIGH ? [tt('Erdrückend überlegen', 'Overwhelming'), 'up'] : share >= 0.65 ? [tt('Klar überlegen', 'Clearly ahead'), 'up'] : share >= 0.55 ? [tt('Überlegen', 'Ahead'), 'up']
-    : share > 0.45 ? [tt('Ausgeglichen', 'Even'), 'flat'] : share > 0.35 ? [tt('Unterlegen', 'Behind'), 'down'] : share > OFFER_LOW ? [tt('Stark unterlegen', 'Far behind'), 'down'] : [tt('Aussichtslos', 'Hopeless'), 'down'];
+  const v = share >= 0.9 ? [tt('Erdrückend überlegen', 'Overwhelming'), 'up'] : share >= 0.65 ? [tt('Klar überlegen', 'Clearly ahead'), 'up'] : share >= 0.55 ? [tt('Überlegen', 'Ahead'), 'up']
+    : share > 0.45 ? [tt('Ausgeglichen', 'Even'), 'flat'] : share > 0.35 ? [tt('Unterlegen', 'Behind'), 'down'] : share > 0.1 ? [tt('Stark unterlegen', 'Far behind'), 'down'] : [tt('Aussichtslos', 'Hopeless'), 'down'];
   $('powerVerdict').textContent = v[0]; $('powerVerdict').className = v[1];
   // Trend gegenüber dem Beginn der letzten Runde
   const hist = S.hist || [];
@@ -1279,14 +1283,20 @@ function drawPowerSpark(hist, share) {
 function updateHeader() {
   updateEndTurnButton();
   updatePower();
-  $('turnInfo').innerHTML = `${tt('Runde', 'Turn')} <b>${S.turn}</b>`;
+  // Runde und Schwierigkeitsstufe (mit Welt und Beschreibung im Hinweistext); ein Klick öffnet das Handbuch bei „Gegner & Stufen“
+  const dk = DIFFICULTY[S.difficulty] ? S.difficulty : 'normal', dv = DIFFICULTY[dk], wv = WORLDS[S.world];
+  const tip = `${tt('Schwierigkeit', 'Difficulty')}: ${dv.label}${wv ? ` · ${tt('Welt', 'World')}: ${wv.label}` : ''} – ${dv.desc}\n${tt('Klick: Erklärung der Stufen im Handbuch', 'Click: the levels explained in the handbook')}`;
+  $('turnInfo').innerHTML = `${tt('Runde', 'Turn')} <b>${S.turn}</b> <span class="lvl lvl-${dk}" title="${esc(tip)}">${esc(dv.label)}</span>`;
   updateLogHead();
   $('log').innerHTML = S.log.slice(0, 60).map(l =>
     `<div class="${l.cls}" ${l.x != null ? `data-x="${l.x}" data-y="${l.y}"` : ''}><span class="t">${tt('R', 'T')}${l.t}</span>${esc(l.text)}</div>`).join('');
 }
 
 function updateHover() {
-  if (!hover || !S) { $('hover').innerHTML = '&nbsp;'; return; }
+  if (!hover || !S) {   // Maus nicht über der Karte: kurzer Hinweis, wozu die Zeile da ist
+    $('hover').textContent = S ? tt('Zeig auf ein Feld der Karte – hier steht, was dort ist.', 'Point at a map tile – this line tells you what is there.') : ' ';
+    return;
+  }
   if (prodView) {
     const c = inb(hover[0], hover[1]) ? cityAt(hover[0], hover[1]) : null;
     dirty = true;   // Hervorhebung der Stadt unter der Maus
@@ -1402,8 +1412,8 @@ function openProdDialog(c, captured = false) {
     const pct = Math.round(a / Math.max(1, a + b) * 100);
     $('capTitle').textContent = tt(`${c.name} ist erobert!`, `${c.name} is captured!`);
     $('capCheer').textContent = CAPTURE_CHEERS[(S.turn + c.id) % CAPTURE_CHEERS.length];
-    $('capFacts').innerHTML = tt(`<span><b>${mine}</b> von ${total} Städten gehören dir</span><span>Kräfteverhältnis <b>${pct} %</b></span>`,
-        `<span><b>${mine}</b> of ${total} cities are yours</span><span>Balance of power <b>${pct} %</b></span>`)
+    $('capFacts').innerHTML = tt(`<span><b>${mine}</b> von ${total} Städten gehören dir</span>`, `<span><b>${mine}</b> of ${total} cities are yours</span>`)
+      + (showPower ? tt(`<span>Kräfteverhältnis <b>${pct} %</b></span>`, `<span>Balance of power <b>${pct} %</b></span>`) : '')
       + (c.coastal ? tt('<span>⚓ Hafenstadt – baut auch Schiffe</span>', '<span>⚓ Port city – builds ships too</span>') : '');
     $('capBar').style.width = Math.round(mine / total * 100) + '%';
   } else {
@@ -1506,6 +1516,8 @@ function helpTab(name) {
 // tab: gewünschter Reiter (sonst der zuletzt geöffnete), unit: Einheitenkarte, zu der gesprungen wird
 function openHelp(tab = null, unit = null) {
   if (S) buildHelp();
+  // Stufe der laufenden Partie in der Tabelle „Gegner & Stufen“ hervorheben
+  document.querySelectorAll('#diffTable tr').forEach(r => r.classList.toggle('cur', !!S && r.dataset.k === S.difficulty));
   if (!tab) { try { tab = localStorage.getItem('archipel-helptab'); } catch (e) {} }
   helpTab(unit ? 'units' : tab || 'start');
   openModal('mHelp');
@@ -1515,21 +1527,26 @@ function openHelp(tab = null, unit = null) {
     card.classList.add('flash'); setTimeout(() => card.classList.remove('flash'), 1800);
   }
 }
+$('turnInfo').addEventListener('click', e => { if (e.target.closest('.lvl')) openHelp('ai'); });
 $('helpTabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) helpTab(b.dataset.tab); });
 function closeModals() { document.querySelectorAll('.modal').forEach(m => m.hidden = true); Sfx.preview(null); }
 
 // ------------------------------------------------------------------ Aufgeben / vorzeitiger Sieg
-// Liegt das Kräfteverhältnis 5 Runden in Folge unter 10 % (über 90 %), bietet das
+// Liegt das Kräfteverhältnis 5 Runden in Folge unter der Schwelle (bzw. über 100 % minus Schwelle), bietet das
 // Spiel Aufgeben (den Sieg) an. Nach einer Ablehnung wird 10 Runden nicht erneut gefragt.
-const OFFER_LOW = 0.1, OFFER_HIGH = 0.9, OFFER_TURNS = 5, OFFER_PAUSE = 10, OFFER_MIN_TURN = 15;
+// Die Schwelle stellt man im Menü ein (archipel-offer: 0 = nie fragen, sonst Prozent; Standard 10).
+const OFFER_TURNS = 5, OFFER_PAUSE = 10, OFFER_MIN_TURN = 15, OFFER_STEPS = [0, 5, 10, 15, 20, 25, 30];
+let offerPct = 10;
+try { const v = Number(localStorage.getItem('archipel-offer')); if (localStorage.getItem('archipel-offer') !== null && OFFER_STEPS.includes(v)) offerPct = v; } catch (e) {}
 function shareOf(e) { return e.me + e.en > 0 ? e.me / (e.me + e.en) : 0.5; }
 function maybeOfferEnd() {
-  if (!S || S.over || !S.hist || S.turn < OFFER_MIN_TURN) return;
+  if (!offerPct || !S || S.over || !S.hist || S.turn < OFFER_MIN_TURN) return;
   if ([...document.querySelectorAll('.modal')].some(m => !m.hidden)) return;
   if (S.offerPause && S.turn < S.offerPause) return;
   const last = S.hist.slice(-OFFER_TURNS);
   if (last.length < OFFER_TURNS) return;
-  const low = last.every(e => shareOf(e) < OFFER_LOW), high = last.every(e => shareOf(e) > OFFER_HIGH);
+  const lim = offerPct / 100;
+  const low = last.every(e => shareOf(e) < lim), high = last.every(e => shareOf(e) > 1 - lim);
   if (!low && !high) return;
   S.offerPause = S.turn + OFFER_PAUSE;      // gilt auch, wenn der Dialog einfach geschlossen wird
   const pct = Math.round(shareOf(last[last.length - 1]) * 100);
@@ -1537,15 +1554,15 @@ function maybeOfferEnd() {
   const facts = tt(`Du: ${a.cities} Städte, ${a.units} Einheiten · Gegner: ${b.cities} Städte, ${b.units} Einheiten`, `You: ${a.cities} cities, ${a.units} units · Enemy: ${b.cities} cities, ${b.units} units`);
   if (low) {
     $('offerTitle').textContent = tt('Die Lage ist aussichtslos', 'The situation is hopeless');
-    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke unter ${OFFER_LOW * 100} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Willst du aufgeben?`,
-      `For ${OFFER_TURNS} turns your strength has been below ${OFFER_LOW * 100} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>Do you want to surrender?`);
+    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke unter ${offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Willst du aufgeben?`,
+      `For ${OFFER_TURNS} turns your strength has been below ${offerPct} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>Do you want to surrender?`);
     $('offerYes').textContent = tt('Aufgeben', 'Surrender');
     $('offerNo').textContent = tt('Weiterkämpfen', 'Keep fighting');
     $('offerYes').onclick = () => { closeModals(); S.over = 'lose'; S.overReason = 'surrender'; saveGame(); showGameOver(); };
   } else {
     $('offerTitle').textContent = tt('Der Sieg ist dir sicher', 'Victory is yours');
-    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke über ${OFFER_HIGH * 100} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Der Gegner bietet die Kapitulation an. Sieg annehmen?`,
-      `For ${OFFER_TURNS} turns your strength has been above ${OFFER_HIGH * 100} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>The enemy offers to surrender. Accept victory?`);
+    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke über ${100 - offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Der Gegner bietet die Kapitulation an. Sieg annehmen?`,
+      `For ${OFFER_TURNS} turns your strength has been above ${100 - offerPct} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>The enemy offers to surrender. Accept victory?`);
     $('offerYes').textContent = tt('Sieg annehmen', 'Accept victory');
     $('offerNo').textContent = tt('Weiterspielen', 'Play on');
     $('offerYes').onclick = () => { closeModals(); S.over = 'win'; S.overReason = 'capitulation'; saveGame(); showGameOver(); };
@@ -1904,12 +1921,51 @@ $('endTurn').onclick = endHumanTurn;
 $('nextUnit').onclick = () => { setProdView(false); actNext(); };
 $('vUnits').onclick = () => setProdView(false);
 $('vProd').onclick = () => setProdView(true);
+$('powerChk').checked = showPower;
+$('powerChk').onchange = e => {
+  showPower = e.target.checked;
+  try { localStorage.setItem('archipel-power', showPower ? '1' : '0'); } catch (err) {}
+  applyPower(); if (S) updatePower();
+};
+applyPower();
+$('offerSel').value = String(offerPct);
+$('offerSel').onchange = e => {
+  offerPct = Number(e.target.value) || 0;
+  try { localStorage.setItem('archipel-offer', String(offerPct)); } catch (err) {}
+};
 $('autoEndChk').checked = autoEnd;
 $('autoEndChk').onchange = e => {
   autoEnd = e.target.checked;
   try { localStorage.setItem('archipel-autoend', autoEnd ? '1' : '0'); } catch (err) {}
   if (!autoEnd) cancelAutoEnd();
 };
+// ------------------------------------------------------------------ Menü der Kopfzeile
+// Selten Gebrauchtes liegt im Menü (Spiel: Neues Spiel, Spielstände, Statistik · Einstellungen: Lautstärke, Klangtest,
+// Mausrad/Touchpad, automatisches Rundenende). Ein Klick auf einen Eintrag schließt es, Einstellungen lassen es offen.
+const menuEl = $('menu');
+function closeMenu() {
+  if (menuEl.hidden) return;
+  menuEl.hidden = true; $('bMenu').classList.remove('open'); $('bMenu').setAttribute('aria-expanded', 'false');
+}
+function openMenu() {
+  closeCtx();
+  menuEl.hidden = false; $('bMenu').classList.add('open'); $('bMenu').setAttribute('aria-expanded', 'true');
+  const r = $('bMenu').getBoundingClientRect();
+  menuEl.style.top = Math.round(r.bottom + 6) + 'px';
+  menuEl.style.left = Math.round(Math.max(8, Math.min(r.left, innerWidth - menuEl.offsetWidth - 8))) + 'px';
+}
+$('bMenu').onclick = () => { if (menuEl.hidden) openMenu(); else closeMenu(); };
+menuEl.addEventListener('click', e => { if (e.target.closest('button')) closeMenu(); });
+document.addEventListener('mousedown', e => { if (!menuEl.hidden && !e.target.closest('#menu, #bMenu')) closeMenu(); }, true);
+document.addEventListener('keydown', e => {
+  if (menuEl.hidden) return;
+  const inside = e.target.closest && e.target.closest('#menu, #bMenu');
+  if (e.key === 'Escape') { closeMenu(); e.preventDefault(); e.stopPropagation(); }
+  else if (inside) e.stopPropagation();   // Tasten im Menü (Regler, Auswahl, Tab) gehören nicht dem Spiel
+  else closeMenu();
+}, true);
+window.addEventListener('resize', closeMenu);
+
 $('bNew').onclick = () => openModal('mNew');
 $('bStart').onclick = () => {
   try {
@@ -2181,11 +2237,11 @@ $('bLang').onclick = () => {
   $('worldSel').innerHTML = Object.entries(WORLDS).map(([k, v]) => `<option value="${k}" ${k === prefWorld ? 'selected' : ''}>${v.label}</option>`).join('');
   if (!WORLDS[$('worldSel').value]) $('worldSel').value = 'inseln';
   $('worldDesc').textContent = WORLDS[$('worldSel').value].desc;
-  $('diffTable').innerHTML = Object.values(DIFFICULTY).map(d => {
+  $('diffTable').innerHTML = Object.entries(DIFFICULTY).map(([dk, d]) => {
     const you = d.youStart.map(t => '+1 ' + UT[t].name);
     const ai = [...d.aiStart.map(t => '+1 ' + UT[t].name), ...(d.aiCities ? ['+' + d.aiCities + tt(' Stadt', ' city')] : [])];
     const start = [you.length ? tt('du: ', 'you: ') + you.join(', ') : '', ai.length ? tt('Gegner: ', 'enemy: ') + ai.join(', ') : ''].filter(Boolean).join('; ') || tt('gleich', 'equal');
-    return `<tr><td><b>${d.label}</b></td><td>${d.skill ? tt('umsichtig', 'shrewd') : tt('einfach', 'simple')}</td><td>${d.aiKnowsMap ? tt('ja', 'yes') : tt('nein, erkundet', 'no, explores')}</td><td>${Math.round(d.aiMistake * 100)} %</td>
+    return `<tr data-k="${dk}"><td><b>${d.label}</b><span class="cur-note">${tt('diese Partie', 'this game')}</span></td><td>${d.skill ? tt('umsichtig', 'shrewd') : tt('einfach', 'simple')}</td><td>${d.aiKnowsMap ? tt('ja', 'yes') : tt('nein, erkundet', 'no, explores')}</td><td>${Math.round(d.aiMistake * 100)} %</td>
       <td>${Math.round(d.aiProd * 100)} %</td><td>${d.invadeAt} ${tt('Truppen', 'troops')}</td><td>${start}</td></tr>`;
   }).join('');
   try { const z = +localStorage.getItem('archipel-zoom'); if (z >= 14 && z <= 48) TS = z; } catch (e) {}
