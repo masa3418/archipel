@@ -456,8 +456,22 @@ function canSee(p, u) {
   return !T(u).stealth || u.surf === true || P.sonar[i] === 1;
 }
 
+// Schummelei „Nebel aus“ – nur für den Menschen (Spieler 0), geschaltet in ui.js (setCheatFog). Solange sie an ist, sieht der
+// Spieler die ganze Karte, alle Städte und alle Einheiten, auch getauchte U-Boote; Regeln und Wegsuche rechnen damit.
+// Das echte Kartengedächtnis (seen, knownOwner) läuft in P.real weiter: Es wird gespeichert (serialize) und kehrt zurück,
+// sobald der Nebel wieder an ist. In Simulationen bleibt der Schalter aus.
+let CHEAT_FOG = false;
+
 function computeVision(p) {
   const P = S.players[p];
+  const cheat = CHEAT_FOG && p === 0;
+  if (cheat && !P.real) {   // einschalten: echtes Gedächtnis beiseitelegen
+    P.real = { seen: P.seen, knownOwner: P.knownOwner };
+    P.seen = new Uint8Array(P.seen.length); P.knownOwner = new Int8Array(P.knownOwner.length);
+  } else if (!cheat && P.real) {   // ausschalten: zurückholen
+    P.seen = P.real.seen; P.knownOwner = P.real.knownOwner; P.real = null;
+  }
+  const seen = P.real ? P.real.seen : P.seen, known = P.real ? P.real.knownOwner : P.knownOwner;
   P.vis.fill(0);
   if (!P.sonar) P.sonar = new Uint8Array(S.W * S.H);
   P.sonar.fill(0);
@@ -473,7 +487,7 @@ function computeVision(p) {
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       const nx = x + dx, ny = y + dy;
       if (!inb(nx, ny)) continue;
-      const i = idx(nx, ny); P.vis[i] = 1; P.seen[i] = 1;
+      const i = idx(nx, ny); P.vis[i] = 1; seen[i] = 1;
     }
   };
   for (const u of S.units) if (u.owner === p) mark(u.x, u.y, T(u).vision);
@@ -481,7 +495,11 @@ function computeVision(p) {
   // Sichtbare Städte zeigen den wahren Besitzer. Eigene Städte kennt man immer –
   // auch den Verlust einer eigenen Stadt erfährt man sofort, selbst im Nebel.
   for (const c of S.cities) {
-    if (P.vis[idx(c.x, c.y)] || c.owner === p || P.knownOwner[c.id] === p) P.knownOwner[c.id] = c.owner;
+    if (P.vis[idx(c.x, c.y)] || c.owner === p || known[c.id] === p) known[c.id] = c.owner;
+  }
+  if (cheat) {   // Nebel aus: alles sichtbar, alles geortet, alle Besitzer bekannt
+    P.vis.fill(1); P.sonar.fill(1); P.seen.fill(1);
+    for (const c of S.cities) P.knownOwner[c.id] = c.owner;
   }
   // gesichtete feindliche Einheiten (id -> Typ), für die Konter-Produktion der KI
   if (!P.intel) P.intel = {};
@@ -1023,7 +1041,8 @@ function serialize() {
   // Höhe nur für die Grafik: 256 Stufen genügen
   o.elev = { q: b64(Uint8Array.from(S.elev, v => Math.round(Math.max(0, Math.min(1, v)) * 255))) };
   // Sichtbereiche werden beim Laden neu berechnet
-  o.players = S.players.map(P => ({ seen: b64(P.seen), knownOwner: b64(P.knownOwner), intel: P.intel || {} }));
+  // bei „Nebel aus“ das echte Kartengedächtnis sichern, nicht die aufgedeckte Karte
+  o.players = S.players.map(P => ({ seen: b64((P.real || P).seen), knownOwner: b64((P.real || P).knownOwner), intel: P.intel || {} }));
   return JSON.stringify(o);
 }
 

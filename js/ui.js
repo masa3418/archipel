@@ -1550,7 +1550,8 @@ function updateHeader() {
   // Runde und Schwierigkeitsstufe (mit Welt und Beschreibung im Hinweistext); ein Klick öffnet das Handbuch bei „Gegner & Stufen“
   const dk = DIFFICULTY[S.difficulty] ? S.difficulty : 'normal', dv = DIFFICULTY[dk], wv = WORLDS[S.world];
   const tip = `${tt('Schwierigkeit', 'Difficulty')}: ${dv.label}${wv ? ` · ${tt('Welt', 'World')}: ${wv.label}` : ''} – ${dv.desc}\n${tt('Klick: Erklärung der Stufen im Handbuch', 'Click: the levels explained in the handbook')}`;
-  $('turnInfo').innerHTML = `${tt('Runde', 'Turn')} <b>${S.turn}</b> <span class="lvl lvl-${dk}" title="${esc(tip)}">${esc(dv.label)}</span>`;
+  $('turnInfo').innerHTML = `${tt('Runde', 'Turn')} <b>${S.turn}</b> <span class="lvl lvl-${dk}" title="${esc(tip)}">${esc(dv.label)}</span>`
+    + (CHEAT_FOG ? ` <span class="cheat" title="${tt('Schummelei aktiv: Du siehst die ganze Karte und alle Einheiten des Gegners. Klick schaltet den Nebel wieder ein.', 'Cheat active: you see the whole map and all enemy units. Click to switch the fog back on.')}">👁 ${tt('Nebel aus', 'Fog off')}</span>` : '');
   updateLogHead();
   $('log').innerHTML = S.log.slice(0, 60).map(l =>
     `<div class="${l.cls}" ${l.x != null ? `data-x="${l.x}" data-y="${l.y}"` : ''}><span class="t">${tt('R', 'T')}${l.t}</span>${esc(l.text)}</div>`).join('');
@@ -1798,7 +1799,7 @@ function openHelp(tab = null, unit = null) {
     card.classList.add('flash'); setTimeout(() => card.classList.remove('flash'), 1800);
   }
 }
-$('turnInfo').addEventListener('click', e => { if (e.target.closest('.lvl')) openHelp('ai'); });
+$('turnInfo').addEventListener('click', e => { if (e.target.closest('.cheat')) setCheatFog(false); else if (e.target.closest('.lvl')) openHelp('ai'); });
 $('helpTabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) helpTab(b.dataset.tab); });
 function closeModals() { document.querySelectorAll('.modal').forEach(m => m.hidden = true); Sfx.preview(null); }
 
@@ -2201,6 +2202,19 @@ $('nextUnit').onclick = () => { setProdView(false); actNext(); };
 $('vUnits').onclick = () => { setProdView(false); setPathView(false); };
 $('vPaths').onclick = () => setPathView(!pathView);
 $('vProd').onclick = () => setProdView(true);
+// ------------------------------------------------------------------ Schummeln: Nebel aus
+// Haken im Menü (archipel-cheat-fog, wird gemerkt). Regeln: CHEAT_FOG/computeVision in game.js. Solange er gesetzt ist, steht
+// neben der Rundenzahl ein Schildchen „Nebel aus“ – ein Klick darauf schaltet ihn wieder ab.
+function setCheatFog(on) {
+  CHEAT_FOG = !!on;
+  try { localStorage.setItem('archipel-cheat-fog', CHEAT_FOG ? '1' : '0'); } catch (err) {}
+  $('cheatFogChk').checked = CHEAT_FOG;
+  if (S) { computeVision(0); refresh(); updateHover(); }
+}
+try { CHEAT_FOG = localStorage.getItem('archipel-cheat-fog') === '1'; } catch (e) {}
+$('cheatFogChk').checked = CHEAT_FOG;
+$('cheatFogChk').onchange = e => setCheatFog(e.target.checked);
+
 $('powerChk').checked = showPower;
 $('powerChk').onchange = e => {
   showPower = e.target.checked;

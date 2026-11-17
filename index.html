@@ -23,6 +23,10 @@
   /* Schwierigkeitsstufe neben der Rundenzahl */
   .lvl { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; border: 1px solid; cursor: pointer; vertical-align: 1px; }
   .lvl:hover { filter: brightness(1.3); }
+  /* Schildchen „Nebel aus“ (Schummelei aktiv) */
+  .cheat { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; border: 1px solid #7a5aa8;
+    color: #e2d0ff; background: #2b1f3f; cursor: pointer; vertical-align: 1px; }
+  .cheat:hover { filter: brightness(1.3); }
   #diffTable tr.cur td { background: #1b2f4b; }
   #diffTable tr.cur td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   #diffTable .cur-note { display: none; font-size: 12px; color: var(--muted); }
@@ -388,6 +392,8 @@
       <option value="30">30 %</option>
     </select></label>
   <label class="ms chk"><input type="checkbox" id="autoEndChk"> <span data-en="End the turn automatically when all units have moved">Runde automatisch beenden, wenn alle gezogen haben</span></label>
+  <h4 data-en="Cheats">Schummeln</h4>
+  <label class="ms chk" title="Du siehst die ganze Karte, alle Städte und alle Einheiten des Gegners, auch getauchte U-Boote, und alle seine Züge. Praktisch, um dem Gegner beim Spielen zuzusehen. Abgeschaltet kehrt der Nebel zurück." data-en-title="You see the whole map, all cities and all enemy units, including submerged submarines, and all his moves. Handy for watching how the enemy plays. Switched off, the fog returns."><input type="checkbox" id="cheatFogChk"> <span data-en="Fog of war off – see the whole map and the enemy">Nebel des Krieges aus – ganze Karte und Gegner sichtbar</span></label>
 </div>
 <main>
   <div id="mapCol">
@@ -643,6 +649,8 @@
         <p data-lang="en" class="muted">In test games against a computer player that has to explore by itself and makes no mistakes, that player
           won practically always on Easy, half to two thirds of the time on Normal, about one game in four or five on Hard and almost never on Brutal.
           How hard it is for you naturally depends on your style of play.</p>
+        <div class="help-tip" data-lang="de"><b>Dem Gegner zusehen:</b> Im <b>☰ Menü</b> unter „Schummeln“ lässt sich der Nebel des Krieges abschalten. Dann siehst du die ganze Karte, alle seine Einheiten und Züge. Schaltest du wieder zurück, kehrt der Nebel zurück – dein Kartenwissen ist dasselbe wie vorher, ergänzt um das, was deine Einheiten inzwischen wirklich gesehen haben.</div>
+        <div class="help-tip" data-lang="en"><b>Watching the enemy:</b> in the <b>☰ Menu</b> under “Cheats” you can switch off the fog of war. You then see the whole map and all his units and moves. Switch it back and the fog returns – your map knowledge is the same as before, plus what your units have really seen in the meantime.</div>
       </section>
 
       <section data-pane="about" hidden>

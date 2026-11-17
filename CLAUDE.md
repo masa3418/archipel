@@ -83,6 +83,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Einheitenkarten (`UNIT_INFO`, `UNIT_ROLE`) und die Tabelle „Wer schlägt wen“ (`oddsMatrix` über `attackOdds`) entstehen
   in `buildHelp()` aus den Spieldaten – Prozentwerte nie von Hand in die Hilfe schreiben. Neue Sonderregeln als Zeile in der
   Tabelle `.help-rules` (Reiter „Kampf“) ergänzen, den Einheitentext in `UNIT_INFO`.
+- **Schummeln „Nebel aus“**: `CHEAT_FOG` (game.js), geschaltet mit `setCheatFog` (ui.js, Haken im Menü, `archipel-cheat-fog`). `computeVision(0)`
+  legt dann das echte Kartengedächtnis in `P.real` (`seen`, `knownOwner`) ab und füllt `seen`/`vis`/`sonar` mit 1; `serialize` sichert immer
+  das echte. Beim Abschalten kehrt der Nebel zurück. Wer `P.seen`/`P.knownOwner` schreibt, muss `P.real` beachten (bisher schreibt nur
+  `computeVision`). In Simulationen bleibt der Schalter aus. Anzeige: Schildchen `.cheat` neben der Rundenzahl.
 - **Kräfteverhältnis**: `strength(p)` (game.js) = Wert der Einheiten (Bauzeit × Trefferpunkte-Anteil) + `CITY_VALUE` je Stadt. Ein Klick auf
   den Balken öffnet `openPower`/`renderPower` (ui.js) mit der Rechnung: eigene Einheiten je Typ. Vom Gegner standardmäßig nur der
   Prozentwert; erst mit dem Haken „Zahlen des Gegners aufdecken“ (`spoiler`, `archipel-spoiler`) nennt das Fenster
