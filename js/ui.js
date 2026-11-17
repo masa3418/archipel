@@ -3095,8 +3095,12 @@ function showWelcome() {
   try { localStorage.setItem('archipel-welcome', '1'); } catch (e) {}
   openModal('mWelcome');
 }
-$('wStart').onclick = closeModals;
-$('wHelp').onclick = () => { closeModals(); openHelp('start'); };
+// Beim ersten Besuch erklingt die Startmelodie (Grieg) mit dem ersten Klick im Fenster – vorher erlauben Browser keinen Ton.
+// Nicht, wenn das Fenster über das Handbuch noch einmal geöffnet wurde.
+let welcomeFirst = false;
+const welcomeTune = () => { if (welcomeFirst) { welcomeFirst = false; Sfx.play('start'); } };
+$('wStart').onclick = () => { closeModals(); welcomeTune(); };
+$('wHelp').onclick = () => { closeModals(); welcomeTune(); openHelp('start'); };
 $('wLang').onclick = () => {
   // nach dem Umschalten soll das Fenster in der anderen Sprache noch einmal erscheinen
   try { localStorage.removeItem('archipel-welcome'); } catch (e) {}
@@ -3132,7 +3136,7 @@ $('bLang').onclick = () => {
   try { const z = +localStorage.getItem('archipel-zoom'); if (z >= 14 && z <= 48) TS = z; } catch (e) {}
   if (loadGame()) { afterLoad(); addLog(tt('Spielstand fortgesetzt.', 'Game resumed.')); refresh(); }
   else startNew('mittel');
-  if (!welcomeSeen()) showWelcome();
+  if (!welcomeSeen()) { welcomeFirst = true; showWelcome(); }
   requestAnimationFrame(loop);
   window.addEventListener('resize', () => renderMini());
 })();
