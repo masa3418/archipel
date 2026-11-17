@@ -3,6 +3,17 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.2.1
+
+- **Produktionsansicht:** Direkt unter dem Ansichtsschalter steht jetzt eine Tabelle – je Einheitentyp, wie viele Städte
+  ihn bauen, wann die nächste Einheit fertig wird und wie viele du schon hast
+- **Korrigiert:** Der Hinweis „Gegner zieht …“ über der Karte stand auch da, während die eigenen Einheiten ihre Märsche
+  und Patrouillen ausführten. Jetzt wechselt er dann zu „Deine Einheiten führen ihre Befehle aus …“.
+
+*English:* the production view now has a table right below the view switch (per unit type: cities building it, turns
+until the next one, units you own), and the “Enemy is moving …” hint no longer shows while your own units carry out
+their orders.
+
 ## 1.2.0
 
 - **Aufgeräumte Kopfzeile:** Seltenes liegt jetzt im „☰ Menü“ – Neues Spiel, Spielstände, Statistik und die Einstellungen
