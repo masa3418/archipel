@@ -237,6 +237,9 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   gewänne der Vergleichsspieler auf Schwer 31 % (Kontinente 50 %, Inselreich 10 %) – zu ungleich je Welt, deshalb nicht übernommen.
 - Schlechter: keine frühen Kreuzer (34 %), mehr Transporter (42 %), Landung direkt vor der Stadt (47 %), andere Truppgrößen.
 - Auf Schwer im Inselreich baut der Gegner (fast nur Küstenstädte) kaum Jäger.
+- Flucht vom bedrohten Feld (`aiWarship`: kein gefahrloser Weg → notfalls durch bedrohte Felder aus der Reichweite; lauernde U-Boote bleiben
+  nur unbedroht liegen). Vorher blieb z. B. ein U-Boot neben einem Zerstörer stehen. Messung (Können 1, je ~400 Partien): Siegquote 49 %,
+  offen 9 → 10 von 408, Partien 5 Runden länger – neutral, deshalb festgeschrieben.
 - Beschuss von Land nur noch durch Kreuzer und Schlachtschiff (je 192 Partien, alt → neu): Leicht 100 → 98 %, Normal 57 → 55 %,
   Schwer 21 → 22 %, Brutal 5 → 6 %, offen 9 → 9. Partien dauern 5–10 Runden länger. Die Stufen bleiben also gültig.
 - Küstenangriff (je 192 Partien, ohne → dreifacher Schaden → dreifach und 2/3 Treffer): Leicht 98/99/100 %, Normal 65/65/70 %,

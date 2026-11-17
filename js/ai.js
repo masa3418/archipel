@@ -604,7 +604,7 @@ function aiWarship(u) {
       }
       if (tc) {
         const d0 = cheb(u.x, u.y, tc.x, tc.y);
-        if (d0 >= 2 && d0 <= 3 && S.terrain[idx(u.x, u.y)] === 0) break;
+        if (d0 >= 2 && d0 <= 3 && S.terrain[idx(u.x, u.y)] === 0 && !threat[idx(u.x, u.y)]) break;   // bedroht: nicht liegen bleiben
         path = bfs(u.x, u.y, pass, (x, y, i) => { const d = cheb(x, y, tc.x, tc.y); return pass(x, y, i) && S.terrain[i] === 0 && d >= 2 && d <= 3; });
         if (!path) u.aiTarget = null;
       }
@@ -637,6 +637,11 @@ function aiWarship(u) {
       }
       path = bfs(u.x, u.y, pass, (x, y, i) => { const d = cheb(x, y, tc.x, tc.y); return pass(x, y, i) && S.terrain[i] === 0 && d >= 3 && d <= 4; });
       if (!path) { u.aiTarget = null; }
+    }
+    if (!path && threat[idx(u.x, u.y)] && !(here && here.owner === p)) {
+      // Das eigene Feld ist bedroht, aber kein gefahrloser Weg führt weiter (z. B. U-Boot neben einem Zerstörer):
+      // wenigstens aus der Reichweite fliehen – notfalls durch bedrohte Felder – statt stehen zu bleiben
+      path = bfs(u.x, u.y, basePass, (x, y, i) => basePass(x, y, i) && (!threat[i] || ownPort(x, y)), t.move * 3);
     }
     if (!path || !stepAlong(u, path)) break;
   }
