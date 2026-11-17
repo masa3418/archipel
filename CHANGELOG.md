@@ -3,6 +3,28 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.2.0
+
+- **Aufgeräumte Kopfzeile:** Seltenes liegt jetzt im „☰ Menü“ – Neues Spiel, Spielstände, Statistik und die Einstellungen
+  (Lautstärke, Klangtest, Mausrad/Touchpad, automatisches Rundenende). Oben bleiben Zoom, Ton, Handbuch und Sprache.
+- **Hinweiszeile über der Karte** statt am unteren Rand; „Gegner zieht …“ erscheint an derselben Stelle
+- **Schwierigkeitsstufe** steht neben der Rundenzahl; ein Klick öffnet das Handbuch bei „Gegner & Stufen“,
+  die Stufe der laufenden Partie ist dort markiert
+- **Produktionsansicht** (Taste V): zeigt statt der Einheiten, was jede eigene Stadt baut und wie lange es noch dauert;
+  ein Klick auf eine Stadt ändert die Produktion
+- **Wegeansicht** (Taste G): zeigt alle Märsche, Patrouillen und Marschziele auf der Karte, das Spiel läuft dabei normal weiter
+- **Marschziel je Stadt:** Einheiten, die dort fertig werden, marschieren sofort zum gewählten Feld. Gesetzt wird es in
+  der Stadtkarte oder per Rechtsklick auf die Stadt; beim Umstellen der Produktion wird es gelöscht.
+- **Statistik:** neuer Abschnitt „Zerstörte Einheiten“ – je Einheitentyp, was du zerstört hast, was der Gegner zerstört
+  hat und was sonst verloren ging. Ältere Spielstände zählen ab dem Laden.
+- **Neue Einstellungen:** Das Kräfteverhältnis lässt sich ausblenden, und die Schwelle, ab der das Spiel das vorzeitige
+  Ende anbietet, ist wählbar (nie, 5 bis 30 %)
+
+*English:* a tidier top bar with a menu for rarely used things and settings, the hint line now above the map, the
+difficulty level next to the turn number, a production view (V) and a route view (G), rally points for cities,
+destroyed units per type in the statistics, and two new settings (hide the balance of power, choose when the game
+offers an early end).
+
 ## 1.1.0
 
 - Das Handbuch und die Sprachwahl sind leichter zu finden: Oben rechts stehen jetzt zwei hervorgehobene Knöpfe,
