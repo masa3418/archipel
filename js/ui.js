@@ -944,7 +944,15 @@ function pendingCenterStep(now) {
   if (!inViewMargin(u.x, u.y)) camTo(u.x + 0.5, u.y + 0.5, 550);
 }
 
+// Beladener Transporter neben einer neutralen oder feindlichen Stadt: Seine Truppen haben ihren Zug noch und können vom Schiff aus
+// angreifen – auch wenn der Transporter selbst keinen Zug mehr hat. Er gilt deshalb als „wartend“, bis der Spieler angreift,
+// an Land setzt oder ihn überspringt. Sonst endete die Runde von selbst, und der Transporter läge eine Gegnerrunde lang
+// schutzlos vor der Stadt.
+function landingPending(u) {
+  return u.owner === 0 && !u.skip && !u.order && u.carrier == null && T(u).carries === 'land' && !!assaultTarget(u);
+}
 function needsOrders(u) {
+  if (landingPending(u)) return true;
   if (u.owner !== 0 || u.moves <= 0 || u.order || u.skip) return false;
   // Bodentruppen an Bord: nur dann „wartend“, wenn der Transporter an einer Küste
   // liegt (nicht im eigenen Hafen) – mitten auf See können sie ohnehin nichts tun
@@ -1012,7 +1020,7 @@ function autoEndStep(now) {
 function afterAction(u) {
   computeVision(0);
   if (checkGameOver()) { showGameOver(); }
-  if (!u || !alive(u) || u.moves <= 0 || u.order) {
+  if (!u || !alive(u) || u.order || (u.moves <= 0 && !landingPending(u))) {
     // Erst zu Ende ansehen lassen, was gerade passiert ist (Kampf, Eroberung),
     // dann weich zur nächsten Einheit schwenken
     const dramatic = anim.events.some(e => e.type === 'boom' || e.type === 'capture');
@@ -1036,6 +1044,7 @@ function doMove(u, x, y) {
   const r = sailStep(u, x, y);   // wie moveStep; ein Transporter nimmt beim Auslaufen die wartenden Truppen der Stadt mit
   animEnd();
   if (!r.ok) { toast(r.msg); Sfx.play('error'); }
+  else if (landingPending(u) && !r.picked) { const tg = assaultTarget(u); toast(tt(`Vor ${tg.city.name}: Die Truppen an Bord können sofort angreifen (U)`, `Off ${tg.city.name}: the troops on board can attack right away (U)`)); }
   else if (r.picked) { toast(tt(`${r.picked === 1 ? '1 Einheit' : r.picked + ' Einheiten'} aus der Stadt mitgenommen (${cargoOf(u).length}/${T(u).capacity})`, `${r.picked === 1 ? '1 unit' : r.picked + ' units'} taken along from the city (${cargoOf(u).length}/${T(u).capacity})`)); Sfx.play('clank'); }
   else if (r.boarded) Sfx.play('clank');
   afterAction(u);
@@ -1381,13 +1390,15 @@ function updatePanel() {
     // Transporter: „Laden bis voll“ geht überall (Stadt und Nachbarfelder); Träger laden wie bisher nur in der eigenen Stadt
     if (t.carries === 'land') h += `<button data-act="load" title="${tt('L – bleibt liegen, bis er voll ist, und nimmt wartende Bodentruppen aus seiner Stadt und von den Nachbarfeldern an Bord. Ohne diesen Befehl nimmt er beim Verlassen einer eigenen Stadt mit, was dort wartet.', 'L – stays put until full, taking waiting land units on board from its city and the adjacent tiles. Without this order it takes along whatever is waiting when it leaves one of your cities.')}" ${(u.order && u.order.type === 'load') || cargo.length >= t.capacity ? 'disabled' : ''}>${tt('Laden bis voll', 'Load until full')}</button>`;
     else if (t.carries && c && c.owner === 0) h += `<button data-act="load" title="L">${tt('Einladen', 'Load')}</button>`;
+    let landTgt = null;
     if (t.carries && cargo.length) {
-      const tgt = t.carries === 'land' ? assaultTarget(u) : null;
+      const tgt = landTgt = t.carries === 'land' ? assaultTarget(u) : null;
       h += tgt ? `<button data-act="unload" title="${tt('U – die Truppen greifen die Stadt sofort vom Schiff aus an', 'U – the troops attack the city straight from the ship')}">⚔ ${tt('Angriff auf', 'Attack')} ${esc(tgt.city.name)} · ${Math.round(tgt.chance * 100)} %</button>
         <button data-act="unloadLand" title="${tt('Ohne Angriff auf freie Nachbarfelder aussteigen', 'Disembark onto free adjacent tiles without attacking')}">${tt('Nur an Land setzen', 'Just put ashore')}</button>`
         : `<button data-act="unload" title="U">${tt('Ausladen', 'Unload')}</button>`;
     }
     h += `</div>`;
+    if (landTgt) h += `<div class="landnote">${tt(`Die Truppen an Bord haben ihren Zug noch: Angriff auf ${esc(landTgt.city.name)} mit <kbd>U</kbd> – oder mit der Leertaste überspringen.`, `The troops on board still have their move: attack ${esc(landTgt.city.name)} with <kbd>U</kbd> – or press Space to skip.`)}</div>`;
     if (patrolMode && patrolMode.id === u.id) {
       const n = patrolMode.pts.length;
       h += `<div class="patrolbox">${tt(`<b>Patrouille festlegen</b><br>Klicke nacheinander Wegpunkte auf der Karte (${n} gesetzt).
@@ -1998,7 +2009,7 @@ function renderCtx() {
     const homeOk = c => c && c.owner === 0 && (t.domain !== 'sea' || c.coastal);
     if (units.length <= 1) h += `<div class="cmenu-head"><b>${esc(t.name)}</b> · ${u.moves}/${t.move} ${tt('Bewegung', 'moves')}${t.fuel ? ` · ${tt('Treibstoff', 'fuel')} ${u.fuel}` : ''}</div>`;
     const btn = (act, label, key, dis = false) => `<button data-cact="${act}" ${dis ? 'disabled' : ''}>${label}${key ? `<kbd>${key}</kbd>` : ''}</button>`;
-    h += btn('skip', tt('Überspringen', 'Skip'), tt('Leertaste', 'Space'), u.moves <= 0);
+    h += btn('skip', tt('Überspringen', 'Skip'), tt('Leertaste', 'Space'), u.moves <= 0 && !landingPending(u));
     h += btn('sentry', tt('Wache', 'Sentry'), 'S', !!(u.order && u.order.type === 'sentry'));
     h += btn('explore', tt('Erkunden', 'Explore'), 'R', (aboard && t.domain === 'land') || (u.type === 'trn' && cargoOf(u).length > 0));
     h += btn('patrol', tt('Patrouille', 'Patrol'), 'P', aboard);
