@@ -339,6 +339,43 @@ function drawSupportMark(x, y, protect, col) {
   ctx.restore();
 }
 
+// ------------------------------------------------------------------ Produktionsansicht
+// Umschaltbare Sicht (Schalter in der Seitenleiste, Taste V): Statt der Einheiten zeigt die Karte, was jede
+// eigene Stadt baut – Symbol der Einheit, Fortschrittsring, Restzeit. Ein Klick auf eine Stadt ändert die Produktion.
+let prodView = false;
+function setProdView(on) {
+  on = !!on && !!S;
+  if (on === prodView) return;
+  prodView = on;
+  if (on) { sel = null; selCity = null; if (patrolMode) patrolAbort(); closeCtx(); }
+  $('vUnits').classList.toggle('on', !on); $('vProd').classList.toggle('on', on);
+  if (S) { refresh(); updateHover(); }
+}
+const prodLeft = c => Math.max(1, Math.ceil(UT[c.prod].cost - c.progress));
+function drawProdView() {
+  const fs = Math.max(9, Math.round(TS * 0.34));
+  for (const c of S.cities) {
+    if (c.owner !== 0) continue;
+    const cx = c.x * TS + TS / 2, cy = c.y * TS + TS / 2, r = TS * 0.54;
+    ctx.fillStyle = 'rgba(10,14,20,0.6)'; ctx.beginPath(); ctx.arc(cx, cy, r + TS * 0.06, 0, 7); ctx.fill();
+    const hot = hover && hover[0] === c.x && hover[1] === c.y;
+    ctx.lineWidth = Math.max(2, TS / 10);
+    ctx.strokeStyle = hot ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
+    if (!c.prod || !UT[c.prod]) continue;
+    const t = UT[c.prod], size = Math.round(TS * 0.8), spr = unitSprite(c.prod, 0, size);
+    ctx.drawImage(spr, cx - size / 2 - spr.pad, cy - size / 2 - spr.pad);
+    // Fortschritt als Ring, beginnend oben
+    const f = Math.min(1, c.progress / t.cost);
+    if (f > 0) { ctx.strokeStyle = '#f2b84b'; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); ctx.stroke(); ctx.lineCap = 'butt'; }
+    // Restzeit in Runden
+    const txt = String(prodLeft(c));
+    ctx.font = `700 ${fs}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const w = Math.max(fs * 1.25, ctx.measureText(txt).width + fs * 0.6), h = fs * 1.25, bx = cx + TS * 0.4, by = cy + TS * 0.42;
+    roundRectPath(ctx, bx - w / 2, by - h / 2, w, h, h / 2); ctx.fillStyle = '#f2b84b'; ctx.fill();
+    ctx.fillStyle = '#1b1406'; ctx.fillText(txt, bx, by + 0.5);
+  }
+}
+
 function render(now = performance.now()) {
   if (!S || !terrainCache) return;
   const P = S.players[0];
@@ -353,6 +390,7 @@ function render(now = performance.now()) {
 
   const V = viewNow(rel, playing);
   drawFog(V);
+  if (prodView) { drawProdView(); return; }   // Produktionsansicht: keine Einheiten, Marker, Effekte
 
   // Feuerunterstützung: Städte neben einem sichtbaren Schlachtschiff markieren.
   // Eckwinkel = unter Feuer (fällt zu 75 %), gestrichelter Ring = Feuerschutz (fällt nur zu 25 %)
@@ -944,6 +982,11 @@ function patrolAddPoint(x, y) {
 }
 
 function onTileClick(x, y, shift) {
+  if (prodView) {   // Produktionsansicht: Klick auf eine eigene Stadt ändert ihre Produktion
+    const c = S && inb(x, y) ? cityAt(x, y) : null;
+    if (c && c.owner === 0) { Sfx.play('tick'); openProdDialog(c); }
+    return;
+  }
   if (patrolMode) { patrolAddPoint(x, y); return; }
   if (!S || !inb(x, y)) return;
   const u = selUnit();
@@ -975,6 +1018,7 @@ function onTileClick(x, y, shift) {
 
 function endHumanTurn() {
   if (!S || S.over) return;
+  setProdView(false);
   autoEndAt = 0;
   sel = null;
   Sfx.play('endTurn');
@@ -1049,9 +1093,26 @@ function iconUrl(kind, v) {
   return iconCache[key];
 }
 
+// Seitenleiste in der Produktionsansicht: was wird wie oft gebaut, und wann ist das Nächste fertig
+function prodPanel() {
+  const mine = S.cities.filter(c => c.owner === 0 && c.prod && UT[c.prod]);
+  let h = `<section class="pcard pc-city"><div class="pc-head"><img class="pc-icon" src="${iconUrl('c', 0)}" alt=""><div><h3>${tt('Produktion', 'Production')}</h3>
+    <div class="uname">${tt(`${mine.length} ${mine.length === 1 ? 'Stadt' : 'Städte'}`, `${mine.length} ${mine.length === 1 ? 'city' : 'cities'}`)}</div></div></div><div class="stats">`;
+  for (const k of UNIT_ORDER) {
+    const cs = mine.filter(c => c.prod === k);
+    if (!cs.length) continue;
+    const next = Math.min(...cs.map(prodLeft));
+    h += `<span>${cs.length} × ${esc(UT[k].name)}</span><b>${tt(`nächste in ${next} ${next === 1 ? 'Runde' : 'Runden'}`, `next in ${next} ${next === 1 ? 'turn' : 'turns'}`)}</b>`;
+  }
+  h += `</div><p class="muted" style="font-size:12px;margin:8px 0 0">${tt('Die Zahl an jeder Stadt nennt die Runden bis zur Fertigstellung, der Ring den Fortschritt. Klick auf eine Stadt ändert ihre Produktion. Taste V oder der Schalter oben führt zurück zu den Einheiten.',
+    'The number at each city is the turns until completion, the ring shows the progress. Click a city to change its production. Press V or use the switch above to return to the units.')}</p></section>`;
+  return h;
+}
+
 function updatePanel() {
   const el = $('panel');
   if (!S) { el.innerHTML = ''; return; }
+  if (prodView) { el.innerHTML = prodPanel(); return; }
   let h = '';
   const u = selUnit();
   if (u) {
@@ -1226,6 +1287,16 @@ function updateHeader() {
 
 function updateHover() {
   if (!hover || !S) { $('hover').innerHTML = '&nbsp;'; return; }
+  if (prodView) {
+    const c = inb(hover[0], hover[1]) ? cityAt(hover[0], hover[1]) : null;
+    dirty = true;   // Hervorhebung der Stadt unter der Maus
+    if (c && c.owner === 0 && c.prod && UT[c.prod]) {
+      const n = prodLeft(c);
+      $('hover').textContent = tt(`${c.name} baut ${UT[c.prod].name} · fertig in ${n} ${n === 1 ? 'Runde' : 'Runden'} · Klick ändert die Produktion`,
+        `${c.name} builds ${UT[c.prod].name.toLowerCase()} · ready in ${n} ${n === 1 ? 'turn' : 'turns'} · click to change production`);
+    } else $('hover').textContent = tt('Produktionsansicht · Klick auf eine eigene Stadt ändert ihre Produktion · V zurück zu den Einheiten', 'Production view · click one of your cities to change its production · V back to the units');
+    return;
+  }
   const [x, y] = hover, i = idx(x, y), P = S.players[0];
   if (!P.seen[i]) { $('hover').textContent = `(${x},${y}) ${tt('unerforscht', 'unexplored')}`; return; }
   let s = `(${x},${y}) ${S.terrain[i] ? tt('Land', 'land') : tt('Wasser', 'water')}`;
@@ -1495,6 +1566,7 @@ function showGameOver() {
 }
 
 function startNew(size, diffKey, worldKey) {
+  if (prodView) { prodView = false; $('vUnits').classList.add('on'); $('vProd').classList.remove('on'); }
   if (!diffKey) { try { diffKey = localStorage.getItem('archipel-diff') || 'normal'; } catch (e) { diffKey = 'normal'; } }
   if (!worldKey) { try { worldKey = localStorage.getItem('archipel-world') || 'inseln'; } catch (e) { worldKey = 'inseln'; } }
   setTimeout(() => { logSeen = S.log[0] || null; updateLogHead(); }, 0);
@@ -1509,6 +1581,7 @@ function startNew(size, diffKey, worldKey) {
 }
 
 function afterLoad() {
+  if (prodView) { prodView = false; $('vUnits').classList.add('on'); $('vProd').classList.remove('on'); }
   logSeen = S.log[0] || null;
   if (!S.hist) S.hist = [];
   if (!S.hist.length) recordStrength();
@@ -1541,6 +1614,7 @@ cv.addEventListener('click', e => {
 let drag = null, dragSwallow = false;
 const DRAG_THRESHOLD = 4, DRAG_THRESHOLD_LEFT = 9;   // links großzügiger, damit ein Klick mit leichtem Wackeln ein Klick bleibt
 function rightClickAction(e) {
+  if (prodView) { if (e && S) { const [x, y] = tileFromEvent(e); onTileClick(x, y, false); } return; }
   if (patrolMode) { patrolUndo(); return; }
   if (e && S && !S.over && !anyModalOpen()) {
     const [x, y] = tileFromEvent(e);
@@ -1793,6 +1867,11 @@ document.addEventListener('keydown', e => {
     wrap.scrollLeft += KEYDIR[k][0] * TS * 3; wrap.scrollTop += KEYDIR[k][1] * TS * 3;
     return;
   }
+  if (k === 'v') { setProdView(!prodView); return; }
+  if (prodView) {   // in der Produktionsansicht gibt es keine Einheitenbefehle
+    if (k === 'Escape') { setProdView(false); return; }
+    if (!['+', '-', 'h', '?', 'm', 'k', 'i', 'Enter'].includes(k)) return;
+  }
   const u = selUnit();
   if (patrolMode) {
     if (k === 'Enter') { e.preventDefault(); patrolStart(); }
@@ -1822,7 +1901,9 @@ document.addEventListener('keydown', e => {
 });
 
 $('endTurn').onclick = endHumanTurn;
-$('nextUnit').onclick = actNext;
+$('nextUnit').onclick = () => { setProdView(false); actNext(); };
+$('vUnits').onclick = () => setProdView(false);
+$('vProd').onclick = () => setProdView(true);
 $('autoEndChk').checked = autoEnd;
 $('autoEndChk').onchange = e => {
   autoEnd = e.target.checked;

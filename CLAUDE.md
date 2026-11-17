@@ -98,6 +98,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Touchpad-Wischen verschiebt (`looksLikeTouchpad`: kleine, krumme oder seitliche Schritte), Spreizgeste = Rad mit Strg = Zoom.
   Die Einstellung `archipel-wheel` (auto | zoom | pan, im Handbuch unter „Steuerung“) übersteuert die Erkennung.
   Echte Touchpad-Gesten lassen sich im eingebauten Browser nur als nachgestellte Rad-Ereignisse testen.
+- **Produktionsansicht** (ui.js): `prodView`, umgeschaltet mit `setProdView(on)` (Schalter in der Seitenleiste, Taste V).
+  `render()` zeichnet dann nach dem Nebel nur `drawProdView()` (Symbol, Fortschrittsring, Restzeit je eigener Stadt) und
+  bricht ab; Klicks öffnen `openProdDialog`, Einheitentasten sind gesperrt. Rundenende, „Nächste Einheit“, neues Spiel und
+  Laden schalten zurück. Der Zustand wird nicht gespeichert.
 - **Grafik-Caches**: Gelände (`buildTerrainCache`) und Sprites hängen von der Zoomstufe `TS` ab.
 
 ## Entwickeln und testen
