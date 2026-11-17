@@ -59,6 +59,7 @@
   .menu .mi { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left;
     background: none; border: 0; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
   .menu .mi:hover { background: var(--panel2); }
+  .menu .mi[hidden] { display: none; }
   .menu .ms { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 8px; }
   .menu .ms:not(.chk) > span { white-space: nowrap; }
   .menu .ms input[type=range] { width: 130px; accent-color: var(--accent); }
@@ -474,6 +475,7 @@
   <button id="bNew" class="mi"><span data-en="New game">Neues Spiel</span></button>
   <button id="bSaves" class="mi" title="Spielstände speichern und laden" data-en-title="Save and load games"><span data-en="Saved games">Spielstände</span></button>
   <button id="bStats" class="mi"><span data-en="Statistics">Statistik</span><kbd>I</kbd></button>
+  <button id="bPowerMenu" class="mi" title="Wie stark du im Vergleich zum Gegner bist – mit Rechnung und Verlauf" data-en-title="How strong you are compared to the enemy – with the calculation and history"><span data-en="Balance of power">Kräfteverhältnis</span></button>
   <button id="bTime" class="mi" title="Die Partie im Zeitraffer: wie sich Karte und Reiche Runde für Runde entwickelt haben" data-en-title="The game as a time-lapse: how the map and the empires developed turn by turn"><span data-en="Time-lapse">Zeitraffer</span><kbd>T</kbd></button>
   <button id="bSettings" class="mi" title="Ton, Anzeige, Spielablauf, Steuerung" data-en-title="Sound, display, game flow, controls"><span data-en="Settings …">Einstellungen …</span></button>
 </div>

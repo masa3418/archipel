@@ -1691,6 +1691,7 @@ try { showPower = localStorage.getItem('archipel-power') !== '0'; } catch (e) {}
 // Einheiten). Der Hinweistext des Balkens und die Frage nach dem vorzeitigen Ende nennen vom Gegner immer nur den Prozentwert.
 let spoiler = false;
 try { spoiler = localStorage.getItem('archipel-spoiler') === '1'; } catch (e) {}
+// Ausgeschaltet verschwindet nur der Balken; der Menüeintrag „Kräfteverhältnis“ bleibt – er öffnet erst auf Wunsch das Fenster mit der Rechnung
 function applyPower() { $('power').style.display = showPower ? '' : 'none'; }
 function updatePower() {
   const a = strength(0), b = strength(1);
@@ -1783,6 +1784,7 @@ function renderPower() {
 }
 function openPower() { if (!S) return; closeCtx(); renderPower(); openModal('mPower'); }
 $('power').onclick = openPower;
+$('bPowerMenu').onclick = openPower;
 
 function drawPowerSpark(hist, share) {
   const c = $('powerSpark'), g = c.getContext('2d');
