@@ -3,6 +3,64 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.5.0
+
+Neue Welten, Zeitraffer und ein würdiges Spielende.
+
+**Welten**
+
+- **Inselreich** (jetzt die empfohlene Karte): keine großen Inseln mehr. Früher wuchsen geplante Inseln an den Küsten oft
+  zusammen – die größte nahm bis zu drei Viertel des Landes ein. Jetzt bleiben sie getrennt; die größte Insel hat 15–22 %
+  des Landes, jede Startinsel mindestens 4 Städte. Ohne Seekrieg geht hier nichts.
+- **Gemischt:** mehrere gleich große, mittelgroße Landmassen – je nach Kartengröße drei, vier oder fünf –, dazwischen viele
+  kleine Inseln. Erst das eigene Land sichern, dann über See weiter.
+- **Festland** (ersetzt „Kontinente“): Die ganze Welt ist eine Landmasse mit großen Binnenmeeren und Flüssen. Schiffe fahren
+  auf Seen und Flüssen, Bodentruppen kommen an Brücken über die Flüsse. Landengen und Brücken sind die Engstellen – dort
+  lauern Kreuzer und Schlachtschiffe von den Seen aus. Häfen gibt es nur an Seen und am Meer.
+- **Kartennummer:** Jede Welt hat eine Nummer. Gleiche Nummer, Größe und Welt ergeben dieselbe Karte – zum Wiederholen oder
+  Vergleichen mit Freunden. Eingabe im Fenster „Neues Spiel“ (auch Wörter gehen), dazu „Diese Welt noch einmal“; die Nummer
+  steht in der Statistik und im Abschlussfenster.
+- In Simulationen bleiben die Schwierigkeitsstufen auf allen drei Welten gültig.
+
+**Rückblick**
+
+- **Zeitraffer** (Menü, Taste T): spielt die Partie Runde für Runde ab – entdeckte Karte, Städte und ihr Umland in der
+  Farbe des Besitzers, darunter das Kräfteverhältnis. Während des Spiels nur, was du damals wusstest; nach dem Ende die
+  ganze Karte. Ältere Spielstände zeichnen ab dem Laden auf.
+- **Abschlussfenster:** Sieg oder Niederlage jetzt mit festlichem Kopf, dem Zeitraffer der ganzen Partie und einer
+  Endstatistik – Eckdaten und je Einheitentyp gebaut und verloren, für beide Seiten.
+
+**Klänge**
+
+- **Startmelodie:** der Anfang der „Morgenstimmung“ von Edvard Grieg (gemeinfrei, im Spiel selbst erzeugt) – beim Start
+  einer neuen Partie und beim allerersten Besuch. Ein Hinweis im Handbuch würdigt den Komponisten.
+- **Sieg und Niederlage** klingen jetzt etwa acht Sekunden lang: Fanfare mit Pauken und Becken bzw. getragene Mollakkorde
+  mit einsamem Horn.
+
+**Bedienung**
+
+- **Zentrieren** (Fadenkreuz oben, Taste F): Karte auf die ausgewählte Einheit, nachdem du dich umgesehen hast.
+- **Tastenlegende** über der Karte, im Menü einschaltbar; was gerade nicht geht, ist abgeblendet.
+- Das Spielstandfenster schließt sich nach dem Speichern.
+
+**Gegner**
+
+- Schiffe des Gegners bleiben nicht mehr auf einem bedrohten Feld stehen (z. B. ein U-Boot neben deinem Zerstörer), sondern
+  fliehen.
+- Städte im Binnenland bauen nicht mehr massenhaft Jäger.
+
+**Korrigiert**
+
+- Öffnete sich das Landefenster oder das Eroberungsfenster, schwenkte die Karte darunter schon zur nächsten Einheit.
+- Über einem U-Boot neben Infanterie stand eine Siegchance, obwohl Bodentruppen U-Boote nicht angreifen können.
+
+*English:* new worlds – the archipelago (now recommended) no longer has large islands, “mixed” has several medium-sized land
+masses depending on the map size, and the new “mainland” is a single land mass with large inland seas, rivers and bridges.
+Every world has a map number to replay or share it. A time-lapse replays the game turn by turn, and the end of a game shows
+it together with final statistics. The game start plays the opening of Grieg’s “Morning Mood”; victory and defeat have longer
+music. Also new: a centre button (F), an optional keyboard legend on the map, and enemy ships that flee instead of waiting
+to be sunk.
+
 ## 1.4.0
 
 Seekrieg an der Küste und Landungen.
