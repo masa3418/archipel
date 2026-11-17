@@ -3,6 +3,17 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.2.2
+
+- **Kräfteverhältnis zum Nachrechnen:** Ein Klick auf den Balken öffnet ein Fenster mit der genauen Rechnung – Städte,
+  Wert der Einheiten, Stärke und Anteil, dazu die eigenen Einheiten je Typ
+- **Spoilerfrei:** Vom Gegner steht dort zunächst nur der Prozentwert. Wer mehr wissen will, setzt den Haken „Zahlen des
+  Gegners aufdecken“ und sieht seine Städte und den Gesamtwert seiner Einheiten – nie aber, welche Einheiten es sind.
+  Dasselbe gilt jetzt für den Hinweistext des Balkens und die Frage nach dem vorzeitigen Ende.
+
+*English:* click the balance-of-power bar to see the exact calculation. By default the enemy is shown as a percentage
+only; a checkbox reveals his cities and the total value of his units, but never which units they are.
+
 ## 1.2.1
 
 - **Produktionsansicht:** Direkt unter dem Ansichtsschalter steht jetzt eine Tabelle – je Einheitentyp, wie viele Städte
