@@ -287,5 +287,5 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   setzen, `serialize()` in eine Datei schreiben; geladen wird über „Spielstände → Aus Datei laden…“.
 - Lange Ersetzungen lieber als Node-Skript im Scratchpad ausführen statt per `sed`/Heredoc oder `node -e`
   mit Backticks (Git Bash führt den Inhalt als Befehl aus).
-- `localStorage`: Autosave `archipel-save-v1`, Spielstände `archipel-slot-*` mit Index
+- `localStorage`: Autosave `archipel-save-v1` (nach jeder Änderung: `queueSave` in `refresh()`, 300 ms gebündelt, dazu `pagehide`; < 1 ms je Speichern), Spielstände `archipel-slot-*` mit Index
   `archipel-slots`, Einstellungen `archipel-*` (Ton, Zoom, Schwierigkeit, Rundenende, Sprache, Handbuch-Reiter, Rad/Touchpad, `archipel-welcome` = Willkommensfenster gesehen …).

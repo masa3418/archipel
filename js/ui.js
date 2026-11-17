@@ -1213,7 +1213,16 @@ function afterAction(u) {
   scheduleAutoEnd();
 }
 
-function refresh() { dirty = true; pathCache = null; rallyCache = null; renderMini(); updatePanel(); updateHeader(); updateKeyLegend(); }
+function refresh() { dirty = true; pathCache = null; rallyCache = null; renderMini(); updatePanel(); updateHeader(); updateKeyLegend(); queueSave(); }
+
+// Automatisch speichern nach jeder Änderung (refresh folgt auf jeden Zug, Angriff, Befehl): gebündelt kurz danach und beim Verlassen
+// der Seite. Ein Spielstand braucht unter 1 ms. So geht beim Neuladen oder Absturz nichts verloren – und ein verlorener Kampf lässt sich
+// nicht durch Neuladen wiederholen.
+function queueSave() {
+  clearTimeout(queueSave.t);
+  queueSave.t = setTimeout(() => { if (S) saveGame(); }, 300);
+}
+window.addEventListener('pagehide', () => { clearTimeout(queueSave.t); if (S) saveGame(); });
 
 // ------------------------------------------------------------------ Aktionen
 // geortete getauchte U-Boote des Gegners (für die Meldung „Sonarkontakt“ nach einem eigenen Zug)
@@ -3068,7 +3077,7 @@ function renderSaves() {
     if (j && !q) {
       const o = JSON.parse(j);
       const m = { turn: o.turn, size: o.size, cities: o.cities.filter(c => c.owner === 0).length, units: o.units.filter(u => u.owner === 0).length, over: o.over, difficulty: o.difficulty };
-      h += `<table class="stat-table save-table"><tr class="auto"><td class="nm">${tt('Automatisch (letzte Runde)', 'Autosave (last turn)')}</td><td class="muted">${slotDesc(m)}</td><td class="muted dt">${tt('laufend', 'current')}</td>
+      h += `<table class="stat-table save-table"><tr class="auto"><td class="nm">${tt('Automatisch (aktueller Stand)', 'Autosave (current state)')}</td><td class="muted">${slotDesc(m)}</td><td class="muted dt" title="${tt('Wird nach jedem Zug und beim Schließen der Seite gespeichert', 'Saved after every move and when the page is closed')}">${tt('laufend', 'current')}</td>
         <td class="acts"><button class="primary" data-load="auto">${tt('Laden', 'Load')}</button><button class="ic" data-export="auto" title="${tt('Als Datei herunterladen', 'Download as file')}">⤓</button></td></tr></table>`;
     }
   } catch (e) {}
