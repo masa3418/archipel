@@ -22,8 +22,11 @@ if (/^v\d/.test(tag) && tag !== 'v' + version) {
 fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(path.join(dist, 'archipel-offline', 'js'), { recursive: true });
 
-// 1) Einzeldatei: Skripte und Symbol einbetten
-const html = read('index.html');
+// 1) Einzeldatei: Skripte und Symbol einbetten. Die App-Beschreibung (manifest.webmanifest) gibt es nur online –
+//    aus der Offline-Fassung fliegt der Verweis heraus (sw.js meldet ui.js über file:// ohnehin nicht an)
+const manifest = '<link rel="manifest" href="manifest.webmanifest">\n';
+if (!read('index.html').includes(manifest)) throw new Error('Verweis auf manifest.webmanifest nicht gefunden');
+const html = read('index.html').replace(manifest, '');
 const scripts = [];
 let single = html.replace(/<script src="(js\/[\w.-]+)"><\/script>/g, (m, src) => {
   scripts.push(src);
@@ -37,7 +40,8 @@ fs.writeFileSync(path.join(dist, 'archipel.html'), single);
 
 // 2) Ordner für das ZIP
 const copy = f => fs.copyFileSync(path.join(root, f), path.join(dist, 'archipel-offline', f));
-['index.html', 'favicon.svg', 'LICENSE', ...scripts].forEach(copy);
+['favicon.svg', 'LICENSE', ...scripts].forEach(copy);
+fs.writeFileSync(path.join(dist, 'archipel-offline', 'index.html'), html);   // ohne Manifest-Verweis
 fs.writeFileSync(path.join(dist, 'archipel-offline', 'LIESMICH.txt'), `Archipel ${version} – Offline-Fassung
 =====================================
 

@@ -1224,6 +1224,12 @@ function queueSave() {
 }
 window.addEventListener('pagehide', () => { clearTimeout(queueSave.t); if (S) saveGame(); });
 
+// Installierbare App (nur online): sw.js und manifest.webmanifest liegen auf GitHub Pages, nicht im Release. Über file://
+// (Offline-Fassung) gibt es keinen Service Worker – dort wird er gar nicht erst angemeldet.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+
 // ------------------------------------------------------------------ Aktionen
 // geortete getauchte U-Boote des Gegners (für die Meldung „Sonarkontakt“ nach einem eigenen Zug)
 function locatedSubs() { return S.units.filter(o => o.owner !== 0 && o.carrier == null && T(o).stealth && !o.surf && canSee(0, o)); }

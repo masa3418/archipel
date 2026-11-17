@@ -25,6 +25,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Keine Asset-Dateien.** Grafik (`gfx.js`) und Klänge (`sfx.js`) werden im Code erzeugt.
   Einzige Ausnahmen: `favicon.svg`, `docs/screenshot.png` (README). `tools/pack.js` ist kein Build für den Betrieb,
   sondern verpackt nur den Release; `dist/` gehört nicht ins Repository.
+- **Installierbare App nur online:** `manifest.webmanifest` und `sw.js` (Service Worker, „erst Netz, dann Zwischenspeicher“) liegen im
+  Repository für GitHub Pages, gehören aber **nicht** in den Release: `pack.js` entfernt den Manifest-Verweis aus Einzeldatei und ZIP-Ordner,
+  ui.js meldet `sw.js` nur bei https/localhost an (nicht über file://). Als App-Symbol dient `favicon.svg` – keine weiteren Bilddateien.
+  Kommt eine neue Skriptdatei hinzu, auch in `CORE` von `sw.js` eintragen.
 - Alle Skripte teilen sich den globalen Namensraum. Reihenfolge in `index.html`:
   `data.js → map.js → game.js → ai.js → gfx.js → sfx.js → ui.js`.
 - Spielzustand liegt komplett in der globalen Variable `S`.
@@ -49,7 +53,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `js/ui.js` | Zeichnen, Animationen/Zeitleiste, Kamera, Eingabe, Seitenleiste, Kontextmenü, alle Dialoge, Handbuch (`openHelp`, `buildHelp`) |
 | `index.html` | Layout, CSS, Dialoge (Handbuch, Statistik, Spielstände, Klangtest …) |
 | `tools/serve.js` | Mini-Webserver für die Entwicklung |
-| `tools/pack.js` | Verpackt die Offline-Fassung nach `dist/` (Einzeldatei `archipel.html`, Ordner fürs ZIP, Release-Text) |
+| `tools/pack.js` | Verpackt die Offline-Fassung nach `dist/` (Einzeldatei `archipel.html`, Ordner fürs ZIP, Release-Text; ohne Manifest-Verweis) |
+| `manifest.webmanifest`, `sw.js` | Installierbare App für die Online-Fassung (nur GitHub Pages, nicht im Release) |
 | `.github/workflows/release.yml` | Legt bei einem Tag `vX.Y.Z` den Release mit der Offline-Fassung an |
 
 ## Wichtige Zusammenhänge (beim Ändern beachten)
