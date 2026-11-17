@@ -473,7 +473,7 @@
 <div id="menu" class="menu" hidden>
   <h4 data-en="Game">Spiel</h4>
   <button id="bNew" class="mi"><span data-en="New game">Neues Spiel</span></button>
-  <button id="bSaves" class="mi" title="Spielstände speichern und laden" data-en-title="Save and load games"><span data-en="Saved games">Spielstände</span></button>
+  <button id="bSaves" class="mi" title="Spielstände speichern und laden (Strg+S)" data-en-title="Save and load games (Ctrl+S)"><span data-en="Saved games">Spielstände</span><kbd class="kbd-save" data-en="Ctrl+S">Strg+S</kbd></button>
   <button id="bStats" class="mi"><span data-en="Statistics">Statistik</span><kbd>I</kbd></button>
   <button id="bPowerMenu" class="mi" title="Wie stark du im Vergleich zum Gegner bist – mit Rechnung und Verlauf" data-en-title="How strong you are compared to the enemy – with the calculation and history"><span data-en="Balance of power">Kräfteverhältnis</span></button>
   <button id="bTime" class="mi" title="Die Partie im Zeitraffer: wie sich Karte und Reiche Runde für Runde entwickelt haben" data-en-title="The game as a time-lapse: how the map and the empires developed turn by turn"><span data-en="Time-lapse">Zeitraffer</span><kbd>T</kbd></button>
@@ -713,13 +713,14 @@
               <tr><td><kbd data-en="Space">Leertaste</kbd></td><td data-en="skip unit this turn">Einheit diese Runde überspringen</td></tr>
               <tr><td><kbd>S</kbd></td><td data-en="sentry: unit waits until woken">Wache: Einheit wartet, bis du sie weckst</td></tr>
               <tr><td><kbd>R</kbd></td><td data-en="explore: unit heads into the unknown on its own">Erkunden: Einheit zieht selbstständig ins Unbekannte</td></tr>
-              <tr><td><kbd>P</kbd></td><td data-en="patrol: click waypoints, Enter starts, right-click removes the last. The unit keeps circling until you clear the order; fighters refuel in between by themselves">Patrouille: Wegpunkte anklicken, Enter startet, Rechtsklick löscht den letzten. Die Einheit dreht ihre Runden, bis du den Befehl aufhebst; Jäger tanken zwischendurch von selbst</td></tr>
+              <tr><td><kbd>P</kbd></td><td data-en="patrol: click waypoints, Enter starts, right-click or Backspace removes the last. The unit keeps circling until you clear the order; fighters refuel in between by themselves">Patrouille: Wegpunkte anklicken, Enter startet, Rechtsklick oder Rücktaste löscht den letzten. Die Einheit dreht ihre Runden, bis du den Befehl aufhebst; Jäger tanken zwischendurch von selbst</td></tr>
               <tr><td><kbd>B</kbd></td><td data-en="return home: to the nearest own city or port">Heimkehr: zur nächsten eigenen Stadt bzw. zum nächsten Hafen</td></tr>
               <tr><td><kbd>L</kbd> <kbd>U</kbd></td><td data-en="transport: load until full / unload or attack from the ship (see “Transports”) · carrier: load / unload fighters">Transporter: Laden bis voll / Ausladen oder Angriff vom Schiff (siehe „Transporter“) · Träger: Jäger ein- / ausladen</td></tr>
-              <tr><td><kbd>Esc</kbd></td><td data-en="clear selection, close windows">Auswahl aufheben, Fenster schließen</td></tr>
+              <tr><td><kbd>Esc</kbd></td><td data-en="clear selection, close windows, leave the production view, cancel setting a patrol or rally point">Auswahl aufheben, Fenster schließen, Produktionsansicht verlassen, Festlegen einer Patrouille oder eines Marschziels abbrechen</td></tr>
               <tr><td><kbd>+</kbd> <kbd>−</kbd></td><td data-en="zoom">Zoom</td></tr>
               <tr><td><kbd>F</kbd></td><td data-en="centre the map on the selected unit (also the crosshair button at the top) – handy after looking around the map">Karte auf die ausgewählte Einheit zentrieren (auch der Knopf mit dem Fadenkreuz oben) – praktisch, nachdem du dich auf der Karte umgesehen hast</td></tr>
-              <tr><td><kbd>H</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>K</kbd></td><td data-en="handbook · statistics · sound on/off · sound test">Handbuch · Statistik · Ton an/aus · Klangtest</td></tr>
+              <tr><td><kbd>H</kbd> <kbd>I</kbd> <kbd>M</kbd></td><td data-en="handbook (also ?) · statistics · sound on/off">Handbuch (auch ?) · Statistik · Ton an/aus</td></tr>
+              <tr><td><kbd data-en="Ctrl">Strg</kbd> + <kbd>S</kbd></td><td data-en="save the game (opens “Saved games”; press again or Enter to save; on a Mac ⌘ + S)">Spiel speichern (öffnet „Spielstände“; nochmals drücken oder Enter speichert; am Mac ⌘ + S)</td></tr>
               <tr><td><kbd>T</kbd></td><td data-en="time-lapse: the game so far, turn by turn – during the game only what you knew at the time; after the end the closing window with the whole map and the final statistics (space plays/pauses, ← → step)">Zeitraffer: die Partie bisher, Runde für Runde – während des Spiels nur, was du damals wusstest; nach dem Ende das Abschlussfenster mit ganzer Karte und Endstatistik (Leertaste spielt/hält an, ← → Schritt)</td></tr>
             </table>
             <p class="muted" data-en="Tip: under ☰ Menu → Settings you can show the most important keys directly on the map (“Show keyboard shortcuts on the map”).">Tipp: Unter ☰ Menü → Einstellungen kannst du die wichtigsten Tasten direkt auf der Karte einblenden („Tastenkürzel auf der Karte einblenden“).</p>
@@ -897,7 +898,7 @@
       <h3 data-en="Sound">Ton</h3>
       <label class="set-row"><span class="set-l"><span data-en="Volume">Lautstärke</span></span><input id="vol" type="range" min="0" max="100"></label>
       <p class="set-d" data-en="You can also switch it on and off with the speaker at the top or the M key.">An- und ausschalten geht auch mit dem Lautsprecher oben oder der Taste M.</p>
-      <div class="set-row"><span class="set-l" data-en="Sound test">Klangtest</span><button id="bSndTest" data-en="Open … &lt;kbd&gt;K&lt;/kbd&gt;">Öffnen … <kbd>K</kbd></button></div>
+      <div class="set-row"><span class="set-l" data-en="Sound test">Klangtest</span><button id="bSndTest" data-en="Open …">Öffnen …</button></div>
       <p class="set-d" data-en="Listen to all sounds and set the volume of each unit sound.">Alle Klänge anhören und die Lautstärke der Einheitenklänge einzeln einstellen.</p>
     </section>
     <section class="set-sec">

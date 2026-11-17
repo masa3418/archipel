@@ -2677,6 +2677,13 @@ document.addEventListener('mousedown', e => { if (autoEndAt && !e.target.closest
 document.addEventListener('keydown', e => {
   if (!S) return;
   if (cmenu) { closeCtx(); if (e.key === 'Escape') return; }
+  // Strg+S (Mac: ⌘+S): Spielstandfenster öffnen, im offenen Fenster speichern – statt „Seite speichern“ des Browsers
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 's' || e.key === 'S')) {
+    e.preventDefault();
+    if (!$('mSaves').hidden) $('saveNew').click();
+    else if (!anyModalOpen()) { cancelAutoEnd(); closeMenu(); openSaves(); }
+    return;
+  }
   if (autoEndAt) { if (e.key === 'Enter') { e.preventDefault(); endHumanTurn(); } else cancelAutoEnd(); return; }
   if (enemyPlaybackRunning() && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); skipAnim(); return; }
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
@@ -2697,7 +2704,8 @@ document.addEventListener('keydown', e => {
   if (k === 'g') { setPathView(!pathView); return; }
   if (prodView) {   // in der Produktionsansicht gibt es keine Einheitenbefehle
     if (k === 'Escape') { setProdView(false); return; }
-    if (!['+', '-', 'f', 'h', '?', 'm', 'k', 'i', 't', 'Enter'].includes(k)) return;
+    if (k === 'n') { setProdView(false); actNext(); return; }   // wie der Knopf „Nächste Einheit“
+    if (!['+', '-', 'f', 'h', '?', 'm', 'i', 't', 'Enter'].includes(k)) return;
   }
   if (rallyMode) { if (k === 'Escape') rallyAbort(); return; }
   const u = selUnit();
@@ -2724,7 +2732,6 @@ document.addEventListener('keydown', e => {
     case '-': setZoom(TS - 4); break;
     case 'h': case '?': openHelp(); break;
     case 'm': toggleSound(); break;
-    case 'k': openSoundTest(); break;
     case 'i': openStats(); break;
     case 't': openTimelapse(); break;   // nach dem Spielende: Abschlussfenster
   }
@@ -2828,7 +2835,8 @@ function updateKeyLegend() {
       row(esc_, tt('Auswahl aufheben', 'clear selection')),
       row(kb('H') + kb('I'), tt('Handbuch · Statistik', 'handbook · statistics')),
       row(kb('T'), tt('Zeitraffer der Partie', 'time-lapse of the game')),
-      row(kb('M') + kb('K'), tt('Ton an/aus · Klangtest', 'sound on/off · sound test')),
+      row(kb('M'), tt('Ton an/aus', 'sound on/off')),
+      row(kb((navigator.platform.startsWith('Mac') ? '⌘' : tt('Strg', 'Ctrl'))) + kb('S'), tt('Spiel speichern', 'save the game')),
     ]);
   }
   box.innerHTML = h;
@@ -2862,8 +2870,8 @@ $('autoEndChk').onchange = e => {
   if (!autoEnd) cancelAutoEnd();
 };
 // ------------------------------------------------------------------ Menü der Kopfzeile
-// Selten Gebrauchtes liegt im Menü (Spiel: Neues Spiel, Spielstände, Statistik · Einstellungen: Lautstärke, Klangtest,
-// Mausrad/Touchpad, automatisches Rundenende). Ein Klick auf einen Eintrag schließt es, Einstellungen lassen es offen.
+// Selten Gebrauchtes liegt im Menü: Neues Spiel, Spielstände (Strg+S), Statistik, Kräfteverhältnis, Zeitraffer und „Einstellungen …“
+// (eigenes Fenster). Ein Klick auf einen Eintrag schließt es.
 const menuEl = $('menu');
 function closeMenu() {
   if (menuEl.hidden) return;
@@ -2883,7 +2891,7 @@ document.addEventListener('keydown', e => {
   if (menuEl.hidden) return;
   const inside = e.target.closest && e.target.closest('#menu, #bMenu');
   if (e.key === 'Escape') { closeMenu(); e.preventDefault(); e.stopPropagation(); }
-  else if (inside) e.stopPropagation();   // Tasten im Menü (Regler, Auswahl, Tab) gehören nicht dem Spiel
+  else if (inside && !e.ctrlKey && !e.metaKey) e.stopPropagation();   // Tasten im Menü gehören nicht dem Spiel – Strg+S schon
   else closeMenu();
 }, true);
 window.addEventListener('resize', closeMenu);
