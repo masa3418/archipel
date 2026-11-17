@@ -195,12 +195,15 @@ function buildTerrain(TS) {
 
   // 2) Landmasse mit abgerundeten Küstenecken
   const land = new Path2D();
-  const rr = TS * 0.48, e = 0.6;
+  // Berühren sich zwei Landfelder nur an einer Ecke (selten, etwa einmal je Karte), kommen Bodentruppen diagonal hinüber und
+  // Schiffe diagonal hindurch. Damit man das sieht, werden dort beide Landecken leicht abgerundet (rp) – das Wasser fließt
+  // sichtbar durch – und ein kleiner Steg verbindet sie (siehe „Stege“ weiter unten).
+  const rr = TS * 0.48, rp = TS * 0.3, e = 0.6;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (isW(x, y)) continue;
     const L = isW(x - 1, y), R = isW(x + 1, y), U = isW(x, y - 1), D = isW(x, y + 1);
-    const tl = L && U && isW(x - 1, y - 1) ? rr : 0, tr = R && U && isW(x + 1, y - 1) ? rr : 0;
-    const br = R && D && isW(x + 1, y + 1) ? rr : 0, bl = L && D && isW(x - 1, y + 1) ? rr : 0;
+    const tl = L && U ? (isW(x - 1, y - 1) ? rr : rp) : 0, tr = R && U ? (isW(x + 1, y - 1) ? rr : rp) : 0;
+    const br = R && D ? (isW(x + 1, y + 1) ? rr : rp) : 0, bl = L && D ? (isW(x - 1, y + 1) ? rr : rp) : 0;
     const x0 = x * TS - (L ? 0 : e), x1 = (x + 1) * TS + (R ? 0 : e), y0 = y * TS - (U ? 0 : e), y1 = (y + 1) * TS + (D ? 0 : e);
     land.moveTo(x0 + tl, y0);
     land.lineTo(x1 - tr, y0); if (tr) land.arcTo(x1, y0, x1, y0 + tr, tr);
@@ -275,6 +278,29 @@ function buildTerrain(TS) {
     }
   }
   g.restore();
+
+  // Stege über Eck: Land, das sich nur diagonal berührt, ist für Bodentruppen verbunden; Schiffe fahren darunter durch
+  const steg = (cx, cy, dir) => {
+    const hl = TS * 0.36, hw = TS * 0.105, lw = Math.max(1, TS / 30);
+    g.save();
+    g.translate(cx, cy); g.rotate(dir * Math.PI / 4);   // Längsachse entlang der Land-Diagonale
+    g.fillStyle = 'rgba(10,30,50,0.28)';                 // Schatten auf dem Wasser
+    g.fillRect(-hl * 0.8, -hw + TS * 0.07, hl * 1.6, hw * 2);
+    g.fillStyle = '#a8804e'; g.strokeStyle = '#4f381f'; g.lineWidth = lw;
+    roundRectPath(g, -hl, -hw, hl * 2, hw * 2, hw * 0.35); g.fill(); g.stroke();
+    g.strokeStyle = 'rgba(70,46,22,0.6)'; g.lineWidth = Math.max(0.75, TS / 44);   // Planken
+    g.beginPath();
+    for (let px = -hl + TS * 0.09; px < hl - TS * 0.04; px += TS * 0.09) { g.moveTo(px, -hw); g.lineTo(px, hw); }
+    g.stroke();
+    g.strokeStyle = '#e3c898'; g.lineWidth = lw;                                   // Geländer
+    g.beginPath(); g.moveTo(-hl * 0.92, -hw * 0.62); g.lineTo(hl * 0.92, -hw * 0.62); g.moveTo(-hl * 0.92, hw * 0.62); g.lineTo(hl * 0.92, hw * 0.62); g.stroke();
+    g.restore();
+  };
+  for (let y = 0; y < H - 1; y++) for (let x = 0; x < W - 1; x++) {
+    const a = !isW(x, y), b = !isW(x + 1, y), c = !isW(x, y + 1), d = !isW(x + 1, y + 1);
+    if (a && d && !b && !c) steg((x + 1) * TS, (y + 1) * TS, 1);          // links oben – rechts unten
+    else if (b && c && !a && !d) steg((x + 1) * TS, (y + 1) * TS, -1);    // rechts oben – links unten
+  }
 
   // feines Raster zur Orientierung
   g.strokeStyle = 'rgba(0,0,0,0.07)'; g.lineWidth = 1;
