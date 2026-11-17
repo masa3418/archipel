@@ -606,8 +606,8 @@ function render(now = performance.now()) {
     const own = show.owner === 0;
     const opts = {
       badge,
-      dim: own && (show.moves <= 0 || (show.order && show.order.type === 'sentry')) && show !== su,
-      sentry: own && show.order && show.order.type === 'sentry',
+      dim: own && (show.moves <= 0 || (show.order && (show.order.type === 'sentry' || show.order.type === 'load'))) && show !== su,
+      sentry: own && show.order && (show.order.type === 'sentry' || show.order.type === 'load'),   // ladender Transporter wartet wie eine Wache
       goto: own && show.order && show.order.type === 'goto',
       patrol: own && show.order && show.order.type === 'patrol',
       explore: own && show.order && show.order.type === 'explore',
@@ -1033,9 +1033,10 @@ function doMove(u, x, y) {
   u.order = null;
   const before = new Set(locatedSubs().map(o => o.id));
   animBegin(120);
-  const r = moveStep(u, x, y);
+  const r = sailStep(u, x, y);   // wie moveStep; ein Transporter nimmt beim Auslaufen die wartenden Truppen der Stadt mit
   animEnd();
   if (!r.ok) { toast(r.msg); Sfx.play('error'); }
+  else if (r.picked) { toast(tt(`${r.picked === 1 ? '1 Einheit' : r.picked + ' Einheiten'} aus der Stadt mitgenommen (${cargoOf(u).length}/${T(u).capacity})`, `${r.picked === 1 ? '1 unit' : r.picked + ' units'} taken along from the city (${cargoOf(u).length}/${T(u).capacity})`)); Sfx.play('clank'); }
   else if (r.boarded) Sfx.play('clank');
   afterAction(u);
   const found = locatedSubs().filter(o => !before.has(o.id));
@@ -1057,14 +1058,42 @@ function actSkip() { const u = selUnit(); if (!u) return; Sfx.play('tick'); u.sk
 function actSentry() { const u = selUnit(); if (!u) return; Sfx.play('tick'); u.order = { type: 'sentry' }; selectNext(); refresh(); scheduleAutoEnd(); }
 function actLoad() {
   const u = selUnit(); if (!u || !T(u).carries) return;
-  const n = loadUnits(u);
-  Sfx.play(n ? 'clank' : 'error');
-  toast(n ? tt(`${n} Einheit(en) eingeladen`, `${n} unit${n === 1 ? '' : 's'} loaded`) : tt('Nichts zum Einladen in dieser Stadt', 'Nothing to load in this city'));
-  refresh();
+  if (T(u).carries !== 'land') {   // Träger: wie bisher einmalig die Jäger aus der Stadt an Bord nehmen
+    const n = loadUnits(u);
+    Sfx.play(n ? 'clank' : 'error');
+    toast(n ? tt(`${n} Einheit(en) eingeladen`, `${n} unit${n === 1 ? '' : 's'} loaded`) : tt('Nichts zum Einladen in dieser Stadt', 'Nothing to load in this city'));
+    refresh();
+    return;
+  }
+  // Transporter: Dauerbefehl – bleibt liegen, bis er voll ist (Regeln: runLoad in game.js)
+  const cap = T(u).capacity;
+  if (cargoOf(u).length >= cap) { toast(tt('Der Transporter ist schon voll', 'The transport is already full')); Sfx.play('error'); return; }
+  u.order = { type: 'load' };
+  delete u.dropped;
+  animBegin(120);
+  const n = runLoad(u);
+  animEnd();
+  Sfx.play(n ? 'clank' : 'tick');
+  const k = cargoOf(u).length;
+  toast(!u.order ? tt(`Voll beladen (${k}/${cap})`, `Fully loaded (${k}/${cap})`)
+    : tt(`${n ? n + ' eingeladen – ' : ''}bleibt liegen und lädt, bis er voll ist (${k}/${cap})`, `${n ? n + ' loaded – ' : ''}stays put and loads until full (${k}/${cap})`));
+  afterAction(u);
 }
-function actUnload() {
+// Ausladen. Sonderfall: Liegt der Transporter neben einer neutralen oder feindlichen Stadt, greifen die Truppen sie direkt vom
+// Schiff aus an (assaultTarget/assaultFrom in game.js) – sonst kostete das Aussteigen ihren Zug und der Angriff käme erst in der
+// nächsten Runde. landOnly = true setzt sie trotzdem nur an Land (eigener Knopf).
+function actUnload(landOnly = false) {
   const u = selUnit(); if (!u || !T(u).carries) return;
   if (!cargoOf(u).length) { toast(tt('Niemand an Bord', 'Nobody on board')); return; }
+  const tgt = landOnly === true ? null : assaultTarget(u);
+  if (tgt) {
+    animBegin(140);
+    const r = assaultFrom(u, tgt.city);
+    animEnd();
+    if (!r.captured) toast(tt(`Angriff auf ${tgt.city.name} abgewehrt`, `Attack on ${tgt.city.name} repelled`));
+    afterAction(u);
+    return;
+  }
   animBegin(120);
   const n = unloadAll(u);
   animEnd();
@@ -1201,7 +1230,7 @@ function endHumanTurn() {
     const ownMark = anim.cursor, ownCount = anim.events.length;
     // Wachen wecken, wenn Feinde in der Nähe sind
     for (const u of S.units) {
-      if (u.owner !== 0 || !u.order || u.order.type !== 'sentry' || u.carrier != null) continue;
+      if (u.owner !== 0 || !u.order || (u.order.type !== 'sentry' && u.order.type !== 'load') || u.carrier != null) continue;
       let enemy = false;
       for (const [dx, dy] of DIRS) if (inb(u.x + dx, u.y + dy) && visibleEnemyAt(0, u.x + dx, u.y + dy)) enemy = true;
       if (enemy) { u.order = null; addLog(tt(`${T(u).name} meldet Feindkontakt!`, `${T(u).name} reports enemy contact!`), 'bad', u.x, u.y); }
@@ -1213,6 +1242,8 @@ function endHumanTurn() {
     }
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'patrol')) runPatrol(u);
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'explore')) runExplore(u);
+    // Transporter mit „Laden bis voll“: zuletzt, damit auch gerade angekommene Einheiten an Bord gehen
+    for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'load')) runLoad(u);
     if (anim.events.length > ownCount) anim.ownFrom = ownMark;
     computeVision(0);
   }
@@ -1247,7 +1278,7 @@ function endHumanTurn() {
 function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
 
 function unitChip(o) {
-  const st = o.order ? ({ sentry: tt(' · Wache', ' · sentry'), patrol: tt(' · Patrouille', ' · patrol'), explore: tt(' · Erkundet', ' · exploring') }[o.order.type] || tt(' · Marsch', ' · marching')) : '';
+  const st = o.order ? ({ sentry: tt(' · Wache', ' · sentry'), patrol: tt(' · Patrouille', ' · patrol'), explore: tt(' · Erkundet', ' · exploring'), load: tt(' · lädt', ' · loading') }[o.order.type] || tt(' · Marsch', ' · marching')) : '';
   return `<span class="chip ${o.moves <= 0 ? 'done' : ''} ${o.id === sel ? 'cur' : ''}" data-unit="${o.id}">${esc(T(o).name)} ${o.hp}/${T(o).hp}${st}</span>`;
 }
 
@@ -1308,6 +1339,7 @@ function updatePanel() {
     let orderTxt = tt('keiner', 'none');
     if (u.order) orderTxt = u.order.type === 'sentry' ? tt('Wache', 'Sentry')
       : u.order.type === 'explore' ? tt('Erkunden', 'Explore')
+      : u.order.type === 'load' ? tt(`Lädt, bis er voll ist (${cargo.length}/${t.capacity})`, `Loading until full (${cargo.length}/${t.capacity})`)
       : u.order.type === 'patrol' ? tt(`Patrouille (${u.order.pts.length - 1} Wegpunkt${u.order.pts.length > 2 ? 'e' : ''})`, `Patrol (${u.order.pts.length - 1} waypoint${u.order.pts.length > 2 ? 's' : ''})`) + (u.order.refuel ? tt(' · fliegt zum Tanken', ' · flying to refuel') : '')
       : tt(`Marsch nach ${u.order.x},${u.order.y}`, `Go to ${u.order.x},${u.order.y}`);
     h += `<section class="pcard pc-unit"><div class="pc-head"><img class="pc-icon" src="${iconUrl('u', u.type)}" alt=""><div><h3>${tt('Einheit', 'Unit')}</h3><div class="uname">${esc(t.name)}</div></div><button class="qhelp" data-help="${u.type}" title="${tt('Im Handbuch nachschlagen', 'Look up in the handbook')}" aria-label="${tt('Im Handbuch nachschlagen', 'Look up in the handbook')}">?</button></div>`;
@@ -1346,8 +1378,15 @@ function updatePanel() {
       <button data-act="home" title="${t.domain === 'sea' ? tt('B – zur nächsten eigenen Hafenstadt', 'B – to your nearest port') : tt('B – zur nächsten eigenen Stadt', 'B – to your nearest city')}">${tt('Heimkehr', 'Return home')}</button>`;
     if (u.order) h += `<button data-act="cancel">${tt('Befehl löschen', 'Clear order')}</button>`;
     const c = cityAt(u.x, u.y);
-    if (t.carries && c && c.owner === 0) h += `<button data-act="load" title="L">${tt('Einladen', 'Load')}</button>`;
-    if (t.carries && cargo.length) h += `<button data-act="unload" title="U">${tt('Ausladen', 'Unload')}</button>`;
+    // Transporter: „Laden bis voll“ geht überall (Stadt und Nachbarfelder); Träger laden wie bisher nur in der eigenen Stadt
+    if (t.carries === 'land') h += `<button data-act="load" title="${tt('L – bleibt liegen, bis er voll ist, und nimmt wartende Bodentruppen aus seiner Stadt und von den Nachbarfeldern an Bord. Ohne diesen Befehl nimmt er beim Verlassen einer eigenen Stadt mit, was dort wartet.', 'L – stays put until full, taking waiting land units on board from its city and the adjacent tiles. Without this order it takes along whatever is waiting when it leaves one of your cities.')}" ${(u.order && u.order.type === 'load') || cargo.length >= t.capacity ? 'disabled' : ''}>${tt('Laden bis voll', 'Load until full')}</button>`;
+    else if (t.carries && c && c.owner === 0) h += `<button data-act="load" title="L">${tt('Einladen', 'Load')}</button>`;
+    if (t.carries && cargo.length) {
+      const tgt = t.carries === 'land' ? assaultTarget(u) : null;
+      h += tgt ? `<button data-act="unload" title="${tt('U – die Truppen greifen die Stadt sofort vom Schiff aus an', 'U – the troops attack the city straight from the ship')}">⚔ ${tt('Angriff auf', 'Attack')} ${esc(tgt.city.name)} · ${Math.round(tgt.chance * 100)} %</button>
+        <button data-act="unloadLand" title="${tt('Ohne Angriff auf freie Nachbarfelder aussteigen', 'Disembark onto free adjacent tiles without attacking')}">${tt('Nur an Land setzen', 'Just put ashore')}</button>`
+        : `<button data-act="unload" title="U">${tt('Ausladen', 'Unload')}</button>`;
+    }
     h += `</div>`;
     if (patrolMode && patrolMode.id === u.id) {
       const n = patrolMode.pts.length;
@@ -1945,7 +1984,7 @@ function renderCtx() {
   const ownCity = city && city.owner === 0 ? city : null;
   const u = selUnit() && units.includes(selUnit()) ? selUnit() : null;
   if (!units.length && !ownCity) return closeCtx();
-  const status = o => o.order ? (EN ? { sentry: 'sentry', patrol: 'patrol', explore: 'exploring', goto: 'marching' } : { sentry: 'Wache', patrol: 'Patrouille', explore: 'Erkundet', goto: 'Marsch' })[o.order.type] || ''
+  const status = o => o.order ? (EN ? { sentry: 'sentry', patrol: 'patrol', explore: 'exploring', goto: 'marching', load: 'loading' } : { sentry: 'Wache', patrol: 'Patrouille', explore: 'Erkundet', goto: 'Marsch', load: 'lädt' })[o.order.type] || ''
     : o.moves <= 0 ? tt('fertig', 'done') : o.carrier != null ? tt('an Bord', 'on board') : tt('wartet', 'waiting');
   let h = '';
   if (ownCity) h += `<div class="cmenu-head"><b>${esc(ownCity.name)}</b>${ownCity.coastal ? tt(' · Hafen', ' · port') : ''}</div>`;
@@ -1964,8 +2003,13 @@ function renderCtx() {
     h += btn('explore', tt('Erkunden', 'Explore'), 'R', (aboard && t.domain === 'land') || (u.type === 'trn' && cargoOf(u).length > 0));
     h += btn('patrol', tt('Patrouille', 'Patrol'), 'P', aboard);
     h += btn('home', t.domain === 'sea' ? tt('Heimkehr (Hafen)', 'Return home (port)') : tt('Heimkehr', 'Return home'), 'B', !aboard && homeOk(here));
-    if (t.carries && here && here.owner === 0) h += btn('load', tt('Einladen', 'Load'), 'L');
-    if (t.carries && cargoOf(u).length) h += btn('unload', `${tt('Ausladen', 'Unload')} (${cargoOf(u).length})`, 'U');
+    if (t.carries === 'land') h += btn('load', tt('Laden bis voll', 'Load until full'), 'L', !!(u.order && u.order.type === 'load') || cargoOf(u).length >= t.capacity);
+    else if (t.carries && here && here.owner === 0) h += btn('load', tt('Einladen', 'Load'), 'L');
+    if (t.carries && cargoOf(u).length) {
+      const tgt = t.carries === 'land' ? assaultTarget(u) : null;
+      if (tgt) h += btn('unload', `⚔ ${tt('Angriff auf', 'Attack')} ${esc(tgt.city.name)} · ${Math.round(tgt.chance * 100)} %`, 'U') + btn('unloadLand', tt('Nur an Land setzen', 'Just put ashore'), '');
+      else h += btn('unload', `${tt('Ausladen', 'Unload')} (${cargoOf(u).length})`, 'U');
+    }
     if (u.order) h += btn('cancel', u.order.type === 'sentry' ? tt('Wecken', 'Wake') : tt('Befehl löschen', 'Clear order'), '');
     h += '<hr>' + btn('help', tt(`Handbuch: ${t.name}`, `Handbook: ${t.name}`), '');
   }
@@ -1997,7 +2041,7 @@ ctxEl.addEventListener('click', e => {
   const u = selUnit();
   if (b.dataset.cact === 'help') { if (u) openHelp(null, u.type); return; }
   if (u && u.order && u.order.type === 'sentry' && b.dataset.cact !== 'sentry' && b.dataset.cact !== 'cancel') u.order = null;
-  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, cancel: actCancel, patrol: actPatrol, explore: actExplore, home: actHome })[b.dataset.cact]();
+  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, unloadLand: () => actUnload(true), cancel: actCancel, patrol: actPatrol, explore: actExplore, home: actHome })[b.dataset.cact]();
 });
 // Klick daneben schließt das Menü (und löst sonst nichts aus)
 document.addEventListener('mousedown', e => {
@@ -2107,7 +2151,7 @@ $('panel').addEventListener('click', e => {
   if (chip) { const u = unitById(+chip.dataset.unit); if (u) { select(u); refresh(); } return; }
   const b = e.target.closest('[data-act]');
   if (!b) return;
-  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, cancel: actCancel, next: actNext, patrol: actPatrol, patrolGo: patrolStart, patrolUndo: patrolUndo, patrolAbort: patrolAbort, explore: actExplore, home: actHome,
+  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, unloadLand: () => actUnload(true), cancel: actCancel, next: actNext, patrol: actPatrol, patrolGo: patrolStart, patrolUndo: patrolUndo, patrolAbort: patrolAbort, explore: actExplore, home: actHome,
     rally: () => actRally(S.cities[selCity]), rallyclear: () => rallyClear(S.cities[selCity]), rallyabort: rallyAbort })[b.dataset.act]();
 });
 // ------------------------------------------------------------------ Meldungen ein-/ausklappen

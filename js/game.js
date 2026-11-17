@@ -420,13 +420,115 @@ function loadUnits(u, filter = () => true) {
   return n;
 }
 
+// Wartende Bodentruppen, die ein Transporter von selbst an Bord nimmt: eigene Einheiten ohne Befehl oder auf Wache.
+// Wer marschiert, patrouilliert oder erkundet, ist unterwegs und bleibt draußen.
+const waitingTroops = u => o => o !== u && o.owner === u.owner && o.carrier == null && T(o).domain === T(u).carries
+  && (!o.order || o.order.type === 'sentry');
+
+// Dauerbefehl „Laden“ für Transporter (u.order = { type: 'load' }): Er bleibt liegen, bis er voll ist, und nimmt die wartenden
+// Bodentruppen an Bord, die in seiner Stadt oder auf einem Nachbarfeld stehen – sofort und zu jedem Rundenbeginn. Ist er voll,
+// endet der Befehl und der Transporter meldet sich.
+function runLoad(u) {
+  const t = T(u);
+  if (!t.carries) return 0;
+  const free = () => t.capacity - cargoOf(u).length;
+  const want = waitingTroops(u);
+  let n = 0;
+  // Nachbarfelder: Die Einheit zieht selbst an Bord (kostet ihren Zug) – liegt der Transporter im Hafen, zieht sie in die Stadt
+  for (const [dx, dy] of DIRS) {
+    const x = u.x + dx, y = u.y + dy;
+    if (!inb(x, y)) continue;
+    for (const o of topUnitsAt(x, y)) {
+      if (free() <= 0) break;
+      if (!want(o) || o.moves <= 0) continue;
+      const had = o.order;
+      o.order = null;
+      const r = moveStep(o, u.x, u.y);
+      if (r.ok && r.boarded) n++;
+      else if (!r.ok) o.order = had;
+    }
+  }
+  const c = cityAt(u.x, u.y);
+  if (c && c.owner === u.owner) n += loadUnits(u, want);
+  if (free() <= 0 && u.order && u.order.type === 'load') {
+    u.order = null;
+    if (u.owner === 0) addLog(tt(`${t.name}: voll beladen – bereit zum Auslaufen.`, `${t.name}: fully loaded – ready to sail.`), 'good', u.x, u.y);
+  }
+  return n;
+}
+
+// Sturm vom Schiff: Liegt ein Transporter neben einer neutralen oder feindlichen Stadt, greifen die eroberungsfähigen Einheiten
+// an Bord sie direkt an – ohne Umweg über ein Nachbarfeld, der ihren Zug kosten und den Angriff um eine Runde verschieben würde.
+// assaultTarget wählt die Stadt mit den besten Aussichten (Siegchance gegen den Verteidiger × Eroberungschance).
+function assaultTroops(u) {
+  return cargoOf(u).filter(o => T(o).capture && o.moves > 0).sort((a, b) => T(a).cost - T(b).cost);   // erst Infanterie, dann Panzer
+}
+function assaultTarget(u) {
+  const troops = assaultTroops(u);
+  if (!troops.length) return null;
+  let best = null;
+  for (const [dx, dy] of DIRS) {
+    const x = u.x + dx, y = u.y + dy;
+    if (!inb(x, y)) continue;
+    const c = cityAt(x, y);
+    if (!c || c.owner === u.owner) continue;
+    const foes = cityDefenders(troops[0], c, topUnitsAt(x, y).filter(o => o.owner !== u.owner && canSee(u.owner, o)));
+    const chance = (foes.length ? attackOdds(troops[0], pickDefender(foes), x, y) : 1) * captureChance(u.owner, c);
+    if (!best || chance > best.chance) best = { city: c, chance, troops: troops.length };
+  }
+  return best;
+}
+// Greift der Reihe nach an, bis die Stadt fällt; wer danach noch an Bord ist, bleibt dort (für das nächste Ziel).
+function assaultFrom(u, city) {
+  let attacks = 0;
+  for (const o of assaultTroops(u)) {
+    let guard = 4;
+    while (alive(o) && o.carrier === u.id && o.moves > 0 && city.owner !== u.owner && guard-- > 0) {
+      o.order = null;
+      const r = moveStep(o, city.x, city.y);
+      if (!r.ok) break;
+      attacks++;
+    }
+    if (city.owner === u.owner) break;
+  }
+  // wer an Bord geblieben ist, schläft wieder (wie nach dem Einsteigen)
+  if (u.owner === 0) for (const o of cargoOf(u)) if (!o.order) o.order = { type: 'sentry' };
+  return { attacks, captured: city.owner === u.owner };
+}
+
+// Zug eines Transporters des Spielers (von Hand oder auf dem Marsch; die KI benutzt moveStep direkt): Verlässt er eine eigene
+// Stadt, nimmt er die dort wartenden Bodentruppen mit, soweit der Laderaum reicht. So genügt es, Truppen in einer Stadt zu
+// sammeln und mit dem Transporter hindurchzufahren. Ausnahme: Hat er in dieser Stadt gerade selbst ausgeladen (u.dropped),
+// bleiben die Truppen dort. Läuft er in eine eigene Stadt ein, bleibt seine Ladung an Bord. r.picked = Zahl der Mitgenommenen.
+function sailStep(u, nx, ny) {
+  const c = cityAt(u.x, u.y), from = [u.x, u.y];
+  let picked = [];
+  if (T(u).carries === 'land' && c && c.owner === u.owner && !u.dropped && u.moves > 0 && inb(nx, ny)) {
+    const before = new Set(cargoOf(u).map(o => o.id));
+    const orders = new Map(S.units.map(o => [o.id, o.order]));
+    loadUnits(u, waitingTroops(u));
+    picked = cargoOf(u).filter(o => !before.has(o.id)).map(o => [o, orders.get(o.id)]);
+  }
+  const r = moveStep(u, nx, ny);
+  const left = r.ok && alive(u) && (u.x !== from[0] || u.y !== from[1]);
+  if (!left) for (const [o, ord] of picked) { o.carrier = null; o.order = ord || null; }   // nicht losgekommen: wieder an Land
+  else {
+    if (u.dropped) delete u.dropped;
+    if (picked.length) {
+      r.picked = picked.length;
+      if (u.owner === 0) addLog(tt(`${T(u).name} nimmt ${picked.length === 1 ? '1 Einheit' : picked.length + ' Einheiten'} aus ${c.name} mit.`, `${T(u).name} takes ${picked.length === 1 ? '1 unit' : picked.length + ' units'} along from ${c.name}.`), '', from[0], from[1]);
+    }
+  }
+  return r;
+}
+
 // Alle Einheiten an Bord auf freie Nachbarfelder (oder in die Stadt) ausladen
 function unloadAll(u) {
   let n = 0;
   const c = cityAt(u.x, u.y);
   for (const o of cargoOf(u)) {
     o.order = null;
-    if (c && c.owner === u.owner) { o.carrier = null; n++; continue; }
+    if (c && c.owner === u.owner) { o.carrier = null; n++; u.dropped = true; continue; }   // dropped: beim Auslaufen nicht wieder mitnehmen
     if (o.moves <= 0) continue;
     for (const [dx, dy] of DIRS) {
       const nx = u.x + dx, ny = u.y + dy;
@@ -707,7 +809,7 @@ function runGoto(u) {
     }
     const [nx, ny] = path[0];
     const snap = contactSnap(u);
-    const r = moveStep(u, nx, ny);
+    const r = sailStep(u, nx, ny);   // Transporter nimmt beim Auslaufen die wartenden Truppen mit
     computeVision(u.owner);
     if (!r.ok) {
       if (u.owner === 0) addLog(tt(`${T(u).name}: Marsch unterbrochen (${r.msg}).`, `${T(u).name}: march interrupted (${r.msg}).`), '', u.x, u.y);
@@ -1128,6 +1230,7 @@ function sanitizeState(o) {
     const od = u.order;
     if (od && od.type === 'sentry') order = { type: 'sentry' };
     else if (od && od.type === 'explore') order = { type: 'explore' };
+    else if (od && od.type === 'load' && UT[u.type].carries === 'land') order = { type: 'load' };
     else if (od && od.type === 'goto' && inMap(od.x, od.y)) order = { type: 'goto', x: od.x, y: od.y };
     else if (od && od.type === 'patrol' && Array.isArray(od.pts)) {
       const pts = od.pts.slice(0, 50).map(pt).filter(Boolean), start = pt(od.start);
@@ -1141,6 +1244,7 @@ function sanitizeState(o) {
     if (Array.isArray(u.aiGoal) && pt(u.aiGoal)) nu.aiGoal = [u.aiGoal[0], u.aiGoal[1], oneOf(u.aiGoal[2], ['fog', 'city', 'prey'], 'fog'), int(u.aiGoal[3], 0, 0, s.cities.length - 1)];
     if (isNum(u.wait)) nu.wait = int(u.wait, 0, 0, 1000);
     if (u.surf === true && UT[u.type].stealth) nu.surf = true;
+    if (u.dropped === true && UT[u.type].carries) nu.dropped = true;
     units.push(nu);
   }
   // Ladung nur an existierenden Trägern

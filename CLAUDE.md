@@ -133,6 +133,12 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Fertigstellung (Zielfeld für den Typ betretbar, Weg vorhanden, Jäger nur zu eigener Stadt in Treibstoff-Reichweite).
   Produktion immer über `setProduction` (game.js) bzw. `changeProd` (ui.js) umstellen: Das löscht das Marschziel, weil es für den
   alten Typ galt; auch eine Eroberung löscht es. Gesetzt wird es über Stadtkarte oder Kontextmenü (`actRally`, `rallyMode`, Klick aufs Zielfeld).
+- **Transporter** (game.js): „Laden bis voll“ ist ein Dauerbefehl (`u.order = { type: 'load' }`, `runLoad`): bleibt liegen, lädt die wartenden
+  Bodentruppen (`waitingTroops`: ohne Befehl oder auf Wache) aus der Stadt und von den Nachbarfeldern, endet, wenn er voll ist.
+  `sailStep` (statt `moveStep` in `doMove` und `runGoto`): Verlässt ein Transporter des Spielers eine eigene Stadt, nimmt er die wartenden
+  Truppen mit; hat er dort gerade ausgeladen (`u.dropped`), nicht. Beim Einlaufen bleibt die Ladung an Bord. „Ausladen“ neben einer neutralen/feindlichen Stadt ist ein Sturm vom Schiff (`assaultTarget`, `assaultFrom`):
+  erst Infanterie, dann Panzer, bis die Stadt fällt; der Rest bleibt an Bord. `actUnload(true)` setzt nur an Land. Träger laden wie bisher
+  einmalig (`loadUnits`). Die KI nutzt beides nicht.
 - **Patrouille ist ein Dauerbefehl** (`runPatrol`, game.js): endet nur durch den Spieler, Feindkontakt oder einen unerreichbaren Wegpunkt.
   Jäger tanken zwischendurch selbst: Reicht der Treibstoff nach dem nächsten Schritt nicht mehr für den Heimweg (+1 Feld Reserve),
   fliegt er zur nächsten Stadt (`o.refuel`, `refuelBase`) und macht danach beim selben Wegpunkt weiter. Zweimal Umkehren für denselben
