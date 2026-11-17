@@ -3,6 +3,21 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.2.3
+
+- **Stege:** Wo sich Land nur an einer Ecke berührt, zeigt die Karte jetzt abgerundete Ecken und einen kleinen Holzsteg.
+  So sieht man, was dort schon immer galt: Bodentruppen gehen diagonal hinüber, Schiffe fahren diagonal darunter durch.
+- **Schummeln – Nebel des Krieges aus:** Im „☰ Menü“ lässt sich die ganze Karte aufdecken; dann sieht man alle Städte,
+  alle Einheiten des Gegners und jeden seiner Züge. Praktisch, um dem Gegner beim Spielen zuzusehen. Das Spiel fragt
+  vorher nach, ein Schildchen neben der Rundenzahl zeigt es an, und abgeschaltet kehrt der Nebel zurück. Jede neue
+  oder geladene Partie beginnt wieder mit Nebel.
+- **Korrigiert:** Der Hinweistext am Kräftebalken und die Frage nach dem vorzeitigen Ende nennen vom Gegner jetzt immer
+  nur den Prozentwert, auch wenn im Fenster „Zahlen des Gegners aufdecken“ gesetzt ist
+
+*English:* small footbridges now mark the spots where land only touches at a corner (land units cross, ships pass
+underneath – as before, but now visible); a cheat in the menu switches off the fog of war after a confirmation; and the
+balance-of-power tooltip always stays spoiler-free.
+
 ## 1.2.2
 
 - **Kräfteverhältnis zum Nachrechnen:** Ein Klick auf den Balken öffnet ein Fenster mit der genauen Rechnung – Städte,
