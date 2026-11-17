@@ -2076,14 +2076,72 @@ function maybeOfferEnd() {
   openModal('mOffer');
 }
 
-function showGameOver() {
+// Abschlussfenster (Sieg oder Niederlage): Kopf wie beim Eroberungsfenster, links der Zeitraffer der ganzen Partie (spielt von selbst),
+// rechts Eckdaten und je Einheitentyp gebaut / verloren für beide Seiten. Nach dem Ende ist alles aufgedeckt, auch die Zahlen des Gegners.
+// Wieder aufrufen: Menü „Zeitraffer“ bzw. Taste T (quiet = ohne Fanfare).
+const OVER_CHEERS = {
+  win: [tt('Die Welt gehört dir!', 'The world is yours!'), tt('Das Archipel ist dein!', 'The archipelago is yours!'), tt('Ein Sieg für die Geschichtsbücher!', 'A victory for the history books!')],
+  lose: [tt('Dein Reich ist gefallen.', 'Your empire has fallen.'), tt('Diesmal war der Gegner stärker.', 'This time the enemy was stronger.')],
+};
+function overCityMoves() {   // eroberte und verlorene Städte beider Seiten aus der Aufzeichnung des Zeitraffers
+  const r = { won: [0, 0], lost: [0, 0] };
+  if (!S.tl) return r;
+  const cur = new Array(S.cities.length).fill(-2);
+  for (const [, id, o] of S.tl.own) {
+    const prev = cur[id]; cur[id] = o;
+    if (prev === -2 || prev === o) continue;
+    if (o >= 0) r.won[o]++;
+    if (prev >= 0) r.lost[prev]++;
+  }
+  return r;
+}
+function showGameOver(quiet = false) {
   recordStrength(); recordTimeline();   // Endstand für Kurve und Zeitraffer
-  $('overTitle').textContent = S.over === 'win' ? tt('Sieg!', 'Victory!') : tt('Niederlage', 'Defeat');
-  $('overText').textContent = S.over === 'win'
+  const win = S.over === 'win';
+  $('mOver').querySelector('.over-dlg').classList.toggle('lose', !win);
+  $('overBadge').textContent = win ? '🏆' : '🏳';
+  $('overKicker').textContent = win ? tt('Sieg!', 'Victory!') : tt('Niederlage', 'Defeat');
+  const ch = OVER_CHEERS[win ? 'win' : 'lose'];
+  $('overTitle').textContent = ch[S.turn % ch.length];
+  $('overText').textContent = win
     ? (S.overReason === 'capitulation' ? tt(`Der Gegner hat in Runde ${S.turn} vor deiner Übermacht kapituliert.`, `The enemy surrendered to your superior force in turn ${S.turn}.`) : tt(`Du hast die Welt in ${S.turn} Runden erobert.`, `You conquered the world in ${S.turn} turns.`))
     : (S.overReason === 'surrender' ? tt(`Du hast in Runde ${S.turn} aufgegeben.`, `You surrendered in turn ${S.turn}.`) : tt(`Der Gegner hat in Runde ${S.turn} alle deine Städte eingenommen.`, `The enemy took all your cities in turn ${S.turn}.`));
+
+  // Eckdaten
+  const built = S.built || [{}, {}], kills = S.kills || [{}, {}], wasted = S.wasted || [{}, {}];
+  const sum = o => Object.values(o).reduce((x, y) => x + y, 0);
+  const lostOf = p => { const r = {}; for (const k of UNIT_ORDER) r[k] = (kills[1 - p][k] || 0) + (wasted[p][k] || 0); return r; };
+  const lost = [lostOf(0), lostOf(1)];
+  const cm = overCityMoves();
+  const cities = p => S.cities.filter(c => c.owner === p).length;
+  const box = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
+  const vs = (a, b) => `<i class="me">${a}</i> : <i class="en">${b}</i>`;   // blau du, rot Gegner
+  const sz = MAP_SIZES[S.size], wd = WORLDS[S.world];
+  $('overFacts').innerHTML = box(S.turn, tt('Runden', 'Turns')) + box(esc(diff().label), tt('Schwierigkeit', 'Difficulty'))
+    + box(esc(wd ? wd.label : '–'), tt('Welt', 'World') + (sz ? ' · ' + esc(sz.label.split(' ')[0]) : ''))
+    + box(vs(cities(0), cities(1)), tt('Städte am Ende', 'Cities at the end'))
+    + box(vs(cm.won[0], cm.won[1]), tt('Städte erobert', 'Cities captured'))
+    + box(vs(sum(built[0]), sum(built[1])), tt('Einheiten gebaut', 'Units built'))
+    + box(vs(sum(kills[0]), sum(kills[1])), tt('Einheiten zerstört', 'Units destroyed'));
+
+  // je Einheitentyp
+  const cell = n => `<td class="num ${n ? '' : 'zero'}">${n}</td>`;
+  const tot = [0, 0, 0, 0];
+  const rows = UNIT_ORDER.map(k => {
+    const v = [built[0][k] || 0, lost[0][k], built[1][k] || 0, lost[1][k]];
+    if (!v.some(Boolean)) return '';
+    v.forEach((n, i) => { tot[i] += n; });
+    return `<tr><td><span class="sym">${UT[k].sym}</span>${UT[k].name}</td>${v.map(n => cell(n)).join('')}</tr>`;
+  }).join('');
+  $('overUnits').innerHTML = rows + `<tr class="sum"><td>${tt('Gesamt', 'Total')}</td>${tot.map(n => `<td class="num">${n}</td>`).join('')}</tr>`;
+  const from = Math.max(S.builtFrom || 1, S.killsFrom || 1);
+  $('overNote').textContent = tt('Gebaut: in Städten, ohne Starteinheiten. Verloren: auch Ladung versenkter Schiffe und Abstürze.',
+      'Built: in cities, without starting units. Lost: including cargo of sunk ships and crashes.')
+    + (from > 1 ? ' ' + tt(`Gezählt seit Runde ${from} (älterer Spielstand).`, `Counted since turn ${from} (older save).`) : '');
+
   openModal('mOver');
-  Sfx.play(S.over === 'win' ? 'victory' : 'defeat');
+  openTimelapse('mOver');
+  if (!quiet) Sfx.play(win ? 'victory' : 'defeat');
   refresh();
 }
 
@@ -2092,7 +2150,9 @@ function showGameOver() {
 // Städte und ihr Umland in der Farbe des Besitzers, darunter das Kräfteverhältnis. Während der Partie nur, was der Mensch zur
 // jeweiligen Zeit wusste (sonst verriete der Zeitraffer den Gegner im Nebel); nach dem Spielende die ganze Wahrheit.
 // Die Kurve folgt der Einstellung „Kräfteverhältnis anzeigen“ (am Spielende immer sichtbar). Menü, Taste T, Spielende-Fenster.
-const tlv = { t: 1, from: 1, to: 1, play: false, last: 0, acc: 0, s: 8, zone: null, truth: false, off: null };
+// Der Baustein #tlView (Karte, Zeile, Kurve, Bedienung) wird in das Fenster gehängt, das ihn gerade zeigt: Zeitraffer (#tlHome)
+// oder Spielende (#overTl). tlv.modal = dieses Fenster; ist es zu, hält die Wiedergabe an.
+const tlv = { t: 1, from: 1, to: 1, play: false, last: 0, acc: 0, s: 8, zone: null, truth: false, off: null, modal: null };
 // Umland: jedes Landfeld gehört zur nächstgelegenen Stadt auf derselben Insel (höchstens 4 Schritte entfernt)
 function tlZone() {
   const z = new Int16Array(S.W * S.H).fill(-1);
@@ -2119,11 +2179,14 @@ function tlOwnersAt(list, t) {   // Besitzer je Stadt zur Runde t (-2 = unbekann
   for (const e of list) { if (e[0] > t) break; r[e[1]] = e[2]; }
   return r;
 }
-function openTimelapse() {
+function openTimelapse(host = 'mTime') {
   if (!S) return;
   closeMenu(); closeCtx();
+  if (S.over && host === 'mTime') { closeModals(); showGameOver(true); return; }   // nach dem Ende: Abschlussfenster mit Zeitraffer
   recordTimeline();
   if (!S.tl) return;
+  tlv.modal = $(host);
+  $(host === 'mOver' ? 'overTl' : 'tlHome').appendChild($('tlView'));
   tlv.truth = !!S.over;
   tlv.from = S.tl.from; tlv.to = Math.max(S.turn, tlv.from);
   tlv.zone = tlZone();
@@ -2137,7 +2200,7 @@ function openTimelapse() {
     : tt('Gezeigt wird nur, was du zur jeweiligen Zeit wusstest. Nach dem Spielende siehst du hier die ganze Wahrheit.', 'Only what you knew at the time is shown. After the game ends you will see the whole truth here.'))
     + (tlv.from > 1 ? ' ' + tt(`Aufgezeichnet seit Runde ${tlv.from} (älterer Spielstand).`, `Recorded since turn ${tlv.from} (older save).`) : '');
   $('tlCurve').hidden = !(showPower || tlv.truth);
-  openModal('mTime');
+  openModal(host);
   tlSet(tlv.from);
   tlPlay(tlv.to > tlv.from);
 }
@@ -2154,7 +2217,7 @@ function tlPlay(on) {
 }
 function tlTick(now) {
   if (!tlv.play) return;
-  if ($('mTime').hidden) { tlv.play = false; return; }
+  if (!tlv.modal || tlv.modal.hidden) { tlPlay(false); return; }
   tlv.acc += (now - tlv.last) / 1000 * (+$('tlSpeed').value || 5);
   tlv.last = now;
   if (tlv.acc >= 1) {
@@ -2258,8 +2321,7 @@ $('tlCurve').onclick = e => {
 $('tlMap').onclick = () => tlPlay(!tlv.play);
 try { const sp = localStorage.getItem('archipel-tlspeed'); if (sp && [...$('tlSpeed').options].some(o => o.value === sp)) $('tlSpeed').value = sp; else $('tlSpeed').value = '5'; } catch (e) { $('tlSpeed').value = '5'; }
 $('tlSpeed').onchange = e => { try { localStorage.setItem('archipel-tlspeed', e.target.value); } catch (err) {} };
-$('bTime').onclick = openTimelapse;
-$('bOverTime').onclick = () => { closeModals(); openTimelapse(); };
+$('bTime').onclick = () => openTimelapse();
 
 function startNew(size, diffKey, worldKey) {
   prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
@@ -2573,7 +2635,7 @@ document.addEventListener('keydown', e => {
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   const modalOpen = [...document.querySelectorAll('.modal')].some(m => !m.hidden);
-  if (modalOpen && !$('mTime').hidden) {   // Zeitraffer: Leertaste spielt/hält an, Pfeile gehen eine Runde vor/zurück
+  if (modalOpen && tlv.modal && !tlv.modal.hidden) {   // Zeitraffer: Leertaste spielt/hält an, Pfeile gehen eine Runde vor/zurück
     if (e.key === ' ') { e.preventDefault(); tlPlay(!tlv.play); return; }
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); tlPlay(false); tlSet(tlv.t + (e.key === 'ArrowRight' ? 1 : -1)); return; }
   }
@@ -2617,7 +2679,7 @@ document.addEventListener('keydown', e => {
     case 'm': toggleSound(); break;
     case 'k': openSoundTest(); break;
     case 'i': openStats(); break;
-    case 't': openTimelapse(); break;
+    case 't': openTimelapse(); break;   // nach dem Spielende: Abschlussfenster
   }
 });
 

@@ -24,6 +24,7 @@ function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln') {
     cities: m.cities, units: [], nextId: 1, turn: 1, cur: 0, log: [], over: null, difficulty: DIFFICULTY[diffKey] ? diffKey : 'normal', world: worldKey,
     players: [mkPlayer(m.W, m.H, m.cities.length), mkPlayer(m.W, m.H, m.cities.length)],
     kills: [{}, {}], wasted: [{}, {}], killsFrom: 1,   // Statistik: zerstörte Einheiten je Spieler und Typ, siehe killUnit
+    built: [{}, {}], builtFrom: 1,                    // Statistik: in Städten gebaute Einheiten je Spieler und Typ (startTurn)
   };
   buildCityGrid();
   m.start.forEach((cid, p) => {
@@ -1197,6 +1198,7 @@ function startTurn(p) {
     c.progress += p === 1 ? diff().aiProd : 1;
     if (c.progress >= UT[c.prod].cost) {
       c.progress = Math.max(0, c.progress - UT[c.prod].cost);
+      if (S.built) S.built[p][c.prod] = (S.built[p][c.prod] || 0) + 1;
       applyRally(c, createUnit(c.prod, p, c.x, c.y));   // Marschziel der Stadt, falls gesetzt
       if (p === 0) addLog(tt(`${c.name}: ${UT[c.prod].name} fertiggestellt.`, `${c.name}: ${UT[c.prod].name.toLowerCase()} completed.`), '', c.x, c.y);
       else if (typeof aiChooseProduction === 'function') aiChooseProduction(c);
@@ -1369,6 +1371,8 @@ function sanitizeState(o) {
     return r;
   });
   s.kills = tally(o.kills); s.wasted = tally(o.wasted);
+  s.built = tally(o.built);   // gebaute Einheiten (ältere Spielstände: ab dem Laden)
+  s.builtFrom = Array.isArray(o.built) ? int(o.builtFrom, 1, 1, 1e6) : s.turn;
   s.killsFrom = Array.isArray(o.kills) ? int(o.killsFrom, 1, 1, 1e6) : s.turn;
 
   // Zeitraffer (siehe recordTimeline). Fehlt er oder passt er nicht, beginnt die Aufzeichnung beim Laden neu.

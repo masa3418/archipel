@@ -276,6 +276,33 @@
   .cap-unit:not(:disabled):hover { border-color: #f2b84b; background: #3a2f17; }
   .cap-unit.cur { border-color: #8a6a24; }
   .cap-unit:disabled { opacity: .35; cursor: not-allowed; }
+  /* Spielende: Kopf wie beim Eroberungsfenster, darunter Zeitraffer und Endstatistik nebeneinander */
+  .over-dlg { max-width: 1060px; }
+  .over-dlg.lose { border-color: #7a2a26; box-shadow: 0 0 0 1px #3a1715, 0 20px 60px rgba(0,0,0,.5), 0 0 60px rgba(217,67,59,.16); }
+  .over-dlg.lose .cap-kicker { color: #ff8a80; }
+  .over-dlg.lose .cap-head h2 { color: #ffd2cd; }
+  .over-body { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .over-tl #tlMap { max-height: calc(100vh - 385px); }
+  .over-dlg { padding-top: 16px; padding-bottom: 14px; }
+  .over-dlg .cap-head { margin-top: -16px; padding: 12px 24px 8px; margin-bottom: 10px; }
+  .over-dlg .cap-badge { font-size: 34px; }
+  .over-dlg .cap-head h2 { font-size: 22px; margin: 0 0 4px; }
+  .over-dlg .cap-kicker { margin-top: 2px; }
+  .over-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin-bottom: 6px; }
+  .over-facts div { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; }
+  .over-facts b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .over-facts span { font-size: 11px; color: var(--muted); }
+  .over-dlg i.me, .over-units .me { color: #8fc0ff; font-style: normal; }
+  .over-dlg i.en, .over-units .en { color: #ff9d96; font-style: normal; }
+  .over-units { font-size: 12px; margin: 4px 0; }
+  .over-units td, .over-units th { padding: 2px 5px; }
+  .over-units th.grp { text-align: center; border-bottom-color: #3d4b5e; }
+  .over-units td.num, .over-units th.num { text-align: right; }
+  .over-units td.zero { color: var(--muted); opacity: .5; }
+  .over-units tr.sum td { border-top: 1px solid #3d4b5e; font-weight: 700; }
+  .over-units .sym { display: inline-block; width: 18px; color: var(--muted); font-weight: 700; }
+  #overNote { font-size: 12px; margin: 6px 0 0; }
+  @media (max-width: 880px) { .over-body { grid-template-columns: 1fr; } }
   .cap-dlg.plain { border-color: var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
   .cap-dlg.plain .cap-badge { animation: none; font-size: 34px; }
   .cap-dlg.plain .cap-kicker { color: var(--muted); }
@@ -672,7 +699,7 @@
               <tr><td><kbd>+</kbd> <kbd>−</kbd></td><td data-en="zoom">Zoom</td></tr>
               <tr><td><kbd>F</kbd></td><td data-en="centre the map on the selected unit (also the crosshair button at the top) – handy after looking around the map">Karte auf die ausgewählte Einheit zentrieren (auch der Knopf mit dem Fadenkreuz oben) – praktisch, nachdem du dich auf der Karte umgesehen hast</td></tr>
               <tr><td><kbd>H</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>K</kbd></td><td data-en="handbook · statistics · sound on/off · sound test">Handbuch · Statistik · Ton an/aus · Klangtest</td></tr>
-              <tr><td><kbd>T</kbd></td><td data-en="time-lapse: the game so far, turn by turn – during the game only what you knew at the time, after the end the whole map (space plays/pauses, ← → step)">Zeitraffer: die Partie bisher, Runde für Runde – während des Spiels nur, was du damals wusstest, nach dem Ende die ganze Karte (Leertaste spielt/hält an, ← → Schritt)</td></tr>
+              <tr><td><kbd>T</kbd></td><td data-en="time-lapse: the game so far, turn by turn – during the game only what you knew at the time; after the end the closing window with the whole map and the final statistics (space plays/pauses, ← → step)">Zeitraffer: die Partie bisher, Runde für Runde – während des Spiels nur, was du damals wusstest; nach dem Ende das Abschlussfenster mit ganzer Karte und Endstatistik (Leertaste spielt/hält an, ← → Schritt)</td></tr>
             </table>
             <p class="muted" data-en="Tip: in the ☰ Menu you can show the most important keys directly on the map (“Show keyboard shortcuts on the map”).">Tipp: Im ☰ Menü kannst du die wichtigsten Tasten direkt auf der Karte einblenden („Tastenkürzel auf der Karte einblenden“).</p>
           </div>
@@ -836,6 +863,7 @@
   <div class="dlg wide tl-dlg">
     <h2 data-en="Time-lapse">Zeitraffer</h2>
     <p id="tlNote" class="muted"></p>
+    <div id="tlHome"><div id="tlView">
     <canvas id="tlMap" title="Klick: abspielen / anhalten (Leertaste) · ← → eine Runde zurück / vor" data-en-title="Click: play / pause (Space) · ← → one turn back / forward"></canvas>
     <div class="tl-stats"><b id="tlTurn"></b><span id="tlStats"></span></div>
     <canvas id="tlCurve" width="720" height="54" title="Kräfteverhältnis – Klick springt zu dieser Runde" data-en-title="Balance of power – click jumps to this turn"></canvas>
@@ -847,8 +875,9 @@
         <option value="5" data-en="normal">normal</option>
         <option value="12" data-en="fast">schnell</option>
       </select>
-      <button data-close data-en="Close">Schließen</button>
     </div>
+    </div></div>
+    <div class="row" style="justify-content:flex-end;margin-top:10px"><button data-close data-en="Close">Schließen</button></div>
   </div>
 </div>
 
@@ -906,10 +935,28 @@
 </div>
 
 <div id="mOver" class="modal" hidden>
-  <div class="dlg" style="text-align:center">
-    <h2 id="overTitle"></h2>
-    <p id="overText" class="muted"></p>
-    <div class="row" style="justify-content:center"><button class="primary" id="bOverNew" data-en="New game">Neues Spiel</button><button id="bOverTime" data-en="Watch time-lapse">Zeitraffer ansehen</button><button data-close data-en="View map">Karte ansehen</button></div>
+  <div class="dlg cap-dlg over-dlg">
+    <div class="cap-head">
+      <div class="cap-badge" id="overBadge"></div>
+      <div class="cap-kicker" id="overKicker"></div>
+      <h2 id="overTitle"></h2>
+      <p id="overText"></p>
+    </div>
+    <div class="over-body">
+      <div class="over-tl" id="overTl"></div>
+      <div class="over-stats">
+        <div class="over-facts" id="overFacts"></div>
+        <table class="over-units">
+          <thead>
+            <tr><th></th><th colspan="2" class="grp me" data-en="You">Du</th><th colspan="2" class="grp en" data-en="Enemy">Gegner</th></tr>
+            <tr><th data-en="Unit">Einheit</th><th class="num" data-en="built">gebaut</th><th class="num" data-en="lost">verloren</th><th class="num" data-en="built">gebaut</th><th class="num" data-en="lost">verloren</th></tr>
+          </thead>
+          <tbody id="overUnits"></tbody>
+        </table>
+        <p class="muted" id="overNote"></p>
+      </div>
+    </div>
+    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" id="bOverNew" data-en="New game">Neues Spiel</button><button data-close data-en="View map">Karte ansehen</button></div>
   </div>
 </div>
 

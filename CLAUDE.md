@@ -108,6 +108,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Besitzwechsel) und `know` (Wissen des Menschen) als `[Runde, Stadt, Besitzer]`, chronologisch. `openTimelapse` (ui.js, Menü, Taste T,
   Spielende-Fenster) zeigt während der Partie nur `seen`/`know`, nach dem Ende `own` und die ganze Karte; Umland = nächste Stadt
   auf derselben Insel (`tlZone`, ≤ 4 Felder). Kurve aus `S.hist`, folgt `showPower`. Spielstand wird dadurch 5–20 kB größer (klein–groß).
+  Der Baustein `#tlView` wird in das zeigende Fenster gehängt (`openTimelapse(host)`: `#tlHome` im Fenster „Zeitraffer“ oder `#overTl`).
+- **Abschlussfenster** (`showGameOver(quiet)`, `#mOver`): Kopf wie beim Eroberungsfenster (Sieg golden, Niederlage rot), links der Zeitraffer
+  der ganzen Partie, rechts Eckdaten und je Typ gebaut/verloren für beide Seiten (nach dem Ende alles aufgedeckt). Nach dem Spielende öffnen
+  Menü „Zeitraffer“ und Taste T dieses Fenster. Gebaute Einheiten: `S.built[p][typ]` (in `startTurn`), `S.builtFrom` wie `killsFrom`.
+  Verloren = vom Gegner zerstört + `S.wasted`. Eroberte Städte: `overCityMoves` aus `S.tl.own`.
 - **Neues Feld im Spielzustand** → in `sanitizeState` (game.js) aufnehmen, sonst wird es beim
   Laden verworfen. Spielstände aus Dateien sind nicht vertrauenswürdig (siehe `SECURITY.md`);
   Werte aus `S` nie ungeprüft per `innerHTML` ausgeben, Texte mit `esc()` maskieren.
