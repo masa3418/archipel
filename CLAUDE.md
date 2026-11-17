@@ -118,7 +118,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Touchpad-Wischen verschiebt (`looksLikeTouchpad`: kleine, krumme oder seitliche Schritte), Spreizgeste = Rad mit Strg = Zoom.
   Die Einstellung `archipel-wheel` (auto | zoom | pan, im Menü unter „Einstellungen“) übersteuert die Erkennung.
   Echte Touchpad-Gesten lassen sich im eingebauten Browser nur als nachgestellte Rad-Ereignisse testen.
-- **Kopfzeile und Menü**: Oben stehen nur Runde + Stufe (`updateHeader`), `☰ Menü`, Zoom, Ton, Handbuch, Sprache. Seltenes liegt im
+- **Kopfzeile und Menü**: Oben stehen nur Runde + Stufe (`updateHeader`), `☰ Menü`, Zoom, Zentrieren (Fadenkreuz/Taste F, `actFocus` → `focusOn`), Ton, Handbuch, Sprache. Seltenes liegt im
   Menü `#menu` (`openMenu`/`closeMenu`, ui.js): Neues Spiel, Spielstände, Statistik sowie die Einstellungen Lautstärke, Klangtest,
   Mausrad/Touchpad, Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Schwelle fürs Angebot zum vorzeitigen Ende (`offerPct`, `archipel-offer`,
   0 = nie, Standard 10 %; `maybeOfferEnd`), automatisches Rundenende. Neue Einstellungen dort einhängen, nicht in die Kopfzeile oder Seitenleiste.

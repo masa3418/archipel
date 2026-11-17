@@ -896,7 +896,10 @@ function openLandingDialog(u) {
   const tg = landingOption(u);
   if (!tg) return;
   u.landAsked = S.turn;
-  select(u);
+  // Karte auf den Transporter: einen laufenden Schwenk (z. B. zur nächsten Einheit nach der Wiedergabe) ersetzen
+  select(u, false);
+  pendingCenter = null;
+  focusOn(u.x, u.y);
   refresh();
   const cnt = {};
   for (const o of cargoOf(u)) cnt[o.type] = (cnt[o.type] || 0) + 1;
@@ -1016,6 +1019,21 @@ function centerOn(x, y, force = false) {
   }
 }
 
+// Weicher Schwenk auf ein Feld, falls es nicht schon gut sichtbar ist (always: immer in die Mitte)
+function focusOn(x, y, always = false) {
+  if (!always && inViewMargin(x, y)) { cam.active = false; return; }
+  camTo(x + 0.5, y + 0.5, 450);
+}
+// Knopf ⌖ / Taste F: Karte auf die ausgewählte Einheit (bzw. Stadt) zentrieren – nach dem Umsehen auf der Karte
+function actFocus() {
+  const u = selUnit(), c = selCity != null ? S.cities[selCity] : null;
+  const t = u || c;
+  if (!t) { toast(tt('Keine Einheit ausgewählt', 'No unit selected')); Sfx.play('error'); return; }
+  pendingCenter = null;
+  focusOn(t.x, t.y, true);
+  dirty = true;
+}
+
 // Zoom; ax/ay = Punkt im Sichtfenster (Pixel), der dabei an seiner Stelle bleibt
 // (Standard: Mitte; beim Mausrad: die Mausposition)
 function setZoom(nts, ax = wrap.clientWidth / 2, ay = wrap.clientHeight / 2) {
@@ -1055,6 +1073,8 @@ function inViewMargin(x, y, m = 3) {
 }
 function pendingCenterStep(now) {
   if (!pendingCenter || now < pendingCenter.at) return;
+  // Solange ein Fenster offen ist oder gleich kommt (Eroberung, Landung), bleibt die Karte, wo sie ist – es bezieht sich auf diese Stelle
+  if (anyModalOpen() || captureQueue.length) return;
   const pc = pendingCenter; pendingCenter = null;
   const u = selUnit();
   if (!u || u.id !== pc.id) return;
@@ -1417,7 +1437,8 @@ function endHumanTurn() {
     // Erkennung über Schlüsselwörter der Meldungen (game.js) – in beiden Sprachen
     if (fresh.some(t => t.toLowerCase().includes(tt('feindkontakt', 'enemy contact')))) Sfx.play('alarm');
     else if (fresh.some(t => t.toLowerCase().includes(tt('fertiggestellt', 'completed')))) Sfx.play('built');
-    if (followed && home) camTo(home.x + 0.5, home.y + 0.5, 600);
+    const back = selUnit() || home;   // die Auswahl kann sich inzwischen geändert haben
+    if (followed && back) camTo(back.x + 0.5, back.y + 0.5, 600);
     maybeOfferEnd();
     // nichts zu tun (keine Einheit wartet) und nichts Schlimmes passiert: gleich weiter
     if (!badNews) scheduleAutoEnd();
@@ -2384,7 +2405,7 @@ document.addEventListener('keydown', e => {
   if (k === 'g') { setPathView(!pathView); return; }
   if (prodView) {   // in der Produktionsansicht gibt es keine Einheitenbefehle
     if (k === 'Escape') { setProdView(false); return; }
-    if (!['+', '-', 'h', '?', 'm', 'k', 'i', 'Enter'].includes(k)) return;
+    if (!['+', '-', 'f', 'h', '?', 'm', 'k', 'i', 'Enter'].includes(k)) return;
   }
   if (rallyMode) { if (k === 'Escape') rallyAbort(); return; }
   const u = selUnit();
@@ -2402,6 +2423,7 @@ document.addEventListener('keydown', e => {
     case 'r': actExplore(); break;
     case 'b': actHome(); break;
     case 'n': actNext(); break;
+    case 'f': actFocus(); break;
     case 'l': actLoad(); break;
     case 'u': actUnload(); break;
     case 'Enter': e.preventDefault(); endHumanTurn(); break;
@@ -2635,6 +2657,7 @@ $('mSound').addEventListener('input', e => {
 });
 $('bZoomIn').onclick = () => setZoom(TS + 4);
 $('bZoomOut').onclick = () => setZoom(TS - 4);
+$('bFocus').onclick = actFocus;
 // ------------------------------------------------------------------ Spielstände
 const SIZE_NAME = EN ? { klein: 'small', mittel: 'medium', gross: 'large' } : { klein: 'klein', mittel: 'mittel', gross: 'groß' };
 function fmtDate(t) {
