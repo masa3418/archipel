@@ -23,6 +23,7 @@ function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln') {
     W: m.W, H: m.H, size: sizeKey, terrain: m.terrain, elev: m.elev, depth: m.depth, cont: m.cont,
     cities: m.cities, units: [], nextId: 1, turn: 1, cur: 0, log: [], over: null, difficulty: DIFFICULTY[diffKey] ? diffKey : 'normal', world: worldKey,
     players: [mkPlayer(m.W, m.H, m.cities.length), mkPlayer(m.W, m.H, m.cities.length)],
+    kills: [{}, {}], wasted: [{}, {}], killsFrom: 1,   // Statistik: zerstörte Einheiten je Spieler und Typ, siehe killUnit
   };
   buildCityGrid();
   m.start.forEach((cid, p) => {
@@ -60,10 +61,16 @@ function createUnit(type, owner, x, y) {
   return u;
 }
 
-function killUnit(u) {
-  for (const c of cargoOf(u)) killUnit(c);
+// by: Spieler (0/1), der die Einheit zerstört hat – zählt in S.kills[by] für die Statistik; -1 = ohne Zutun eines
+// Gegners verloren (Absturz, Angriff auf neutrale Stadt) – zählt in S.wasted[Besitzer]. Ohne Angabe wird nichts
+// gezählt (Eroberer, der als Besatzung in der Stadt aufgeht). Ladung geht mit unter und zählt genauso.
+function killUnit(u, by) {
+  for (const c of cargoOf(u)) killUnit(c, by);
   const k = S.units.indexOf(u);
-  if (k >= 0) S.units.splice(k, 1);
+  if (k < 0) return;
+  S.units.splice(k, 1);
+  const rec = by == null ? null : by >= 0 ? S.kills && S.kills[by] : S.wasted && S.wasted[u.owner];
+  if (rec) rec[u.type] = (rec[u.type] || 0) + 1;
 }
 
 function addLog(text, cls = '', x = null, y = null) {
@@ -119,7 +126,7 @@ function spendMove(u) {
       u.fuel--;
       if (u.fuel <= 0) {
         if (u.owner === 0) addLog(tt('Dein Jäger ist ohne Treibstoff abgestürzt.', 'Your fighter ran out of fuel and crashed.'), 'bad', u.x, u.y);
-        killUnit(u);
+        killUnit(u, -1);
         return false;
       }
     }
@@ -269,17 +276,17 @@ function attack(u, nx, ny, enemies, city) {
   if (hooks.combat) hooks.combat(u, def, nx, ny, u.hp > 0, storm);   // won = Angreifer hat gewonnen
   if (u.hp <= 0) {
     if (involved) addLog(tt(`${aName} greift ${dName} an – und wird vernichtet.`, `${aName} attacks ${dName} – and is destroyed.`), u.owner === 0 ? 'bad' : 'good', nx, ny);
-    killUnit(u);
+    killUnit(u, def.owner);
     return { ok: true, died: true, combat: true };
   }
   const cargoLost = cargoOf(def).length;
   if (involved) addLog(tt(`${aName} greift ${dName} an – Sieg!`, `${aName} attacks ${dName} – victory!`) + (cargoLost ? tt(` (${cargoLost} Einheiten an Bord verloren)`, ` (${cargoLost} ${cargoLost === 1 ? 'unit' : 'units'} lost on board)`) : ''),
     u.owner === 0 ? 'good' : 'bad', nx, ny);
-  killUnit(def);
+  killUnit(def, u.owner);
   if (storm) {
     const garrison = S.units.filter(o => o.x === nx && o.y === ny && o.owner !== u.owner && o.carrier == null);
     let lost = 0;
-    for (const o of garrison) { lost += 1 + cargoOf(o).length; killUnit(o); }
+    for (const o of garrison) { lost += 1 + cargoOf(o).length; killUnit(o, u.owner); }
     relocate(u, nx, ny); u.carrier = null; u.order = null; u.moves = 0;
     captureCity(city, u.owner, u, !!supA);
     if (lost && involved) addLog(tt(`Mit ${city.name} ${lost === 1 ? 'ging 1 weitere Einheit' : `gingen ${lost} weitere Einheiten`} unter.`, `${lost === 1 ? '1 more unit was' : `${lost} more units were`} lost with ${city.name}.`),
@@ -329,7 +336,7 @@ function moveStep(u, nx, ny) {
       // Schiffe im Hafen gehen mit der Stadt unter
       const mine = u.owner === 0 || city.owner === 0;
       let sunk = 0;
-      for (const o of enemies) { sunk += 1 + cargoOf(o).length; killUnit(o); }
+      for (const o of enemies) { sunk += 1 + cargoOf(o).length; killUnit(o, u.owner); }
       relocate(u, nx, ny); u.carrier = null; u.order = null;
       captureCity(city, u.owner, u, !!supA);
       if (sunk && mine) addLog(tt(`Mit ${city.name} ${sunk === 1 ? 'ging 1 Einheit im Hafen' : `gingen ${sunk} Einheiten im Hafen`} unter.`,
@@ -339,7 +346,7 @@ function moveStep(u, nx, ny) {
     if (hooks.combat) hooks.combat(u, null, nx, ny, false);
     if (u.owner === 0) addLog(tt(`Angriff auf ${city.name} abgewehrt – ${t.name} verloren.`, `Attack on ${city.name} repelled – ${t.name.toLowerCase()} lost.`), 'bad', nx, ny);
     else if (city.owner === 0) addLog(tt(`${city.name} hat einen Angriff abgewehrt.`, `${city.name} repelled an attack.`), 'good', nx, ny);
-    killUnit(u);
+    killUnit(u, city.owner);   // neutrale Stadt (-1): zählt als „sonst verloren“
     return { ok: true, died: true };
   }
   const ownCity = city && city.owner === u.owner;
@@ -928,7 +935,7 @@ function endTurn(p) {
     u.moves = 0;
     if (u.fuel <= 0) {
       if (p === 0) addLog(tt('Dein Jäger ist ohne Treibstoff abgestürzt.', 'Your fighter ran out of fuel and crashed.'), 'bad', u.x, u.y);
-      killUnit(u);
+      killUnit(u, -1);
     }
   }
 }
@@ -1068,6 +1075,16 @@ function sanitizeState(o) {
   s.hist = (Array.isArray(o.hist) ? o.hist.slice(-1000) : []).filter(e => e && isNum(e.t)).map(e => ({
     t: int(e.t, 1, 0, 1e6), me: num(e.me, 0, 0, 1e9), en: num(e.en, 0, 0, 1e9),
   }));
+
+  // Statistik der zerstörten Einheiten: je Spieler und Einheitentyp eine Zahl. Ältere Spielstände kennen sie nicht,
+  // dort wird erst ab dem Laden gezählt (killsFrom = Runde, ab der die Zahlen gelten).
+  const tally = v => [0, 1].map(p => {
+    const src = Array.isArray(v) && v[p] && typeof v[p] === 'object' ? v[p] : {}, r = {};
+    for (const k of Object.keys(UT)) { const n = int(src[k], 0, 0, 1e6); if (n) r[k] = n; }
+    return r;
+  });
+  s.kills = tally(o.kills); s.wasted = tally(o.wasted);
+  s.killsFrom = Array.isArray(o.kills) ? int(o.killsFrom, 1, 1, 1e6) : s.turn;
 
   if (!Array.isArray(o.players) || o.players.length !== 2) throw new Error(tt('Ungültige Spielerdaten', 'Invalid player data'));
   s.players = o.players.map(P => {

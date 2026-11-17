@@ -2023,6 +2023,19 @@ function renderStats() {
       <td class="num ${next == null ? 'zero' : ''}">${next == null ? '–' : next + (next === 1 ? tt(' Runde', ' turn') : tt(' Runden', ' turns'))}</td></tr>`;
   }).join('') + `<tr><td><b>${tt('Gesamt', 'Total')}</b></td><td class="num"><b>${total[0]}</b></td><td></td><td class="num"><b>${total[1]}</b></td><td></td></tr>`;
 
+  // Zerstörte Einheiten: was du zerstört hast, was der Gegner zerstört hat, was sonst verloren ging (siehe killUnit)
+  const kMe = (S.kills && S.kills[0]) || {}, kEn = (S.kills && S.kills[1]) || {}, wMe = (S.wasted && S.wasted[0]) || {};
+  const ksum = [0, 0, 0];
+  const kcell = (n, b) => `<td class="num ${n ? '' : 'zero'}">${b ? '<b>' + n + '</b>' : n}</td>`;
+  $('statKills').innerHTML = UNIT_ORDER.map(k => {
+    const v = [kMe[k] || 0, kEn[k] || 0, wMe[k] || 0];
+    v.forEach((n, i) => { ksum[i] += n; });
+    return `<tr><td><span class="sym">${UT[k].sym}</span>${UT[k].name}</td>${v.map(n => kcell(n)).join('')}</tr>`;
+  }).join('') + `<tr><td><b>${tt('Gesamt', 'Total')}</b></td>${ksum.map(n => kcell(n, true)).join('')}</tr>`;
+  $('statKillsNote').textContent = tt('Mitgezählt wird auch die Ladung versenkter Schiffe und was mit einer eroberten Stadt untergeht. „Sonst verloren“: Jäger ohne Treibstoff und Angriffe auf neutrale Städte.',
+      'Cargo of sunk ships and units lost with a captured city are counted too. “Lost otherwise”: fighters out of fuel and attacks on neutral cities.')
+    + (S.killsFrom > 1 ? tt(` Gezählt wird in dieser Partie erst seit Runde ${S.killsFrom} (älterer Spielstand).`, ` In this game counting only started in turn ${S.killsFrom} (older save).`) : '');
+
   $('statCities').innerHTML = myCities.map(c => {
     const p = c.prod ? UT[c.prod] : null;
     const here = topUnitsAt(c.x, c.y).filter(u => u.owner === 0);
