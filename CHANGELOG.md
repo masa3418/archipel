@@ -3,24 +3,52 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
-## 1.3.1
+## 1.4.0
 
-Das automatische Rundenende soll keine vollen Transporter mehr kosten.
+Seekrieg an der Küste und Landungen.
+
+**Neue Regeln**
+
+- **Küstenangriff:** Schiffe an der Küste sind jetzt in Gefahr. Bodentruppen, die ein Schiff auf einem Nachbarfeld
+  angreifen, richten dreifachen Schaden an: Infanterie versenkt einen Zerstörer zu 50 %, ein Panzer zu 75 %, einen Träger
+  zu 31 %. Kreuzer und Schlachtschiffe sind für die Küste gebaut und bleiben sicher. Erkundung mit Zerstörern entlang
+  fremder Küsten wird damit riskanter.
+- **U-Boote** können von Bodentruppen nicht mehr angegriffen werden.
+- **Beschuss von Land:** Von den Schiffen können nur noch Kreuzer und Schlachtschiffe Einheiten an Land angreifen, auch in
+  Städten an der Küste. Zerstörer, U-Boote und Träger kämpfen nur gegen Schiffe und Flugzeuge.
+- In Simulationen (je 192 Partien pro Stufe) ändern sich die Schwierigkeitsstufen durch die neuen Regeln nicht spürbar.
+
+**Landungen**
 
 - **Rückfrage vor fremden Städten:** Liegt ein beladener Transporter ohne Befehl vor einer neutralen oder feindlichen Stadt,
   fragt das Spiel, ob die Truppen angreifen sollen – angreifen, nur an Land setzen oder nicht angreifen. Die Runde endet
   nicht, bevor du dich entschieden hast, auch wenn der Transporter selbst keinen Zug mehr hat.
-- **Angriff direkt auf der Karte:** Über der Stadt stehen ein Zielkreuz und die Chance. Ein Klick auf die Stadt oder die
-  Richtungstaste dorthin löst den Angriff vom Schiff aus, wie bisher die Taste U.
+- **Feind am Ufer:** Steht eine feindliche Einheit auf einem Landfeld neben dem Transporter (Bodentruppen, auch ein Jäger
+  über Land) und hat der Transporter keinen Zug mehr, fragt das Spiel ebenfalls. Wer siegt, geht dabei an Land.
+- **Angriff direkt auf der Karte:** Über dem Ziel stehen ein Zielkreuz und die Chance. Ein Klick darauf oder die
+  Richtungstaste dorthin löst den Angriff vom Schiff aus, vor Städten auch die Taste U.
 - **„Ausladen, wenn möglich“:** neuer Schalter je Transporter für Landemanöver an freier Küste. Sobald er Land berührt,
   werden die Truppen nacheinander zum Aussteigen angeboten, bis kein Feld mehr frei ist. Ist er leer, schaltet sich der
   Schalter ab. Ein kleiner Pfeil an der Marke zeigt, bei welchen Transportern er an ist.
 - Wer einen Transporter ohne Zug bewegen will, dessen Truppen noch angreifen können, bekommt jetzt eine Erklärung statt
-  „Keine Bewegungspunkte mehr“
+  „Keine Bewegungspunkte mehr“.
 
-*English:* the automatic end of turn no longer costs you loaded transports – the game asks before a neutral or enemy city
-whether the troops should attack, the attack can be started by clicking the city, and a new per-transport switch
-“Unload when possible” offers the troops for disembarking as soon as the transport touches land.
+**Handbuch**
+
+- „Erste Schritte“ ist wieder kurz. Alles zum Beladen, Landen und Angreifen vom Schiff steht gesammelt auf der neuen Seite
+  „Transporter“ – mit dem Tipp, wie man über Marschziele Nachschub in einer Hafenstadt sammelt und mit dem Transporter
+  einfach abholt.
+
+**Korrigiert**
+
+- Eine Einheit, die vom Schiff aus einen Gegner an Land besiegte, zog zwar an Land, zählte aber weiter als Ladung und sprang
+  beim Weiterfahren des Transporters zurück an Bord.
+
+*English:* naval warfare at the coast – ground troops deal triple damage to ships next to the coast (cruisers and
+battleships excepted, submarines out of their reach), and only cruisers and battleships can attack units on land. Landings
+are safer: the game asks whether the troops on board should attack a city or an enemy on the shore, the attack can be
+started by clicking the target, and a new per-transport switch “Unload when possible” offers the troops for disembarking as
+soon as the transport touches land. The handbook has a new “Transports” page.
 
 ## 1.3.0
 

@@ -200,6 +200,9 @@ function pickDefender(list) {
 const BATTERY = 2;
 const BIG_SHIPS = ['bat', 'crs', 'car'];
 const SUPPORT_HIT = 2 / 3, SUPPORT_CAPTURE = 0.25;
+// Küstenangriff: Bodentruppen, die ein Schiff auf einem Nachbarfeld angreifen, richten COAST.str-fachen Schaden an und treffen mit
+// COAST.p – außer gegen Kreuzer und Schlachtschiff (UT.shore), die für die Küste gebaut sind. U-Boote sind für sie unerreichbar.
+const COAST = { str: 3, p: 0.5 };
 
 // Schlachtschiff des Spielers, das auf das Feld (x, y) wirkt – oder null
 function fireSupport(owner, x, y) {
@@ -225,6 +228,16 @@ function captureChance(owner, c) {
   if (fireSupport(c.owner, c.x, c.y)) p -= SUPPORT_CAPTURE;
   return p;
 }
+// Darf a die Einheit d überhaupt angreifen? Schiffe beschießen Einheiten an Land (auch in Städten) nur, wenn sie dafür gebaut
+// sind (UT.shore: Kreuzer, Schlachtschiff). Zerstörer, U-Boot und Träger greifen nur Schiffe und Flugzeuge an.
+// Bodentruppen greifen Schiffe an der Küste an, aber keine U-Boote.
+// Regeln (moveStep), KI und Anzeige (Zugmarker, Hinweiszeile, Tabelle „Wer schlägt wen“) fragen alle hier nach.
+function canStrike(a, d) {
+  if (T(a).str <= 0) return false;
+  if (T(a).domain === 'land' && T(d).stealth) return false;   // U-Boote: für Bodentruppen nicht angreifbar
+  return !(T(a).domain === 'sea' && !T(a).shore && T(d).domain === 'land');
+}
+
 function combatSpec(a, d, x, y) {
   const ta = a.type, td = d.type;
   let as = T(a).str, ds = T(d).str, p = 0.5, first = null;
@@ -236,6 +249,10 @@ function combatSpec(a, d, x, y) {
   if (ta === 'ftr' && td === 'sub') { p = 2 / 3; notes.push(tt('Luftangriff auf U-Boot', 'air strike on submarine')); }
   if (ta === 'bat' && td === 'sub' && !d.surf) { p = 1 / 4; ds *= 2; notes.push(tt('U-Boot taucht ab: schwer zu treffen, Torpedo-Gegenschlag', 'submarine dives: hard to hit, torpedo counter-strike')); }
   if (ta === 'ftr' && td === 'bat') { as *= 3; p = 2 / 3; notes.push(tt('Luftangriff auf Schlachtschiff', 'air strike on battleship')); }
+  if (T(a).domain === 'land' && T(d).domain === 'sea' && !T(d).shore && !cityAt(x, y)) {
+    as *= COAST.str; p = COAST.p;
+    notes.push(tt('Küstenangriff: Schiff in Reichweite der Bodentruppen', 'coastal attack: ship within reach of ground troops'));
+  }
   if (ta === 'ftr' && T(d).domain === 'sea' && airCover(d.owner, x, y)) { p = 1 / 3; notes.push(tt('Luftdeckung durch Träger', 'air cover from a carrier')); }
   // Feuerunterstützung/Feuerschutz betreffen nur Bodentruppen
   if (T(a).domain === 'land' || T(d).domain === 'land') {
@@ -330,7 +347,7 @@ function attack(u, nx, ny, enemies, city) {
   }
   if (storm === false && involved) addLog(tt(`${city.name} hält dem Sturm stand.`, `${city.name} withstands the assault.`), u.owner === 0 ? 'bad' : 'good', nx, ny);
   const rest = topUnitsAt(nx, ny);
-  if (!rest.length && !(city && city.owner !== u.owner) && canEnterTerrain(u, nx, ny)) relocate(u, nx, ny);
+  if (!rest.length && !(city && city.owner !== u.owner) && canEnterTerrain(u, nx, ny)) { relocate(u, nx, ny); u.carrier = null; }   // von Bord aus gesiegt: jetzt an Land
   const ok = spendMove(u);
   return { ok: true, died: !ok, combat: true };
 }
@@ -360,7 +377,11 @@ function moveStep(u, nx, ny) {
       return { ok: false, contact: true, msg: tt('Sonarkontakt: U-Boot voraus', 'Sonar contact: submarine ahead') };
     }
     if (t.str === 0) return { ok: false, msg: tt(`${t.name} kann nicht angreifen`, `${t.name} cannot attack`) };
-    return attack(u, nx, ny, foes, city);
+    const targets = foes.filter(o => canStrike(u, o));
+    if (!targets.length) return { ok: false, msg: t.domain === 'land'
+      ? tt('U-Boote sind für Bodentruppen nicht angreifbar', 'Submarines cannot be attacked by ground troops')
+      : tt(`${t.name} kann keine Einheiten an Land angreifen – das können nur Kreuzer und Schlachtschiffe`, `${t.name} cannot attack units on land – only cruisers and battleships can`) };
+    return attack(u, nx, ny, targets, city);
   }
   if (city && city.owner !== u.owner) {
     if (!t.capture) return { ok: false, msg: tt('Nur Infanterie und Panzer können Städte erobern', 'Only infantry and tanks can capture cities') };
@@ -458,7 +479,8 @@ function runLoad(u) {
 }
 
 // Kann die Einheit o von ihrem Transporter tr aus jetzt von Bord gehen? Dazu braucht sie ihren Zug und ein Ziel daneben: ein
-// freies Landfeld, eine eigene Stadt oder – für Infanterie und Panzer – eine neutrale/feindliche Stadt (Angriff vom Schiff).
+// freies Landfeld, eine eigene Stadt, eine feindliche Einheit am Ufer oder – für Infanterie und Panzer – eine neutrale/feindliche
+// Stadt (Angriff vom Schiff).
 function canDisembark(o, tr) {
   if (o.moves <= 0) return false;
   for (const [dx, dy] of DIRS) {
@@ -466,49 +488,81 @@ function canDisembark(o, tr) {
     if (!inb(x, y) || !canEnterTerrain(o, x, y)) continue;
     const c = cityAt(x, y);
     if (c) { if (c.owner === o.owner || T(o).capture) return true; continue; }
-    if (!topUnitsAt(x, y).some(q => q.owner === o.owner || canSee(o.owner, q))) return true;   // freies Feld
+    const there = topUnitsAt(x, y).filter(q => q.owner === o.owner || canSee(o.owner, q));
+    if (!there.length) return true;                                              // freies Feld
+    if (T(o).str > 0 && there.every(q => q.owner !== o.owner)) return true;      // Gegner am Ufer: Angriff vom Schiff
   }
   return false;
 }
 
-// Sturm vom Schiff: Liegt ein Transporter neben einer neutralen oder feindlichen Stadt, greifen die eroberungsfähigen Einheiten
-// an Bord sie direkt an – ohne Umweg über ein Nachbarfeld, der ihren Zug kosten und den Angriff um eine Runde verschieben würde.
-// assaultTarget wählt die Stadt mit den besten Aussichten (Siegchance gegen den Verteidiger × Eroberungschance).
+// Angriff vom Schiff: Die Truppen an Bord eines Transporters können ein Nachbarfeld direkt angreifen – ohne Umweg über ein
+// freies Landfeld, der ihren Zug kosten und den Angriff um eine Runde verschieben würde. Zwei Arten von Zielen (assaultOptions):
+//   'city' – eine neutrale oder feindliche Stadt: Infanterie und Panzer stürmen sie (Chance = Sieg gegen den Verteidiger × Eroberung)
+//   'unit' – eine feindliche Einheit auf einem Landfeld daneben (Bodentruppen, auch ein Jäger über Land), die den Transporter
+//            sonst in der Gegnerrunde angreifen könnte: Alles an Bord, was kämpfen kann, greift sie an
+// Städte stehen vorn (assaultTarget), danach nach Chance.
 function assaultTroops(u) {
   return cargoOf(u).filter(o => T(o).capture && o.moves > 0).sort((a, b) => T(a).cost - T(b).cost);   // erst Infanterie, dann Panzer
 }
-// alle Städte, die sich vom Transporter u aus stürmen lassen, die aussichtsreichste zuerst
 function assaultOptions(u) {
-  const troops = assaultTroops(u), out = [];
-  if (!troops.length) return out;
+  const out = [], capt = assaultTroops(u);
+  const fight = cargoOf(u).filter(o => o.moves > 0 && T(o).str > 0 && T(o).domain === 'land');
+  if (!capt.length && !fight.length) return out;
   for (const [dx, dy] of DIRS) {
     const x = u.x + dx, y = u.y + dy;
     if (!inb(x, y)) continue;
     const c = cityAt(x, y);
-    if (!c || c.owner === u.owner) continue;
-    const foes = cityDefenders(troops[0], c, topUnitsAt(x, y).filter(o => o.owner !== u.owner && canSee(u.owner, o)));
-    const chance = (foes.length ? attackOdds(troops[0], pickDefender(foes), x, y) : 1) * captureChance(u.owner, c);
-    out.push({ city: c, chance, troops: troops.length });
+    const seen = topUnitsAt(x, y).filter(o => o.owner !== u.owner && canSee(u.owner, o));
+    if (c) {
+      if (c.owner === u.owner || !capt.length) continue;
+      const foes = cityDefenders(capt[0], c, seen);
+      const chance = (foes.length ? attackOdds(capt[0], pickDefender(foes), x, y) : 1) * captureChance(u.owner, c);
+      out.push({ kind: 'city', x, y, city: c, name: c.name, chance, troops: capt.length });
+    } else if (seen.length && fight.length && S.terrain[idx(x, y)] === 1) {
+      const d = pickDefender(seen);
+      const chance = Math.max(...fight.map(o => attackOdds(o, d, x, y)));
+      out.push({ kind: 'unit', x, y, target: d, name: T(d).name, chance, troops: fight.length });
+    }
   }
-  return out.sort((a, b) => b.chance - a.chance);
+  return out.sort((a, b) => (a.kind !== b.kind ? (a.kind === 'city' ? -1 : 1) : b.chance - a.chance));
 }
 function assaultTarget(u) { return assaultOptions(u)[0] || null; }
-// Greift der Reihe nach an, bis die Stadt fällt; wer danach noch an Bord ist, bleibt dort (für das nächste Ziel).
-function assaultFrom(u, city) {
-  let attacks = 0;
-  for (const o of assaultTroops(u)) {
-    let guard = 4;
-    while (alive(o) && o.carrier === u.id && o.moves > 0 && city.owner !== u.owner && guard-- > 0) {
-      o.order = null;
-      const r = moveStep(o, city.x, city.y);
+// Führt den Angriff aus. Stadt: der Reihe nach, bis sie fällt; wer danach noch an Bord ist, bleibt dort (für das nächste Ziel).
+// Einheit: jeweils der aussichtsreichste Angreifer, bis das Feld frei ist – der Sieger geht dabei an Land.
+function assaultFrom(u, opt) {
+  let attacks = 0, done = false;
+  if (opt.kind === 'city') {
+    const city = opt.city;
+    for (const o of assaultTroops(u)) {
+      let guard = 4;
+      while (alive(o) && o.carrier === u.id && o.moves > 0 && city.owner !== u.owner && guard-- > 0) {
+        o.order = null;
+        const r = moveStep(o, city.x, city.y);
+        if (!r.ok) break;
+        attacks++;
+      }
+      if (city.owner === u.owner) break;
+    }
+    done = city.owner === u.owner;
+  } else {
+    const foesAt = () => topUnitsAt(opt.x, opt.y).filter(o => o.owner !== u.owner && canSee(u.owner, o));
+    for (let guard = 12; guard > 0; guard--) {
+      const foes = foesAt();
+      if (!foes.length) break;
+      const d = pickDefender(foes);
+      const troops = cargoOf(u).filter(o => o.moves > 0 && T(o).str > 0 && T(o).domain === 'land')
+        .sort((a, b) => attackOdds(b, d, opt.x, opt.y) - attackOdds(a, d, opt.x, opt.y));
+      if (!troops.length) break;
+      troops[0].order = null;
+      const r = moveStep(troops[0], opt.x, opt.y);
       if (!r.ok) break;
       attacks++;
     }
-    if (city.owner === u.owner) break;
+    done = !foesAt().length;
   }
   // wer an Bord geblieben ist, schläft wieder (wie nach dem Einsteigen)
   if (u.owner === 0) for (const o of cargoOf(u)) if (!o.order) o.order = { type: 'sentry' };
-  return { attacks, captured: city.owner === u.owner };
+  return { attacks, captured: opt.kind === 'city' && done, cleared: done };
 }
 
 // Zug eines Transporters des Spielers (von Hand oder auf dem Marsch; die KI benutzt moveStep direkt): Verlässt er eine eigene

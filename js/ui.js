@@ -309,7 +309,7 @@ function moveHints(u) {
   if (!u) return out;
   const t = T(u);
   // Beladener Transporter: Städte, die seine Truppen vom Schiff aus stürmen können (auch wenn er selbst keinen Zug mehr hat)
-  if (t.carries === 'land' && u.owner === 0) for (const o of assaultOptions(u)) out.push([o.city.x, o.city.y, 'attack']);
+  if (t.carries === 'land' && u.owner === 0) for (const o of assaultOptions(u)) out.push([o.x, o.y, 'attack']);
   if (u.moves <= 0) return out;
   for (const [dx, dy] of DIRS) {
     const x = u.x + dx, y = u.y + dy;
@@ -317,7 +317,7 @@ function moveHints(u) {
     const c = cityAt(x, y);
     const here = topUnitsAt(x, y).filter(o => canSee(0, o));
     const enemy = here.some(o => o.owner !== 0);
-    if (enemy) { if (t.str > 0) out.push([x, y, 'attack']); continue; }
+    if (enemy) { if (here.some(o => o.owner !== 0 && canStrike(u, o))) out.push([x, y, 'attack']); continue; }
     if (c && c.owner !== 0) { if (t.capture) out.push([x, y, 'attack']); continue; }
     if (here.length && !(c && c.owner === 0)) {
       if (here.some(o => T(o).carries === t.domain && cargoOf(o).length < T(o).capacity)) out.push([x, y, 'board']);
@@ -735,7 +735,7 @@ function render(now = performance.now()) {
     // Sturm vom Schiff: Über jeder Stadt, die die Truppen des gewählten Transporters angreifen können, steht die Chance –
     // dauerhaft und pulsierend, damit man auf der Karte sieht, was jetzt möglich ist (Klick auf die Stadt oder Taste U)
     if (T(su).carries === 'land' && su.owner === 0) for (const o of assaultOptions(su)) {
-      const txt = '⚔ ' + Math.round(o.chance * 100) + ' %', hx = o.city.x, hy = o.city.y;
+      const txt = '⚔ ' + Math.round(o.chance * 100) + ' %', hx = o.x, hy = o.y;
       ctx.font = `700 ${Math.max(11, Math.round(TS * 0.42))}px system-ui, sans-serif`;
       const w = ctx.measureText(txt).width + 12, h = Math.max(16, TS * 0.6);
       const bx = hx * TS + TS / 2 - w / 2, by = hy * TS - h - 3 - pulse * TS * 0.08;
@@ -886,13 +886,14 @@ function actLanding() {
 }
 
 // ------------------------------------------------------------------ Rückfrage: Angriff vom Schiff
-// Liegt ein beladener Transporter ohne Befehl vor einer neutralen oder feindlichen Stadt, fragt das Spiel einmal je Runde,
+// Liegt ein beladener Transporter ohne Befehl vor einer neutralen oder feindlichen Stadt – oder ohne eigenen Zug neben einer
+// feindlichen Einheit am Ufer, die ihn in der Gegnerrunde angreifen könnte –, fragt das Spiel einmal je Runde,
 // ob die Truppen angreifen sollen – beim Ankommen und zu Rundenbeginn, sobald keine Animation und kein anderes Fenster offen
 // ist (landingStep in der Hauptschleife). „Nicht angreifen“ gilt für diese Runde (u.noAssault); wer das Fenster nur schließt,
 // entscheidet später – der Transporter wartet dann weiter, und die Runde endet nicht von selbst.
 let landCheck = false;
 function openLandingDialog(u) {
-  const tg = assaultTarget(u);
+  const tg = landingOption(u);
   if (!tg) return;
   u.landAsked = S.turn;
   select(u);
@@ -900,14 +901,22 @@ function openLandingDialog(u) {
   const cnt = {};
   for (const o of cargoOf(u)) cnt[o.type] = (cnt[o.type] || 0) + 1;
   const list = UNIT_ORDER.filter(k => cnt[k]).map(k => `${cnt[k]} × ${UT[k].name}`).join(', ');
-  const name = esc(tg.city.name), pct = Math.round(tg.chance * 100), neutral = tg.city.owner === -1;
-  $('landTitle').textContent = tt(`Vor ${tg.city.name}: angreifen?`, `Off ${tg.city.name}: attack?`);
-  $('landText').innerHTML = tt(`Dein Transporter liegt vor der ${neutral ? 'neutralen' : 'feindlichen'} Stadt <b>${name}</b>. An Bord: ${list}.<br><br>Die Truppen können sofort vom Schiff aus angreifen – erst Infanterie, dann Panzer, bis die Stadt fällt. Chance des ersten Angriffs: <b>${pct} %</b>.`,
-    `Your transport lies off the ${neutral ? 'neutral' : 'enemy'} city of <b>${name}</b>. On board: ${list}.<br><br>The troops can attack straight from the ship – infantry first, then tanks, until the city falls. Chance of the first attack: <b>${pct} %</b>.`);
+  const name = esc(tg.name), pct = Math.round(tg.chance * 100);
+  if (tg.kind === 'city') {
+    const neutral = tg.city.owner === -1;
+    $('landTitle').textContent = tt(`Vor ${tg.name}: angreifen?`, `Off ${tg.name}: attack?`);
+    $('landText').innerHTML = tt(`Dein Transporter liegt vor der ${neutral ? 'neutralen' : 'feindlichen'} Stadt <b>${name}</b>. An Bord: ${list}.<br><br>Die Truppen können sofort vom Schiff aus angreifen – erst Infanterie, dann Panzer, bis die Stadt fällt. Chance des ersten Angriffs: <b>${pct} %</b>.`,
+      `Your transport lies off the ${neutral ? 'neutral' : 'enemy'} city of <b>${name}</b>. On board: ${list}.<br><br>The troops can attack straight from the ship – infantry first, then tanks, until the city falls. Chance of the first attack: <b>${pct} %</b>.`);
+  } else {
+    const d = tg.target;
+    $('landTitle').textContent = tt(`Feind am Ufer: angreifen?`, `Enemy on the shore: attack?`);
+    $('landText').innerHTML = tt(`Direkt neben deinem Transporter steht eine feindliche Einheit: <b>${name}</b> (${d.hp}/${T(d).hp}). Der Transporter hat keinen Zug mehr und läge in der Gegnerrunde schutzlos daneben. An Bord: ${list}.<br><br>Die Truppen können sie sofort vom Schiff aus angreifen; wer siegt, geht dabei an Land. Chance des besten Angreifers: <b>${pct} %</b>.`,
+      `Right next to your transport stands an enemy unit: <b>${name}</b> (${d.hp}/${T(d).hp}). The transport has no moves left and would lie defenceless beside it during the enemy turn. On board: ${list}.<br><br>The troops can attack it straight from the ship; the winner goes ashore. Chance of the best attacker: <b>${pct} %</b>.`);
+  }
   $('landYes').textContent = '⚔ ' + tt('Angreifen', 'Attack');
   $('landShore').textContent = tt('Nur an Land setzen', 'Just put ashore');
   $('landNo').textContent = tt('Nicht angreifen', 'Do not attack');
-  $('landYes').onclick = () => { closeModals(); const t2 = alive(u) ? assaultTarget(u) : null; if (t2) doAssault(u, t2.city); };
+  $('landYes').onclick = () => { closeModals(); const t2 = alive(u) ? assaultOptions(u).find(o => o.x === tg.x && o.y === tg.y) : null; if (t2) doAssault(u, t2); };
   $('landShore').onclick = () => { closeModals(); if (alive(u)) { sel = u.id; actUnload(true); } };
   $('landNo').onclick = () => {
     closeModals();
@@ -1056,8 +1065,11 @@ function pendingCenterStep(now) {
 // angreifen – auch wenn der Transporter selbst keinen Zug mehr hat. Er gilt deshalb als „wartend“, bis der Spieler angreift,
 // an Land setzt oder ihn überspringt. Sonst endete die Runde von selbst, und der Transporter läge eine Gegnerrunde lang
 // schutzlos vor der Stadt.
+function landingOption(u) {
+  return assaultOptions(u).find(o => o.kind === 'city' || u.moves <= 0) || null;
+}
 function landingPending(u) {
-  return u.owner === 0 && !u.skip && !u.order && u.carrier == null && T(u).carries === 'land' && !u.landing && u.noAssault !== S.turn && !!assaultTarget(u);
+  return u.owner === 0 && !u.skip && !u.order && u.carrier == null && T(u).carries === 'land' && !u.landing && u.noAssault !== S.turn && !!landingOption(u);
 }
 function needsOrders(u) {
   if (landingPending(u)) return true;
@@ -1152,25 +1164,26 @@ function refresh() { dirty = true; pathCache = null; rallyCache = null; renderMi
 // ------------------------------------------------------------------ Aktionen
 // geortete getauchte U-Boote des Gegners (für die Meldung „Sonarkontakt“ nach einem eigenen Zug)
 function locatedSubs() { return S.units.filter(o => o.owner !== 0 && o.carrier == null && T(o).stealth && !o.surf && canSee(0, o)); }
-// Sturm vom Schiff auf eine bestimmte Stadt (Knopf, Taste U, Klick auf die Stadt, Richtungstaste)
-function doAssault(u, city) {
+// Angriff vom Schiff auf ein bestimmtes Ziel (Knopf, Taste U, Klick oder Richtungstaste auf das Ziel, Rückfrage)
+function doAssault(u, opt) {
   animBegin(140);
-  const r = assaultFrom(u, city);
+  const r = assaultFrom(u, opt);
   animEnd();
-  if (!r.captured) toast(tt(`Angriff auf ${city.name} abgewehrt`, `Attack on ${city.name} repelled`));
+  if (opt.kind === 'city' && !r.captured) toast(tt(`Angriff auf ${opt.name} abgewehrt`, `Attack on ${opt.name} repelled`));
+  if (opt.kind === 'unit' && !r.cleared) toast(tt(`Angriff gescheitert – ${opt.name} hält das Ufer`, `Attack failed – ${opt.name.toLowerCase()} holds the shore`));
   afterAction(u);
 }
-// Der Transporter liegt vor einer fremden Stadt und hat selbst keinen Zug mehr: sagen, was jetzt geht
+// Der Transporter hat selbst keinen Zug mehr, seine Truppen können aber noch angreifen: sagen, was jetzt geht
 function explainLanding(u) {
-  const tg = assaultTarget(u);
-  toast(tt(`Der Transporter hat in dieser Runde keinen Zug mehr. Seine Truppen können noch angreifen: Klick auf ${tg.city.name} oder Taste U – Leertaste überspringt.`,
-    `The transport has no moves left this turn. Its troops can still attack: click ${tg.city.name} or press U – Space skips.`), 5000);
+  const tg = landingOption(u), city = tg.kind === 'city';
+  toast(tt(`Der Transporter hat in dieser Runde keinen Zug mehr. Seine Truppen können noch angreifen: Klick auf ${city ? tg.name : 'den Gegner am Ufer'}${city ? ' oder Taste U' : ''} – Leertaste überspringt.`,
+    `The transport has no moves left this turn. Its troops can still attack: click ${city ? tg.name : 'the enemy on the shore'}${city ? ' or press U' : ''} – Space skips.`), 5000);
   Sfx.play('error');
 }
 function doMove(u, x, y) {
   if (T(u).carries === 'land' && u.owner === 0) {
-    const opt = assaultOptions(u).find(o => o.city.x === x && o.city.y === y);
-    if (opt) { doAssault(u, opt.city); return; }                       // Klick oder Richtungstaste auf die Stadt
+    const opt = assaultOptions(u).find(o => o.x === x && o.y === y);
+    if (opt) { doAssault(u, opt); return; }                            // Klick oder Richtungstaste auf Stadt oder Gegner am Ufer
     if (u.moves <= 0 && landingPending(u)) { explainLanding(u); return; }
   }
   u.order = null;
@@ -1229,8 +1242,8 @@ function actLoad() {
 function actUnload(landOnly = false) {
   const u = selUnit(); if (!u || !T(u).carries) return;
   if (!cargoOf(u).length) { toast(tt('Niemand an Bord', 'Nobody on board')); return; }
-  const tgt = landOnly === true ? null : assaultTarget(u);
-  if (tgt) { doAssault(u, tgt.city); return; }
+  const tgt = landOnly === true ? null : assaultOptions(u).find(o => o.kind === 'city');
+  if (tgt) { doAssault(u, tgt); return; }
   animBegin(120);
   const n = unloadAll(u);
   animEnd();
@@ -1523,13 +1536,17 @@ function updatePanel() {
     if (t.carries === 'land') h += `<button data-act="landing" class="${u.landing ? 'on' : ''}" ${!u.landing && !cargo.length ? 'disabled' : ''} title="${tt('Landemanöver: Sobald der Transporter Land berührt, werden die Truppen an Bord von selbst zum Aussteigen angeboten, bis kein Feld mehr frei ist. So endet die Runde nicht, während ein voller Transporter an der Küste liegt. Schaltet sich ab, wenn er leer ist.', 'Landing manoeuvre: as soon as the transport touches land, the troops on board are offered for disembarking by themselves until no tile is free. This way the turn does not end while a full transport lies at the coast. Switches off when it is empty.')}">${u.landing ? '☑' : '☐'} ${tt('Ausladen, wenn möglich', 'Unload when possible')}</button>`;
     let landTgt = null;
     if (t.carries && cargo.length) {
-      const tgt = landTgt = t.carries === 'land' ? assaultTarget(u) : null;
-      h += tgt ? `<button data-act="unload" title="${tt('U – die Truppen greifen die Stadt sofort vom Schiff aus an', 'U – the troops attack the city straight from the ship')}">⚔ ${tt('Angriff auf', 'Attack')} ${esc(tgt.city.name)} · ${Math.round(tgt.chance * 100)} %</button>
+      const opts = t.carries === 'land' ? assaultOptions(u) : [], tgt = opts.find(o => o.kind === 'city') || null, foe = opts.find(o => o.kind === 'unit') || null;
+      landTgt = landingPending(u) ? landingOption(u) : null;
+      h += tgt ? `<button data-act="unload" title="${tt('U – die Truppen greifen die Stadt sofort vom Schiff aus an', 'U – the troops attack the city straight from the ship')}">⚔ ${tt('Angriff auf', 'Attack')} ${esc(tgt.name)} · ${Math.round(tgt.chance * 100)} %</button>
         <button data-act="unloadLand" title="${tt('Ohne Angriff auf freie Nachbarfelder aussteigen', 'Disembark onto free adjacent tiles without attacking')}">${tt('Nur an Land setzen', 'Just put ashore')}</button>`
         : `<button data-act="unload" title="U">${tt('Ausladen', 'Unload')}</button>`;
+      if (foe) h += `<button data-act="assaultUnit" title="${tt('Die Truppen greifen die feindliche Einheit am Ufer sofort vom Schiff aus an; wer siegt, geht an Land', 'The troops attack the enemy unit on the shore straight from the ship; the winner goes ashore')}">⚔ ${tt('Angriff auf', 'Attack')} ${esc(foe.name)} · ${Math.round(foe.chance * 100)} %</button>`;
     }
     h += `</div>`;
-    if (landTgt) h += `<div class="landnote">${tt(`Die Truppen an Bord haben ihren Zug noch: Klick auf ${esc(landTgt.city.name)} oder <kbd>U</kbd> greift an – die Leertaste überspringt.`, `The troops on board still have their move: click ${esc(landTgt.city.name)} or press <kbd>U</kbd> to attack – Space skips.`)}</div>`;
+    if (landTgt) h += `<div class="landnote">${landTgt.kind === 'city'
+      ? tt(`Die Truppen an Bord haben ihren Zug noch: Klick auf ${esc(landTgt.name)} oder <kbd>U</kbd> greift an – die Leertaste überspringt.`, `The troops on board still have their move: click ${esc(landTgt.name)} or press <kbd>U</kbd> to attack – Space skips.`)
+      : tt(`Feind am Ufer (${esc(landTgt.name)}): Die Truppen an Bord haben ihren Zug noch. Ein Klick auf den Gegner greift an – die Leertaste überspringt.`, `Enemy on the shore (${esc(landTgt.name)}): the troops on board still have their move. Click the enemy to attack – Space skips.`)}</div>`;
     if (patrolMode && patrolMode.id === u.id) {
       const n = patrolMode.pts.length;
       h += `<div class="patrolbox">${tt(`<b>Patrouille festlegen</b><br>Klicke nacheinander Wegpunkte auf der Karte (${n} gesetzt).
@@ -1785,7 +1802,7 @@ function updateHover() {
     if (us.length) s += ' · ' + us.map(o => `${o.owner === 0 ? '' : tt('Feind: ', 'Enemy: ')}${T(o).name} ${o.hp}/${T(o).hp}${T(o).stealth ? (o.surf ? tt(' (aufgetaucht)', ' (surfaced)') : tt(' (getaucht)', ' (submerged)')) : ''}`).join(', ');
     const su = selUnit();
     const en = us.filter(o => o.owner !== 0);
-    const foes = su ? cityDefenders(su, c, en) : en;   // Schiffe im Hafen verteidigen nicht gegen Bodentruppen
+    const foes = su ? cityDefenders(su, c, en).filter(o => canStrike(su, o)) : en;   // Schiffe im Hafen verteidigen nicht gegen Bodentruppen; Schiffe ohne Beschuss greifen kein Land an
     const ships = en.length - foes.length;
     const sinkTxt = ships ? tt(` · ${ships === 1 ? 'das Schiff im Hafen geht' : 'die Schiffe im Hafen gehen'} mit der Stadt unter`, ` · the ${ships === 1 ? 'ship' : 'ships'} in port ${ships === 1 ? 'is' : 'are'} lost with the city`) : '';
     if (su && foes.length && T(su).str > 0) {
@@ -1804,9 +1821,10 @@ function updateHover() {
   }
   // gewählter Transporter mit Truppen: Die Stadt lässt sich vom Schiff aus stürmen
   const hs = selUnit();
-  if (c && hs && hs.owner === 0 && T(hs).carries === 'land') {
-    const op = assaultOptions(hs).find(o => o.city === c);
-    if (op) s += tt(` · Klick oder U: Die Truppen stürmen vom Schiff aus – ${Math.round(op.chance * 100)} %`, ` · Click or U: the troops storm the city from the ship – ${Math.round(op.chance * 100)} %`);
+  if (hs && hs.owner === 0 && T(hs).carries === 'land') {
+    const op = assaultOptions(hs).find(o => o.x === x && o.y === y);
+    if (op) s += op.kind === 'city' ? tt(` · Klick oder U: Die Truppen stürmen vom Schiff aus – ${Math.round(op.chance * 100)} %`, ` · Click or U: the troops storm the city from the ship – ${Math.round(op.chance * 100)} %`)
+      : tt(` · Klick: Die Truppen greifen vom Schiff aus an – ${Math.round(op.chance * 100)} %`, ` · Click: the troops attack from the ship – ${Math.round(op.chance * 100)} %`);
   }
   $('hover').textContent = s;
 }
@@ -1916,18 +1934,18 @@ const UNIT_INFO = {
     'Captures cities like infantry, but moves twice as fast and survives one hit. Is not repaired in cities. Expensive as a conqueror, strong against infantry in the field.'),
   ftr: tt('Fliegt über Land und Wasser. Hat Treibstoff für 18 Felder und muss zu einer eigenen Stadt oder einem Träger zurück; jede Runde in der Luft kostet mindestens 6. Jagt Transporter und richtet gegen Schlachtschiffe dreifachen Schaden an.',
     'Flies over land and water. Has fuel for 18 tiles and must return to one of your cities or a carrier; every turn in the air costs at least 6. Hunts transports and deals triple damage to battleships.'),
-  trn: tt('Bringt bis zu 6 Bodentruppen übers Meer. Unbewaffnet: Wer ihn erwischt, versenkt die ganze Ladung. Gib ihm einen Zerstörer mit.',
-    'Carries up to 6 ground units across the sea. Unarmed: whoever catches it sinks the whole load. Give it a destroyer escort.'),
-  dst: tt('Schnell, billig, guter Späher. Ortet als einziges Schiff getauchte U-Boote in seiner vollen Sichtweite und schlägt sie mit Sonar und Wasserbomben. Der Geleitschutz für Transporter.',
-    'Fast, cheap, a good scout. The only ship that locates submerged submarines at its full vision range, and beats them with sonar and depth charges. The escort for transports.'),
-  sub: tt('Getarnt: Getaucht sehen es nur Nachbarn und Zerstörer. Sein Torpedo trifft große Schiffe zuerst und doppelt stark. Nach einem Angriff ist es bis zu deinem nächsten Zug aufgetaucht (Welle unter dem Boot).',
-    'Hidden: submerged, it is only seen by neighbours and destroyers. Its torpedo hits big ships first and with double strength. After attacking it is surfaced until your next turn (wave below the boat).'),
-  crs: tt('Das Allround-Kriegsschiff: schlägt Zerstörer und geortete U-Boote sicher und hält viel aus. Gegen Schlachtschiffe und U-Boot-Hinterhalte hat es das Nachsehen.',
-    'The all-round warship: reliably beats destroyers and located submarines and can take a lot. It loses out to battleships and submarine ambushes.'),
-  car: tt('Das Auge der Flotte: sieht 4 Felder weit. Trägt und betankt bis zu 6 Jäger. Mit mindestens einem Jäger an Bord gibt er Luftdeckung: Feindliche Jäger treffen ihn und eigene Schiffe nebenan nur zu einem Drittel.',
-    'The eyes of the fleet: sees 4 tiles. Carries and refuels up to 6 fighters. With at least one fighter on board it gives air cover: enemy fighters hit it and your adjacent ships only one third of the time.'),
-  bat: tt('Beherrscht das Seegefecht und gibt Feuerunterstützung auf alle Nachbarfelder: Fremde Städte dort fallen zu 75 %, eigene nur zu 25 %. Verwundbar durch U-Boote und Jäger-Schwärme.',
-    'Rules the sea battle and gives fire support to all adjacent tiles: foreign cities there fall 75 % of the time, your own only 25 %. Vulnerable to submarines and fighter swarms.'),
+  trn: tt('Bringt bis zu 6 Bodentruppen übers Meer. Unbewaffnet: Wer ihn erwischt, versenkt die ganze Ladung. Gib ihm einen Zerstörer mit. Laden, Landen und Angriff vom Schiff erklärt die Seite „Transporter“.',
+    'Carries up to 6 ground units across the sea. Unarmed: whoever catches it sinks the whole load. Give it a destroyer escort. Loading, landing and attacking from the ship are explained on the “Transports” page.'),
+  dst: tt('Schnell, billig, guter Späher. Ortet als einziges Schiff getauchte U-Boote in seiner vollen Sichtweite und schlägt sie mit Sonar und Wasserbomben. Der Geleitschutz für Transporter. Einheiten an Land kann er nicht angreifen – und an der Küste ist er selbst gefährdet: Bodentruppen treffen ihn dreifach.',
+    'Fast, cheap, a good scout. The only ship that locates submerged submarines at its full vision range, and beats them with sonar and depth charges. The escort for transports. It cannot attack units on land – and at the coast it is at risk itself: ground troops hit it threefold.'),
+  sub: tt('Getarnt: Getaucht sehen es nur Nachbarn und Zerstörer. Sein Torpedo trifft große Schiffe zuerst und doppelt stark. Nach einem Angriff ist es bis zu deinem nächsten Zug aufgetaucht (Welle unter dem Boot). Für Bodentruppen ist es nicht angreifbar, kann selbst aber auch kein Land angreifen.',
+    'Hidden: submerged, it is only seen by neighbours and destroyers. Its torpedo hits big ships first and with double strength. After attacking it is surfaced until your next turn (wave below the boat). Ground troops cannot attack it, but it cannot attack land either.'),
+  crs: tt('Das Allround-Kriegsschiff: schlägt Zerstörer und geortete U-Boote sicher und hält viel aus. Gegen Schlachtschiffe und U-Boot-Hinterhalte hat es das Nachsehen. Beschießt auch Einheiten an Land und in Städten an der Küste.',
+    'The all-round warship: reliably beats destroyers and located submarines and can take a lot. It loses out to battleships and submarine ambushes. Also bombards units on land and in coastal cities.'),
+  car: tt('Das Auge der Flotte: sieht 4 Felder weit. Trägt und betankt bis zu 6 Jäger. Mit mindestens einem Jäger an Bord gibt er Luftdeckung: Feindliche Jäger treffen ihn und eigene Schiffe nebenan nur zu einem Drittel. Halte ihn von der Küste fern: Bodentruppen treffen ihn dreifach.',
+    'The eyes of the fleet: sees 4 tiles. Carries and refuels up to 6 fighters. With at least one fighter on board it gives air cover: enemy fighters hit it and your adjacent ships only one third of the time. Keep it off the coast: ground troops hit it threefold.'),
+  bat: tt('Beherrscht das Seegefecht und gibt Feuerunterstützung auf alle Nachbarfelder: Fremde Städte dort fallen zu 75 %, eigene nur zu 25 %. Verwundbar durch U-Boote und Jäger-Schwärme. Beschießt auch Einheiten an Land und in Städten an der Küste.',
+    'Rules the sea battle and gives fire support to all adjacent tiles: foreign cities there fall 75 % of the time, your own only 25 %. Vulnerable to submarines and fighter swarms. Also bombards units on land and in coastal cities.'),
 };
 // Siegchancen aller Einheiten gegeneinander, unbeschädigt und ohne örtliche Zu- oder Abschläge
 function oddsMatrix() {
@@ -1935,7 +1953,7 @@ function oddsMatrix() {
   for (let k = 0; k < S.W * S.H; k++) if (S.cityGrid[k] < 0 && S.terrain[k] === 0) { x = k % S.W; y = (k / S.W) | 0; break; }
   const mk = (t, o) => ({ type: t, hp: UT[t].hp, owner: o, x: -9, y: -9, carrier: null });   // Besitzer ohne Einheiten: keine Unterstützung
   const m = {};
-  for (const a of UNIT_ORDER) { m[a] = {}; for (const d of UNIT_ORDER) m[a][d] = UT[a].str > 0 ? attackOdds(mk(a, 7), mk(d, 8), x, y) : null; }
+  for (const a of UNIT_ORDER) { m[a] = {}; for (const d of UNIT_ORDER) m[a][d] = UT[a].str > 0 && canStrike(mk(a, 7), mk(d, 8)) ? attackOdds(mk(a, 7), mk(d, 8), x, y) : null; }
   return m;
 }
 function buildHelp() {
@@ -1961,6 +1979,7 @@ function buildHelp() {
     UNIT_ORDER.map(d => `<th title="${UT[d].name}"><img src="${iconUrl('u', d)}" alt="">${UT[d].sym}</th>`).join('') + '</tr>';
   $('helpMatrix').innerHTML = head + UNIT_ORDER.filter(a => UT[a].str > 0).map(a => `<tr><th class="row">${UT[a].sym} · ${UT[a].name}</th>` + UNIT_ORDER.map(d => {
     const v = m[a][d], p = pc(v);
+    if (v == null) return `<td class="none" title="${tt(`${UT[a].name} kann ${UT[d].name} nicht angreifen`, `${UT[a].name} cannot attack ${UT[d].name.toLowerCase()}`)}">–</td>`;
     return `<td class="${p >= 60 ? 'hi' : p >= 40 ? 'mid' : p > 0 ? 'lo' : 'none'}" title="${UT[a].name} → ${UT[d].name}">${p} %</td>`;
   }).join('') + '</tr>').join('');
 }
@@ -1988,6 +2007,8 @@ function openHelp(tab = null, unit = null) {
 }
 $('turnInfo').addEventListener('click', e => { if (e.target.closest('.cheat')) setCheatFog(false); else if (e.target.closest('.lvl')) openHelp('ai'); });
 $('helpTabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) helpTab(b.dataset.tab); });
+// Verweise im Text auf eine andere Seite des Handbuchs
+$('helpBody').addEventListener('click', e => { const b = e.target.closest('[data-helptab]'); if (b) helpTab(b.dataset.helptab); });
 function closeModals() { document.querySelectorAll('.modal').forEach(m => m.hidden = true); Sfx.preview(null); }
 
 // ------------------------------------------------------------------ Aufgeben / vorzeitiger Sieg
@@ -2156,9 +2177,10 @@ function renderCtx() {
     if (t.carries === 'land') h += btn('load', tt('Laden bis voll', 'Load until full'), 'L', !!(u.order && u.order.type === 'load') || cargoOf(u).length >= t.capacity);
     else if (t.carries && here && here.owner === 0) h += btn('load', tt('Einladen', 'Load'), 'L');
     if (t.carries && cargoOf(u).length) {
-      const tgt = t.carries === 'land' ? assaultTarget(u) : null;
-      if (tgt) h += btn('unload', `⚔ ${tt('Angriff auf', 'Attack')} ${esc(tgt.city.name)} · ${Math.round(tgt.chance * 100)} %`, 'U') + btn('unloadLand', tt('Nur an Land setzen', 'Just put ashore'), '');
+      const opts = t.carries === 'land' ? assaultOptions(u) : [], tgt = opts.find(o => o.kind === 'city'), foe = opts.find(o => o.kind === 'unit');
+      if (tgt) h += btn('unload', `⚔ ${tt('Angriff auf', 'Attack')} ${esc(tgt.name)} · ${Math.round(tgt.chance * 100)} %`, 'U') + btn('unloadLand', tt('Nur an Land setzen', 'Just put ashore'), '');
       else h += btn('unload', `${tt('Ausladen', 'Unload')} (${cargoOf(u).length})`, 'U');
+      if (foe) h += btn('assaultUnit', `⚔ ${tt('Angriff auf', 'Attack')} ${esc(foe.name)} · ${Math.round(foe.chance * 100)} %`, '');
     }
     if (u.order) h += btn('cancel', u.order.type === 'sentry' ? tt('Wecken', 'Wake') : tt('Befehl löschen', 'Clear order'), '');
     h += '<hr>' + btn('help', tt(`Handbuch: ${t.name}`, `Handbook: ${t.name}`), '');
@@ -2191,7 +2213,7 @@ ctxEl.addEventListener('click', e => {
   const u = selUnit();
   if (b.dataset.cact === 'help') { if (u) openHelp(null, u.type); return; }
   if (u && u.order && u.order.type === 'sentry' && b.dataset.cact !== 'sentry' && b.dataset.cact !== 'cancel') u.order = null;
-  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, unloadLand: () => actUnload(true), landing: actLanding, cancel: actCancel, patrol: actPatrol, explore: actExplore, home: actHome })[b.dataset.cact]();
+  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, unloadLand: () => actUnload(true), assaultUnit: () => { const tr = selUnit(), o = tr && assaultOptions(tr).find(k => k.kind === 'unit'); if (o) doAssault(tr, o); }, landing: actLanding, cancel: actCancel, patrol: actPatrol, explore: actExplore, home: actHome })[b.dataset.cact]();
 });
 // Klick daneben schließt das Menü (und löst sonst nichts aus)
 document.addEventListener('mousedown', e => {
@@ -2301,7 +2323,7 @@ $('panel').addEventListener('click', e => {
   if (chip) { const u = unitById(+chip.dataset.unit); if (u) { select(u); refresh(); } return; }
   const b = e.target.closest('[data-act]');
   if (!b) return;
-  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, unloadLand: () => actUnload(true), landing: actLanding, cancel: actCancel, next: actNext, patrol: actPatrol, patrolGo: patrolStart, patrolUndo: patrolUndo, patrolAbort: patrolAbort, explore: actExplore, home: actHome,
+  ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, unloadLand: () => actUnload(true), assaultUnit: () => { const tr = selUnit(), o = tr && assaultOptions(tr).find(k => k.kind === 'unit'); if (o) doAssault(tr, o); }, landing: actLanding, cancel: actCancel, next: actNext, patrol: actPatrol, patrolGo: patrolStart, patrolUndo: patrolUndo, patrolAbort: patrolAbort, explore: actExplore, home: actHome,
     rally: () => actRally(S.cities[selCity]), rallyclear: () => rallyClear(S.cities[selCity]), rallyabort: rallyAbort })[b.dataset.act]();
 });
 // ------------------------------------------------------------------ Meldungen ein-/ausklappen

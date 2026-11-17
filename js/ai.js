@@ -193,7 +193,7 @@ function threatMap(u) {
   threatCache.set(key, z);
   for (const e of S.units) {
     if (e.owner === u.owner || e.carrier != null || !canSee(u.owner, e) || T(e).str === 0) continue;
-    if (T(e).domain === 'land' && T(u).domain === 'sea') continue;   // Bodentruppen greifen keine Schiffe an
+    if (!canStrike(e, u)) continue;   // was e gar nicht angreifen darf, bedroht u nicht (Bodentruppen → U-Boot, Zerstörer → Land …)
     const r = Math.max(1, T(e).move);
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       const x = e.x + dx, y = e.y + dy;
@@ -263,7 +263,7 @@ function aiAdjTarget(u, minProb) {
     const i = idx(nx, ny);
     const c = cityAt(nx, ny);
     // gegen Bodentruppen verteidigen Schiffe im Hafen eine Stadt nicht (cityDefenders)
-    const ens = cityDefenders(u, c, P.vis[i] ? topUnitsAt(nx, ny).filter(o => o.owner !== u.owner && canSee(u.owner, o)) : []);
+    const ens = cityDefenders(u, c, P.vis[i] ? topUnitsAt(nx, ny).filter(o => o.owner !== u.owner && canSee(u.owner, o)) : []).filter(o => canStrike(u, o));
     let score = 0;
     if (ens.length) {
       if (t.str === 0) continue;
@@ -573,7 +573,7 @@ function aiWarship(u) {
         const nx = x + dx, ny = y + dy;
         if (!inb(nx, ny)) continue;
         const e = visibleEnemyAt(p, nx, ny);
-        if (!e || (cityAt(nx, ny) && !landingSupport(p, nx, ny)) || subSkips(u, e)) continue;
+        if (!e || !canStrike(u, e) || (cityAt(nx, ny) && !landingSupport(p, nx, ny)) || subSkips(u, e)) continue;
         if (attackOdds(u, e, nx, ny) >= aiNeed(u, e, 0.55)) return true;
       }
       return false;

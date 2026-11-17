@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 
 // Versionsnummer: steht im Handbuch und bestimmt den Namen des Releases (siehe tools/pack.js, CHANGELOG.md)
-const VERSION = '1.3.1';
+const VERSION = '1.4.0';
 
 // Sprache: 'de' oder 'en'. Gewählt über den Sprachknopf (gespeichert), sonst nach Browsersprache.
 // Ein Wechsel lädt die Seite neu, daher dürfen alle Texte schon beim Laden festgelegt werden.
@@ -21,6 +21,7 @@ const tt = (de, en) => (EN ? en : de);
 // move: Felder pro Runde, hp: Trefferpunkte, str: Schaden pro Treffer
 // cost: Bauzeit in Runden, vision: Sichtweite
 // stealth: getaucht unsichtbar (nur geortet zu sehen), sonar: ortet U-Boote in voller Sichtweite
+// shore: Schiff kann Einheiten an Land angreifen (Beschuss) – alle anderen Schiffe nur Schiffe und Flugzeuge, siehe canStrike
 const UT = {
   inf:  { name: tt('Infanterie', 'Infantry'), g: 'f',     sym: 'I', domain: 'land', move: 1, hp: 1,  str: 1, cost: 5,  vision: 1, capture: true },
   tank: { name: tt('Panzer', 'Tank'), g: 'm',         sym: tt('P', 'A'), domain: 'land', move: 2, hp: 2,  str: 1, cost: 10, vision: 1, capture: true, noRepair: true },
@@ -28,9 +29,9 @@ const UT = {
   trn:  { name: tt('Transporter', 'Transport'), g: 'm',    sym: 'T', domain: 'sea',  move: 3, hp: 1,  str: 0, cost: 15, vision: 1, carries: 'land', capacity: 6 },
   dst:  { name: tt('Zerstörer', 'Destroyer'), g: 'm',      sym: tt('Z', 'D'), domain: 'sea',  move: 4, hp: 3,  str: 1, cost: 15, vision: 2, sonar: true },
   sub:  { name: tt('U-Boot', 'Submarine'), g: 'n',         sym: tt('U', 'S'), domain: 'sea',  move: 3, hp: 2,  str: 3, cost: 20, vision: 2, stealth: true },
-  crs:  { name: tt('Kreuzer', 'Cruiser'), g: 'm',        sym: tt('K', 'R'), domain: 'sea',  move: 3, hp: 8,  str: 2, cost: 30, vision: 2 },
+  crs:  { name: tt('Kreuzer', 'Cruiser'), g: 'm',        sym: tt('K', 'R'), domain: 'sea',  move: 3, hp: 8,  str: 2, cost: 30, vision: 2, shore: true },
   car:  { name: tt('Träger', 'Carrier'), g: 'm',         sym: tt('F', 'C'), domain: 'sea',  move: 2, hp: 8,  str: 1, cost: 30, vision: 4, carries: 'air', capacity: 6 },
-  bat:  { name: tt('Schlachtschiff', 'Battleship'), g: 'n', sym: tt('S', 'B'), domain: 'sea',  move: 2, hp: 12, str: 3, cost: 40, vision: 2 },
+  bat:  { name: tt('Schlachtschiff', 'Battleship'), g: 'n', sym: tt('S', 'B'), domain: 'sea',  move: 2, hp: 12, str: 3, cost: 40, vision: 2, shore: true },
 };
 const UNIT_ORDER = ['inf', 'tank', 'ftr', 'trn', 'dst', 'sub', 'crs', 'car', 'bat'];
 

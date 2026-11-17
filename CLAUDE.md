@@ -58,6 +58,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Erstschlag, Hinweistexte). Kampfablauf, angezeigte Siegchance und KI-Bewertung nutzen
   diese eine Funktion – neue Boni nur dort eintragen. Die Tabelle „Wer schlägt wen“ im Handbuch rechnet sich
   daraus selbst; die Sonderregel als Zeile im Reiter „Kampf“ und im Einheitentext ergänzen (siehe „Handbuch“).
+- **Beschuss von Land**: Nur Schiffe mit `shore: true` (Kreuzer, Schlachtschiff) dürfen Einheiten an Land angreifen, auch in Städten.
+  `canStrike(a, d)` (game.js) entscheidet das; moveStep, KI (`bestAttack`, Jagd der Schiffe) und Anzeige fragen dort nach.
+  **Küstenangriff** (`COAST` in game.js, in `combatSpec`): Bodentruppen gegen ein Schiff auf einem Nachbarfeld (nicht in einer Stadt) richten
+  dreifachen Schaden an – außer gegen Kreuzer/Schlachtschiff (`shore`). U-Boote sind für Bodentruppen nicht angreifbar (`canStrike`).
+  Infanterie → Zerstörer 50 %, Panzer → Zerstörer 75 %, Panzer → Träger 31 %. Die KI-Bedrohungskarte (`threatMap`) berücksichtigt das.
 - **Schlachtschiffe**: `fireSupport(owner, x, y)` und `captureChance(owner, c)` (game.js) – Feuerunterstützung/Feuerschutz auf
   Nachbarfelder (Eroberung 75 % / 25 %, Bodentruppen treffen zu 2/3 bzw. werden zu 1/3 getroffen). Eroberungschancen nie fest
   mit 50 % rechnen, immer `captureChance` nehmen. Salven meldet `hooks.salvo`; Markierungen zeichnet `drawSupportMark` (ui.js).
@@ -79,7 +84,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Träger und eigene Schiffe auf Nachbarfeldern nur zu 1/3. KI: `aiCarrier` (bleibt beim Schlachtschiff bzw. beladenen Transporter),
   ab Können 1 und 8 Städten ein Träger. Produktionsregeln der KI zählen mit `planned(t)` auch Einheiten, die andere Städte
   gerade bauen – sonst beginnen mehrere Städte gleichzeitig dasselbe.
-- **Handbuch** (Hilfe): sechs Reiter in `index.html` (`data-tab`/`data-pane`), geöffnet über `openHelp(tab, unit)`.
+- **Handbuch** (Hilfe): sieben Reiter in `index.html` (alles zum Laden, Landen und Angriff vom Schiff steht gesammelt unter
+  „Transporter“; „Erste Schritte“ bleibt kurz, Verweise mit `data-helptab`), Aufbau über `data-tab`/`data-pane`, geöffnet über `openHelp(tab, unit)`.
   Einheitenkarten (`UNIT_INFO`, `UNIT_ROLE`) und die Tabelle „Wer schlägt wen“ (`oddsMatrix` über `attackOdds`) entstehen
   in `buildHelp()` aus den Spieldaten – Prozentwerte nie von Hand in die Hilfe schreiben. Neue Sonderregeln als Zeile in der
   Tabelle `.help-rules` (Reiter „Kampf“) ergänzen, den Einheitentext in `UNIT_INFO`.
@@ -142,6 +148,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   fremden Stadt gilt als wartend (`needsOrders`), auch ohne eigenen Zug – die Runde endet erst, wenn der Spieler entschieden hat. Dazu fragt ein Fenster
   einmal je Runde und Transporter (`landingStep` in der Hauptschleife, `openLandingDialog`, `u.landAsked`/`u.noAssault` = Rundennummer, nicht gespeichert):
   Angreifen, nur an Land setzen oder nicht angreifen. Ein Transporter mit Befehl (Wache, Marsch, Laden) wird nicht gefragt.
+  Zweite Zielart `kind: 'unit'`: feindliche Einheit auf einem Landfeld daneben (auch Jäger über Land) – auf der Karte immer angreifbar,
+  gefragt wird aber nur, wenn der Transporter keinen Zug mehr hat (`landingOption`); Taste U bleibt dort beim Ausladen.
   „Ausladen, wenn möglich“ (`u.landing`, je Transporter, Standard aus, wird gespeichert; `actLanding`, `landingUpdate` in ui.js, `canDisembark`
   in game.js): Berührt der Transporter Land, werden die Truppen geweckt und zählen als wartend, solange sie von Bord können – statt des
   Fensters. Leer schaltet sich der Status ab. Kennzeichen: Pfeil unten links an der Marke (`opts.landing`). Träger laden wie bisher
@@ -218,6 +226,10 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   gewänne der Vergleichsspieler auf Schwer 31 % (Kontinente 50 %, Inselreich 10 %) – zu ungleich je Welt, deshalb nicht übernommen.
 - Schlechter: keine frühen Kreuzer (34 %), mehr Transporter (42 %), Landung direkt vor der Stadt (47 %), andere Truppgrößen.
 - Auf Schwer im Inselreich baut der Gegner (fast nur Küstenstädte) kaum Jäger.
+- Beschuss von Land nur noch durch Kreuzer und Schlachtschiff (je 192 Partien, alt → neu): Leicht 100 → 98 %, Normal 57 → 55 %,
+  Schwer 21 → 22 %, Brutal 5 → 6 %, offen 9 → 9. Partien dauern 5–10 Runden länger. Die Stufen bleiben also gültig.
+- Küstenangriff (je 192 Partien, ohne → dreifacher Schaden → dreifach und 2/3 Treffer): Leicht 98/99/100 %, Normal 65/65/70 %,
+  Schwer 21/23/24 %, Brutal 5/4/5 %, offen 7/6/2. Gewählt: dreifacher Schaden bei normaler Trefferquote (verschiebt nichts).
 
 ## Bekannte Eigenheiten
 
