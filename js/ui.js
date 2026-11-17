@@ -1761,9 +1761,9 @@ function renderPower() {
       'For the enemy everything counts, including what is hidden in the fog. That is why at first you only see his share. Revealed, his cities and the total value of his units are added – but never which units they are.')}</li>
     <li>${tt('Einstufung nach deinem Anteil: ab 90 % erdrückend überlegen · ab 65 % klar überlegen · ab 55 % überlegen · über 45 % ausgeglichen · über 35 % unterlegen · über 10 % stark unterlegen · sonst aussichtslos.',
       'Rating by your share: from 90 % overwhelming · from 65 % clearly ahead · from 55 % ahead · above 45 % even · above 35 % behind · above 10 % far behind · otherwise hopeless.')}</li>
-    <li>${offerPct ? tt(`Liegt dein Anteil fünf Runden in Folge unter ${offerPct} % oder über ${hi} %, bietet das Spiel das vorzeitige Ende an (einstellbar im ☰ Menü).`,
-      `If your share stays below ${offerPct} % or above ${hi} % for five turns in a row, the game offers an early end (adjustable in the ☰ Menu).`)
-      : tt('Das Angebot zum vorzeitigen Ende ist abgeschaltet (☰ Menü).', 'The offer of an early end is switched off (☰ Menu).')}</li>
+    <li>${offerPct ? tt(`Liegt dein Anteil fünf Runden in Folge unter ${offerPct} % oder über ${hi} %, bietet das Spiel das vorzeitige Ende an (einstellbar unter ☰ Menü → Einstellungen).`,
+      `If your share stays below ${offerPct} % or above ${hi} % for five turns in a row, the game offers an early end (adjustable under ☰ Menu → Settings).`)
+      : tt('Das Angebot zum vorzeitigen Ende ist abgeschaltet (☰ Menü → Einstellungen).', 'The offer of an early end is switched off (☰ Menu → Settings).')}</li>
   </ul>`;
   $('powerCalc').innerHTML = h;
   $('spoilerChk').onchange = e => {
@@ -2751,7 +2751,7 @@ $('cheatFogChk').checked = false;
 $('cheatFogChk').onchange = e => {
   if (!e.target.checked) { setCheatFog(false); return; }
   e.target.checked = false;   // erst nach der Rückfrage
-  closeMenu(); askCheatFog();
+  closeMenu(); closeModals(); askCheatFog();
 };
 
 // ------------------------------------------------------------------ Tastenlegende über der Karte
@@ -2820,7 +2820,7 @@ function updateKeyLegend() {
     ]);
   }
   box.innerHTML = h;
-  box.querySelector('.kl-x').onclick = () => { setShowKeys(false); toast(tt('Tastenkürzel ausgeblendet – im ☰ Menü wieder einschalten', 'Shortcuts hidden – switch them on again in the ☰ menu'), 2500); };
+  box.querySelector('.kl-x').onclick = () => { setShowKeys(false); toast(tt('Tastenkürzel ausgeblendet – unter ☰ Menü → Einstellungen wieder einschalten', 'Shortcuts hidden – switch them on again under ☰ Menu → Settings'), 2500); };
 }
 $('keysChk').checked = showKeys;
 $('keysChk').onchange = e => setShowKeys(e.target.checked);
@@ -3006,7 +3006,11 @@ function renderSoundTest() {
   $('sndFx').innerHTML = Sfx.effects().filter(n => FX_NAMES[n]).map(n => `<button data-fx="${n}">▶ ${FX_NAMES[n]}</button>`).join('');
 }
 function openSoundTest() { Sfx.unlock(); renderSoundTest(); openModal('mSound'); }
-$('bSndTest').onclick = openSoundTest;
+$('bSndTest').onclick = () => { closeModals(); openSoundTest(); };   // aus dem Fenster „Einstellungen“
+// Fenster „Einstellungen“ (☰ Menü → Einstellungen …): Ton, Anzeige, Spielablauf, Steuerung, Schummeln. Die Bedienelemente behalten
+// ihre Kennungen (vol, replaySel, powerChk …) und werden an ihren bisherigen Stellen verdrahtet; neue Einstellungen gehören hierher.
+function openSettings() { closeMenu(); closeCtx(); openModal('mSettings'); }
+$('bSettings').onclick = openSettings;
 
 $('mSound').addEventListener('click', e => {
   const b = e.target.closest('button');

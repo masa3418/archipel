@@ -137,10 +137,12 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Die Einstellung `archipel-wheel` (auto | zoom | pan, im Menü unter „Einstellungen“) übersteuert die Erkennung.
   Echte Touchpad-Gesten lassen sich im eingebauten Browser nur als nachgestellte Rad-Ereignisse testen.
 - **Kopfzeile und Menü**: Oben stehen nur Runde + Stufe (`updateHeader`), `☰ Menü`, Zoom, Zentrieren (Fadenkreuz/Taste F, `actFocus` → `focusOn`), Ton, Handbuch, Sprache. Seltenes liegt im
-  Menü `#menu` (`openMenu`/`closeMenu`, ui.js): Neues Spiel, Spielstände, Statistik sowie die Einstellungen Lautstärke, Klangtest,
-  Mausrad/Touchpad, Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Schwelle fürs Angebot zum vorzeitigen Ende (`offerPct`, `archipel-offer`,
-  0 = nie, Standard 10 %; `maybeOfferEnd`), Tastenlegende über der Karte (`showKeys`, `archipel-keys`, Standard aus; `updateKeyLegend`
-  in `refresh()`, blendet ab, was gerade nicht geht – neue Tastenkürzel dort und in der Tastentabelle des Handbuchs eintragen), automatisches Rundenende. Neue Einstellungen dort einhängen, nicht in die Kopfzeile oder Seitenleiste.
+  Menü `#menu` (`openMenu`/`closeMenu`, ui.js): Neues Spiel, Spielstände, Statistik, Zeitraffer und „Einstellungen …“. Die Einstellungen stehen im
+  eigenen Fenster `#mSettings` (`openSettings`), nach Abschnitten (Ton, Anzeige, Spielablauf, Steuerung, Schummeln), je Zeile ein erklärender Satz
+  (`.set-row` + `.set-d`): Lautstärke, Klangtest, Wiedergabe der Züge, Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Tastenlegende über
+  der Karte (`showKeys`, `archipel-keys`, Standard aus; `updateKeyLegend` in `refresh()`, blendet ab, was gerade nicht geht – neue Tastenkürzel dort
+  und in der Tastentabelle des Handbuchs eintragen), automatisches Rundenende, Schwelle fürs Angebot zum vorzeitigen Ende (`offerPct`, `archipel-offer`,
+  0 = nie, Standard 10 %; `maybeOfferEnd`), Mausrad/Touchpad, Nebel aus. Neue Einstellungen dort einhängen, nicht ins Menü, in die Kopfzeile oder Seitenleiste.
   Die Hinweiszeile `#hover` (Feld unter der Maus, Siegchance) steht über der Karte (`#infoBar` in `#mapCol`, so breit wie die Karte);
   während die Zeitleiste nach dem Rundenende läuft, liegt dort `#banner` darüber – erst „Gegner zieht …“, ab `anim.ownFrom`
   (eigene Märsche/Patrouillen der neuen Runde) „Deine Einheiten führen ihre Befehle aus …“ (`updateBanner`). Meldungen fürs Spielgeschehen gehören an diese eine Stelle.

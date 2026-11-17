@@ -239,6 +239,21 @@
   .patrolbox { margin-top: 8px; padding: 8px 10px; border: 1px solid #2f6f66; background: #12302c; border-radius: 8px; font-size: 13px; }
   .patrolbox b { color: #7fe0d0; }
   .dlg.wide { max-width: 760px; }
+  /* Fenster „Einstellungen“: Abschnitte, je Einstellung eine Zeile und ein erklärender Satz */
+  .settings-dlg { max-width: 560px; }
+  .set-sec { border-top: 1px solid var(--line); padding: 8px 0 4px; }
+  .set-sec:first-of-type { border-top: 0; padding-top: 0; }
+  .set-sec h3 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  .set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 30px; }
+  .set-row.chk { justify-content: flex-start; gap: 9px; cursor: pointer; }
+  .set-row.chk input { accent-color: var(--accent); margin: 0; flex-shrink: 0; width: 16px; height: 16px; }
+  .set-row select { width: auto; min-width: 150px; margin: 0; }
+  .set-row input[type=range] { width: 180px; accent-color: var(--accent); }
+  .set-row button { margin: 0; }
+  .set-l { font-weight: 600; }
+  .set-d { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+  .set-row.chk + .set-d { padding-left: 25px; }
+  .cheat-sec h3 { color: #c79bf2; }
   .seedrow { display: flex; gap: 8px; align-items: center; }
   .seedrow input { flex: 1; min-width: 0; margin: 0; background: var(--panel2); color: var(--text); border: 1px solid var(--line);
     border-radius: 6px; padding: 6px 8px; font: inherit; font-variant-numeric: tabular-nums; letter-spacing: .03em; }
@@ -443,37 +458,7 @@
   <button id="bSaves" class="mi" title="Spielstände speichern und laden" data-en-title="Save and load games"><span data-en="Saved games">Spielstände</span></button>
   <button id="bStats" class="mi"><span data-en="Statistics">Statistik</span><kbd>I</kbd></button>
   <button id="bTime" class="mi" title="Die Partie im Zeitraffer: wie sich Karte und Reiche Runde für Runde entwickelt haben" data-en-title="The game as a time-lapse: how the map and the empires developed turn by turn"><span data-en="Time-lapse">Zeitraffer</span><kbd>T</kbd></button>
-  <h4 data-en="Settings">Einstellungen</h4>
-  <label class="ms"><span data-en="Volume">Lautstärke</span><input id="vol" type="range" min="0" max="100"></label>
-  <button id="bSndTest" class="mi" title="Klänge anhören und je Einheit einstellen" data-en-title="Listen to the sounds and adjust them per unit"><span data-en="Sound test">Klangtest</span><kbd>K</kbd></button>
-  <label class="ms" title="Wie schnell Bewegungen und Kamerafahrten abgespielt werden – beim Zug des Gegners, bei Märschen und Patrouillen und bei eigenen Zügen. „Aus“: keine Bewegungen und keine Kamerafahrten, die Einheiten stehen sofort am Ziel. Für alle, die schnelles Hin und Her auf dem Bildschirm nicht gut vertragen." data-en-title="How fast movements and camera pans are played – during the enemy's turn, for marches and patrols and for your own moves. “Off”: no movements and no camera pans, units are at their destination at once. For anyone who does not cope well with fast back-and-forth on the screen."><span data-en="Replay of moves">Wiedergabe der Züge</span>
-    <select id="replaySel">
-      <option value="slow" data-en="slow">langsam</option>
-      <option value="normal" data-en="normal">normal</option>
-      <option value="fast" data-en="fast">schnell</option>
-      <option value="off" data-en="off (no movement)">aus (ohne Bewegung)</option>
-    </select></label>
-  <label class="ms" title="Umstellen, falls die Karte beim Wischen zoomt oder beim Drehen am Rad wandert" data-en-title="Change this if the map zooms when you swipe, or pans when you turn the wheel"><span data-en="Wheel / touchpad">Mausrad / Touchpad</span>
-    <select id="wheelSel">
-      <option value="auto" data-en="automatic">automatisch</option>
-      <option value="zoom" data-en="always zoom">immer zoomen</option>
-      <option value="pan" data-en="always pan">immer verschieben</option>
-    </select></label>
-  <label class="ms chk" title="Balken „Du / Gegner“ in der Seitenleiste. Ausgeschaltet weißt du nicht, wie stark der Gegner ist." data-en-title="The “You / enemy” bar in the side panel. Switched off, you do not know how strong the enemy is."><input type="checkbox" id="powerChk"> <span data-en="Show balance of power">Kräfteverhältnis anzeigen</span></label>
-  <label class="ms" title="Liegt deine Stärke fünf Runden lang unter diesem Anteil, bietet das Spiel das Aufgeben an – liegt die des Gegners darunter, den vorzeitigen Sieg." data-en-title="If your strength stays below this share for five turns, the game offers to surrender – if the enemy's does, it offers an early victory."><span data-en="Offer early end below">Vorzeitiges Ende unter</span>
-    <select id="offerSel">
-      <option value="0" data-en="never">nie</option>
-      <option value="5">5 %</option>
-      <option value="10">10 %</option>
-      <option value="15">15 %</option>
-      <option value="20">20 %</option>
-      <option value="25">25 %</option>
-      <option value="30">30 %</option>
-    </select></label>
-  <label class="ms chk" title="Blendet unten links auf der Karte die wichtigsten Tasten ein. Was gerade nicht geht, ist abgeblendet." data-en-title="Shows the most important keys at the bottom left of the map. What is not possible right now is dimmed."><input type="checkbox" id="keysChk"> <span data-en="Show keyboard shortcuts on the map">Tastenkürzel auf der Karte einblenden</span></label>
-  <label class="ms chk"><input type="checkbox" id="autoEndChk"> <span data-en="End the turn automatically when all units have moved">Runde automatisch beenden, wenn alle gezogen haben</span></label>
-  <h4 data-en="Cheats">Schummeln</h4>
-  <label class="ms chk" title="Du siehst die ganze Karte, alle Städte und alle Einheiten des Gegners, auch getauchte U-Boote, und alle seine Züge. Praktisch, um dem Gegner beim Spielen zuzusehen. Abgeschaltet kehrt der Nebel zurück." data-en-title="You see the whole map, all cities and all enemy units, including submerged submarines, and all his moves. Handy for watching how the enemy plays. Switched off, the fog returns."><input type="checkbox" id="cheatFogChk"> <span data-en="Fog of war off – see the whole map and the enemy">Nebel des Krieges aus – ganze Karte und Gegner sichtbar</span></label>
+  <button id="bSettings" class="mi" title="Ton, Anzeige, Spielablauf, Steuerung" data-en-title="Sound, display, game flow, controls"><span data-en="Settings …">Einstellungen …</span></button>
 </div>
 <main>
   <div id="mapCol">
@@ -718,11 +703,11 @@
               <tr><td><kbd>H</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>K</kbd></td><td data-en="handbook · statistics · sound on/off · sound test">Handbuch · Statistik · Ton an/aus · Klangtest</td></tr>
               <tr><td><kbd>T</kbd></td><td data-en="time-lapse: the game so far, turn by turn – during the game only what you knew at the time; after the end the closing window with the whole map and the final statistics (space plays/pauses, ← → step)">Zeitraffer: die Partie bisher, Runde für Runde – während des Spiels nur, was du damals wusstest; nach dem Ende das Abschlussfenster mit ganzer Karte und Endstatistik (Leertaste spielt/hält an, ← → Schritt)</td></tr>
             </table>
-            <p class="muted" data-en="Tip: in the ☰ Menu you can show the most important keys directly on the map (“Show keyboard shortcuts on the map”).">Tipp: Im ☰ Menü kannst du die wichtigsten Tasten direkt auf der Karte einblenden („Tastenkürzel auf der Karte einblenden“).</p>
+            <p class="muted" data-en="Tip: under ☰ Menu → Settings you can show the most important keys directly on the map (“Show keyboard shortcuts on the map”).">Tipp: Unter ☰ Menü → Einstellungen kannst du die wichtigsten Tasten direkt auf der Karte einblenden („Tastenkürzel auf der Karte einblenden“).</p>
           </div>
         </div>
-        <p class="help-setting"><span data-en="<b>Replay of moves:</b> in the <b>☰ Menu</b> under “Settings” you choose how fast movements and camera pans are shown – slow, normal, fast or off. “Off” shows no movement at all: units are at their destination at once and the map only moves when it has to. Helpful if fast back-and-forth on the screen bothers you; if your system is set to reduce motion, the game starts with “off”."><b>Wiedergabe der Züge:</b> Im <b>☰ Menü</b> unter „Einstellungen“ legst du fest, wie schnell Bewegungen und Kamerafahrten gezeigt werden – langsam, normal, schnell oder aus. „Aus“ zeigt gar keine Bewegung: Die Einheiten stehen sofort am Ziel, die Karte bewegt sich nur, wenn sie muss. Hilfreich, wenn dir schnelles Hin und Her auf dem Bildschirm nicht bekommt; ist in deinem System „Bewegung reduzieren“ eingestellt, beginnt das Spiel mit „aus“.</span></p>
-        <p class="help-setting"><span data-en="<b>Mouse wheel and two-finger swipe:</b> normally the game detects by itself whether you turn a wheel (zooms) or swipe (pans). You can choose it yourself in the <b>☰ Menu</b> under “Settings”."><b>Mausrad und Zwei-Finger-Wischen:</b> Normalerweise erkennt das Spiel selbst, ob du am Rad drehst (zoomt) oder wischst (verschiebt). Im <b>☰ Menü</b> unter „Einstellungen“ kannst du das festlegen.</span>
+        <p class="help-setting"><span data-en="<b>Replay of moves:</b> under <b>☰ Menu → Settings</b> you choose how fast movements and camera pans are shown – slow, normal, fast or off. “Off” shows no movement at all: units are at their destination at once and the map only moves when it has to. Helpful if fast back-and-forth on the screen bothers you; if your system is set to reduce motion, the game starts with “off”."><b>Wiedergabe der Züge:</b> Unter <b>☰ Menü → Einstellungen</b> legst du fest, wie schnell Bewegungen und Kamerafahrten gezeigt werden – langsam, normal, schnell oder aus. „Aus“ zeigt gar keine Bewegung: Die Einheiten stehen sofort am Ziel, die Karte bewegt sich nur, wenn sie muss. Hilfreich, wenn dir schnelles Hin und Her auf dem Bildschirm nicht bekommt; ist in deinem System „Bewegung reduzieren“ eingestellt, beginnt das Spiel mit „aus“.</span></p>
+        <p class="help-setting"><span data-en="<b>Mouse wheel and two-finger swipe:</b> normally the game detects by itself whether you turn a wheel (zooms) or swipe (pans). You can choose it yourself under <b>☰ Menu → Settings</b>."><b>Mausrad und Zwei-Finger-Wischen:</b> Normalerweise erkennt das Spiel selbst, ob du am Rad drehst (zoomt) oder wischst (verschiebt). Unter <b>☰ Menü → Einstellungen</b> kannst du das festlegen.</span>
           <span class="muted" data-en="Change this if the map zooms when you swipe, or pans when you turn the wheel. Some touchpads send exactly the same signal as a mouse wheel – then only “always pan” helps; zooming still works by pinching, with Ctrl + wheel or with + and −.">Stell das um, falls die Karte beim Wischen zoomt oder beim Drehen am Rad wandert. Manche Touchpads senden genau dasselbe Signal wie ein Mausrad – dann hilft nur „immer verschieben“; zoomen geht weiterhin mit Spreizen, Strg + Rad oder + und −.</span><br>
           <span class="muted" id="wheelInfo"></span></p>
         <div class="help-tip" data-lang="de"><b>Überblick behalten:</b> <kbd>V</kbd> zeigt statt der Einheiten, was jede Stadt baut, <kbd>G</kbd> blendet alle Märsche, Patrouillen und Marschziele ein. Über <b>„Marschziel setzen“</b> in der Stadtkarte gibst du einer Stadt ein Ziel vor: Jede Einheit, die dort fertig wird, marschiert sofort dorthin. Stellst du die Produktion um, wird das Marschziel gelöscht. Wie du damit Nachschub für Transporter sammelst, steht auf der Seite <button class="helplink" data-helptab="transport">Transporter</button>.</div>
@@ -780,8 +765,8 @@
         <p data-lang="en" class="muted">In test games against a computer player that has to explore by itself and makes no mistakes, that player
           won practically always on Easy, half to two thirds of the time on Normal, about one game in four or five on Hard and almost never on Brutal.
           How hard it is for you naturally depends on your style of play.</p>
-        <div class="help-tip" data-lang="de"><b>Dem Gegner zusehen:</b> Im <b>☰ Menü</b> unter „Schummeln“ lässt sich der Nebel des Krieges abschalten. Dann siehst du die ganze Karte, alle seine Einheiten und Züge. Das Spiel fragt vorher nach, denn was du einmal gesehen hast, weißt du. Schaltest du wieder zurück, kehrt der Nebel zurück – dein Kartenstand ist derselbe wie vorher, ergänzt um das, was deine Einheiten inzwischen wirklich gesehen haben. Der Haken gilt nur für die laufende Partie.</div>
-        <div class="help-tip" data-lang="en"><b>Watching the enemy:</b> in the <b>☰ Menu</b> under “Cheats” you can switch off the fog of war. You then see the whole map and all his units and moves. The game asks first, because what you have seen once, you know. Switch it back and the fog returns – your map is the same as before, plus what your units have really seen in the meantime. The checkbox only applies to the current game.</div>
+        <div class="help-tip" data-lang="de"><b>Dem Gegner zusehen:</b> Unter <b>☰ Menü → Einstellungen</b> im Abschnitt „Schummeln“ lässt sich der Nebel des Krieges abschalten. Dann siehst du die ganze Karte, alle seine Einheiten und Züge. Das Spiel fragt vorher nach, denn was du einmal gesehen hast, weißt du. Schaltest du wieder zurück, kehrt der Nebel zurück – dein Kartenstand ist derselbe wie vorher, ergänzt um das, was deine Einheiten inzwischen wirklich gesehen haben. Der Haken gilt nur für die laufende Partie.</div>
+        <div class="help-tip" data-lang="en"><b>Watching the enemy:</b> under <b>☰ Menu → Settings</b> in the “Cheats” section you can switch off the fog of war. You then see the whole map and all his units and moves. The game asks first, because what you have seen once, you know. Switch it back and the fog returns – your map is the same as before, plus what your units have really seen in the meantime. The checkbox only applies to the current game.</div>
       </section>
 
       <section data-pane="about" hidden>
@@ -883,6 +868,63 @@
     <h2 data-en="Balance of power">Kräfteverhältnis</h2>
     <div id="powerCalc"></div>
     <div class="row" style="margin-top:14px"><button class="primary" data-close data-en="Close">Schließen</button></div>
+  </div>
+</div>
+
+<div id="mSettings" class="modal" hidden>
+  <div class="dlg settings-dlg">
+    <h2 data-en="Settings">Einstellungen</h2>
+    <section class="set-sec">
+      <h3 data-en="Sound">Ton</h3>
+      <label class="set-row"><span class="set-l"><span data-en="Volume">Lautstärke</span></span><input id="vol" type="range" min="0" max="100"></label>
+      <p class="set-d" data-en="You can also switch it on and off with the speaker at the top or the M key.">An- und ausschalten geht auch mit dem Lautsprecher oben oder der Taste M.</p>
+      <div class="set-row"><span class="set-l" data-en="Sound test">Klangtest</span><button id="bSndTest" data-en="Open … &lt;kbd&gt;K&lt;/kbd&gt;">Öffnen … <kbd>K</kbd></button></div>
+      <p class="set-d" data-en="Listen to all sounds and set the volume of each unit sound.">Alle Klänge anhören und die Lautstärke der Einheitenklänge einzeln einstellen.</p>
+    </section>
+    <section class="set-sec">
+      <h3 data-en="Display">Anzeige</h3>
+      <label class="set-row"><span class="set-l"><span data-en="Replay of moves">Wiedergabe der Züge</span></span><select id="replaySel">
+          <option value="slow" data-en="slow">langsam</option>
+          <option value="normal" data-en="normal">normal</option>
+          <option value="fast" data-en="fast">schnell</option>
+          <option value="off" data-en="off (no movement)">aus (ohne Bewegung)</option>
+        </select></label>
+      <p class="set-d" data-en="How fast movements and camera pans are shown – during the enemy turn, for marches and patrols and for your own moves. “Off”: no movement, units are at their destination at once. For anyone who does not cope well with fast back-and-forth on the screen.">Wie schnell Bewegungen und Kamerafahrten gezeigt werden – beim Gegnerzug, bei Märschen und Patrouillen und bei eigenen Zügen. „Aus“: keine Bewegung, die Einheiten stehen sofort am Ziel. Für alle, die schnelles Hin und Her auf dem Bildschirm nicht gut vertragen.</p>
+      <label class="set-row chk"><input type="checkbox" id="powerChk"><span class="set-l"><span data-en="Show balance of power">Kräfteverhältnis anzeigen</span></span></label>
+      <p class="set-d" data-en="The “You / enemy” bar in the side panel. Switched off, you do not know how strong the enemy is.">Der Balken „Du / Gegner“ in der Seitenleiste. Ausgeschaltet weißt du nicht, wie stark der Gegner ist.</p>
+      <label class="set-row chk"><input type="checkbox" id="keysChk"><span class="set-l"><span data-en="Show keyboard shortcuts on the map">Tastenkürzel auf der Karte einblenden</span></span></label>
+      <p class="set-d" data-en="The most important keys at the bottom left of the map; what is not possible right now is dimmed.">Unten links auf der Karte die wichtigsten Tasten; was gerade nicht geht, ist abgeblendet.</p>
+    </section>
+    <section class="set-sec">
+      <h3 data-en="Game flow">Spielablauf</h3>
+      <label class="set-row chk"><input type="checkbox" id="autoEndChk"><span class="set-l"><span data-en="End the turn automatically when all units have moved">Runde automatisch beenden, wenn alle gezogen haben</span></span></label>
+      <p class="set-d" data-en="A short countdown on the turn button; any click or key press stops it.">Ein kurzer Countdown am Rundenknopf; jeder Klick oder Tastendruck hält ihn an.</p>
+      <label class="set-row"><span class="set-l"><span data-en="Offer early end below">Vorzeitiges Ende anbieten unter</span></span><select id="offerSel">
+          <option value="0" data-en="never">nie</option>
+          <option value="5">5 %</option>
+          <option value="10">10 %</option>
+          <option value="15">15 %</option>
+          <option value="20">20 %</option>
+          <option value="25">25 %</option>
+          <option value="30">30 %</option>
+        </select></label>
+      <p class="set-d" data-en="If your strength stays below this share for five turns, the game offers to surrender – if the enemy’s does, it offers an early victory.">Liegt deine Stärke fünf Runden lang unter diesem Anteil, bietet das Spiel das Aufgeben an – liegt die des Gegners darunter, den vorzeitigen Sieg.</p>
+    </section>
+    <section class="set-sec">
+      <h3 data-en="Controls">Steuerung</h3>
+      <label class="set-row"><span class="set-l"><span data-en="Wheel / touchpad">Mausrad / Touchpad</span></span><select id="wheelSel">
+          <option value="auto" data-en="automatic">automatisch</option>
+          <option value="zoom" data-en="always zoom">immer zoomen</option>
+          <option value="pan" data-en="always pan">immer verschieben</option>
+        </select></label>
+      <p class="set-d" data-en="Change this if the map zooms when you swipe, or pans when you turn the wheel.">Umstellen, falls die Karte beim Wischen zoomt oder beim Drehen am Rad wandert.</p>
+    </section>
+    <section class="set-sec cheat-sec">
+      <h3 data-en="Cheats">Schummeln</h3>
+      <label class="set-row chk"><input type="checkbox" id="cheatFogChk"><span class="set-l"><span data-en="Fog of war off – see the whole map and the enemy">Nebel des Krieges aus – ganze Karte und Gegner sichtbar</span></span></label>
+      <p class="set-d" data-en="Handy for watching how the enemy plays. The game asks first; applies to the current game only.">Praktisch, um dem Gegner beim Spielen zuzusehen. Das Spiel fragt vorher nach; gilt nur für die laufende Partie.</p>
+    </section>
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="primary" data-close data-en="Close">Schließen</button></div>
   </div>
 </div>
 
