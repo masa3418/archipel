@@ -154,7 +154,8 @@ hooks.move = (u, fx, fy, tx, ty) => {
 };
 function recGone(u, until) {
   if (u.carrier != null) return;   // an Bord: wird ohnehin nicht einzeln gezeichnet
-  anim.gone.push({ u: { id: u.id, type: u.type, owner: u.owner, hp: Math.max(1, u.hp), x: u.x, y: u.y }, until });
+  anim.gone.push({ u: { id: u.id, type: u.type, owner: u.owner, hp: Math.max(1, u.hp), x: u.x, y: u.y,
+    air: u.type === 'car' && S.units.some(f => f.carrier === u.id && f.type === 'ftr') }, until });   // air: Träger gab Luftdeckung
 }
 // Besitzer einer Stadt, wie er gerade gezeigt wird: Während der Wiedergabe gilt bis zum Moment der Eroberung der alte.
 function shownOwner(c, rel, playing) {
@@ -589,12 +590,17 @@ function render(now = performance.now()) {
       drawSupportMark(x, y, (S.over ? c.owner : shownOwner(c, rel, playing)) === b.owner, PLAYERS[b.owner].light);
     }
   }
-  // Luftdeckung: Schiffe neben einem sichtbaren Träger mit Jägern an Bord (gestrichelter Ring = geschützt)
+  // Luftdeckung: Schiffe neben einem sichtbaren Träger mit Jägern an Bord (gestrichelter Ring = geschützt).
+  // Während der Wiedergabe zählen auch Schiffe mit, die erst im Lauf des Zugs untergehen (anim.gone) – sonst
+  // verlören sie den Ring schon, bevor der Angriff auf sie gezeigt wird.
   const covered = new Set();
-  for (const c of S.units) {
-    if (c.type !== 'car' || c.carrier != null || (!canSee(0, c) && !S.over) || !S.units.some(f => f.carrier === c.id && f.type === 'ftr')) continue;
-    for (const s of S.units) {
-      if (s.owner !== c.owner || s.carrier != null || T(s).domain !== 'sea' || cheb(s.x, s.y, c.x, c.y) > 1 || (!canSee(0, s) && !S.over)) continue;
+  const goneNow = playing ? anim.gone.filter(g => rel < g.until).map(g => g.u) : [];
+  const shipsNow = S.units.filter(s => s.carrier == null && T(s).domain === 'sea' && (S.over || canSee(0, s))).concat(goneNow.filter(s => T(s).domain === 'sea'));
+  const carriersNow = S.units.filter(c => c.type === 'car' && c.carrier == null && (S.over || canSee(0, c)) && S.units.some(f => f.carrier === c.id && f.type === 'ftr'))
+    .concat(goneNow.filter(c => c.air));
+  for (const c of carriersNow) {
+    for (const s of shipsNow) {
+      if (s.owner !== c.owner || cheb(s.x, s.y, c.x, c.y) > 1) continue;
       const i = idx(s.x, s.y);
       if (covered.has(i) || S.cityGrid[i] >= 0) continue;
       covered.add(i);
