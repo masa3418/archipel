@@ -11,3 +11,6 @@ desktop.ini
 # Offline-Fassung (entsteht mit node tools/pack.js) und lokale Testspielstände
 dist/
 archipel-test-*.json
+
+# Zwischenbilder der Erklärvideos (tools/video)
+tools/video/out/

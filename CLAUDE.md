@@ -23,8 +23,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Keine Abhängigkeiten, kein Build.** Reines HTML/CSS/JavaScript, klassische `<script>`-Tags
   (keine ES-Module), damit `index.html` auch per Doppelklick (`file://`) läuft.
 - **Keine Asset-Dateien.** Grafik (`gfx.js`) und Klänge (`sfx.js`) werden im Code erzeugt.
-  Einzige Ausnahmen: `favicon.svg`, `docs/seeschlacht.gif` (README) und `docs/seeschlacht.mp4` (Beispielvideo mit Ton) –
-  beide gehören nicht zum Spiel und nicht in den Release. `tools/pack.js` ist kein Build für den Betrieb,
+  Einzige Ausnahmen: `favicon.svg`, `docs/seeschlacht.gif` (README), `docs/seeschlacht.mp4` (Beispielvideo mit Ton) und die
+  Erklärvideos `docs/videos/*.mp4` – sie gehören nicht zum Spiel und nicht in den Release. `tools/pack.js` ist kein Build für den Betrieb,
   sondern verpackt nur den Release; `dist/` gehört nicht ins Repository.
 - **Installierbare App nur online:** `manifest.webmanifest` und `sw.js` (Service Worker, „erst Netz, dann Zwischenspeicher“) liegen im
   Repository für GitHub Pages, gehören aber **nicht** in den Release: `pack.js` entfernt den Manifest-Verweis aus Einzeldatei und ZIP-Ordner,
@@ -315,6 +315,13 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
 
 ## Bekannte Eigenheiten
 
+- **Erklärvideos** (`docs/videos/*.mp4`, im README verlinkt, nicht im Release): `tools/video/` – `recv.js` (Empfänger, ruft ffmpeg),
+  `rec.js` (Aufnahme im Browser: eigene Uhr, Textleiste DE/EN, Ton offline), `scenes.js` (zehn Szenen: landung, feuerschutz, uboot, kueste, luftdeckung, nachschub, jaeger, eroberung, steg, nebel; je Video eine Szene, sucht sich die Stelle
+  auf einer erzeugten Karte; Prozentwerte aus den Regeln). Neu erzeugen nach Regeländerungen: `node tools/video/recv.js` starten,
+  im Browser Ansicht 1280×800, `rec.js` und `scenes.js` per fetch + eval laden, `await Scenes.all()`, danach Seite neu laden.
+  Ausnahmen „keine Asset-Dateien“ gelten auch für `docs/videos/`. Videoseite `docs/videos/index.html` (online unter
+  …/archipel/docs/videos/, eigenständig, Sprache über `archipel-lang`): Titel, Länge und Texte stehen dort von Hand – nach dem
+  Neuaufnehmen mit anpassen. `sw.js` fängt `docs/` und `tools/` nicht ab (sonst landeten 8 MB Videos im Zwischenspeicher der App).
 - **Video `docs/seeschlacht.mp4` / GIF** entstehen ohne Bildschirmaufnahme, Bild für Bild: Szene im Browser aufbauen (Ansicht
   1280×800, `replay = 'slow'`), `performance.now` durch eine eigene Uhr ersetzen, `requestAnimationFrame` und `setTimeout` auf
   diese Uhr umlenken, je Bild Uhr +33,3 ms, `loop(t)` aufrufen, sichtbaren Kartenausschnitt (`wrap.scroll*`) aus `cv` kopieren

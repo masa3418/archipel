@@ -38,6 +38,26 @@ benannte Stände anlegen und als Datei exportieren. Online- und Offline-Fassung 
 Export und „Aus Datei laden“ wandern sie von der einen zur anderen. Das **Handbuch** (Knopf **Hilfe** oder Taste `H`)
 erklärt in sechs Reitern erste Schritte, Einheiten, Kampf, Steuerung und den Gegner.
 
+## Erklärvideos
+
+Kurze Videos mit Ton und Texteinblendungen (Deutsch und Englisch) zu den Regeln, die man am leichtesten übersieht –
+am bequemsten anzuschauen auf der **[Videoseite](https://masa3418.github.io/archipel/docs/videos/)**. Sie gehören nicht
+zum Spiel und nicht zur Offline-Fassung. *Short videos with sound and captions (German and English) explaining the
+trickier rules – best watched on the [video page](https://masa3418.github.io/archipel/docs/videos/).*
+
+| Video | Was es zeigt |
+|---|---|
+| [Landung mit Schlachtschiff](docs/videos/landung.mp4) | Feuerunterstützung (die Stadt fällt zu 75 % statt 50 %), Sturm vom Schiff, Schiffe im Hafen gehen mit unter |
+| [Feuerschutz](docs/videos/feuerschutz.mp4) | Ein Schlachtschiff neben der eigenen Stadt macht sie fast uneinnehmbar |
+| [U-Boot und Sonar](docs/videos/uboot.mp4) | Getauchte U-Boote sind unsichtbar, Ortung aus einem Feld, Auftauchen nach dem Angriff, der Zerstörer als Jäger |
+| [Küstenangriff](docs/videos/kueste.mp4) | Bodentruppen treffen Schiffe an der Küste dreifach – außer Kreuzer und Schlachtschiff |
+| [Luftdeckung](docs/videos/luftdeckung.mp4) | Ein Träger mit Jäger schützt die Schiffe nebenan, selbst Transporter wehren sich |
+| [Nachschub halb automatisch](docs/videos/nachschub.mp4) | Marschziel einer Stadt und Transporter, die die Wartenden im Hafen mitnehmen |
+| [Jäger: Reichweite](docs/videos/jaeger.mp4) | Treibstoff und Rückweg, Tanken in Stadt oder auf dem Träger, Patrouille mit selbstständigem Tankstopp |
+| [Städte erobern](docs/videos/eroberung.mp4) | 50 % je Versuch, der Eroberer geht in der Stadt auf, eine Besatzung muss erst geschlagen werden |
+| [Stege, Brücken und Stau](docs/videos/steg.mp4) | Diagonal über Ecken, Brücken auf dem Festland, Kolonnen warten vor einem besetzten Übergang |
+| [Nebel und Erkunden](docs/videos/nebel.mp4) | Der Nebel des Krieges, Befehl „Erkunden“, Kartengedächtnis und neutrale Städte |
+
 ## Inhalt
 
 - Deutsch und Englisch (Sprachknopf oben in der Leiste)
@@ -72,6 +92,7 @@ erklärt in sechs Reitern erste Schritte, Einheiten, Kampf, Steuerung und den Ge
 | `js/ui.js` | Darstellung, Animationen, Bedienung, Seitenleiste, Dialoge, Handbuch |
 | `tools/serve.js` | Kleiner lokaler Webserver nur für die Entwicklung (`node tools/serve.js .`) |
 | `tools/pack.js` | Verpackt die Offline-Fassung für einen Release (läuft automatisch auf GitHub) |
+| `tools/video/` | Nimmt die Erklärvideos im Browser Bild für Bild auf (nur Entwicklung, braucht ffmpeg) |
 | `CHANGELOG.md` | Änderungen je Version |
 
 ## Datenschutz

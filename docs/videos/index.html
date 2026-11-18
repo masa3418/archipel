@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archipel – Erklärvideos</title>
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<!-- Erklärvideos zu Archipel. Gehört nicht zum Spiel und nicht zum Release; die Videos entstehen mit tools/video/. -->
+<style>
+  :root {
+    --bg: #0e1218; --panel: #161c25; --panel2: #1d2531; --line: #2a3442;
+    --text: #e6ebf2; --muted: #8b97a8; --accent: #2f7de1;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 14px; padding: 10px 16px;
+    background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: .08em; font-weight: 700; white-space: nowrap; }
+  header h1 span { color: var(--accent); }
+  header .sub { color: var(--muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  header a, header button { color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 6px 12px; font: inherit; font-size: 14px; text-decoration: none; cursor: pointer; white-space: nowrap; }
+  header a.play { background: var(--accent); border-color: var(--accent); font-weight: 600; }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 16px 48px; }
+  .intro { color: var(--muted); max-width: 760px; margin: 0 0 26px; }
+  h2 { font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 30px 0 12px; font-weight: 700; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .card video { display: block; width: 100%; aspect-ratio: 944 / 710; background: #000; }
+  .card .body { padding: 12px 14px 14px; }
+  .card h3 { margin: 0 0 4px; font-size: 16px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; }
+  .card .len { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 6px; }
+  .hero { margin-bottom: 8px; }
+  .hero .card { flex-direction: row; }
+  .hero .card video { width: 62%; flex: none; }
+  .hero .card .body { padding: 18px 20px; align-self: center; }
+  .hero .card h3 { font-size: 19px; }
+  footer { color: var(--muted); font-size: 13px; text-align: center; padding: 0 16px 30px; }
+  footer a { color: var(--muted); }
+  @media (max-width: 760px) {
+    header .sub { display: none; }
+    .grid { grid-template-columns: 1fr; }
+    .hero .card { flex-direction: column; }
+    .hero .card video { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>ARCHI<span>PEL</span></h1>
+  <div class="sub" id="sub"></div>
+  <a class="play" id="play" href="../../"></a>
+  <button id="lang" type="button"></button>
+</header>
+<main>
+  <p class="intro" id="intro"></p>
+  <section class="hero" id="hero"></section>
+  <div id="sections"></div>
+</main>
+<footer id="foot"></footer>
+<script>
+'use strict';
+// Sprache wie im Spiel (archipel-lang); ohne Wahl nach der Browsersprache
+let EN = false;
+try { const v = localStorage.getItem('archipel-lang'); EN = v ? v === 'en' : !/^de/i.test(navigator.language || 'de'); } catch (e) {}
+const tt = (de, en) => (EN ? en : de);
+
+const HERO = { file: '../seeschlacht.mp4', len: 21,
+  de: ['Seeschlacht', 'Zerstörer gegen U-Boot, ein Jäger scheitert an der Luftdeckung, ein U-Boot torpediert den Träger, das Schlachtschiff versenkt den Kreuzer – ein Beispiel dafür, wie die Einheiten zusammenspielen.'],
+  en: ['Sea battle', 'Destroyer against submarine, a fighter fails against air cover, a submarine torpedoes the carrier, the battleship sinks the cruiser – an example of how the units work together.'] };
+
+const SECTIONS = [
+  { de: 'Grundlagen', en: 'Basics', items: [
+    { file: 'nebel.mp4', len: 39, de: ['Nebel und Erkunden', 'Zu Beginn kennst du nur deine Stadt. Der Befehl „Erkunden“ schickt Einheiten selbstständig los; was einmal entdeckt ist, bleibt auf der Karte.'],
+      en: ['Fog and exploring', 'At the start you only know your city. The “Explore” order sends units off by themselves; whatever has been discovered stays on the map.'] },
+    { file: 'eroberung.mp4', len: 27, de: ['Städte erobern', 'Jeder Versuch gelingt zu 50 %, der Eroberer geht in der Stadt auf. Eine Besatzung muss erst geschlagen werden.'],
+      en: ['Capturing cities', 'Each attempt succeeds 50 % of the time, and the conqueror merges into the city. A garrison has to be beaten first.'] },
+    { file: 'nachschub.mp4', len: 23, de: ['Nachschub halb automatisch', 'Marschziel einer Stadt: Neue Truppen sammeln sich im Hafen, ein Transporter nimmt sie beim Durchfahren mit.'],
+      en: ['Semi-automatic supply', 'A city\'s rally point: new troops gather in the port, and a transport picks them up as it passes through.'] },
+    { file: 'steg.mp4', len: 31, de: ['Stege, Brücken und Stau', 'Diagonal über Ecken und Brücken; eine Kolonne wartet vor einem besetzten Übergang, statt aufzugeben.'],
+      en: ['Corner crossings, bridges and jams', 'Diagonally across corners and bridges; a column waits at an occupied crossing instead of giving up.'] },
+  ] },
+  { de: 'Luft', en: 'Air', items: [
+    { file: 'jaeger.mp4', len: 45, de: ['Jäger: Reichweite', 'Treibstoff für 18 Felder, der Rückweg muss immer reichen. Auf Patrouille fliegt der Jäger selbst zum Tanken.'],
+      en: ['Fighters: range', 'Fuel for 18 tiles, the way back must always fit. On patrol the fighter flies off to refuel by itself.'] },
+    { file: 'luftdeckung.mp4', len: 23, de: ['Luftdeckung', 'Ein Träger mit Jäger schützt die Schiffe nebenan – feindliche Jäger treffen nur zu 1/3, selbst Transporter wehren sich.'],
+      en: ['Air cover', 'A carrier with a fighter protects the ships next to it – enemy fighters hit only 1/3 of the time, and even transports fight back.'] },
+  ] },
+  { de: 'Seekrieg', en: 'Naval warfare', items: [
+    { file: 'uboot.mp4', len: 28, de: ['U-Boot und Sonar', 'Getaucht unsichtbar, geortet erst aus einem Feld; nach dem Angriff aufgetaucht. Der Zerstörer ist der U-Boot-Jäger.'],
+      en: ['Submarine and sonar', 'Invisible while submerged, only located from one tile away; surfaced after attacking. The destroyer is the submarine hunter.'] },
+    { file: 'kueste.mp4', len: 23, de: ['Küstenangriff', 'Bodentruppen treffen Schiffe an der Küste dreifach – nur Kreuzer und Schlachtschiff sind dafür gebaut.'],
+      en: ['Coastal attack', 'Ground troops hit ships at the coast threefold – only cruisers and battleships are built for it.'] },
+    { file: 'landung.mp4', len: 21, de: ['Landung mit Schlachtschiff', 'Feuerunterstützung: Die Stadt fällt zu 75 % statt 50 %. Sturm vom Schiff, und Schiffe im Hafen gehen mit unter.'],
+      en: ['Landing with a battleship', 'Fire support: the city falls 75 % of the time instead of 50 %. Storming from the ship, and ships in port are lost with the city.'] },
+    { file: 'feuerschutz.mp4', len: 24, de: ['Feuerschutz', 'Ein Schlachtschiff neben der eigenen Stadt: Angreifer treffen nur zu 1/3, die Stadt fällt nur zu 25 %.'],
+      en: ['Covering fire', 'A battleship next to your own city: attackers hit only 1/3 of the time, and the city falls only 25 % of the time.'] },
+  ] },
+];
+
+function card(v) {
+  const [title, text] = EN ? v.en : v.de;
+  return `<article class="card"><video src="${v.file}" controls preload="metadata" playsinline></video>
+    <div class="body"><h3>${title}<span class="len">${v.len} s</span></h3><p>${text}</p></div></article>`;
+}
+function render() {
+  document.documentElement.lang = EN ? 'en' : 'de';
+  document.title = tt('Archipel – Erklärvideos', 'Archipel – Explainer videos');
+  document.getElementById('sub').textContent = tt('Erklärvideos', 'Explainer videos');
+  document.getElementById('play').textContent = tt('▶ Spielen', '▶ Play');
+  document.getElementById('lang').textContent = EN ? 'Deutsch' : 'English';
+  document.getElementById('intro').textContent = tt(
+    'Kurze Videos mit Ton zu den Regeln, die man am leichtesten übersieht. Die Texte im Bild stehen auf Deutsch und Englisch. Alles Weitere erklärt das Handbuch im Spiel (Taste H).',
+    'Short videos with sound on the rules that are easiest to miss. The captions are in German and English. Everything else is explained by the in-game handbook (key H).');
+  document.getElementById('hero').innerHTML = card(HERO);
+  document.getElementById('sections').innerHTML = SECTIONS.map(s =>
+    `<h2>${EN ? s.en : s.de}</h2><div class="grid">${s.items.map(card).join('')}</div>`).join('');
+  document.getElementById('foot').innerHTML = tt(
+    'Archipel ist ein Browserspiel ohne Installation. <a href="https://github.com/masa3418/archipel">Quelltext und Offline-Fassung auf GitHub</a>.',
+    'Archipel is a browser game without installation. <a href="https://github.com/masa3418/archipel">Source code and offline version on GitHub</a>.');
+}
+// immer nur ein Video gleichzeitig
+document.addEventListener('play', e => {
+  for (const v of document.querySelectorAll('video')) if (v !== e.target) v.pause();
+}, true);
+document.getElementById('lang').addEventListener('click', () => {
+  EN = !EN;
+  try { localStorage.setItem('archipel-lang', EN ? 'en' : 'de'); } catch (e) {}
+  render();
+});
+render();
+</script>
+</body>
+</html>

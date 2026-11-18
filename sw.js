@@ -20,8 +20,11 @@ self.addEventListener('activate', e => {
     .then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {
-  const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const req = e.request, url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  // Erklärvideos und Werkzeuge gehören nicht zum Spiel: nicht abfangen, nicht zwischenspeichern
+  // (Videos kommen außerdem in Teilstücken – Antworten mit Status 206 lassen sich nicht speichern)
+  if (/\/(docs|tools)\//.test(url.pathname) || req.headers.has('range')) return;
   e.respondWith(
     fetch(req).then(res => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
