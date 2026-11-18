@@ -3,6 +3,26 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.5.2
+
+Bessere Wegsuche.
+
+- **Stau an Brücken und Engstellen:** Steht eine eigene Einheit auf dem einzigen Übergang, gibt eine marschierende Einheit
+  nicht mehr mit „kein Weg zum Ziel gefunden“ auf, sondern rückt bis an den Stau vor und wartet. Ist der Weg nach fünf
+  Runden immer noch versperrt, bricht sie mit einer Meldung ab. Patrouillen warten, bis der Weg frei ist. Das gilt auch für
+  Schiffe in engen Wasserstraßen und auf Flüssen.
+- **Marschziele von Städten** lassen sich jetzt auch hinter einer besetzten Brücke setzen: Für die Route zählen Einheiten
+  nicht, wer gerade wo steht, ändert sich ja. Die neu gebauten Einheiten folgen ihr und warten notfalls am Stau.
+- **Schiffe im Nebel:** Liegt das Ende einer Insel noch im Nebel, planten Schiffe quer hindurch und drehten erst davor ab.
+  Jetzt bevorzugen sie bekannte Wege an unerforschten Küsten; über unbekanntes offenes Meer fahren sie wie bisher.
+  In Testfällen sanken die Umwege von 26 auf 10 Felder.
+- **Jäger:** Ein Marschbefehl weiter als der Treibstoff reicht, wird abgelehnt (vorher stürzte der Jäger unterwegs ab).
+  Kommt er hin, aber nicht mehr zurück, gibt es eine Warnung.
+
+*English:* better pathfinding – units wait at a bridge or narrow strait blocked by their own units instead of giving up,
+city rally points can be set behind occupied bridges, ships no longer plan straight through islands whose far end is still
+in the fog, and fighters can no longer be ordered beyond their fuel range.
+
 ## 1.5.1
 
 Ruhigeres Bild, aufgeräumte Fenster, nichts geht mehr verloren.
