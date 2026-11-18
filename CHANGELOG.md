@@ -3,6 +3,41 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.7.0
+
+Mehrere Gegner – jeder gegen jeden.
+
+**Mehrere Computergegner**
+
+- Im Fenster „Neues Spiel“ wählst du, gegen wie viele Computergegner du antrittst: auf der kleinen Karte bis zu zwei, auf der
+  mittleren und großen bis zu drei. Die Gegner (Rot, Gelb, Violett) bekämpfen sich auch untereinander; die Schwierigkeit gilt
+  für alle gleich.
+- Sie ziehen nacheinander, über der Karte steht, wer gerade dran ist („Gelb zieht …“). Die Startplätze liegen weit
+  auseinander, möglichst auf verschiedenen Landmassen.
+- Neben der Stufe oben zeigt je Gegner ein Farbpunkt, wer noch im Spiel ist. Der Kräftebalken vergleicht dich mit dem
+  stärksten Gegner, das Kräftefenster hat eine Spalte je Gegner (deren Zahlen wie bisher nur mit dem Spoiler-Haken).
+- Abschlussfenster, Statistik, Zeitraffer, Übersichtskarte und Meldungen nennen die Gegner mit ihrer Farbe; die Spielstände
+  merken sich die Zahl der Gegner. Ältere Spielstände laufen unverändert weiter.
+
+**Ausscheiden**
+
+- Ein Gegner, der keine Stadt mehr hat, scheidet aus, und alle seine Einheiten verschwinden. Das gilt auch mit nur einem
+  Gegner: Sobald er keine Stadt mehr hat, hast du gewonnen – seine letzten Truppen musst du nicht mehr jagen. Du selbst
+  verlierst wie bisher erst, wenn du weder eine Stadt noch Truppen zum Erobern hast.
+
+**Computergegner**
+
+- Auf dem Festland setzt der Gegner jetzt Transporter ein: Hat er mehr Truppen, als er braucht – etwa vor einer Engstelle –,
+  holt er sie an der Küste ab und landet in deinem Hinterland, bei Städten weit hinter der Front. Partien fahren sich dort
+  seltener fest.
+
+Die Schwierigkeitsstufen bleiben gültig (gemessen mit je 96 Partien je Stufe). Gegen zwei oder drei Gegner ist es schwerer:
+Der Testspieler gewann auf Normal 40 % bzw. ein Drittel der Partien statt rund 60 %.
+
+*English:* play against up to three computer opponents (two on the small map) – everyone against everyone, each in its own
+colour. An opponent left without cities is out and all its units disappear; with a single opponent that means you win at
+once. On the mainland the computer now uses transports to land behind your lines when its army is stuck.
+
 ## 1.6.1
 
 Erklärvideos.

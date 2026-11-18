@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 
 // Versionsnummer: steht im Handbuch und bestimmt den Namen des Releases (siehe tools/pack.js, CHANGELOG.md)
-const VERSION = '1.6.1';
+const VERSION = '1.7.0';
 
 // Sprache: 'de' oder 'en'. Gewählt über den Sprachknopf (gespeichert), sonst nach Browsersprache.
 // Ein Wechsel lädt die Seite neu, daher dürfen alle Texte schon beim Laden festgelegt werden.
