@@ -295,25 +295,24 @@ function attackOdds(a, d, x, y) {
   return winProb(a.hp, c.as, d.hp, c.ds, c.p, c.first);
 }
 
-// Wie viele Angreifer vom Typ a gehen im Schnitt verloren, bis ein unbeschädigtes Ziel d zerstört ist? Sie greifen
-// nacheinander an, der Schaden am Ziel bleibt (keine Reparatur dazwischen). Für die Handbuch-Tabelle „Gleiche Bauzeit“.
-function lossesToKill(a, d, x, y) {
+// Wie viele Trefferpunkte verlieren Angreifer vom Typ a im Schnitt, bis ein unbeschädigtes Ziel d zerstört ist? Sie greifen
+// nacheinander an (jeder unbeschädigt), der Schaden am Ziel bleibt, Reparaturen zählen nicht. Eingesteckter Schaden zählt wie
+// Verluste (ein zerstörter Angreifer = alle seine Trefferpunkte). Für die Handbuch-Tabelle „Wirtschaftlichkeit“.
+function hpLostToKill(a, d, x, y) {
   const c = combatSpec(a, d, x, y);   // hängt nicht von den Trefferpunkten ab
-  const E = [0];
+  const H = T(a).hp, E = [0];
   for (let h = 1; h <= T(d).hp; h++) {
-    // Ausgänge eines Angriffs auf ein Ziel mit h Trefferpunkten: Angreifer fällt, Ziel bleibt mit r übrig
-    const lose = new Map();
+    // Ausgänge eines Angriffs auf ein Ziel mit h Trefferpunkten: Ziel bleibt mit r übrig (0 = zerstört), Angreifer verliert l
+    let same = 0, sum = 0;
+    const end = (r, l, p) => { sum += p * l; if (r === h) same += p; else if (r > 0) sum += p * E[r]; };
     const go = (A, D, p) => {
-      if (D <= 0 || p < 1e-12) return;
-      if (A <= 0) { lose.set(D, (lose.get(D) || 0) + p); return; }
-      if (c.ds <= 0) return;   // wehrlos: Angreifer gewinnt sicher
+      if (p < 1e-12) return;
+      if (D <= 0 || c.ds <= 0) { end(0, H - Math.max(0, A), p); return; }   // Ziel zerstört (wehrlos: sicher)
+      if (A <= 0) { end(D, H, p); return; }
       go(A, D - c.as, p * c.p); go(A - c.ds, D, p * (1 - c.p));
     };
-    go(T(a).hp - (c.first === 'def' ? c.ds : 0), h - (c.first === 'att' ? c.as : 0), 1);
-    const same = lose.get(h) || 0;
+    go(H - (c.first === 'def' ? c.ds : 0), h - (c.first === 'att' ? c.as : 0), 1);
     if (same > 1 - 1e-9) return Infinity;
-    let sum = 0;
-    for (const [r, p] of lose) sum += p * (1 + (r === h ? 0 : E[r]));
     E[h] = sum / (1 - same);
   }
   return E[T(d).hp];

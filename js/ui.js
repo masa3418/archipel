@@ -2034,7 +2034,8 @@ const UNIT_INFO = {
     'Rules the sea battle and gives fire support to all adjacent tiles: foreign cities there fall 75 % of the time, your own only 25 %. Vulnerable to submarines and fighter swarms. Also bombards units on land and in coastal cities.'),
 };
 // Siegchancen aller Einheiten gegeneinander, unbeschädigt und ohne örtliche Zu- oder Abschläge.
-// m[a][d] = Siegchance (null: kann nicht angreifen), m.info[a][d] = { loss: verlorene Angreifer je zerstörtem Ziel, notes: Sonderregeln }
+// m[a][d] = Siegchance (null: kann nicht angreifen), m.info[a][d] = { loss: verlorene Bauzeit der Angreifer (Schaden anteilig, Zerstörung
+// ganz) je zerstörtem Ziel, notes: Sonderregeln }
 function oddsMatrix() {
   let x = 0, y = 0;
   for (let k = 0; k < S.W * S.H; k++) if (S.cityGrid[k] < 0 && S.terrain[k] === 0) { x = k % S.W; y = (k / S.W) | 0; break; }
@@ -2045,7 +2046,7 @@ function oddsMatrix() {
     for (const d of UNIT_ORDER) {
       const A = mk(a, 7), D = mk(d, 8), ok = canAttack(a) && canStrike(A, D);
       m[a][d] = ok ? attackOdds(A, D, x, y) : null;
-      if (ok) m.info[a][d] = { loss: lossesToKill(A, D, x, y), notes: combatSpec(A, D, x, y).notes };
+      if (ok) m.info[a][d] = { loss: hpLostToKill(A, D, x, y) * UT[a].cost / UT[a].hp, notes: combatSpec(A, D, x, y).notes };
     }
   }
   return m;
@@ -2054,7 +2055,7 @@ function oddsMatrix() {
 const fmt1 = v => { const r = v >= 10 ? Math.round(v) : Math.round(v * 10) / 10; return EN ? String(r) : String(r).replace('.', ','); };
 // Bilanz immer mit einer Nachkommastelle (1,0 statt 1), ab 10 ganzzahlig
 const fmtR = v => { const r = v >= 10 ? String(Math.round(v)) : v.toFixed(1); return EN ? r : r.replace('.', ','); };
-// Tabelle „Wer schlägt wen“: 'duel' = Einer gegen einen (Siegchance), 'econ' = Gleiche Bauzeit (Bilanz), wird gemerkt
+// Tabelle „Wer schlägt wen“: 'duel' = Siegchance, 'econ' = Wirtschaftlichkeit (Bilanz), wird gemerkt
 let matrixMode = 'duel', matrixData = null;
 try { if (localStorage.getItem('archipel-matrix') === 'econ') matrixMode = 'econ'; } catch (e) {}
 function renderMatrix() {
@@ -2062,18 +2063,19 @@ function renderMatrix() {
   const pc = v => Math.round(v * 100), econ = matrixMode === 'econ';
   for (const b of $('matrixSw').querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === matrixMode);
   // Bilanz: Bauzeit des Ziels je verlorener Bauzeit der Angreifer (null = praktisch verlustfrei)
-  const ratio = (a, d) => { const L = m.info[a][d].loss; return L < 0.05 ? null : UT[d].cost / (L * UT[a].cost); };
+  const ratio = (a, d) => { const L = m.info[a][d].loss; return L < 0.05 * UT[a].cost ? null : UT[d].cost / L; };
   let note;
   if (econ) {
-    note = tt('Lohnt sich der Angriff? Angreifer derselben Art greifen nacheinander an, bis das Ziel zerstört ist – der Schaden am Ziel bleibt. Die Zahl sagt, wie viel Bauzeit du zerstörst je Bauzeit, die du dabei verlierst: <b>über 1 lohnt es sich</b>, unter 1 zahlst du drauf. „frei“ heißt: kaum eigene Verluste.',
-      'Does the attack pay off? Attackers of the same type attack one after another until the target is destroyed – the damage to the target stays. The number tells how much build time you destroy for each unit of build time you lose: <b>above 1 it pays off</b>, below 1 you lose out. “free” means: hardly any losses of your own.');
+    note = tt('Lohnt sich der Angriff? Angreifer derselben Art greifen nacheinander an, bis das Ziel zerstört ist – der Schaden am Ziel bleibt. Die Zahl sagt, wie viel Bauzeit du zerstörst je Bauzeit, die du dabei verlierst: <b>über 1 lohnt es sich</b>, unter 1 zahlst du drauf. „frei“ heißt: kaum eigener Schaden.',
+      'Does the attack pay off? Attackers of the same type attack one after another until the target is destroyed – the damage to the target stays. The number tells how much build time you destroy for each unit of build time you lose: <b>above 1 it pays off</b>, below 1 you lose out. “free” means: hardly any damage of your own.');
     const r = m.inf.tank != null ? ratio('inf', 'tank') : null;
     if (r) {
-      const p = pc(m.inf.tank), n = fmt1(m.info.inf.tank.loss), bt = fmt1(m.info.inf.tank.loss * UT.inf.cost);
-      note += ' ' + tt(`Beispiel: Infanterie gewinnt gegen einen Panzer einer gegen einen nur zu ${p} %, doch im Schnitt reichen ${n} Infanterie (Bauzeit ${bt}) für einen Panzer (Bauzeit ${UT.tank.cost}) – das ergibt ${fmtR(r)}.`,
-        `Example: infantry beats a tank one on one only ${p} % of the time, but on average ${n} infantry (build time ${bt}) are enough for a tank (build time ${UT.tank.cost}) – that makes ${fmtR(r)}.`);
+      const p = pc(m.inf.tank), bt = m.info.inf.tank.loss, n = fmt1(bt / UT.inf.cost);
+      note += ' ' + tt(`Beispiel: Infanterie gewinnt gegen einen Panzer einer gegen einen nur zu ${p} %, doch im Schnitt reichen ${n} Infanterie (Bauzeit ${fmt1(bt)}) für einen Panzer (Bauzeit ${UT.tank.cost}) – das ergibt ${fmtR(r)}.`,
+        `Example: infantry beats a tank one on one only ${p} % of the time, but on average ${n} infantry (build time ${fmt1(bt)}) are enough for a tank (build time ${UT.tank.cost}) – that makes ${fmtR(r)}.`);
     }
-    note += ' ' + tt('Gezählt werden nur zerstörte Einheiten, auf offenem Feld und ohne Reparatur zwischen den Angriffen.', 'Only destroyed units count, in the open and without repairs between the attacks.');
+    note += ' ' + tt(`Schaden zählt anteilig als verlorene Bauzeit (ein Kreuzer mit halbem Schaden: ${fmt1(UT.crs.cost / 2)}), eine zerstörte Einheit ganz. Bei Einheiten, die repariert werden können (alle außer Panzern), gilt die Rechnung nur, solange sie sich nicht in einer eigenen Stadt reparieren. Alles auf offenem Feld.`,
+      `Damage counts proportionally as lost build time (a cruiser with half damage: ${fmt1(UT.crs.cost / 2)}), a destroyed unit in full. For units that can be repaired (all except tanks), the figures only hold as long as they are not repaired in one of their cities. All in the open.`);
   } else {
     note = tt('Siegchance des Angreifers (Zeile) gegen den Verteidiger (Spalte), beide unbeschädigt, auf offenem Feld. Die Werte berechnet das Spiel aus den geltenden Regeln.',
       'Win chance of the attacker (row) against the defender (column), both undamaged, in the open. The game calculates the values from the current rules.');
@@ -2092,9 +2094,9 @@ function renderMatrix() {
       cls = r == null || r >= 1.5 ? 'hi' : r >= 0.8 ? 'mid' : 'lo';
       txt = r == null ? tt('frei', 'free') : fmtR(r);
       const verdict = r == null ? '' : r >= 1.5 ? tt('lohnt sich', 'pays off') : r >= 0.8 ? tt('etwa ausgeglichen', 'roughly even') : tt('Verlustgeschäft', 'a losing deal');
-      tip = r == null ? tt(`${A} gegen ${D}: zerstört das Ziel praktisch ohne eigene Verluste`, `${A} against ${D.toLowerCase()}: destroys the target with hardly any losses`)
-        : tt(`${A} gegen ${D}: Bis das Ziel zerstört ist, gehen im Schnitt ${fmt1(loss)} × ${A} verloren (Bauzeit ${fmt1(loss * UT[a].cost)}). ${D} kostet ${UT[d].cost} – ${verdict}`,
-          `${A} against ${D.toLowerCase()}: on average ${fmt1(loss)} × ${A.toLowerCase()} are lost (build time ${fmt1(loss * UT[a].cost)}) until the target is destroyed. It costs ${UT[d].cost} – ${verdict}`);
+      tip = r == null ? tt(`${A} gegen ${D}: zerstört das Ziel praktisch ohne eigenen Schaden`, `${A} against ${D.toLowerCase()}: destroys the target with hardly any damage of its own`)
+        : tt(`${A} gegen ${D}: Bis das Ziel zerstört ist, verlierst du im Schnitt ${fmt1(loss)} Bauzeit durch Schaden und Verluste. ${D} kostet ${UT[d].cost} – ${verdict}`,
+          `${A} against ${D.toLowerCase()}: until the target is destroyed you lose ${fmt1(loss)} build time on average through damage and losses. It costs ${UT[d].cost} – ${verdict}`);
     } else {
       const p = pc(v);
       cls = p >= 60 ? 'hi' : p >= 40 ? 'mid' : p > 0 ? 'lo' : 'none';
