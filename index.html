@@ -169,6 +169,12 @@
     transition: width .6s ease; box-shadow: 2px 0 6px rgba(0,0,0,.4); }
   .power-bar span { position: absolute; top: 0; line-height: 20px; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
   .power-bar .pl { left: 8px; } .power-bar .pr { right: 8px; }
+  /* mehrere Gegner: je Partei ein Abschnitt in ihrer Farbe, Anteil an der Stärke aller */
+  .power-bar .segs { position: absolute; inset: 0; display: none; }
+  .power-bar.multi .segs { display: block; }
+  .power-bar.multi > i, .power-bar.multi > span { display: none; }
+  .power-bar .segs i { position: absolute; top: 0; bottom: 0; overflow: hidden; font-style: normal; font-size: 12px; font-weight: 700;
+    line-height: 20px; color: #fff; text-align: center; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,.7); box-shadow: 1px 0 3px rgba(0,0,0,.35); }
   .power-foot { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
   .power-foot canvas { flex: 1; min-width: 0; height: 26px; }
   #powerTrend { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -509,7 +515,7 @@
     <canvas id="mini"></canvas>
     <div id="power" class="power">
       <div class="power-head"><span data-en="Balance of power">Kräfteverhältnis</span><b id="powerVerdict"></b></div>
-      <div class="power-bar"><i id="powerMe"></i><span class="pl" id="powerL"></span><span class="pr" id="powerR"></span></div>
+      <div class="power-bar"><i id="powerMe"></i><span class="pl" id="powerL"></span><span class="pr" id="powerR"></span><div class="segs" id="powerSegs"></div></div>
       <div class="power-foot"><canvas id="powerSpark" width="190" height="26"></canvas><span id="powerTrend"></span></div>
     </div>
     <div class="viewsw" title="Ansicht umschalten (V, G)" data-en-title="Switch view (V, G)">
@@ -697,7 +703,7 @@
         <h3 data-en="Special rules">Sonderregeln</h3>
         <table class="help-rules">
           <tr><th data-en="Rule">Regel</th><th data-en="Effect">Wirkung</th></tr>
-          <tr><td data-en="Bombarding land">Beschuss von Land</td><td data-en="Of the ships, only cruisers and battleships can attack units on land, including those in coastal cities. Destroyers only fight ships and aircraft, submarines only ships, and carriers do not attack at all. In “Who beats whom” such pairings show a dash.">Von den Schiffen können nur Kreuzer und Schlachtschiffe Einheiten an Land angreifen, auch in Städten an der Küste. Zerstörer kämpfen nur gegen Schiffe und Flugzeuge, U-Boote nur gegen Schiffe, Träger greifen gar nicht an. In „Wer schlägt wen“ stehen solche Paarungen als Strich.</td></tr>
+          <tr><td data-en="Bombarding land">Beschuss von Land</td><td data-en="Of the ships, only cruisers and battleships can fire at land: at units on land, at fighters above land and into cities – including at ships in port. Destroyers only fight ships and fighters on open water, submarines only ships on open water, and carriers do not attack at all. Your own port is therefore a safe haven from destroyers and submarines. In “Who beats whom” such pairings show a dash; the table counts in open water.">Von den Schiffen können nur Kreuzer und Schlachtschiffe aufs Land schießen: auf Einheiten an Land, auf Jäger über Land und in Städte hinein – auch auf Schiffe im Hafen. Zerstörer kämpfen nur gegen Schiffe und Jäger auf offenem Wasser, U-Boote nur gegen Schiffe auf offenem Wasser, Träger greifen gar nicht an. Der eigene Hafen schützt also vor Zerstörern und U-Booten. In „Wer schlägt wen“ stehen solche Paarungen als Strich; die Tabelle rechnet auf offenem Wasser.</td></tr>
           <tr><td data-en="Coastal attack">Küstenangriff</td><td data-en="Ground troops can attack ships on an adjacent sea tile and then deal triple damage – dangerous for destroyers, carriers and transports that touch the coast. Cruisers and battleships are built for the coast and get no penalty. Submarines cannot be attacked by ground troops at all.">Bodentruppen können Schiffe auf einem Nachbarfeld angreifen und richten dabei dreifachen Schaden an – gefährlich für Zerstörer, Träger und Transporter, die die Küste berühren. Kreuzer und Schlachtschiffe sind für die Küste gebaut und haben keinen Nachteil. U-Boote sind für Bodentruppen gar nicht angreifbar.</td></tr>
           <tr><td data-en="Capture">Eroberung</td><td data-en="Infantry and tanks take a city 50 % of the time. If the city is occupied, they must first beat the strongest defender; if the assault then succeeds, the whole garrison falls. Ships in port do not defend a city against ground troops: if the city falls, they are lost with it – even a battleship.">Infanterie und Panzer nehmen eine Stadt zu 50 %. Ist sie besetzt, müssen sie erst den stärksten Verteidiger schlagen; gelingt danach der Sturm, fällt die ganze Besatzung. Schiffe im Hafen verteidigen eine Stadt nicht gegen Bodentruppen: Fällt die Stadt, gehen sie mit unter – auch ein Schlachtschiff.</td></tr>
           <tr><td data-en="Hidden strength">Verborgene Stärke</td><td data-en="How many units the enemy has in a city or on board a transport or carrier stays hidden. You only see the unit that would defend the tile. Only after the game ends – or with the cheat “fog of war off” – is everything revealed.">Wie viele Einheiten der Gegner in einer Stadt oder an Bord eines Transporters oder Trägers hat, bleibt verborgen. Du siehst nur die Einheit, die das Feld verteidigen würde. Erst nach Spielende – oder mit dem Schummeln „Nebel des Krieges aus“ – wird alles aufgedeckt.</td></tr>
@@ -815,13 +821,15 @@
           auf der mittleren und großen bis zu drei. Dann gilt <b>jeder gegen jeden</b>: Die Gegner (Rot, Gelb, Violett) bekämpfen sich auch untereinander.
           Die Schwierigkeit gilt für alle gleich. Sie ziehen nacheinander, über der Karte steht, wer gerade dran ist. Ein Gegner, der keine Stadt
           mehr hat, scheidet aus, und alle seine Einheiten verschwinden. Die Punkte neben der Stufe oben zeigen, wer noch im Spiel ist.
-          Du gewinnst, wenn alle Gegner ausgeschieden sind. Der Balken „Kräfteverhältnis“ vergleicht dich mit dem jeweils stärksten Gegner.
+          Du gewinnst, wenn alle Gegner ausgeschieden sind. Der Balken „Kräfteverhältnis“ zeigt den Anteil jeder Partei an der Stärke aller;
+          die Einschätzung darüber vergleicht dich mit dem jeweils stärksten Gegner.
           Lass die anderen ruhig erst einmal gegeneinander kämpfen.</p>
         <p data-lang="en"><b>Several opponents:</b> Under <b>New game</b> you choose how many computer opponents you face – up to two on the small map,
           up to three on the medium and large ones. Then it is <b>everyone against everyone</b>: the opponents (Red, Yellow, Purple) also fight each other.
           The difficulty is the same for all of them. They move one after another; the bar above the map shows whose turn it is. An opponent left without
           a city is out, and all of its units disappear. The dots next to the level at the top show who is still in the game.
-          You win once every opponent is out. The “Balance of power” bar compares you with the strongest opponent at the time.
+          You win once every opponent is out. The “Balance of power” bar shows each party's share of everyone's strength;
+          the assessment above it compares you with the strongest opponent at the time.
           Feel free to let the others wear each other down first.</p>
         <p data-lang="de" class="muted">In Testpartien gegen einen Computerspieler, der selbst erkunden muss und keine Fehler macht, gewann
           dieser auf Leicht praktisch immer, auf Normal die Hälfte bis zwei Drittel, auf Schwer etwa jede vierte bis fünfte Partie und auf Brutal fast nie.

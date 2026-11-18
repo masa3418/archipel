@@ -267,15 +267,20 @@ function captureChance(owner, c) {
   if (fireSupport(c.owner, c.x, c.y)) p -= SUPPORT_CAPTURE;
   return p;
 }
-// Darf a die Einheit d überhaupt angreifen? Schiffe beschießen Einheiten an Land (auch in Städten) nur, wenn sie dafür gebaut
-// sind (UT.shore: Kreuzer, Schlachtschiff). Zerstörer greifen nur Schiffe und Flugzeuge an, U-Boote nur Schiffe, Träger gar nicht.
-// Bodentruppen greifen Schiffe an der Küste an, aber keine U-Boote.
-// Regeln (moveStep), KI und Anzeige (Zugmarker, Hinweiszeile, Tabelle „Wer schlägt wen“) fragen alle hier nach.
-function canStrike(a, d) {
+// Darf a die Einheit d (auf dem Feld x, y – sonst dort, wo d steht) überhaupt angreifen? Schiffe schießen nur dann aufs Land oder
+// in eine Stadt, wenn sie dafür gebaut sind (UT.shore: Kreuzer, Schlachtschiff). Alle anderen erreichen nichts auf einem Landfeld:
+// keine Bodentruppen, keine Jäger über Land und nichts in einer Stadt, auch keine Schiffe im Hafen (Wunsch des Nutzers – der eigene
+// Hafen schützt Transporter vor Zerstörern und U-Booten). Zerstörer greifen also Schiffe und Jäger auf dem Wasser an, U-Boote nur
+// Schiffe auf dem Wasser, Träger gar nicht. Bodentruppen greifen Schiffe an der Küste an, aber keine U-Boote.
+// Regeln (moveStep), KI (auch die Bedrohungskarte, mit x, y) und Anzeige (Zugmarker, Hinweiszeile, Tabelle „Wer schlägt wen“,
+// dort auf offenem Wasser gerechnet) fragen alle hier nach.
+function canStrike(a, d, x = d.x, y = d.y) {
   if (!canAttack(a.type)) return false;                         // Transporter und Träger greifen nie an
   if (T(a).stealth && T(d).domain !== 'sea') return false;    // U-Boote: nur Schiffe, keine Flugzeuge
   if (T(a).domain === 'land' && T(d).stealth) return false;   // U-Boote: für Bodentruppen nicht angreifbar
-  return !(T(a).domain === 'sea' && !T(a).shore && T(d).domain === 'land');
+  if (T(a).domain !== 'sea' || T(a).shore) return true;
+  if (T(d).domain === 'land') return false;                   // Bodentruppen: nur Kreuzer und Schlachtschiff
+  return !(inb(x, y) && S.terrain[idx(x, y)] === 1);          // Landfeld (Jäger über Land, Stadt samt Hafen): ebenso
 }
 
 function combatSpec(a, d, x, y) {
@@ -454,8 +459,9 @@ function moveStep(u, nx, ny) {
     const targets = foes.filter(o => canStrike(u, o));
     if (!targets.length) return { ok: false, msg: t.domain === 'land'
       ? tt('U-Boote sind für Bodentruppen nicht angreifbar', 'Submarines cannot be attacked by ground troops')
+      : t.domain === 'sea' && !t.shore && city ? tt(`${t.name} kann nicht in eine Stadt hineinschießen – Schiffe im Hafen erreichen nur Kreuzer, Schlachtschiffe und Jäger`, `${t.name} cannot fire into a city – ships in port can only be reached by cruisers, battleships and fighters`)
       : t.stealth ? tt('U-Boote greifen nur Schiffe an', 'Submarines attack only ships')
-      : tt(`${t.name} kann keine Einheiten an Land angreifen – das können nur Kreuzer und Schlachtschiffe`, `${t.name} cannot attack units on land – only cruisers and battleships can`) };
+      : tt(`${t.name} kann keine Einheiten an Land oder darüber angreifen – das können nur Kreuzer und Schlachtschiffe`, `${t.name} cannot attack units on or above land – only cruisers and battleships can`) };
     return attack(u, nx, ny, targets, city);
   }
   if (city && city.owner !== u.owner) {
@@ -1257,9 +1263,12 @@ function strongestEnemy() {
   for (let p = 1; p < nPlayers(); p++) { const v = strength(p).total; if (v > bv) { bv = v; best = p; } }
   return best;
 }
+// S.hist: je Runde deine Stärke (me), die des stärksten Gegners (en) und die aller Spieler (all – für die Anzeige aller Parteien
+// bei mehreren Gegnern; ältere Spielstände haben sie nicht)
 function recordStrength() {
   if (!S.hist) S.hist = [];
-  const e = { t: S.turn, me: strength(0).total, en: strength(strongestEnemy()).total };
+  const all = S.players.map((_, p) => strength(p).total);
+  const e = { t: S.turn, me: all[0], en: strength(strongestEnemy()).total, all };
   const last = S.hist[S.hist.length - 1];
   if (last && last.t === S.turn) S.hist[S.hist.length - 1] = e; else S.hist.push(e);
   if (S.hist.length > 1000) S.hist.shift();
@@ -1509,9 +1518,11 @@ function sanitizeState(o) {
     t: int(l.t, 1, 0, 1e6), text: str(l.text, 300), cls: oneOf(l.cls, ['', 'good', 'bad'], ''),
     x: inMap(l.x, l.y) ? l.x : null, y: inMap(l.x, l.y) ? l.y : null,
   }));
-  s.hist = (Array.isArray(o.hist) ? o.hist.slice(-1000) : []).filter(e => e && isNum(e.t)).map(e => ({
-    t: int(e.t, 1, 0, 1e6), me: num(e.me, 0, 0, 1e9), en: num(e.en, 0, 0, 1e9),
-  }));
+  s.hist = (Array.isArray(o.hist) ? o.hist.slice(-1000) : []).filter(e => e && isNum(e.t)).map(e => {
+    const r = { t: int(e.t, 1, 0, 1e6), me: num(e.me, 0, 0, 1e9), en: num(e.en, 0, 0, 1e9) };
+    if (Array.isArray(e.all) && e.all.length === nP) r.all = e.all.map(v => num(v, 0, 0, 1e9));
+    return r;
+  });
 
   // Statistik der zerstörten Einheiten: je Spieler und Einheitentyp eine Zahl. Ältere Spielstände kennen sie nicht,
   // dort wird erst ab dem Laden gezählt (killsFrom = Runde, ab der die Zahlen gelten).

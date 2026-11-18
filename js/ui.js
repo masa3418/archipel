@@ -1799,42 +1799,66 @@ function powerShares() {
   const v = S.players.map((_, p) => strength(p).total), sum = v.reduce((x, y) => x + y, 0) || 1;
   return v.map(x => Math.round(x / sum * 100));
 }
+// Anteil an der Stärke aller aus einem Eintrag von S.hist (null, wenn der Eintrag älter ist und die Stärke aller nicht kennt)
+const allShare = e => (Array.isArray(e.all) ? e.all[0] / Math.max(1, e.all.reduce((x, y) => x + y, 0)) : null);
 function updatePower() {
-  // Du gegen den stärksten Gegner (bei einem Gegner: gegen ihn) – siehe strongestEnemy in game.js
+  // Urteil: du gegen den stärksten Gegner (bei einem Gegner: gegen ihn) – siehe strongestEnemy in game.js
   const en = strongestEnemy(), multi = nPlayers() > 2;
   const a = strength(0), b = strength(en);
   const share = a.total + b.total > 0 ? a.total / (a.total + b.total) : 0.5;
   const pct = Math.round(share * 100);
-  $('powerMe').style.width = pct + '%';
-  $('powerL').textContent = tt('Du ', 'You ') + pct + ' %';
-  $('powerR').textContent = (100 - pct) + (multi ? ' % ' + pname(en) : tt(' % Gegner', ' % enemy'));
-  $('powerMe').parentElement.style.background = multi ? `linear-gradient(90deg, ${PLAYERS[en].dark}, ${PLAYERS[en].color})` : '';
+  const bar = $('powerMe').parentElement;
+  bar.classList.toggle('multi', multi);
+  // Mehrere Gegner: Balken, Kurve und Trend zeigen den Anteil jeder Partei an der Stärke aller (ausgeschiedene fehlen);
+  // die Zahl steht im Abschnitt, wenn er breit genug ist, sonst nur im Hinweistext
+  const tot = S.players.map((_, p) => (p === 0 || isAlive(p) ? strength(p).total : 0));
+  const sumAll = Math.max(1, tot.reduce((x, y) => x + y, 0));
+  const alive = tot.filter((v, p) => p === 0 || v > 0).length;
+  const mine = multi ? tot[0] / sumAll : share;   // Wert für Kurve und Trend
+  if (multi) {
+    let left = 0, h = '';
+    tot.forEach((v, p) => {
+      if (p && !v) return;
+      const w = v / sumAll * 100, pc = Math.round(w);
+      const lab = w >= 10 ? (p === 0 && w >= 16 ? tt('Du ', 'You ') : '') + pc + ' %' : '';   // schmal: nur die Zahl, sehr schmal: nichts
+      h += `<i style="left:${left.toFixed(2)}%;width:${w.toFixed(2)}%;background:linear-gradient(90deg, ${PLAYERS[p].dark}, ${PLAYERS[p].color})">${lab}</i>`;
+      left += w;
+    });
+    $('powerSegs').innerHTML = h;
+  } else {
+    $('powerSegs').innerHTML = '';
+    $('powerMe').style.width = pct + '%';
+    $('powerL').textContent = tt('Du ', 'You ') + pct + ' %';
+    $('powerR').textContent = (100 - pct) + tt(' % Gegner', ' % enemy');
+  }
   const v = share >= 0.9 ? [tt('Erdrückend überlegen', 'Overwhelming'), 'up'] : share >= 0.65 ? [tt('Klar überlegen', 'Clearly ahead'), 'up'] : share >= 0.55 ? [tt('Überlegen', 'Ahead'), 'up']
     : share > 0.45 ? [tt('Ausgeglichen', 'Even'), 'flat'] : share > 0.35 ? [tt('Unterlegen', 'Behind'), 'down'] : share > 0.1 ? [tt('Stark unterlegen', 'Far behind'), 'down'] : [tt('Aussichtslos', 'Hopeless'), 'down'];
   $('powerVerdict').textContent = v[0]; $('powerVerdict').className = v[1];
   // Trend gegenüber dem Beginn der letzten Runde
   const hist = S.hist || [];
   const prev = [...hist].reverse().find(e => e.t < S.turn);
-  const prevShare = prev && prev.me + prev.en > 0 ? prev.me / (prev.me + prev.en) : null;
+  const prevShare = !prev ? null : multi ? allShare(prev) : prev.me + prev.en > 0 ? prev.me / (prev.me + prev.en) : null;
   const tr = $('powerTrend');
   if (prevShare == null) { tr.textContent = ''; }
   else {
-    const d = Math.round((share - prevShare) * 100);
+    const d = Math.round((mine - prevShare) * 100);
     tr.textContent = d > 0 ? `▲ +${d} %` : d < 0 ? `▼ ${d} %` : '● ±0';
     tr.className = d > 0 ? 'up' : d < 0 ? 'down' : 'flat';
     tr.title = tt('Veränderung seit Beginn der letzten Runde', 'Change since the start of the last turn');
   }
-  // Vom Gegner nur Prozentwerte (siehe Spoiler). Bei mehreren Gegnern: Vergleich mit dem stärksten und die Anteile aller.
+  // Vom Gegner nur Prozentwerte (siehe Spoiler). Bei mehreren Gegnern: Anteile aller, dazu der Vergleich mit dem stärksten (Urteil).
   const all = multi ? powerShares() : null;
   const allTxt = multi ? S.players.map((_, p) => p === 0 || isAlive(p) ? `${pname(p)} ${all[p]} %` : null).filter(Boolean).join(', ') : '';
   $('power').title = multi
-    ? tt(`Du gegen den stärksten Gegner (${pname(en)}): ${pct} : ${100 - pct}\n`
+    ? tt(`Anteile an der Stärke aller: ${allTxt}\n`
+      + `Einschätzung „${v[0]}“: du gegen den stärksten Gegner (${pname(en)}), ${pct} : ${100 - pct}\n`
       + `Du: ${a.cities} ${a.cities === 1 ? 'Stadt' : 'Städte'}, ${a.units} ${a.units === 1 ? 'Einheit' : 'Einheiten'} (Wert ${a.unitValue}) – Stärke ${a.total}\n`
-      + `Anteile an der Stärke aller: ${allTxt}\n`
+      + `Kurve und Trend: dein Anteil an allem (gestrichelt: gleiche Anteile, 1/${alive})\n`
       + 'Stärke = Wert der Einheiten (Bauzeit × Zustand) + 20 je Stadt\nKlick: die genaue Rechnung',
-      `You against the strongest enemy (${pname(en)}): ${pct} : ${100 - pct}\n`
+      `Shares of everyone's strength: ${allTxt}\n`
+      + `Assessment “${v[0]}”: you against the strongest enemy (${pname(en)}), ${pct} : ${100 - pct}\n`
       + `You: ${a.cities} ${a.cities === 1 ? 'city' : 'cities'}, ${a.units} ${a.units === 1 ? 'unit' : 'units'} (value ${a.unitValue}) – strength ${a.total}\n`
-      + `Shares of everyone's strength: ${allTxt}\n`
+      + `Curve and trend: your share of everything (dashed: equal shares, 1/${alive})\n`
       + 'Strength = value of units (build time × condition) + 20 per city\nClick: the exact calculation')
     : tt(`Du: ${a.cities} ${a.cities === 1 ? 'Stadt' : 'Städte'}, ${a.units} ${a.units === 1 ? 'Einheit' : 'Einheiten'} (Wert ${a.unitValue}) – Stärke ${a.total}\n`
     + `Gegner: ${100 - pct} % der gesamten Stärke\n`
@@ -1842,7 +1866,7 @@ function updatePower() {
     `You: ${a.cities} ${a.cities === 1 ? 'city' : 'cities'}, ${a.units} ${a.units === 1 ? 'unit' : 'units'} (value ${a.unitValue}) – strength ${a.total}\n`
     + `Enemy: ${100 - pct} % of the total strength\n`
     + 'Strength = value of units (build time × condition) + 20 per city\nClick: the exact calculation');
-  drawPowerSpark(hist, share);
+  drawPowerSpark(hist, mine, multi ? 1 / alive : 0.5, multi);
 }
 
 // Fenster „Kräfteverhältnis“ (Klick auf den Balken): die Rechnung hinter der Prozentzahl. Die eigenen Einheiten stehen je Typ da.
@@ -1903,8 +1927,8 @@ function renderPower() {
 
   const hi = 100 - offerPct;
   h += `<h3>${tt('So wird gezählt', 'How it is counted')}</h3><ul class="power-notes">
-    <li>${multi ? tt('Stärke = Wert der Einheiten + 20 je Stadt. Bei mehreren Gegnern vergleicht der Balken dich mit dem stärksten Gegner: deine Stärke geteilt durch deine und seine zusammen. Die Summe aller Gegner zählt nicht – sie bekämpfen sich auch untereinander. Die letzte Zeile der Tabelle zeigt, welchen Anteil jeder an der Stärke aller hat.',
-      'Strength = value of the units + 20 per city. With several enemies the bar compares you with the strongest one: your strength divided by the sum of yours and theirs. The sum of all enemies does not count – they also fight each other. The last row of the table shows each player\'s share of everyone\'s strength.')
+    <li>${multi ? tt('Stärke = Wert der Einheiten + 20 je Stadt. Bei mehreren Gegnern zeigt der Balken den Anteil jeder Partei an der Stärke aller (wie die letzte Zeile der Tabelle), die Kurve darunter deinen. Die Einschätzung („Überlegen“ …) vergleicht dich mit dem stärksten Gegner: deine Stärke geteilt durch deine und seine zusammen. Die Summe aller Gegner zählt dafür nicht – sie bekämpfen sich auch untereinander.',
+      'Strength = value of the units + 20 per city. With several enemies the bar shows each party\'s share of everyone\'s strength (like the last row of the table), the curve below it yours. The assessment (“Ahead” …) compares you with the strongest enemy: your strength divided by the sum of yours and theirs. The sum of all enemies does not count for it – they also fight each other.')
       : tt('Stärke = Wert der Einheiten + 20 je Stadt. Dein Anteil ist deine Stärke geteilt durch die Stärke beider Seiten zusammen.',
       'Strength = value of the units + 20 per city. Your share is your strength divided by the strength of both sides together.')}</li>
     <li>${tt('Der Wert einer Einheit ist ihre Bauzeit in Runden. Beschädigte Einheiten zählen anteilig nach ihren Trefferpunkten, Einheiten an Bord zählen mit.',
@@ -1928,26 +1952,28 @@ function openPower() { if (!S) return; closeCtx(); renderPower(); openModal('mPo
 $('power').onclick = openPower;
 $('bPowerMenu').onclick = openPower;
 
-function drawPowerSpark(hist, share) {
+// Verlauf unter dem Balken: dein Anteil, um die Linie base zentriert (ein Gegner: 50 % gegen ihn; mehrere: Anteil an allem, base =
+// gleiche Anteile aller noch lebenden Parteien – Einträge älterer Spielstände ohne die Stärke aller fehlen dann)
+function drawPowerSpark(hist, share, base = 0.5, multi = false) {
   const c = $('powerSpark'), g = c.getContext('2d');
   const w = c.clientWidth || 190, h = 26, dpr = window.devicePixelRatio || 1;
   if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, w, h);
-  const pts = hist.filter(e => e.t < S.turn).map(e => (e.me + e.en > 0 ? e.me / (e.me + e.en) : 0.5));
+  const pts = hist.filter(e => e.t < S.turn).map(e => (multi ? allShare(e) : e.me + e.en > 0 ? e.me / (e.me + e.en) : 0.5)).filter(v => v != null);
   pts.push(share);
-  // um die 50-%-Linie zentriert, auf die tatsächliche Schwankung skaliert (mind. ±10 %)
-  const dev = Math.max(0.1, ...pts.map(v => Math.abs(v - 0.5))) * 1.15;
-  const y = v => h / 2 - (v - 0.5) / dev * (h / 2 - 2);
+  // um die Grundlinie zentriert, auf die tatsächliche Schwankung skaliert (mind. ±10 %)
+  const dev = Math.max(0.1, ...pts.map(v => Math.abs(v - base))) * 1.15;
+  const y = v => h / 2 - (v - base) / dev * (h / 2 - 2);
   g.strokeStyle = 'rgba(255,255,255,0.15)'; g.lineWidth = 1; g.setLineDash([3, 3]);
-  g.beginPath(); g.moveTo(0, y(0.5)); g.lineTo(w, y(0.5)); g.stroke(); g.setLineDash([]);
+  g.beginPath(); g.moveTo(0, y(base)); g.lineTo(w, y(base)); g.stroke(); g.setLineDash([]);
   if (pts.length < 2) return;
   const show = pts.slice(-80);
   const x = i => i / (show.length - 1) * (w - 4) + 2;
-  g.beginPath(); g.moveTo(x(0), y(0.5));
+  g.beginPath(); g.moveTo(x(0), y(base));
   show.forEach((v, i) => g.lineTo(x(i), y(v)));
-  g.lineTo(x(show.length - 1), y(0.5)); g.closePath();
-  g.fillStyle = share >= 0.5 ? 'rgba(47,125,225,0.25)' : 'rgba(217,67,59,0.25)'; g.fill();
+  g.lineTo(x(show.length - 1), y(base)); g.closePath();
+  g.fillStyle = share >= base ? 'rgba(47,125,225,0.25)' : 'rgba(217,67,59,0.25)'; g.fill();
   g.beginPath(); show.forEach((v, i) => i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v)));
   g.strokeStyle = '#8fc0ff'; g.lineWidth = 1.5; g.stroke();
   g.fillStyle = '#fff'; g.beginPath(); g.arc(x(show.length - 1), y(show[show.length - 1]), 2.5, 0, 7); g.fill();
@@ -2157,12 +2183,12 @@ const UNIT_INFO = {
     'Captures cities like infantry, but moves twice as fast and survives one hit. Is not repaired in cities. Expensive as a conqueror, strong against infantry in the field.'),
   ftr: tt('Fliegt über Land und Wasser. Hat Treibstoff für 18 Felder und muss zu einer eigenen Stadt oder einem Träger zurück; jede Runde in der Luft kostet mindestens 6. Jagt Transporter und richtet gegen Schlachtschiffe dreifachen Schaden an.',
     'Flies over land and water. Has fuel for 18 tiles and must return to one of your cities or a carrier; every turn in the air costs at least 6. Hunts transports and deals triple damage to battleships.'),
-  trn: tt('Bringt bis zu 6 Bodentruppen übers Meer. Unbewaffnet: Wer ihn erwischt, versenkt die ganze Ladung. Gib ihm einen Zerstörer mit – und gegen Jäger einen Träger: Unter Luftdeckung wehrt er sich mit Stärke 1. Laden, Landen und Angriff vom Schiff erklärt die Seite „Transporter“.',
-    'Carries up to 6 ground units across the sea. Unarmed: whoever catches it sinks the whole load. Give it a destroyer escort – and a carrier against fighters: under air cover it fights back with strength 1. Loading, landing and attacking from the ship are explained on the “Transports” page.'),
-  dst: tt('Schnell, billig, guter Späher. Ortet als einziges Schiff getauchte U-Boote in seiner vollen Sichtweite und schlägt sie mit Sonar und Wasserbomben. Der Geleitschutz für Transporter. Einheiten an Land kann er nicht angreifen – und an der Küste ist er selbst gefährdet: Bodentruppen treffen ihn dreifach.',
-    'Fast, cheap, a good scout. The only ship that locates submerged submarines at its full vision range, and beats them with sonar and depth charges. The escort for transports. It cannot attack units on land – and at the coast it is at risk itself: ground troops hit it threefold.'),
-  sub: tt('Getarnt: Getaucht sehen es nur Nachbarn und Zerstörer. Sein Torpedo trifft große Schiffe zuerst und doppelt stark. Nach einem Angriff ist es bis zu deinem nächsten Zug aufgetaucht (Welle unter dem Boot). Für Bodentruppen ist es nicht angreifbar, greift selbst aber nur Schiffe an. Große Schiffe können es getaucht kaum bekämpfen – sein Feind sind Zerstörer und Jäger.',
-    'Hidden: submerged, it is only seen by neighbours and destroyers. Its torpedo hits big ships first and with double strength. After attacking it is surfaced until your next turn (wave below the boat). Ground troops cannot attack it, but it attacks only ships itself. Large ships can hardly fight it while submerged – its enemies are destroyers and fighters.'),
+  trn: tt('Bringt bis zu 6 Bodentruppen übers Meer. Unbewaffnet: Wer ihn erwischt, versenkt die ganze Ladung. Gib ihm einen Zerstörer mit – und gegen Jäger einen Träger: Unter Luftdeckung wehrt er sich mit Stärke 1. Im eigenen Hafen ist er vor Zerstörern und U-Booten sicher. Laden, Landen und Angriff vom Schiff erklärt die Seite „Transporter“.',
+    'Carries up to 6 ground units across the sea. Unarmed: whoever catches it sinks the whole load. Give it a destroyer escort – and a carrier against fighters: under air cover it fights back with strength 1. In your own port it is safe from destroyers and submarines. Loading, landing and attacking from the ship are explained on the “Transports” page.'),
+  dst: tt('Schnell, billig, guter Späher. Ortet als einziges Schiff getauchte U-Boote in seiner vollen Sichtweite und schlägt sie mit Sonar und Wasserbomben. Der Geleitschutz für Transporter. Er greift nichts an Land und nichts in einer Stadt an, auch keine Schiffe im Hafen, Jäger nur über Wasser – und an der Küste ist er selbst gefährdet: Bodentruppen treffen ihn dreifach.',
+    'Fast, cheap, a good scout. The only ship that locates submerged submarines at its full vision range, and beats them with sonar and depth charges. The escort for transports. It attacks nothing on land and nothing in a city, not even ships in port, and fighters only over water – and at the coast it is at risk itself: ground troops hit it threefold.'),
+  sub: tt('Getarnt: Getaucht sehen es nur Nachbarn und Zerstörer. Sein Torpedo trifft große Schiffe zuerst und doppelt stark. Nach einem Angriff ist es bis zu deinem nächsten Zug aufgetaucht (Welle unter dem Boot). Für Bodentruppen ist es nicht angreifbar, greift selbst aber nur Schiffe auf offenem Wasser an – im Hafen sind sie vor ihm sicher. Große Schiffe können es getaucht kaum bekämpfen – sein Feind sind Zerstörer und Jäger.',
+    'Hidden: submerged, it is only seen by neighbours and destroyers. Its torpedo hits big ships first and with double strength. After attacking it is surfaced until your next turn (wave below the boat). Ground troops cannot attack it, but it attacks only ships on open water itself – in port they are safe from it. Large ships can hardly fight it while submerged – its enemies are destroyers and fighters.'),
   crs: tt('Das Allround-Kriegsschiff: schlägt Zerstörer sicher und hält viel aus. Gegen Schlachtschiffe und U-Boote hat es das Nachsehen – getauchte U-Boote überlässt es besser Zerstörern. Beschießt auch Einheiten an Land und in Städten an der Küste.',
     'The all-round warship: reliably beats destroyers and can take a lot. It loses out to battleships and submarines – submerged submarines are better left to destroyers. Also bombards units on land and in coastal cities.'),
   car: tt('Das Auge der Flotte: sieht 4 Felder weit. Trägt und betankt bis zu 6 Jäger. Mit mindestens einem Jäger an Bord gibt er Luftdeckung: Feindliche Jäger treffen ihn und eigene Schiffe nebenan nur zu einem Drittel. Er greift nie selbst an, das übernehmen seine Jäger. Halte ihn von der Küste fern: Bodentruppen treffen ihn dreifach.',
@@ -2559,7 +2585,8 @@ function tlDraw() {
     + (tlv.truth ? '' : `<span>${tt('entdeckt', 'explored')}: ${Math.round(seenN / N * 100)} %</span>`);
   tlCurve();
 }
-// Kräfteverhältnis über die Runden: Anteil „Du“ blau von unten, Gegner rot darüber, Strich bei der gezeigten Runde
+// Kräfteverhältnis über die Runden: Anteil „Du“ blau von unten, Gegner rot darüber, Strich bei der gezeigten Runde.
+// Mehrere Gegner: alle Parteien gestapelt in ihren Farben (Anteil an der Stärke aller) – sofern die Aufzeichnung sie kennt (S.hist.all)
 function tlCurve() {
   const cv2 = $('tlCurve');
   if (cv2.hidden) return;
@@ -2571,20 +2598,33 @@ function tlCurve() {
   const hist = (S.hist || []).filter(e => e.t >= tlv.from && e.t <= tlv.to);
   const span = Math.max(1, tlv.to - tlv.from);
   const X = t => (t - tlv.from) / span * (w - 2) + 1;
+  const stacked = nPlayers() > 2 && hist.length > 0 && hist.every(e => Array.isArray(e.all) && e.all.length === nPlayers());
   ctx.fillStyle = '#5a1f1c'; ctx.fillRect(0, 0, w, h);
-  if (hist.length) {
+  if (stacked) {
+    let lower = hist.map(() => 0);
+    for (let p = 0; p < nPlayers(); p++) {
+      const upper = hist.map((e, i) => lower[i] + e.all[p] / Math.max(1, e.all.reduce((s, v) => s + v, 0)));
+      ctx.beginPath();
+      hist.forEach((e, i) => (i ? ctx.lineTo(X(e.t), h - upper[i] * h) : ctx.moveTo(X(e.t), h - upper[i] * h)));
+      for (let i = hist.length - 1; i >= 0; i--) ctx.lineTo(X(hist[i].t), h - lower[i] * h);
+      ctx.closePath(); ctx.fillStyle = PLAYERS[p].color; ctx.fill();
+      lower = upper;
+    }
+  } else if (hist.length) {
     ctx.beginPath(); ctx.moveTo(X(hist[0].t), h);
     for (const e of hist) ctx.lineTo(X(e.t), h - e.me / Math.max(1, e.me + e.en) * h);
     ctx.lineTo(X(hist[hist.length - 1].t), h); ctx.closePath();
     ctx.fillStyle = '#2f7de1'; ctx.fill();
   }
-  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, h / 2 + 0.5); ctx.lineTo(w, h / 2 + 0.5); ctx.stroke(); ctx.setLineDash([]);
+  if (!stacked) {   // 50-%-Linie nur im Zweikampf
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, h / 2 + 0.5); ctx.lineTo(w, h / 2 + 0.5); ctx.stroke(); ctx.setLineDash([]);
+  }
   const x = X(tlv.t);
   ctx.fillStyle = '#fff'; ctx.fillRect(Math.round(x) - 1, 0, 2, h);
   const e = hist.filter(o => o.t <= tlv.t).pop();
   if (e) {
-    const pct = Math.round(e.me / Math.max(1, e.me + e.en) * 100);
+    const pct = Math.round((stacked ? allShare(e) : e.me / Math.max(1, e.me + e.en)) * 100);
     ctx.font = '600 12px system-ui, sans-serif'; ctx.textBaseline = 'top';
     const txt = tt(`Du ${pct} %`, `You ${pct} %`), tw = ctx.measureText(txt).width;
     const tx = Math.min(Math.max(4, x + 6), w - tw - 4);

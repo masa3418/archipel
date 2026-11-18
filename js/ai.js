@@ -201,11 +201,12 @@ function threatMap(u) {
   threatCache.set(key, z);
   for (const e of S.units) {
     if (e.owner === u.owner || e.carrier != null || !canSee(u.owner, e) || !canAttack(e.type)) continue;
-    if (!canStrike(e, u)) continue;   // was e gar nicht angreifen darf, bedroht u nicht (Bodentruppen → U-Boot, Zerstörer → Land …)
+    if (!canStrike(e, u, -1, -1)) continue;   // was e gar nicht angreifen darf, bedroht u nicht (Bodentruppen → U-Boot, Zerstörer → Land …)
     const r = Math.max(1, T(e).move);
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       const x = e.x + dx, y = e.y + dy;
       if (!inb(x, y) || z[idx(x, y)]) continue;
+      if (!canStrike(e, u, x, y)) continue;   // je Feld: Zerstörer erreichen Jäger über Land nicht
       if (attackOdds(e, u, x, y) >= 0.6) z[idx(x, y)] = 1;
     }
   }

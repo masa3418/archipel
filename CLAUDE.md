@@ -64,8 +64,14 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Erstschlag, Hinweistexte). Kampfablauf, angezeigte Siegchance und KI-Bewertung nutzen
   diese eine Funktion – neue Boni nur dort eintragen. Die Tabelle „Wer schlägt wen“ im Handbuch rechnet sich
   daraus selbst; die Sonderregel als Zeile im Reiter „Kampf“ und im Einheitentext ergänzen (siehe „Handbuch“).
-- **Beschuss von Land**: Nur Schiffe mit `shore: true` (Kreuzer, Schlachtschiff) dürfen Einheiten an Land angreifen, auch in Städten.
-  `canStrike(a, d)` (game.js) entscheidet das; moveStep, KI (`bestAttack`, Jagd der Schiffe) und Anzeige fragen dort nach.
+- **Beschuss von Land**: Nur Schiffe mit `shore: true` (Kreuzer, Schlachtschiff) erreichen etwas auf einem Landfeld: Einheiten an Land,
+  Jäger über Land und alles in einer Stadt, auch Schiffe im Hafen (Wunsch des Nutzers: Zerstörer greifen kein Flugzeug über Land an und
+  schießen nicht in Städte – der eigene Hafen ist ein Schutzraum für Transporter vor Zerstörern und U-Booten; Jäger erreichen Schiffe im Hafen weiter).
+  `canStrike(a, d, x, y)` (game.js; x, y = Feld des Ziels, sonst sein Standort) entscheidet das; moveStep, KI (`bestAttack`, Jagd der Schiffe,
+  Bedrohungskarte je Feld) und Anzeige fragen dort nach. Die Tabelle „Wer schlägt wen“ rechnet auf offenem Wasser.
+  Messung Jäger über Land (kleine Karte, alle Welten, alt → neu): Leicht 100 → 99 % (96), Normal 60 → 61 % (384), Schwer 20 → 17 % (288),
+  Brutal 3 → 2 % (96), offen 15 → 21 von 864 – im Rahmen, Stufen nicht nachgestellt. Hafen als Schutzraum (Hafen angreifbar → sicher):
+  Leicht 99 → 97 % (96), Normal 57 → 61 % (288), Schwer 19 → 15 % (192), Brutal 2 → 1 % (96), offen 11 → 14 von 672 – im Rahmen.
   **Küstenangriff** (`COAST` in game.js, in `combatSpec`): Bodentruppen gegen ein Schiff auf einem Nachbarfeld (nicht in einer Stadt) richten
   dreifachen Schaden an – außer gegen Kreuzer/Schlachtschiff (`shore`). U-Boote sind für Bodentruppen nicht angreifbar (`canStrike`).
   Infanterie → Zerstörer 50 %, Panzer → Zerstörer 75 %, Panzer → Träger 31 %. Die KI-Bedrohungskarte (`threatMap`) berücksichtigt das.
@@ -168,9 +174,12 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   draußen sind – auch mit einem Gegner (vorher musste man seine letzten Bodentruppen jagen). Der Mensch verliert weiterhin erst ohne Stadt
   und ohne Einheit, die erobern kann.
   Zugfolge: `endHumanTurn` lässt die lebenden Gegner nacheinander ziehen, `anim.phases` merkt, ab wann wer in der Zeitleiste dran ist
-  (`updateBanner`: „Gelb zieht …“). Kräftebalken, Kurve und Angebot zum vorzeitigen Ende vergleichen mit dem stärksten Gegner
-  (`strongestEnemy`); das Kräftefenster hat eine Spalte je Gegner (Anteil immer, Zahlen nur mit dem Spoiler-Haken), das Abschlussfenster
-  Spalten je Spieler. Kopfzeile: Punkte je Gegner (`.foes`, blass = ausgeschieden). Startplätze: zwei Spieler wie bisher (gleiche
+  (`updateBanner`: „Gelb zieht …“). Kräftebalken (Wunsch des Nutzers): je Partei ein Abschnitt in ihrer Farbe mit ihrem Anteil an der
+  Stärke aller (`#powerSegs`, Klasse `multi`; Zahl nur, wenn der Abschnitt breit genug ist), Kurve und Trend darunter = dein Anteil an allem
+  (gestrichelt: gleiche Anteile 1/n), Zeitraffer-Kurve gestapelt in allen Farben (`tlCurve`) – dafür speichert `recordStrength` in `S.hist`
+  zusätzlich `all` (Stärke je Spieler; ältere Einträge ohne). Das Urteil („Überlegen“ …) und das Angebot zum vorzeitigen Ende vergleichen
+  weiter mit dem stärksten Gegner (`strongestEnemy`). Das Kräftefenster hat eine Spalte je Gegner (Anteil immer, Zahlen nur mit dem
+  Spoiler-Haken), das Abschlussfenster Spalten je Spieler. Kopfzeile: Punkte je Gegner (`.foes`, blass = ausgeschieden). Startplätze: zwei Spieler wie bisher (gleiche
   Kartennummer = gleiche Karte wie vor der Erweiterung), ab drei `pickStarts` (map.js: weit auseinander, möglichst auf verschiedenen
   Landmassen, ähnlich viele Städte im Umkreis).
 - **Karte bewegen** (ui.js): Ziehen mit jeder Maustaste (links erst ab `DRAG_THRESHOLD_LEFT`, der Klick danach wird über
