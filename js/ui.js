@@ -660,7 +660,7 @@ function render(now = performance.now()) {
     const inCity = S.cityGrid[i] >= 0;
     // Zahl an der Marke (Einheiten in der Stadt, Ladung) nur bei eigenen Einheiten – wie viel der Gegner an Bord oder
     // in einer Stadt hat, bleibt bis zum Spielende verborgen
-    const reveal = show.owner === 0 || S.over;
+    const reveal = show.owner === 0 || S.over || CHEAT_FOG;   // Schummeln „Nebel aus“ deckt auch das auf
     const badge = !reveal ? 0 : inCity ? (list.length > 1 ? list.length : 0) : cargoOf(show).length;
     const own = show.owner === 0;
     const opts = {
@@ -675,7 +675,7 @@ function render(now = performance.now()) {
     if (inCity) drawToken(show, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66, opts);
     else drawToken(show, x * TS, y * TS, TS, opts);
   }
-  for (const [u, [x, y]] of moving) drawToken(u, x * TS, y * TS, TS, { badge: u.owner === 0 || S.over ? cargoOf(u).length : 0 });
+  for (const [u, [x, y]] of moving) drawToken(u, x * TS, y * TS, TS, { badge: u.owner === 0 || S.over || CHEAT_FOG ? cargoOf(u).length : 0 });
   // Vernichtete und in einer Stadt aufgegangene Einheiten bleiben bis zu ihrem Moment sichtbar
   if (playing) for (const g of anim.gone) {
     if (rel >= g.until) continue;
@@ -1899,7 +1899,7 @@ function updateHeader() {
   const dk = DIFFICULTY[S.difficulty] ? S.difficulty : 'normal', dv = DIFFICULTY[dk], wv = WORLDS[S.world];
   const tip = `${tt('Schwierigkeit', 'Difficulty')}: ${dv.label}${wv ? ` · ${tt('Welt', 'World')}: ${wv.label}` : ''} – ${dv.desc}\n${tt('Klick: Erklärung der Stufen im Handbuch', 'Click: the levels explained in the handbook')}`;
   $('turnInfo').innerHTML = `${tt('Runde', 'Turn')} <b>${S.turn}</b> <span class="lvl lvl-${dk}" title="${esc(tip)}">${esc(dv.label)}</span>`
-    + (CHEAT_FOG ? ` <span class="cheat" title="${tt('Schummelei aktiv: Du siehst die ganze Karte und alle Einheiten des Gegners. Klick schaltet den Nebel wieder ein.', 'Cheat active: you see the whole map and all enemy units. Click to switch the fog back on.')}">👁 ${tt('Nebel aus', 'Fog off')}</span>` : '');
+    + (CHEAT_FOG ? ` <span class="cheat" title="${tt('Schummelei aktiv: Du siehst die ganze Karte und alle Einheiten des Gegners samt Ladung und Besatzung. Klick schaltet den Nebel wieder ein.', 'Cheat active: you see the whole map and all enemy units including cargo and garrisons. Click to switch the fog back on.')}">👁 ${tt('Nebel aus', 'Fog off')}</span>` : '');
   updateLogHead();
   $('log').innerHTML = S.log.slice(0, 60).map(l =>
     `<div class="${l.cls}" ${l.x != null ? `data-x="${l.x}" data-y="${l.y}"` : ''}><span class="t">${tt('R', 'T')}${l.t}</span>${esc(l.text)}</div>`).join('');
@@ -1950,7 +1950,7 @@ function updateHover() {
   if (P.vis[i]) {
     const us = topUnitsAt(x, y).filter(o => canSee(0, o));
     // Vom Gegner nur die Einheit nennen, die das Feld verteidigt – wie viele es sind, bleibt verborgen
-    const named = S.over || !us.some(o => o.owner !== 0) ? us : us.filter(o => o.owner === 0).concat([pickDefender(us.filter(o => o.owner !== 0))]);
+    const named = S.over || CHEAT_FOG || !us.some(o => o.owner !== 0) ? us : us.filter(o => o.owner === 0).concat([pickDefender(us.filter(o => o.owner !== 0))]);
     if (named.length) s += ' · ' + named.map(o => `${o.owner === 0 ? '' : tt('Feind: ', 'Enemy: ')}${T(o).name} ${o.hp}/${T(o).hp}${T(o).stealth ? (o.surf ? tt(' (aufgetaucht)', ' (surfaced)') : tt(' (getaucht)', ' (submerged)')) : ''}`).join(', ');
     const su = selUnit();
     const en = us.filter(o => o.owner !== 0);
@@ -2905,8 +2905,8 @@ function resetCheatFog() { CHEAT_FOG = false; $('cheatFogChk').checked = false; 
 function askCheatFog() {
   if (!S) return;
   $('offerTitle').textContent = tt('Wirklich die ganze Karte aufdecken?', 'Really reveal the whole map?');
-  $('offerText').innerHTML = tt('Du siehst dann alle Inseln und Städte, alle Einheiten des Gegners und jeden seiner Züge.<br><br>Was du einmal gesehen hast, weißt du – auch wenn du den Nebel danach wieder einschaltest. Das kann dir den Spaß an dieser Partie nehmen.',
-    'You will then see all islands and cities, all enemy units and every one of his moves.<br><br>What you have seen once, you know – even if you switch the fog back on afterwards. This can spoil the fun of this game.');
+  $('offerText').innerHTML = tt('Du siehst dann alle Inseln und Städte, alle Einheiten des Gegners samt Ladung und Besatzung und jeden seiner Züge.<br><br>Was du einmal gesehen hast, weißt du – auch wenn du den Nebel danach wieder einschaltest. Das kann dir den Spaß an dieser Partie nehmen.',
+    'You will then see all islands and cities, all enemy units including cargo and garrisons, and every one of his moves.<br><br>What you have seen once, you know – even if you switch the fog back on afterwards. This can spoil the fun of this game.');
   // der hervorgehobene Knopf ist die sichere Wahl
   $('offerYes').textContent = tt('Nebel behalten', 'Keep the fog');
   $('offerNo').textContent = tt('Ja, aufdecken', 'Yes, reveal');
