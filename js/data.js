@@ -22,6 +22,7 @@ const tt = (de, en) => (EN ? en : de);
 // cost: Bauzeit in Runden, vision: Sichtweite
 // stealth: getaucht unsichtbar (nur geortet zu sehen), sonar: ortet U-Boote in voller Sichtweite
 // shore: Schiff kann Einheiten an Land angreifen (Beschuss) – alle anderen Schiffe nur Schiffe und Flugzeuge, siehe canStrike
+// noAttack: greift nie selbst an (Träger), siehe canAttack()
 const UT = {
   inf:  { name: tt('Infanterie', 'Infantry'), g: 'f',     sym: 'I', domain: 'land', move: 1, hp: 1,  str: 1, cost: 5,  vision: 1, capture: true },
   tank: { name: tt('Panzer', 'Tank'), g: 'm',         sym: tt('P', 'A'), domain: 'land', move: 2, hp: 2,  str: 1, cost: 10, vision: 1, capture: true, noRepair: true },
@@ -30,9 +31,12 @@ const UT = {
   dst:  { name: tt('Zerstörer', 'Destroyer'), g: 'm',      sym: tt('Z', 'D'), domain: 'sea',  move: 4, hp: 3,  str: 1, cost: 15, vision: 2, sonar: true },
   sub:  { name: tt('U-Boot', 'Submarine'), g: 'n',         sym: tt('U', 'S'), domain: 'sea',  move: 3, hp: 2,  str: 3, cost: 20, vision: 2, stealth: true },
   crs:  { name: tt('Kreuzer', 'Cruiser'), g: 'm',        sym: tt('K', 'R'), domain: 'sea',  move: 3, hp: 8,  str: 2, cost: 30, vision: 2, shore: true },
-  car:  { name: tt('Träger', 'Carrier'), g: 'm',         sym: tt('F', 'C'), domain: 'sea',  move: 2, hp: 8,  str: 1, cost: 30, vision: 4, carries: 'air', capacity: 6 },
+  car:  { name: tt('Träger', 'Carrier'), g: 'm',         sym: tt('F', 'C'), domain: 'sea',  move: 2, hp: 8,  str: 1, cost: 30, vision: 4, carries: 'air', capacity: 6, noAttack: true },
   bat:  { name: tt('Schlachtschiff', 'Battleship'), g: 'n', sym: tt('S', 'B'), domain: 'sea',  move: 2, hp: 12, str: 3, cost: 40, vision: 2, shore: true },
 };
+// Kann dieser Typ selbst angreifen? Transporter (Stärke 0) nicht, der Träger auch nicht (noAttack: er verteidigt sich mit
+// seiner Stärke, angreifen sollen seine Jäger)
+const canAttack = k => UT[k].str > 0 && !UT[k].noAttack;
 const UNIT_ORDER = ['inf', 'tank', 'ftr', 'trn', 'dst', 'sub', 'crs', 'car', 'bat'];
 
 const DIRS = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];

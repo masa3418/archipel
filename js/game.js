@@ -204,10 +204,12 @@ function pickDefender(list) {
 //   Torpedo          – U-Boot greift Schlachtschiff/Kreuzer/Träger an: Erstschlag, doppelte Stärke
 //   Sonar            – Zerstörer greift U-Boot an: Erstschlag, trifft danach zu 2/3
 //   Wasserbomben     – U-Boot greift Zerstörer an: Zerstörer verteidigt doppelt stark
+//   Wendig           – Torpedos richten gegen Zerstörer nur SUB_VS_DST Schaden an (beide Richtungen)
 //   Luftangriff      – Jäger gegen U-Boot (an der Oberfläche): Jäger trifft zu 2/3
-//   Abgetaucht       – Schlachtschiff greift getauchtes U-Boot an: trifft nur zu 1/4, das U-Boot schlägt mit
-//                      doppelter Stärke zurück (das U-Boot ist ein Konter des Schlachtschiffs).
-//                      Ein aufgetauchtes U-Boot (u.surf, nach eigenem Angriff) bekämpft es dagegen normal.
+//   Abgetaucht       – Großes Schiff (Schlachtschiff, Kreuzer, Träger) greift getauchtes U-Boot an: trifft nur zu 1/4,
+//                      das U-Boot schlägt mit doppelter Stärke zurück. U-Boote jagen nur Zerstörer und Jäger –
+//                      große Schiffe brauchen deren Schutz. Ein aufgetauchtes U-Boot (u.surf, nach eigenem Angriff)
+//                      bekämpfen sie dagegen normal.
 //   Luftangriff      – Jäger gegen Schlachtschiff: trifft zu 2/3 mit dreifachem Schaden
 //                      (versenkt es selten allein, aber der Schaden bleibt – Schwärme lohnen sich)
 // Luftdeckung      – Träger mit mindestens einem Jäger an Bord schützen eigene Schiffe auf den Nachbarfeldern
@@ -220,6 +222,7 @@ function pickDefender(list) {
 const BATTERY = 2;
 const BIG_SHIPS = ['bat', 'crs', 'car'];
 const SUPPORT_HIT = 2 / 3, SUPPORT_CAPTURE = 0.25;
+const SUB_VS_DST = 2;   // Torpedoschaden gegen den wendigen Zerstörer (sonst UT.sub.str = 3, ein Treffer versenkt ihn)
 // Küstenangriff: Bodentruppen, die ein Schiff auf einem Nachbarfeld angreifen, richten COAST.str-fachen Schaden an und treffen mit
 // COAST.p – außer gegen Kreuzer und Schlachtschiff (UT.shore), die für die Küste gebaut sind. U-Boote sind für sie unerreichbar.
 const COAST = { str: 3, p: 0.5 };
@@ -249,11 +252,12 @@ function captureChance(owner, c) {
   return p;
 }
 // Darf a die Einheit d überhaupt angreifen? Schiffe beschießen Einheiten an Land (auch in Städten) nur, wenn sie dafür gebaut
-// sind (UT.shore: Kreuzer, Schlachtschiff). Zerstörer, U-Boot und Träger greifen nur Schiffe und Flugzeuge an.
+// sind (UT.shore: Kreuzer, Schlachtschiff). Zerstörer greifen nur Schiffe und Flugzeuge an, U-Boote nur Schiffe, Träger gar nicht.
 // Bodentruppen greifen Schiffe an der Küste an, aber keine U-Boote.
 // Regeln (moveStep), KI und Anzeige (Zugmarker, Hinweiszeile, Tabelle „Wer schlägt wen“) fragen alle hier nach.
 function canStrike(a, d) {
-  if (T(a).str <= 0) return false;
+  if (!canAttack(a.type)) return false;                         // Transporter und Träger greifen nie an
+  if (T(a).stealth && T(d).domain !== 'sea') return false;    // U-Boote: nur Schiffe, keine Flugzeuge
   if (T(a).domain === 'land' && T(d).stealth) return false;   // U-Boote: für Bodentruppen nicht angreifbar
   return !(T(a).domain === 'sea' && !T(a).shore && T(d).domain === 'land');
 }
@@ -262,12 +266,14 @@ function combatSpec(a, d, x, y) {
   const ta = a.type, td = d.type;
   let as = T(a).str, ds = T(d).str, p = 0.5, first = null;
   const notes = [];
+  if (ta === 'sub' && td === 'dst') as = SUB_VS_DST;   // vor der Küstenbatterie: der Zerstörer ist wendig
+  if (ta === 'dst' && td === 'sub') ds = SUB_VS_DST;
   if (T(a).domain === 'sea' && cityAt(x, y)) { ds = Math.max(1, ds) * BATTERY; notes.push(tt('Küstenbatterie', 'coastal battery')); }
   if (ta === 'sub' && BIG_SHIPS.includes(td)) { as *= 2; first = 'att'; notes.push(tt('Torpedo-Überraschung', 'torpedo surprise')); }
-  if (ta === 'dst' && td === 'sub') { first = 'att'; p = 2 / 3; notes.push(tt('Sonar: Zerstörer trifft zuerst und öfter', 'sonar: destroyer strikes first and more often')); }
-  if (ta === 'sub' && td === 'dst') { ds *= 2; notes.push(tt('Wasserbomben', 'depth charges')); }
+  if (ta === 'dst' && td === 'sub') { first = 'att'; p = 2 / 3; notes.push(tt('Sonar: Zerstörer trifft zuerst und öfter, Torpedos schwächer', 'sonar: destroyer strikes first and more often, torpedoes weaker')); }
+  if (ta === 'sub' && td === 'dst') { ds *= 2; notes.push(tt('Wasserbomben, Zerstörer wendig', 'depth charges, agile destroyer')); }
   if (ta === 'ftr' && td === 'sub') { p = 2 / 3; notes.push(tt('Luftangriff auf U-Boot', 'air strike on submarine')); }
-  if (ta === 'bat' && td === 'sub' && !d.surf) { p = 1 / 4; ds *= 2; notes.push(tt('U-Boot taucht ab: schwer zu treffen, Torpedo-Gegenschlag', 'submarine dives: hard to hit, torpedo counter-strike')); }
+  if (BIG_SHIPS.includes(ta) && td === 'sub' && !d.surf) { p = 1 / 4; ds *= 2; notes.push(tt('U-Boot taucht ab: schwer zu treffen, Torpedo-Gegenschlag', 'submarine dives: hard to hit, torpedo counter-strike')); }
   if (ta === 'ftr' && td === 'bat') { as *= 3; p = 2 / 3; notes.push(tt('Luftangriff auf Schlachtschiff', 'air strike on battleship')); }
   if (T(a).domain === 'land' && T(d).domain === 'sea' && !T(d).shore && !cityAt(x, y)) {
     as *= COAST.str; p = COAST.p;
@@ -396,10 +402,12 @@ function moveStep(u, nx, ny) {
       computeVision(u.owner);
       return { ok: false, contact: true, msg: tt('Sonarkontakt: U-Boot voraus', 'Sonar contact: submarine ahead') };
     }
-    if (t.str === 0) return { ok: false, msg: tt(`${t.name} kann nicht angreifen`, `${t.name} cannot attack`) };
+    if (!canAttack(u.type)) return { ok: false, msg: t.noAttack ? tt(`${t.name} kann nicht selbst angreifen – das übernehmen seine Jäger`, `${t.name} cannot attack itself – its fighters do that`)
+      : tt(`${t.name} kann nicht angreifen`, `${t.name} cannot attack`) };
     const targets = foes.filter(o => canStrike(u, o));
     if (!targets.length) return { ok: false, msg: t.domain === 'land'
       ? tt('U-Boote sind für Bodentruppen nicht angreifbar', 'Submarines cannot be attacked by ground troops')
+      : t.stealth ? tt('U-Boote greifen nur Schiffe an', 'Submarines attack only ships')
       : tt(`${t.name} kann keine Einheiten an Land angreifen – das können nur Kreuzer und Schlachtschiffe`, `${t.name} cannot attack units on land – only cruisers and battleships can`) };
     return attack(u, nx, ny, targets, city);
   }

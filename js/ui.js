@@ -790,7 +790,7 @@ function render(now = performance.now()) {
     ctx.strokeStyle = en.length ? 'rgba(255,110,100,0.9)' : 'rgba(255,255,255,0.45)';
     ctx.lineWidth = en.length ? 2 : 1;
     roundRectPath(ctx, hx * TS + 1.5, hy * TS + 1.5, TS - 3, TS - 3, TS * 0.15); ctx.stroke();
-    if (en.length && T(su).str > 0 && cheb(su.x, su.y, hx, hy) <= 1) {
+    if (en.length && canAttack(su.type) && cheb(su.x, su.y, hx, hy) <= 1) {
       const d = pickDefender(en);
       const pct = Math.round(attackOdds(su, d, hx, hy) * 100) + ' %';
       ctx.font = `700 ${Math.max(11, Math.round(TS * 0.42))}px system-ui, sans-serif`;
@@ -1891,7 +1891,7 @@ function updateHover() {
     const foes = su ? cityDefenders(su, c, en).filter(o => canStrike(su, o)) : en;   // Schiffe im Hafen verteidigen nicht gegen Bodentruppen; Schiffe ohne Beschuss greifen kein Land an
     const ships = en.length - foes.length;
     const sinkTxt = ships ? tt(` · ${ships === 1 ? 'das Schiff im Hafen geht' : 'die Schiffe im Hafen gehen'} mit der Stadt unter`, ` · the ${ships === 1 ? 'ship' : 'ships'} in port ${ships === 1 ? 'is' : 'are'} lost with the city`) : '';
-    if (su && foes.length && T(su).str > 0) {
+    if (su && foes.length && canAttack(su.type)) {
       const d = pickDefender(foes);
       s += ` · ${tt('Siegchance', 'Win chance')}: ${Math.round(attackOdds(su, d, x, y) * 100)} %`;
       const cs = combatSpec(su, d, x, y);
@@ -2024,12 +2024,12 @@ const UNIT_INFO = {
     'Carries up to 6 ground units across the sea. Unarmed: whoever catches it sinks the whole load. Give it a destroyer escort. Loading, landing and attacking from the ship are explained on the “Transports” page.'),
   dst: tt('Schnell, billig, guter Späher. Ortet als einziges Schiff getauchte U-Boote in seiner vollen Sichtweite und schlägt sie mit Sonar und Wasserbomben. Der Geleitschutz für Transporter. Einheiten an Land kann er nicht angreifen – und an der Küste ist er selbst gefährdet: Bodentruppen treffen ihn dreifach.',
     'Fast, cheap, a good scout. The only ship that locates submerged submarines at its full vision range, and beats them with sonar and depth charges. The escort for transports. It cannot attack units on land – and at the coast it is at risk itself: ground troops hit it threefold.'),
-  sub: tt('Getarnt: Getaucht sehen es nur Nachbarn und Zerstörer. Sein Torpedo trifft große Schiffe zuerst und doppelt stark. Nach einem Angriff ist es bis zu deinem nächsten Zug aufgetaucht (Welle unter dem Boot). Für Bodentruppen ist es nicht angreifbar, kann selbst aber auch kein Land angreifen.',
-    'Hidden: submerged, it is only seen by neighbours and destroyers. Its torpedo hits big ships first and with double strength. After attacking it is surfaced until your next turn (wave below the boat). Ground troops cannot attack it, but it cannot attack land either.'),
-  crs: tt('Das Allround-Kriegsschiff: schlägt Zerstörer und geortete U-Boote sicher und hält viel aus. Gegen Schlachtschiffe und U-Boot-Hinterhalte hat es das Nachsehen. Beschießt auch Einheiten an Land und in Städten an der Küste.',
-    'The all-round warship: reliably beats destroyers and located submarines and can take a lot. It loses out to battleships and submarine ambushes. Also bombards units on land and in coastal cities.'),
-  car: tt('Das Auge der Flotte: sieht 4 Felder weit. Trägt und betankt bis zu 6 Jäger. Mit mindestens einem Jäger an Bord gibt er Luftdeckung: Feindliche Jäger treffen ihn und eigene Schiffe nebenan nur zu einem Drittel. Halte ihn von der Küste fern: Bodentruppen treffen ihn dreifach.',
-    'The eyes of the fleet: sees 4 tiles. Carries and refuels up to 6 fighters. With at least one fighter on board it gives air cover: enemy fighters hit it and your adjacent ships only one third of the time. Keep it off the coast: ground troops hit it threefold.'),
+  sub: tt('Getarnt: Getaucht sehen es nur Nachbarn und Zerstörer. Sein Torpedo trifft große Schiffe zuerst und doppelt stark. Nach einem Angriff ist es bis zu deinem nächsten Zug aufgetaucht (Welle unter dem Boot). Für Bodentruppen ist es nicht angreifbar, greift selbst aber nur Schiffe an. Große Schiffe können es getaucht kaum bekämpfen – sein Feind sind Zerstörer und Jäger.',
+    'Hidden: submerged, it is only seen by neighbours and destroyers. Its torpedo hits big ships first and with double strength. After attacking it is surfaced until your next turn (wave below the boat). Ground troops cannot attack it, but it attacks only ships itself. Large ships can hardly fight it while submerged – its enemies are destroyers and fighters.'),
+  crs: tt('Das Allround-Kriegsschiff: schlägt Zerstörer sicher und hält viel aus. Gegen Schlachtschiffe und U-Boote hat es das Nachsehen – getauchte U-Boote überlässt es besser Zerstörern. Beschießt auch Einheiten an Land und in Städten an der Küste.',
+    'The all-round warship: reliably beats destroyers and can take a lot. It loses out to battleships and submarines – submerged submarines are better left to destroyers. Also bombards units on land and in coastal cities.'),
+  car: tt('Das Auge der Flotte: sieht 4 Felder weit. Trägt und betankt bis zu 6 Jäger. Mit mindestens einem Jäger an Bord gibt er Luftdeckung: Feindliche Jäger treffen ihn und eigene Schiffe nebenan nur zu einem Drittel. Er greift nie selbst an, das übernehmen seine Jäger. Halte ihn von der Küste fern: Bodentruppen treffen ihn dreifach.',
+    'The eyes of the fleet: sees 4 tiles. Carries and refuels up to 6 fighters. With at least one fighter on board it gives air cover: enemy fighters hit it and your adjacent ships only one third of the time. It never attacks itself – its fighters do that. Keep it off the coast: ground troops hit it threefold.'),
   bat: tt('Beherrscht das Seegefecht und gibt Feuerunterstützung auf alle Nachbarfelder: Fremde Städte dort fallen zu 75 %, eigene nur zu 25 %. Verwundbar durch U-Boote und Jäger-Schwärme. Beschießt auch Einheiten an Land und in Städten an der Küste.',
     'Rules the sea battle and gives fire support to all adjacent tiles: foreign cities there fall 75 % of the time, your own only 25 %. Vulnerable to submarines and fighter swarms. Also bombards units on land and in coastal cities.'),
 };
@@ -2039,7 +2039,7 @@ function oddsMatrix() {
   for (let k = 0; k < S.W * S.H; k++) if (S.cityGrid[k] < 0 && S.terrain[k] === 0) { x = k % S.W; y = (k / S.W) | 0; break; }
   const mk = (t, o) => ({ type: t, hp: UT[t].hp, owner: o, x: -9, y: -9, carrier: null });   // Besitzer ohne Einheiten: keine Unterstützung
   const m = {};
-  for (const a of UNIT_ORDER) { m[a] = {}; for (const d of UNIT_ORDER) m[a][d] = UT[a].str > 0 && canStrike(mk(a, 7), mk(d, 8)) ? attackOdds(mk(a, 7), mk(d, 8), x, y) : null; }
+  for (const a of UNIT_ORDER) { m[a] = {}; for (const d of UNIT_ORDER) m[a][d] = canAttack(a) && canStrike(mk(a, 7), mk(d, 8)) ? attackOdds(mk(a, 7), mk(d, 8), x, y) : null; }
   return m;
 }
 function buildHelp() {
@@ -2058,12 +2058,12 @@ function buildHelp() {
     return `<div class="ucard" id="help-${k}"><div class="ucard-head"><img src="${iconUrl('u', k)}" alt=""><div><b>${t.name}</b><small>${UNIT_ROLE[k] || ''}</small></div></div>
       <div class="ucard-stats">${stat(tt('Bauzeit', 'Build'), t.cost)}${stat(tt('Bewegung', 'Moves'), t.move)}${stat(tt('Trefferpunkte', 'HP'), t.hp)}${stat(tt('Stärke', 'Strength'), t.str)}${stat(tt('Sicht', 'Vision'), t.vision)}${t.fuel ? stat(tt('Treibstoff', 'Fuel'), t.fuel) : ''}${t.capacity ? stat(tt('Plätze', 'Capacity'), t.capacity) : ''}</div>
       <p>${UNIT_INFO[k]}</p>
-      ${t.str > 0 ? `<div class="vs"><b class="good">${tt('Stark gegen', 'Strong against')}:</b> ${names(strong)}</div>` : ''}
+      ${canAttack(k) ? `<div class="vs"><b class="good">${tt('Stark gegen', 'Strong against')}:</b> ${names(strong)}</div>` : ''}
       <div class="vs"><b class="bad">${tt('Verwundbar durch', 'Vulnerable to')}:</b> ${weakTxt}</div></div>`;
   }).join('');
   const head = '<tr><th class="row">' + tt('Angreifer ↓ / Verteidiger →', 'Attacker ↓ / defender →') + '</th>' +
     UNIT_ORDER.map(d => `<th title="${UT[d].name}"><img src="${iconUrl('u', d)}" alt="">${UT[d].sym}</th>`).join('') + '</tr>';
-  $('helpMatrix').innerHTML = head + UNIT_ORDER.filter(a => UT[a].str > 0).map(a => `<tr><th class="row">${UT[a].sym} · ${UT[a].name}</th>` + UNIT_ORDER.map(d => {
+  $('helpMatrix').innerHTML = head + UNIT_ORDER.filter(canAttack).map(a => `<tr><th class="row">${UT[a].sym} · ${UT[a].name}</th>` + UNIT_ORDER.map(d => {
     const v = m[a][d], p = pc(v);
     if (v == null) return `<td class="none" title="${tt(`${UT[a].name} kann ${UT[d].name} nicht angreifen`, `${UT[a].name} cannot attack ${UT[d].name.toLowerCase()}`)}">–</td>`;
     return `<td class="${p >= 60 ? 'hi' : p >= 40 ? 'mid' : p > 0 ? 'lo' : 'none'}" title="${UT[a].name} → ${UT[d].name}">${p} %</td>`;

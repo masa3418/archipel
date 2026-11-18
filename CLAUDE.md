@@ -44,7 +44,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 
 | Datei | Inhalt |
 |---|---|
-| `js/data.js` | Sprache `LANG`/`tt()`, Einheitentypen `UT` (inkl. `stealth`, `sonar`), `UNIT_ORDER`, `DIRS`, Spielerfarben, `MAP_SIZES`, Weltarten `WORLDS`, Schwierigkeitsgrade `DIFFICULTY` (inkl. `skill`) + `diff()`, `aiKnowsMap(p)`, `aiMistake(p)` |
+| `js/data.js` | Sprache `LANG`/`tt()`, Einheitentypen `UT` (inkl. `stealth`, `sonar`, `noAttack`) + `canAttack`, `UNIT_ORDER`, `DIRS`, Spielerfarben, `MAP_SIZES`, Weltarten `WORLDS`, Schwierigkeitsgrade `DIFFICULTY` (inkl. `skill`) + `diff()`, `aiKnowsMap(p)`, `aiMistake(p)` |
 | `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen (getrennt mit `split`), Festland (`festland`: Küstensaum, Binnenmeere, Flüsse mit Brücken); Städte, faire Startpositionen |
 | `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung `captureChance`/`cityDefenders`, Unterstützung `fireSupport`/`airCover`, Produktion, Sicht `computeVision`/`canSee`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
 | `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
@@ -81,11 +81,17 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   beladenem Transporter). Messung KI gegen KI (je 400 Partien): Geleitschutz, mehr U-Boote und die Lauer-Taktik ändern die
   Siegquote nicht messbar (48–51 %); U-Boote statt Kreuzern verlieren (36–42 %). Die Tarnung zahlt sich also vor allem für
   den Menschen aus – die KI führt U-Boote weiterhin schwächer als Kreuzer.
+  **Rollen zur See** (combatSpec/canStrike): U-Boote greifen nur Schiffe an (keine Jäger). Der Zerstörer ist der U-Boot-Jäger: Torpedos
+  richten an ihm nur `SUB_VS_DST` (2) Schaden an (Zerstörer → U-Boot 89 %, U-Boot → Zerstörer 25 %). Getauchte U-Boote tauchen vor allen
+  großen Schiffen ab (`BIG_SHIPS`: trifft zu 1/4, U-Boot doppelt; Kreuzer → U-Boot 44 %, Träger 16 %) – große Schiffe brauchen Zerstörer
+  oder Jäger als Schutz. Jäger bleiben bewusst schwach gegen Kreuzer/Zerstörer (Wunsch des Nutzers: ihre Stärke ist das schnelle Zusammenziehen).
+  Messung (je 192 Partien, alt → neu): Leicht 99/99 %, Normal 56/58 %, Schwer 11/17 %, Brutal 3/1 %, offen 20 → 13.
 - **Schiffe im Hafen**: `cityDefenders(u, city, enemies)` (game.js) – greifen Bodentruppen eine fremde Stadt an, kämpfen Schiffe
   im Hafen nicht mit; fällt die Stadt, gehen sie mit unter (auch ein Schlachtschiff). Ohne diese Regel machte ein Schiff im
   Hafen die Stadt für Infanterie uneinnehmbar: Seit die KI U-Boote baut, blieben so auf Leicht 18 von 96 Partien stecken.
   Wer Kampfgegner auf einem Stadtfeld bestimmt (Regeln, KI, Hinweiszeile), nimmt `cityDefenders`, nicht alle Einheiten des Feldes.
-- **Träger**: Sichtweite 4; `airCover(owner, x, y)` (game.js) – mit mindestens einem Jäger an Bord treffen feindliche Jäger den
+- **Träger**: greift nie selbst an (`noAttack` in UT, `canAttack(typ)` in data.js – wie der Transporter; verteidigt sich mit Stärke 1).
+  Wer prüft, ob ein Typ angreifen kann, nimmt `canAttack`, nicht `str > 0`. Sichtweite 4; `airCover(owner, x, y)` (game.js) – mit mindestens einem Jäger an Bord treffen feindliche Jäger den
   Träger und eigene Schiffe auf Nachbarfeldern nur zu 1/3. KI: `aiCarrier` (bleibt beim Schlachtschiff bzw. beladenen Transporter),
   ab Können 1 und 8 Städten ein Träger. Produktionsregeln der KI zählen mit `planned(t)` auch Einheiten, die andere Städte
   gerade bauen – sonst beginnen mehrere Städte gleichzeitig dasselbe.

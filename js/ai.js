@@ -195,7 +195,7 @@ function threatMap(u) {
   const P = S.players[u.owner], z = new Uint8Array(S.W * S.H);
   threatCache.set(key, z);
   for (const e of S.units) {
-    if (e.owner === u.owner || e.carrier != null || !canSee(u.owner, e) || T(e).str === 0) continue;
+    if (e.owner === u.owner || e.carrier != null || !canSee(u.owner, e) || !canAttack(e.type)) continue;
     if (!canStrike(e, u)) continue;   // was e gar nicht angreifen darf, bedroht u nicht (Bodentruppen → U-Boot, Zerstörer → Land …)
     const r = Math.max(1, T(e).move);
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
@@ -269,7 +269,7 @@ function aiAdjTarget(u, minProb) {
     const ens = cityDefenders(u, c, P.vis[i] ? topUnitsAt(nx, ny).filter(o => o.owner !== u.owner && canSee(u.owner, o)) : []).filter(o => canStrike(u, o));
     let score = 0;
     if (ens.length) {
-      if (t.str === 0) continue;
+      if (!canAttack(u.type)) continue;
       const d = pickDefender(ens);
       if (subSkips(u, d)) continue;
       const ship = t.domain === 'sea';
