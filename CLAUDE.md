@@ -70,7 +70,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Infanterie → Zerstörer 50 %, Panzer → Zerstörer 75 %, Panzer → Träger 31 %. Die KI-Bedrohungskarte (`threatMap`) berücksichtigt das.
 - **Schlachtschiffe**: `fireSupport(owner, x, y)` und `captureChance(owner, c)` (game.js) – Feuerunterstützung/Feuerschutz auf
   Nachbarfelder (Eroberung 75 % / 25 %, Bodentruppen treffen zu 2/3 bzw. werden zu 1/3 getroffen). Eroberungschancen nie fest
-  mit 50 % rechnen, immer `captureChance` nehmen. Salven meldet `hooks.salvo`; Markierungen zeichnet `drawSupportMark` (ui.js).
+  mit 50 % rechnen, immer `captureChance` nehmen. Salven meldet `hooks.salvo`; Markierungen zeichnet `drawSupportMark` (ui.js). Luftdeckung im Kampf: `hooks.cover` (in `attack`, Jäger gegen Schiff unter `airCover`) – Abfangjäger, Schutzring, Klang `cover`.
 - **Getarnte U-Boote**: `canSee(p, u)` (game.js) entscheidet, ob Spieler p eine Einheit sieht. Für fremde Einheiten immer
   diese Funktion benutzen, nie nur `P.vis` des Feldes. `P.sonar` = Ortungsbereich (jede Einheit/Stadt Umkreis 1, Einheiten mit
   `sonar: true` volle Sichtweite), wird in `computeVision` berechnet und nicht gespeichert. `u.surf` = aufgetaucht nach einem

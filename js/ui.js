@@ -169,6 +169,14 @@ hooks.salvo = (b, x, y) => {
   anim.events.push({ type: 'salvo', fx: b.x, fy: b.y, x, y, t0: anim.cursor, dur: 560 });
   anim.cursor += 560;   // erst die Einschläge, dann der Sturm
 };
+// Luftdeckung: Jäger steigen vom Träger auf und fangen den Angreifer (auf ax, ay) ab; das geschützte Schiff (sx, sy) leuchtet auf
+hooks.cover = (car, ax, ay, sx, sy) => {
+  if (!anim.rec) return;
+  if (car.owner !== 0 && !seenByHuman(ax, ay) && !seenByHuman(sx, sy)) return;
+  recCam(sx, sy);
+  anim.events.push({ type: 'cover', fx: car.x, fy: car.y, x: ax, y: ay, sx, sy, col: PLAYERS[car.owner].light, t0: anim.cursor, dur: 700 });
+  anim.cursor += 520;   // der Kampf beginnt, während die Abfangjäger noch feuern
+};
 const LABEL_MS = 1700;
 // won: hat der Angreifer gewonnen? (Verlierer sind beim Aufruf noch nicht entfernt)
 hooks.combat = (a, d, x, y, won, storm = null) => {
@@ -708,6 +716,52 @@ function render(now = performance.now()) {
           ctx.fillStyle = `rgba(255,190,90,${0.85 * a})`;
           ctx.beginPath(); ctx.arc(cx, cy, TS * (0.2 + (1 - a) * 0.35), 0, 7); ctx.fill();
         }
+      } else if (e.type === 'cover') {
+        // Schutzschirm um das angegriffene Schiff (gestrichelt wie die Markierung der Luftdeckung)
+        const px = e.sx * TS + TS / 2, py = e.sy * TS + TS / 2, sh = Math.sin(Math.PI * f);
+        ctx.save();
+        ctx.strokeStyle = e.col; ctx.globalAlpha = 0.9 * sh; ctx.lineWidth = Math.max(1.5, TS / 16);
+        ctx.setLineDash([TS / 7, TS / 9]); ctx.lineDashOffset = -f * TS;
+        ctx.beginPath(); ctx.arc(px, py, TS * (0.55 + 0.1 * f), 0, 7); ctx.stroke();
+        ctx.restore();
+        // zwei Abfangjäger steigen vom Träger auf und fliegen in leichtem Bogen auf den Angreifer zu
+        const sx = e.fx * TS + TS / 2, sy = e.fy * TS + TS / 2, ddx = cx - sx, ddy = cy - sy, len = Math.hypot(ddx, ddy) || 1;
+        const nx = -ddy / len, ny = ddx / len;
+        for (let k = 0; k < 2; k++) {
+          const side = k ? 1 : -1, g = Math.min(1, Math.max(0, (f - k * 0.08) / 0.6));
+          if (f - k * 0.08 <= 0) continue;
+          // Ziel: schräg vor dem Angreifer, links und rechts von ihm (nicht auf seiner Marke); dorthin in leichtem Bogen
+          const ex = cx - ddx / len * TS * 0.7 + nx * side * TS * 0.45, ey = cy - ddy / len * TS * 0.7 + ny * side * TS * 0.45;
+          const at = t => [sx + (ex - sx) * t + nx * side * Math.sin(Math.PI * t) * TS * 0.35, sy + (ey - sy) * t + ny * side * Math.sin(Math.PI * t) * TS * 0.35];
+          const [hx, hy] = at(g), [bx, by] = at(Math.max(0, g - 0.05));
+          const ang = Math.atan2(hy - by, hx - bx) || Math.atan2(ddy, ddx);
+          // Leuchtspur der Bordkanonen, sobald der Angreifer in Reichweite ist
+          if (g > 0.55 && f < 0.9) {
+            ctx.strokeStyle = '#fff1a0'; ctx.lineWidth = Math.max(1.5, TS / 16); ctx.lineCap = 'round';
+            for (let j = 0; j < 3; j++) {
+              const q = ((f * 9 + j * 0.33) % 1);
+              const tx0 = hx + (cx - hx) * q, ty0 = hy + (cy - hy) * q, tl = 0.18;
+              ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.moveTo(tx0, ty0);
+              ctx.lineTo(tx0 + (cx - hx) * tl, ty0 + (cy - hy) * tl); ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+          }
+          // Jäger als kleiner Pfeil in Flugrichtung
+          const s = Math.max(6, TS * 0.3);
+          ctx.save(); ctx.translate(hx, hy); ctx.rotate(ang);
+          ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 3;
+          ctx.fillStyle = e.col; ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, TS / 30);
+          ctx.beginPath(); ctx.moveTo(s, 0); ctx.lineTo(-s * 0.7, s * 0.75); ctx.lineTo(-s * 0.35, 0); ctx.lineTo(-s * 0.7, -s * 0.75); ctx.closePath();
+          ctx.fill(); ctx.stroke(); ctx.restore();
+        }
+        if (f > 0.6 && f < 0.95) {   // Treffer-Funken am Angreifer
+          const a = 1 - (f - 0.6) / 0.35;
+          ctx.strokeStyle = `rgba(255,190,80,${a})`; ctx.lineWidth = Math.max(1.5, TS / 18);
+          for (let k = 0; k < 6; k++) {
+            const w = k * Math.PI / 3 + f * 4, r0 = TS * 0.12, r1 = TS * (0.2 + 0.15 * (1 - a));
+            ctx.beginPath(); ctx.moveTo(cx + Math.cos(w) * r0, cy + Math.sin(w) * r0); ctx.lineTo(cx + Math.cos(w) * r1, cy + Math.sin(w) * r1); ctx.stroke();
+          }
+        }
       } else if (e.type === 'label') {
         // steigt leicht auf, blendet am Ende aus
         const alpha = f < 0.12 ? f / 0.12 : f > 0.75 ? (1 - f) / 0.25 : 1;
@@ -849,6 +903,7 @@ function playAnimSounds(now) {
       }
     }
     else if (e.type === 'salvo') Sfx.play('salvo', 60);
+    else if (e.type === 'cover') Sfx.play('cover', 60);
     else if (e.type === 'boom') { Sfx.play('boom', 80); if (e.hl) setTimeout(() => Sfx.play('lost', 300), 380); }
     else if (e.type === 'capture') { if (e.owner === 0) Sfx.play('capture'); else if (e.lost) Sfx.play('cityLost'); else Sfx.play('boom', 80); }
   }
@@ -3103,9 +3158,9 @@ $('mStats').addEventListener('change', e => {
 });
 
 // ------------------------------------------------------------------ Klangtest
-const FX_NAMES = EN ? { select: 'Select', tick: 'Click', error: 'Invalid', boom: 'Explosion', salvo: 'Battleship salvo', lost: 'Unit lost', capture: 'City captured',
+const FX_NAMES = EN ? { select: 'Select', tick: 'Click', error: 'Invalid', boom: 'Explosion', salvo: 'Battleship salvo', cover: 'Air cover', lost: 'Unit lost', capture: 'City captured',
   cityLost: 'City lost', built: 'Unit ready', clank: 'Load/unload', endTurn: 'End of turn', alarm: 'Enemy contact', start: 'Game start (Grieg)', victory: 'Victory', defeat: 'Defeat' }
-  : { select: 'Auswahl', tick: 'Klick', error: 'Ungültig', boom: 'Explosion', salvo: 'Schlachtschiff-Salve', lost: 'Einheit verloren', capture: 'Stadt erobert',
+  : { select: 'Auswahl', tick: 'Klick', error: 'Ungültig', boom: 'Explosion', salvo: 'Schlachtschiff-Salve', cover: 'Luftdeckung', lost: 'Einheit verloren', capture: 'Stadt erobert',
   cityLost: 'Stadt verloren', built: 'Einheit fertig', clank: 'Ein-/Ausladen', endTurn: 'Rundenende', alarm: 'Feindkontakt', start: 'Spielstart (Grieg)', victory: 'Sieg', defeat: 'Niederlage' };
 
 function renderSoundTest() {

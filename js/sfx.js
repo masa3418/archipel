@@ -128,6 +128,16 @@ const Sfx = (() => {
         tone({ f: 72, f2: 28, type: 'sine', dur: 0.5, gain: 0.5, attack: 0.004, at: k * 0.1 });
       }
     },
+    // Luftdeckung: Abfangjäger heulen heran, dann zwei kurze Feuerstöße der Bordkanonen
+    cover: () => {
+      noise({ dur: 0.55, filter: 'bandpass', f: 900, f2: 2600, q: 1.2, gain: 0.18, attack: 0.15 });
+      tone({ f: 420, f2: 760, type: 'sawtooth', dur: 0.45, gain: 0.025, attack: 0.12 });
+      for (let k = 0; k < 10; k++) {
+        const at = 0.32 + k * 0.045 + (k >= 5 ? 0.08 : 0);
+        noise({ dur: 0.035, filter: 'bandpass', f: 1700, q: 2, gain: 0.32, attack: 0.002, at });
+        tone({ f: 180, f2: 90, type: 'square', dur: 0.03, gain: 0.04, attack: 0.002, at });
+      }
+    },
     lost: () => notes([392, 330, 262], 'triangle', 0.09, 0.12, 0.2),
     capture: () => { notes([523, 659, 784, 1047], 'triangle', 0.12, 0.09, 0.22); tone({ f: 1047, type: 'sine', dur: 0.6, gain: 0.06, at: 0.36 }); },
     cityLost: () => { for (let k = 0; k < 2; k++) { tone({ f: 466, type: 'square', dur: 0.16, gain: 0.05, at: k * 0.36 }); tone({ f: 349, type: 'square', dur: 0.16, gain: 0.05, at: k * 0.36 + 0.18 }); } },

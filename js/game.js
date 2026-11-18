@@ -164,7 +164,7 @@ function canEnterTerrain(u, x, y) {
 }
 
 // Haken für die Oberfläche (Animationen); die Regeln funktionieren auch ohne
-const hooks = { move: null, combat: null, capture: null, salvo: null };
+const hooks = { move: null, combat: null, capture: null, salvo: null, cover: null };
 
 function relocate(u, x, y) {
   if (hooks.move && (u.x !== x || u.y !== y)) hooks.move(u, u.x, u.y, x, y);
@@ -365,6 +365,11 @@ function attack(u, nx, ny, enemies, city) {
   if (hooks.salvo) {
     if (supA && (d.domain === 'land' || (city && city.owner !== u.owner && a.capture))) hooks.salvo(supA, nx, ny);
     if (supD && supD !== def) hooks.salvo(supD, u.x, u.y);
+  }
+  // Luftdeckung: Die Jäger des Trägers fangen den angreifenden Jäger ab (nur Anzeige – die Wirkung steckt in combatSpec)
+  if (hooks.cover && u.type === 'ftr' && d.domain === 'sea') {
+    const cv = airCover(def.owner, nx, ny);
+    if (cv) hooks.cover(cv, u.x, u.y, nx, ny);
   }
   if (cs.first === 'att') def.hp -= cs.as;
   if (cs.first === 'def') u.hp -= cs.ds;
