@@ -3,6 +3,22 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.6.1
+
+Erklärvideos.
+
+- **Zehn kurze Erklärvideos** mit Ton und Texteinblendungen auf Deutsch und Englisch zu den Regeln, die man am leichtesten
+  übersieht: Nebel und Erkunden, Städte erobern, Nachschub halb automatisch, Stege und Stau, Jäger-Reichweite, Luftdeckung,
+  U-Boot und Sonar, Küstenangriff, Landung mit Schlachtschiff, Feuerschutz. Dazu ein Teaser „Seeschlacht im Inselreich“.
+- Alle Videos stehen auf einer eigenen **Videoseite** im Internet (https://masa3418.github.io/archipel/docs/videos/).
+- **Im Spiel verlinkt:** im Menü unter der neuen Gruppe „Hilfe“ (dort auch das Handbuch), oben im Handbuch („Erste Schritte“)
+  und im Willkommensfenster – überall als „online ↗“ gekennzeichnet, die Seite öffnet sich in einem neuen Reiter und in der
+  Sprache des Spiels. Das Spiel selbst lädt weiterhin nichts aus dem Internet.
+
+*English:* ten short explainer videos with sound and captions (German and English) on the trickier rules, plus a sea battle
+teaser, on a video page on the web. The game links to it from the menu (new “Help” group), the handbook and the welcome
+window, always marked “online ↗”.
+
 ## 1.6.0
 
 Klare Rollen zur See, Luftdeckung zum Zuschauen und ein Gegner, der nicht mehr in deine Transporter schaut.
