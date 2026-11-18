@@ -3,6 +3,52 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.6.0
+
+Klare Rollen zur See, Luftdeckung zum Zuschauen und ein Gegner, der nicht mehr in deine Transporter schaut.
+
+**Seekampf**
+
+- **Der Zerstörer ist der U-Boot-Jäger:** Torpedos richten an ihm nur 2 statt 3 Schaden an. Greift er ein U-Boot an, gewinnt
+  er in 89 % der Fälle (vorher 67 %); greift ein U-Boot ihn an, nur noch in 25 % (vorher 50 %).
+- **U-Boote tauchen vor allen großen Schiffen ab:** Kreuzer und Träger können getauchte U-Boote kaum noch bekämpfen
+  (Kreuzer 44 % statt 88 %, Träger 16 % statt 69 %), wie bisher schon das Schlachtschiff. Große Schiffe brauchen
+  Zerstörer oder Jäger als Schutz.
+- **U-Boote greifen nur Schiffe an**, keine Jäger mehr.
+- **Der Träger greift nicht mehr selbst an** – wie der Transporter. Verteidigen kann er sich weiterhin; angreifen sollen
+  seine Jäger.
+- **Luftdeckung schützt auch Transporter:** Unter Luftdeckung wehrt sich ein Transporter gegen Jäger mit Stärke 1. Ein Jäger
+  gewinnt dort nur noch in 33 % der Fälle statt immer.
+
+**Luftdeckung sichtbar**
+
+- Greift ein Jäger ein Schiff unter Luftdeckung an, steigen zwei Abfangjäger vom Träger auf und feuern, um das
+  geschützte Schiff leuchtet der Schutzring. Dazu ein eigener Klang (auch im Klangtest).
+- Während der Wiedergabe des Gegnerzugs behalten Schiffe ihren Ring, bis sie wirklich angegriffen werden.
+
+**Verborgene Stärke**
+
+- Wie viele Einheiten der Gegner in einer Stadt oder an Bord eines Transporters oder Trägers hat, siehst du nicht mehr:
+  Fremde Marken tragen keine Zahl, die Hinweiszeile nennt nur die Einheit, die das Feld verteidigen würde. Nach Spielende
+  oder mit dem Schummeln „Nebel des Krieges aus“ wird alles aufgedeckt.
+- Auch der Computergegner kennt die Ladung deiner Transporter nicht mehr.
+
+**Handbuch**
+
+- „Wer schlägt wen“ hat zwei Ansichten: **Siegchance** (einer gegen einen) und **Wirtschaftlichkeit** – wie viel Bauzeit
+  ein Angriff zerstört je Bauzeit, die er kostet. So sieht man etwa, dass zwei Infanterien einen Panzer im Schnitt
+  ausgleichen, Panzer an der Küste Zerstörer günstig versenken und U-Boote gegen große Schiffe sich lohnen.
+- Ein Punkt in der Ecke markiert Paarungen mit Sonderregel; beim Überfahren steht, welche.
+- Neue Zeile „Verborgene Stärke“, angepasste Texte zu U-Boot, Zerstörer, Kreuzer, Träger und Transporter.
+
+Die Schwierigkeitsstufen bleiben gültig (gemessen mit je 192 Partien je Stufe).
+
+*English:* clearer naval roles – the destroyer is the submarine hunter, submerged submarines dive away from all large
+ships, submarines no longer attack fighters, and the carrier no longer attacks itself. Under air cover even a transport fights
+back against fighters, and interceptors now take off visibly from the carrier. The number of enemy units in a city or on
+board is hidden (revealed after the game or with the fog cheat). The “Who beats whom” table has a second view for cost
+efficiency.
+
 ## 1.5.2
 
 Bessere Wegsuche.
