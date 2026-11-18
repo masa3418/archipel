@@ -285,6 +285,14 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   gewänne der Vergleichsspieler auf Schwer 31 % (Kontinente 50 %, Inselreich 10 %) – zu ungleich je Welt, deshalb nicht übernommen.
 - Schlechter: keine frühen Kreuzer (34 %), mehr Transporter (42 %), Landung direkt vor der Stadt (47 %), andere Truppgrößen.
 - Auf Schwer im Inselreich baut der Gegner (fast nur Küstenstädte) kaum Jäger.
+- **Jäger-Schwarm** (Idee des Nutzers: alle Jäger schnell an einem Punkt zusammenziehen; Versuch wieder entfernt). Test-KI: doppelte
+  Jäger-Obergrenze, jedes zweite Kriegsschiff ein Jäger; ein Viertel erkundet, der Rest wartet in den Städten, fliegt bei feindlichen
+  Schiffen ≤ 12 Felder vor einer eigenen Stadt dorthin und greift gemeinsam an, wenn die Jäger in Reichweite das Schiff rechnerisch
+  (mittlerer Schaden aus combatSpec) in dieser Runde versenken; nie unter Luftdeckung. Je 402 Partien gegen die normale KI (Können 0,
+  ohne Fehler, beide Sitze), Inselreich/Gemischt/Festland/gesamt: Gegenprobe 47/47/40/44,5 %; nur mehr Jäger 53/41/41/45 %;
+  Schwarm 54/49/31/44,5 %; angriffslustig (halber Schaden reicht) 49/49/40/46 %. Kein Effekt – der Schwarm schlägt selten zu
+  (1–2 Angriffe je Partie, meist Transporter), weil ein Jäger gegen einen Kreuzer im Schnitt nur 1 Schaden macht. Auf dem Festland
+  schaden die vielen Jäger (fehlende Bodentruppen). Erst neu messen, falls Jäger gegen Schiffe stärker werden.
 - Flucht vom bedrohten Feld (`aiWarship`: kein gefahrloser Weg → notfalls durch bedrohte Felder aus der Reichweite; lauernde U-Boote bleiben
   nur unbedroht liegen). Vorher blieb z. B. ein U-Boot neben einem Zerstörer stehen. Messung (Können 1, je ~400 Partien): Siegquote 49 %,
   offen 9 → 10 von 408, Partien 5 Runden länger – neutral, deshalb festgeschrieben.
