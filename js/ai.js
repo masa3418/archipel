@@ -75,6 +75,9 @@ const mistake = p => rng() < aiMistake(p);
 const AI_SKILL = [null, null];
 // Beute eines U-Boots: Transporter und große Schiffe. Alles andere lässt es in Ruhe, um getarnt zu bleiben.
 const SUB_PREY = ['trn', 'bat', 'crs', 'car'];
+// Ladung einer Einheit aus Sicht von p: eigene genau, fremde unbekannt – ein Transporter gilt als halb voll (wie für den Menschen,
+// der die Ladung des Gegners auch nicht sieht)
+const cargoSeen = (p, e) => (e.owner === p ? cargoOf(e).length : T(e).carries === 'land' ? T(e).capacity / 2 : 0);
 const subSkips = (u, d) => u.type === 'sub' && !SUB_PREY.includes(d.type);
 const aiSkill = p => (AI_SKILL[p] != null ? AI_SKILL[p] : (p === 1 ? diff().skill || 0 : 0));
 const SPREAD = 3;   // Aufschlag (in Feldern) je Einheit, die dieselbe Stadt schon ansteuert
@@ -278,7 +281,7 @@ function aiAdjTarget(u, minProb) {
       // wehrlos (wirkt im Kampf mit Stärke 0) – nicht T(d).str: unter Luftdeckung wehrt sich auch ein Transporter
       const need = c && !ship ? minProb - 0.15 : (combatSpec(u, d, nx, ny).ds <= 0 ? 0.2 : aiNeed(u, d, minProb));
       if (pr < need) continue;
-      score = pr + (c && !ship ? 1 : 0) + cargoOf(d).length * 0.3 + T(d).cost / 40;
+      score = pr + (c && !ship ? 1 : 0) + cargoSeen(u.owner, d) * 0.3 + T(d).cost / 40;
     } else if (c && c.owner !== u.owner && t.capture) {
       score = 2;
     }
@@ -696,7 +699,7 @@ function aiFighter(u) {
       const d = cheb(u.x, u.y, e.x, e.y);
       if (d > t.fuel / 2 || u.fuel - d - t.move < distHome(p, e.x, e.y)) continue;
       if (attackOdds(u, e, e.x, e.y) < aiNeed(u, e, 0.6)) continue;
-      const v = (T(e).cost + cargoOf(e).length * 6) / (2 + d);
+      const v = (T(e).cost + cargoSeen(p, e) * 6) / (2 + d);
       if (v > bs) { bs = v; best = e; }
     }
     if (best) u.aiGoal = [best.x, best.y, 'prey'];

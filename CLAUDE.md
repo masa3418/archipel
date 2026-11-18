@@ -96,6 +96,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   „Wehrlos“ daher nie über `T(d).str === 0` prüfen, sondern über `combatSpec(...).ds` (so in `aiAdjTarget`). KI: `aiCarrier` (bleibt beim Schlachtschiff bzw. beladenen Transporter),
   ab Können 1 und 8 Städten ein Träger. Produktionsregeln der KI zählen mit `planned(t)` auch Einheiten, die andere Städte
   gerade bauen – sonst beginnen mehrere Städte gleichzeitig dasselbe.
+- **Verborgene Stärke:** Ladung fremder Transporter/Träger und die Zahl der Einheiten in fremden Städten zeigt die Karte nicht (Marke ohne
+  Zahl, Hinweiszeile nennt nur den Verteidiger, erst nach Spielende alles); die KI schätzt fremde Ladung mit `cargoSeen` (Transporter halb voll).
+  Neue Anzeigen über fremde Einheiten dürfen keine Anzahl verraten. Handbuch: Zeile „Verborgene Stärke“ im Reiter „Kampf“.
 - **Handbuch** (Hilfe): sieben Reiter in `index.html` (alles zum Laden, Landen und Angriff vom Schiff steht gesammelt unter
   „Transporter“; „Erste Schritte“ bleibt kurz, Verweise mit `data-helptab`), Aufbau über `data-tab`/`data-pane`, geöffnet über `openHelp(tab, unit)`.
   Einheitenkarten (`UNIT_INFO`, `UNIT_ROLE`) und die Tabelle „Wer schlägt wen“ (`oddsMatrix` über `attackOdds`) entstehen

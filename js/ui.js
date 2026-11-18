@@ -658,7 +658,10 @@ function render(now = performance.now()) {
     const x = i % S.W, y = (i / S.W) | 0;
     const show = list.find(u => su && (u === su || u.id === su.carrier)) || list.find(u => u.owner === 0 && u.moves > 0 && !u.order) || list[0];
     const inCity = S.cityGrid[i] >= 0;
-    const badge = inCity ? (list.length > 1 ? list.length : 0) : cargoOf(show).length;
+    // Zahl an der Marke (Einheiten in der Stadt, Ladung) nur bei eigenen Einheiten – wie viel der Gegner an Bord oder
+    // in einer Stadt hat, bleibt bis zum Spielende verborgen
+    const reveal = show.owner === 0 || S.over;
+    const badge = !reveal ? 0 : inCity ? (list.length > 1 ? list.length : 0) : cargoOf(show).length;
     const own = show.owner === 0;
     const opts = {
       badge,
@@ -672,7 +675,7 @@ function render(now = performance.now()) {
     if (inCity) drawToken(show, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66, opts);
     else drawToken(show, x * TS, y * TS, TS, opts);
   }
-  for (const [u, [x, y]] of moving) drawToken(u, x * TS, y * TS, TS, { badge: cargoOf(u).length });
+  for (const [u, [x, y]] of moving) drawToken(u, x * TS, y * TS, TS, { badge: u.owner === 0 || S.over ? cargoOf(u).length : 0 });
   // Vernichtete und in einer Stadt aufgegangene Einheiten bleiben bis zu ihrem Moment sichtbar
   if (playing) for (const g of anim.gone) {
     if (rel >= g.until) continue;
@@ -1946,12 +1949,14 @@ function updateHover() {
   };
   if (P.vis[i]) {
     const us = topUnitsAt(x, y).filter(o => canSee(0, o));
-    if (us.length) s += ' · ' + us.map(o => `${o.owner === 0 ? '' : tt('Feind: ', 'Enemy: ')}${T(o).name} ${o.hp}/${T(o).hp}${T(o).stealth ? (o.surf ? tt(' (aufgetaucht)', ' (surfaced)') : tt(' (getaucht)', ' (submerged)')) : ''}`).join(', ');
+    // Vom Gegner nur die Einheit nennen, die das Feld verteidigt – wie viele es sind, bleibt verborgen
+    const named = S.over || !us.some(o => o.owner !== 0) ? us : us.filter(o => o.owner === 0).concat([pickDefender(us.filter(o => o.owner !== 0))]);
+    if (named.length) s += ' · ' + named.map(o => `${o.owner === 0 ? '' : tt('Feind: ', 'Enemy: ')}${T(o).name} ${o.hp}/${T(o).hp}${T(o).stealth ? (o.surf ? tt(' (aufgetaucht)', ' (surfaced)') : tt(' (getaucht)', ' (submerged)')) : ''}`).join(', ');
     const su = selUnit();
     const en = us.filter(o => o.owner !== 0);
     const foes = su ? cityDefenders(su, c, en).filter(o => canStrike(su, o)) : en;   // Schiffe im Hafen verteidigen nicht gegen Bodentruppen; Schiffe ohne Beschuss greifen kein Land an
     const ships = en.length - foes.length;
-    const sinkTxt = ships ? tt(` · ${ships === 1 ? 'das Schiff im Hafen geht' : 'die Schiffe im Hafen gehen'} mit der Stadt unter`, ` · the ${ships === 1 ? 'ship' : 'ships'} in port ${ships === 1 ? 'is' : 'are'} lost with the city`) : '';
+    const sinkTxt = ships ? tt(' · Schiffe im Hafen gehen mit der Stadt unter', ' · ships in port are lost with the city') : '';   // ohne Anzahl (bleibt verborgen)
     if (su && foes.length && canAttack(su.type)) {
       const d = pickDefender(foes);
       s += ` · ${tt('Siegchance', 'Win chance')}: ${Math.round(attackOdds(su, d, x, y) * 100)} %`;
@@ -1959,7 +1964,7 @@ function updateHover() {
       if (cs.notes.length) s += ' (' + cs.notes.join(', ') + ')';
       if (c && c.owner !== 0 && T(su).capture) {
         const [pc, why] = capInfo(c);
-        s += tt(` · danach ${pc} % Eroberung${why}: Besatzung (${us.length}) fällt, deine Einheit geht in der Stadt auf`, ` · then ${pc} % capture${why}: garrison (${us.length}) falls, your unit merges into the city`);
+        s += tt(` · danach ${pc} % Eroberung${why}: die ganze Besatzung fällt, deine Einheit geht in der Stadt auf`, ` · then ${pc} % capture${why}: the whole garrison falls, your unit merges into the city`);
       }
     } else if (su && c && c.owner !== 0 && P.knownOwner[c.id] !== 0 && T(su).capture && !foes.length) {
       const [pc, why] = capInfo(c);
