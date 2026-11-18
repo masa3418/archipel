@@ -21,12 +21,18 @@ Der Hafen als Schutzraum und ein Kräfteverhältnis für alle Parteien.
 - Auch die Kurve im Zeitraffer und im Abschlussfenster zeigt alle Parteien, gestapelt in ihren Farben.
 - **Behoben:** Die Hinweiszeile über einer eigenen Stadt warnte nur vor Schlachtschiffen von Rot, nicht von Gelb und Violett.
 
+**Handbuch**
+
+- Neuer Abschnitt **„Städtenamen“** unter „Über das Spiel“: Das Spiel setzt die Namen zufällig aus Silben zusammen. Ergibt sich
+  dabei ein Name, der in irgendeiner Sprache unpassend klingt, ist das nicht beabsichtigt.
+
 Die Schwierigkeitsstufen bleiben gültig (nachgemessen mit 672 bis 864 Partien je Änderung).
 
 *English:* your own port is now a safe haven: destroyers and submarines no longer fire into cities, not even at ships in port,
 and destroyers no longer attack fighters over land. With several opponents the balance-of-power bar shows every party's share
 of the total strength, and the timelapse curve shows all of them. Fixed: the hint line over your own city only warned about
-red battleships.
+red battleships. New handbook section “City names”: the names are put together from random syllables, so any unsuitable
+meaning in some language is unintended.
 
 ## 1.7.0
 
