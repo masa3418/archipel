@@ -371,7 +371,9 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
 
 ## Bekannte Eigenheiten
 
-- **Erklärvideos** (`docs/videos/*.mp4`, im README verlinkt, nicht im Release): `tools/video/` – `recv.js` (Empfänger, ruft ffmpeg),
+- **Erklärvideos** (`docs/videos/*.mp4`, im README verlinkt, nicht im Release): `tools/video/` – `recv.js` (Empfänger, ruft ffmpeg;
+  lauscht nur auf 127.0.0.1, nimmt nur Anfragen von `http://localhost:8765` an, Videonamen nur `[a-z0-9-]`, Pfade über `inside()` –
+  so verlangt es das Code Scanning (CodeQL „Uncontrolled data used in path expression“), und keine fremde Webseite kann ihm Aufträge schicken),
   `rec.js` (Aufnahme im Browser: eigene Uhr, Textleiste DE/EN, `caption(de, en, { big: true })` = Titeltafel mit Schriftzug,
   `speed(ms)` = Zugtempo, Ton offline), `scenes.js` (zehn Szenen: landung, feuerschutz, uboot, kueste, luftdeckung, nachschub, jaeger, eroberung, steg, nebel; je Video eine Szene, sucht sich die Stelle
   auf einer erzeugten Karte; Prozentwerte aus den Regeln). Neu erzeugen nach Regeländerungen: `node tools/video/recv.js` starten,
