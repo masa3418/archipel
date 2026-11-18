@@ -2004,8 +2004,10 @@ function updateHover() {
     const fo = nPlayers() > 2 && o >= 1 ? ', ' + pname(o) : '';   // bei mehreren Gegnern: wessen Stadt
     s += tt(` · Stadt ${c.name} (${o === 0 ? 'deine' : o >= 1 ? 'feindlich' + fo : 'neutral'})`, ` · city ${c.name} (${o === 0 ? 'yours' : o >= 1 ? 'enemy' + fo : 'neutral'})`);
     if (P.vis[i] && c.owner === 0) {
-      // eigene Stadt: wirkt ein Schlachtschiff auf sie?
-      const pc = Math.round(captureChance(1, c) * 100);
+      // eigene Stadt: wirkt ein Schlachtschiff auf sie? Bei mehreren Gegnern zählt der gefährlichste
+      let worst = 0;
+      for (let p = 1; p < nPlayers(); p++) worst = Math.max(worst, captureChance(p, c));
+      const pc = Math.round(worst * 100);
       if (pc > 50) s += tt(` · unter Feuer eines feindlichen Schlachtschiffs: fällt zu ${pc} %`, ` · under fire from an enemy battleship: falls ${pc} % of the time`);
       if (pc < 50) s += tt(` · Feuerschutz durch dein Schlachtschiff: fällt nur zu ${pc} %`, ` · covered by your battleship: falls only ${pc} % of the time`);
     }

@@ -361,6 +361,12 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   Bodentruppen (36 statt 20, Idee des Nutzers), Jäger greifen die Front gezielt an, auch bei 50 % (34 statt 19). Grund: Im Stau sind die eigenen
   Städte ringsum von eigenen Truppen umstellt – außerhalb von Städten darf nie mehr als eine Einheit auf einem Feld stehen, die Jäger kommen nicht
   zum Tanken hinein und stürzen ab (z. B. 65 in 60 Runden). Weniger Bodentruppen schaden: Die Masse bricht irgendwann doch durch.
+- **Artillerie** (Idee des Nutzers für den Landkrieg auf dem Festland, wieder entfernt): Bauzeit 10, 1 Feld, Stärke 1, greift nicht an, erobert
+  nicht; Feuerunterstützung wie das Schlachtschiff (Bodentruppen treffen zu 2/3, Stadt fällt zu 75 %), aber kein Feuerschutz. KI baute eine je
+  5 Bodentruppen gegen Städte eines Gegners. Messung Festland, mittel, Normal (je 192 Partien, offen ohne → mit; direkter Vergleich ohne Fehler,
+  Siege ohne : mit): Reichweite 1 (neben der Stadt) 50 → 49, 77 : 69 – sie wurde an der Front sofort abgeschossen (106 gebaut, 42 übrig);
+  Reichweite 2 (aus der zweiten Reihe) 44 → 45, 72 : 75 – sie überlebte (125 von 154), steckte aber im selben Stau wie die Infanterie. Kein
+  Nutzen, das Spiel wird nur komplizierter; auf den Inselkarten übernimmt das Schlachtschiff diese Rolle. Nicht wieder versuchen.
 - Flucht vom bedrohten Feld (`aiWarship`: kein gefahrloser Weg → notfalls durch bedrohte Felder aus der Reichweite; lauernde U-Boote bleiben
   nur unbedroht liegen). Vorher blieb z. B. ein U-Boot neben einem Zerstörer stehen. Messung (Können 1, je ~400 Partien): Siegquote 49 %,
   offen 9 → 10 von 408, Partien 5 Runden länger – neutral, deshalb festgeschrieben.
