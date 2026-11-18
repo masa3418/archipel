@@ -92,7 +92,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Wer Kampfgegner auf einem Stadtfeld bestimmt (Regeln, KI, Hinweiszeile), nimmt `cityDefenders`, nicht alle Einheiten des Feldes.
 - **Träger**: greift nie selbst an (`noAttack` in UT, `canAttack(typ)` in data.js – wie der Transporter; verteidigt sich mit Stärke 1).
   Wer prüft, ob ein Typ angreifen kann, nimmt `canAttack`, nicht `str > 0`. Sichtweite 4; `airCover(owner, x, y)` (game.js) – mit mindestens einem Jäger an Bord treffen feindliche Jäger den
-  Träger und eigene Schiffe auf Nachbarfeldern nur zu 1/3. KI: `aiCarrier` (bleibt beim Schlachtschiff bzw. beladenen Transporter),
+  Träger und eigene Schiffe auf Nachbarfeldern nur zu 1/3, und ein Transporter wehrt sich dann mit Stärke 1 (Jäger → gedeckter Transporter 33 %).
+  „Wehrlos“ daher nie über `T(d).str === 0` prüfen, sondern über `combatSpec(...).ds` (so in `aiAdjTarget`). KI: `aiCarrier` (bleibt beim Schlachtschiff bzw. beladenen Transporter),
   ab Können 1 und 8 Städten ein Träger. Produktionsregeln der KI zählen mit `planned(t)` auch Einheiten, die andere Städte
   gerade bauen – sonst beginnen mehrere Städte gleichzeitig dasselbe.
 - **Handbuch** (Hilfe): sieben Reiter in `index.html` (alles zum Laden, Landen und Angriff vom Schiff steht gesammelt unter

@@ -275,7 +275,8 @@ function aiAdjTarget(u, minProb) {
       const ship = t.domain === 'sea';
       if (ship && c && !landingSupport(u.owner, nx, ny)) continue;
       const pr = attackOdds(u, d, nx, ny);
-      const need = c && !ship ? minProb - 0.15 : (T(d).str === 0 ? 0.2 : aiNeed(u, d, minProb));
+      // wehrlos (wirkt im Kampf mit Stärke 0) – nicht T(d).str: unter Luftdeckung wehrt sich auch ein Transporter
+      const need = c && !ship ? minProb - 0.15 : (combatSpec(u, d, nx, ny).ds <= 0 ? 0.2 : aiNeed(u, d, minProb));
       if (pr < need) continue;
       score = pr + (c && !ship ? 1 : 0) + cargoOf(d).length * 0.3 + T(d).cost / 40;
     } else if (c && c.owner !== u.owner && t.capture) {

@@ -213,7 +213,7 @@ function pickDefender(list) {
 //   Luftangriff      – Jäger gegen Schlachtschiff: trifft zu 2/3 mit dreifachem Schaden
 //                      (versenkt es selten allein, aber der Schaden bleibt – Schwärme lohnen sich)
 // Luftdeckung      – Träger mit mindestens einem Jäger an Bord schützen eigene Schiffe auf den Nachbarfeldern
-//                      (und sich selbst): Feindliche Jäger treffen dort nur zu 1/3
+//                      (und sich selbst): Feindliche Jäger treffen dort nur zu 1/3, ein Transporter wehrt sich mit Stärke 1
 // Feuerunterstützung – Schlachtschiffe wirken auf die acht Nachbarfelder (und das eigene Feld):
 //   Angriff:      Bodentruppen, die ein solches Feld angreifen, treffen zu 2/3; eine Stadt dort fällt zu 75 %
 //   Verteidigung: Bodentruppen auf einem solchen Feld werden nur zu 1/3 getroffen; eine eigene Stadt fällt nur zu 25 %
@@ -279,7 +279,9 @@ function combatSpec(a, d, x, y) {
     as *= COAST.str; p = COAST.p;
     notes.push(tt('Küstenangriff: Schiff in Reichweite der Bodentruppen', 'coastal attack: ship within reach of ground troops'));
   }
-  if (ta === 'ftr' && T(d).domain === 'sea' && airCover(d.owner, x, y)) { p = 1 / 3; notes.push(tt('Luftdeckung durch Träger', 'air cover from a carrier')); }
+  // Luftdeckung: Die Jäger des Trägers fangen den Angreifer ab – er trifft nur zu 1/3, und auch ein wehrloses Schiff
+  // (Transporter, Stärke 0) schlägt mit Stärke 1 zurück
+  if (ta === 'ftr' && T(d).domain === 'sea' && airCover(d.owner, x, y)) { p = 1 / 3; ds = Math.max(ds, 1); notes.push(tt('Luftdeckung durch Träger', 'air cover from a carrier')); }
   // Feuerunterstützung/Feuerschutz betreffen nur Bodentruppen
   if (T(a).domain === 'land' || T(d).domain === 'land') {
     const att = T(a).domain === 'land' && a.owner != null && !!fireSupport(a.owner, x, y);
