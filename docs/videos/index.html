@@ -64,6 +64,9 @@
 // Sprache wie im Spiel (archipel-lang); ohne Wahl nach der Browsersprache
 let EN = false;
 try { const v = localStorage.getItem('archipel-lang'); EN = v ? v === 'en' : !/^de/i.test(navigator.language || 'de'); } catch (e) {}
+// Aufruf aus dem Spiel: ?lang=de|en (die Offline-Fassung teilt keinen Speicher mit dieser Seite)
+const qLang = new URLSearchParams(location.search).get('lang');
+if (qLang === 'en' || qLang === 'de') EN = qLang === 'en';
 const tt = (de, en) => (EN ? en : de);
 
 const HERO = { file: '../seeschlacht.mp4', len: 21,

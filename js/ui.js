@@ -3190,6 +3190,14 @@ $('bSndTest').onclick = () => { closeModals(); openSoundTest(); };   // aus dem 
 // ihre Kennungen (vol, replaySel, powerChk …) und werden an ihren bisherigen Stellen verdrahtet; neue Einstellungen gehören hierher.
 function openSettings() { closeMenu(); closeCtx(); openModal('mSettings'); }
 $('bSettings').onclick = openSettings;
+$('bHelpMenu').onclick = () => { closeMenu(); openHelp(); };
+// Erklärvideos: eigene Seite im Internet (GitHub Pages), auch aus der Offline-Fassung – deshalb überall als „online ↗“ gekennzeichnet
+// und in einem neuen Reiter. Die Sprache wird mitgegeben (die Offline-Fassung teilt keinen localStorage mit der Seite).
+const VIDEO_URL = 'https://masa3418.github.io/archipel/docs/videos/';
+for (const a of document.querySelectorAll('a[data-videos]')) {
+  a.href = VIDEO_URL + '?lang=' + (EN ? 'en' : 'de'); a.target = '_blank'; a.rel = 'noopener';
+  a.addEventListener('click', () => closeMenu());
+}
 
 $('mSound').addEventListener('click', e => {
   const b = e.target.closest('button');

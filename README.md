@@ -99,7 +99,8 @@ trickier rules – best watched on the [video page](https://masa3418.github.io/a
 
 - **Keine Cookies, kein Tracking, keine Analyse-Dienste.**
 - **Keine externen Inhalte:** Das Spiel lädt nichts von anderen Servern – auch keine Schriften
-  oder Bibliotheken.
+  oder Bibliotheken. Einzig der Verweis auf die Erklärvideos (als „online ↗“ gekennzeichnet) öffnet auf Klick eine
+  Seite auf GitHub Pages in einem neuen Reiter.
 - **Speicherung nur lokal:** Spielstände und Einstellungen liegen im Browser (localStorage) und
   verlassen den Rechner nicht, außer man exportiert selbst eine Datei.
 - **Hosting:** Die Online-Version liegt auf GitHub Pages. GitHub verarbeitet dabei technisch

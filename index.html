@@ -61,6 +61,10 @@
   .menu .mi { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left;
     background: none; border: 0; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
   .menu .mi:hover { background: var(--panel2); }
+  .menu a.mi { color: var(--text); text-decoration: none; }
+  /* Verweis ins Internet (Erklärvideos): deutlich als „online“ gekennzeichnet */
+  .ext { font-size: 11px; font-weight: 600; color: #9fc4ff; border: 1px solid #3d6aa8; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+  a[data-videos]:not(.mi) { color: #9fc4ff; font-weight: 600; }
   .menu .mi[hidden] { display: none; }
   .menu .ms { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 8px; }
   .menu .ms:not(.chk) > span { white-space: nowrap; }
@@ -484,6 +488,9 @@
   <button id="bPowerMenu" class="mi" title="Wie stark du im Vergleich zum Gegner bist – mit Rechnung und Verlauf" data-en-title="How strong you are compared to the enemy – with the calculation and history"><span data-en="Balance of power">Kräfteverhältnis</span></button>
   <button id="bTime" class="mi" title="Die Partie im Zeitraffer: wie sich Karte und Reiche Runde für Runde entwickelt haben" data-en-title="The game as a time-lapse: how the map and the empires developed turn by turn"><span data-en="Time-lapse">Zeitraffer</span><kbd>T</kbd></button>
   <button id="bSettings" class="mi" title="Ton, Anzeige, Spielablauf, Steuerung" data-en-title="Sound, display, game flow, controls"><span data-en="Settings …">Einstellungen …</span></button>
+  <h4 data-en="Help">Hilfe</h4>
+  <button id="bHelpMenu" class="mi"><span data-en="Handbook">Handbuch</span><kbd>H</kbd></button>
+  <a class="mi" data-videos title="Zehn kurze Videos mit Ton zu den wichtigsten Regeln – öffnet eine Seite im Internet" data-en-title="Ten short videos with sound on the key rules – opens a page on the internet"><span data-en="Explainer videos">Erklärvideos</span><span class="ext" data-en="online ↗">online ↗</span></a>
 </div>
 <main>
   <div id="mapCol">
@@ -566,6 +573,11 @@
         <span data-lang="en">Everything else is in the <b>handbook</b>: first steps, all units, combat and controls. You can find it any time at the top right or with the <kbd>H</kbd> key.</span>
       </div>
       <div class="wel-hint">
+        <span class="ico">🎬</span>
+        <span data-lang="de">Lieber zuschauen? Zehn kurze <a data-videos>Erklärvideos</a> <span class="ext">online ↗</span> zeigen die wichtigsten Regeln – die Seite öffnet sich im Browser und braucht Internet.</span>
+        <span data-lang="en">Rather watch? Ten short <a data-videos>explainer videos</a> <span class="ext">online ↗</span> show the key rules – the page opens in your browser and needs the internet.</span>
+      </div>
+      <div class="wel-hint">
         <span class="ico">🌐</span>
         <span data-lang="de">Prefer English? The game is fully available in English – switch any time with the button at the top right.</span>
         <span data-lang="en">Lieber auf Deutsch? Das Spiel gibt es vollständig auf Deutsch – jederzeit umschaltbar mit dem Knopf oben rechts.</span>
@@ -597,6 +609,8 @@
     <div class="help-body" id="helpBody">
 
       <section data-pane="start">
+        <div class="help-tip help-videos" data-lang="de">🎬 <b>Lieber zuschauen?</b> Zehn kurze Videos mit Ton zeigen die wichtigsten Regeln – Landung, U-Boote, Luftdeckung, Nachschub und mehr: <a data-videos>Erklärvideos ansehen</a> <span class="ext">online ↗</span> Die Seite liegt im Internet; das Spiel selbst braucht keins.</div>
+        <div class="help-tip help-videos" data-lang="en">🎬 <b>Rather watch?</b> Ten short videos with sound show the key rules – landings, submarines, air cover, supply and more: <a data-videos>watch the explainer videos</a> <span class="ext">online ↗</span> The page is on the internet; the game itself does not need it.</div>
         <p class="help-lead" data-lang="de">Erobere alle Städte des Gegners. Du startest mit <b>einer Stadt</b> und einer Infanterie, fast alles liegt im <b>Nebel</b>.</p>
         <p class="help-lead" data-lang="en">Capture all of the enemy's cities. You start with <b>one city</b> and one infantry, and almost everything lies in the <b>fog</b>.</p>
         <ol class="help-steps" data-lang="de">

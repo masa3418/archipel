@@ -321,7 +321,9 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   im Browser Ansicht 1280×800, `rec.js` und `scenes.js` per fetch + eval laden, `await Scenes.all()`, danach Seite neu laden.
   Ausnahmen „keine Asset-Dateien“ gelten auch für `docs/videos/`. Videoseite `docs/videos/index.html` (online unter
   …/archipel/docs/videos/, eigenständig, Sprache über `archipel-lang`): Titel, Länge und Texte stehen dort von Hand – nach dem
-  Neuaufnehmen mit anpassen. `sw.js` fängt `docs/` und `tools/` nicht ab (sonst landeten 8 MB Videos im Zwischenspeicher der App).
+  Neuaufnehmen mit anpassen; sie liest `?lang=de|en`. Im Spiel verlinkt über `a[data-videos]` (Menü „Hilfe“, Handbuch „Erste Schritte“,
+  Willkommensfenster), `VIDEO_URL` in ui.js setzt Adresse, Sprache und neuen Reiter – immer mit Kästchen `.ext` „online ↗“, auch in der
+  Offline-Fassung (die Seite liegt nur im Internet). `sw.js` fängt `docs/` und `tools/` nicht ab (sonst landeten 8 MB Videos im Zwischenspeicher der App).
 - **Video `docs/seeschlacht.mp4` / GIF** entstehen ohne Bildschirmaufnahme, Bild für Bild: Szene im Browser aufbauen (Ansicht
   1280×800, `replay = 'slow'`), `performance.now` durch eine eigene Uhr ersetzen, `requestAnimationFrame` und `setTimeout` auf
   diese Uhr umlenken, je Bild Uhr +33,3 ms, `loop(t)` aufrufen, sichtbaren Kartenausschnitt (`wrap.scroll*`) aus `cv` kopieren
