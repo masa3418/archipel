@@ -72,14 +72,14 @@ const mistake = p => rng() < aiMistake(p);
 // Eingemessen per Simulation (siehe CLAUDE.md). Besatzungen in den Städten bringen nach den
 // geltenden Regeln nichts: Eine Einheit im Angriff ist mehr wert als eine in der Verteidigung.
 // Der Spielerplatz 0 (Simulationen) spielt einfach, solange AI_SKILL nichts anderes vorgibt.
-const AI_SKILL = [null, null];
+const AI_SKILL = [null, null, null, null];
 // Beute eines U-Boots: Transporter und große Schiffe. Alles andere lässt es in Ruhe, um getarnt zu bleiben.
 const SUB_PREY = ['trn', 'bat', 'crs', 'car'];
 // Ladung einer Einheit aus Sicht von p: eigene genau, fremde unbekannt – ein Transporter gilt als halb voll (wie für den Menschen,
 // der die Ladung des Gegners auch nicht sieht)
 const cargoSeen = (p, e) => (e.owner === p ? cargoOf(e).length : T(e).carries === 'land' ? T(e).capacity / 2 : 0);
 const subSkips = (u, d) => u.type === 'sub' && !SUB_PREY.includes(d.type);
-const aiSkill = p => (AI_SKILL[p] != null ? AI_SKILL[p] : (p === 1 ? diff().skill || 0 : 0));
+const aiSkill = p => (AI_SKILL[p] != null ? AI_SKILL[p] : (p >= 1 ? diff().skill || 0 : 0));
 const SPREAD = 3;   // Aufschlag (in Feldern) je Einheit, die dieselbe Stadt schon ansteuert
 
 // Lagebild des Spielers am Zug (Können ≥ 1), wird zu Beginn jedes KI-Zugs neu erstellt:
@@ -134,21 +134,23 @@ function aiChooseProduction(c) {
   // Jäger statt Schiffe nur in Maßen: auf dem Festland liegen die meisten Städte im Binnenland und bauten sonst Hunderte Jäger
   const ftrCap = cnt('ftr') + S.cities.filter(o => o.owner === p && o !== c && o.prod === 'ftr').length >= 2 + Math.floor(ncity / 4);
   const inland = () => (ftrCap ? (rng() < 0.3 && ncity > 2 ? 'tank' : 'inf') : 'ftr');
+  // vorhandene Einheiten plus solche, die andere Städte gerade bauen – sonst beginnen mehrere Städte dasselbe
+  const planned = t => cnt(t) + S.cities.filter(o => o.owner === p && o !== c && o.prod === t).length;
   if (targets.has(here) && landHere < targetsHere * 3 + 4) {
     // Können ≥ 1: Panzer nur gegen Städte des Gegners (die verteidigt sein können) – für neutrale
     // Städte reicht die halb so teure Infanterie
     const tankOk = !sk || knownTargets(p).some(o => S.cont[idx(o.x, o.y)] === here && knownOwnerOf(p, o) >= 0);
     prod = tankOk && rng() < 0.25 && ncity > 2 ? 'tank' : 'inf';
   } else if (targets.has(here)) {
-    prod = c.coastal ? (rng() < 0.2 ? 'sub' : rng() < 0.5 ? 'dst' : 'crs') : inland();   // jedes fünfte Schiff ein U-Boot (kostet laut Messung nichts)
+    // Übermacht hier: Häfen bauen Transporter für Landungen im Hinterland (hinterInfo, höchstens 1 + 1 je 6 Städte), sonst Kriegsschiffe
+    if (c.coastal && hinterInfo(p).conts.has(here) && planned('trn') < Math.min(4, 1 + Math.floor(ncity / 6))) prod = 'trn';
+    else prod = c.coastal ? (rng() < 0.2 ? 'sub' : rng() < 0.5 ? 'dst' : 'crs') : inland();   // jedes fünfte Schiff ein U-Boot (kostet laut Messung nichts)
   } else if (!knows && contHasFrontier(p, here) && landHere < 3) {
     prod = 'inf';                                   // eigenen Kontinent zu Fuß erkunden
   } else if (!knows && fog > 0.3 && scouts < 1 + Math.floor(ncity / 5)) {
     prod = c.coastal ? 'dst' : 'ftr';               // Späher für fremde Inseln
   } else if (c.coastal) {
     const land = mine.filter(u => T(u).domain === 'land').length;
-    // vorhandene Einheiten plus solche, die andere Städte gerade bauen – sonst beginnen mehrere Städte dasselbe
-    const planned = t => cnt(t) + S.cities.filter(o => o.owner === p && o !== c && o.prod === t).length;
     if (cnt('trn') < Math.max(1, Math.ceil(ncity / 4))) prod = 'trn';
     else if (sk && planned('dst') < cnt('trn')) prod = 'dst';   // Können ≥ 1: ein Zerstörer je Transporter als Geleitschutz
     else if (planned('sub') < Math.floor(ncity / 5)) prod = 'sub';
@@ -258,7 +260,7 @@ function aiNeed(u, d, minProb) {
 
 // Bestes Angriffsziel auf einem Nachbarfeld (oder null)
 function aiAdjTarget(u, minProb) {
-  if (u.owner === 1) minProb = Math.min(0.95, minProb + diff().caution);
+  if (u.owner >= 1) minProb = Math.min(0.95, minProb + diff().caution);
   // Fehler: Lage falsch einschätzen – mal zu wagemutig, mal zu zaghaft
   if (mistake(u.owner)) minProb = Math.max(0.05, Math.min(0.95, minProb + (rng() < 0.5 ? -0.25 : 0.3)));
   const P = S.players[u.owner], t = T(u);
@@ -381,6 +383,8 @@ function aiLand(u) {
     const lf = LF[idx(u.x, u.y)];
     const F = (plan && !(lf > 0 && lf <= 4 && plan.invaders.length) && spreadField(u)) || LF;
     const here = F[idx(u.x, u.y)];
+    // Landung im Hinterland: Wer noch weit vom Ziel steht, steigt in einen eigenen Transporter daneben (er wartet dort auf Truppen)
+    if (here >= 3 && hinterInfo(u.owner).conts.has(S.cont[idx(u.x, u.y)]) && boardAdjacent(u)) return;
     if (here > 0) {
       let best = null, bs = 1e9;
       for (const [dx, dy] of DIRS) {
@@ -418,9 +422,124 @@ function aiLand(u) {
   }
 }
 
+// ------------------------------------------------------------------ Landung im Hinterland (nur Festland)
+// Hat p auf einem Kontinent mehr Bodentruppen, als er dort braucht (wie in aiChooseProduction: 3 je Zielstadt + 4), stecken sie oft
+// fest – auf dem Festland z. B. vor einer Engstelle, durch die je Runde nur eine Einheit an den Feind kommt. Dann holen Transporter
+// Truppen aus den eigenen Häfen und von der Küste dieses Kontinents und setzen sie im Rücken des Gegners ab: bei fremden Städten,
+// die über Land mindestens HINTER Felder von den eigenen Truppen entfernt sind und vom Wasser aus erreichbar (Meer höchstens
+// 2 Felder entfernt). AI_AMPHIB je Platz (für Messungen); Messung und Grenzen siehe CLAUDE.md.
+const AI_AMPHIB = [true, true, true, true];
+const HINTER = 6;
+let hinterCache = { key: '', game: null };
+// Meer (das p kennt) höchstens r Felder von der Stadt entfernt?
+function seaNear(p, c, r) {
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    const x = c.x + dx, y = c.y + dy;
+    if (inb(x, y) && S.terrain[idx(x, y)] === 0 && seenBy(p, idx(x, y))) return true;
+  }
+  return false;
+}
+// Lage zu Beginn des Zugs (je Spieler und Runde einmal): near = Abstand jedes Landfelds über Land zur nächsten eigenen Bodentruppe,
+// hint = Städte im Hinterland, conts = Kontinente, auf denen sich eine Landung lohnt
+function hinterInfo(p) {
+  const key = p + ':' + S.turn;
+  if (hinterCache.key === key && hinterCache.game === S) return hinterCache;
+  const N = S.W * S.H, near = new Int16Array(N).fill(-1), q = [], landOn = new Map();
+  for (const u of S.units) {
+    if (u.owner !== p || u.carrier != null || T(u).domain !== 'land') continue;
+    const i = idx(u.x, u.y);
+    landOn.set(S.cont[i], (landOn.get(S.cont[i]) || 0) + 1);
+    if (near[i] < 0) { near[i] = 0; q.push(i); }
+  }
+  for (let h = 0; h < q.length; h++) {
+    const cur = q[h], cx = cur % S.W, cy = (cur / S.W) | 0;
+    for (const [dx, dy] of DIRS) {
+      const nx = cx + dx, ny = cy + dy;
+      if (!inb(nx, ny)) continue;
+      const ni = idx(nx, ny);
+      if (near[ni] !== -1 || S.terrain[ni] !== 1 || !seenBy(p, ni)) continue;
+      near[ni] = near[cur] + 1; q.push(ni);
+    }
+  }
+  const tg = knownTargets(p), tgtOn = new Map(), conts = new Set(), hint = [];
+  for (const c of tg) { const X = S.cont[idx(c.x, c.y)]; tgtOn.set(X, (tgtOn.get(X) || 0) + 1); }
+  // nur auf dem Festland: In den Inselwelten fahren die Transporter ohnehin, dort gab es mit dieser Regel mehr offene Partien
+  const festland = !!(WORLDS[S.world] && WORLDS[S.world].festland);
+  if (AI_AMPHIB[p] !== false && festland) for (const c of tg) {
+    const ci = idx(c.x, c.y), X = S.cont[ci];
+    if ((landOn.get(X) || 0) < tgtOn.get(X) * 3 + 4) continue;   // keine Übermacht: die Truppen an Land genügen
+    if (near[ci] >= 0 && near[ci] < HINTER) continue;            // eigene Truppen sind schon in der Nähe
+    if (!seaNear(p, c, 2)) continue;                             // vom Wasser aus nicht erreichbar
+    hint.push(c); conts.add(X);
+  }
+  // Truppen auf diesen Kontinenten außerhalb von Städten (own) und davon die im Stau (stuck): kein freier Schritt näher ans Ziel,
+  // kein Feind davor. Transporter holen sie an der Küste ab (aiTransport), sie steigen zu (aiLand).
+  const stuck = new Uint8Array(N), own = new Uint8Array(N);
+  if (conts.size) {
+    const occ = new Int8Array(N).fill(-1);
+    for (const u of S.units) if (u.carrier == null) occ[idx(u.x, u.y)] = u.owner;
+    const LF = landField(p);
+    for (const u of S.units) {
+      if (u.owner !== p || u.carrier != null || T(u).domain !== 'land') continue;
+      const i = idx(u.x, u.y), here = LF[i];
+      if (!conts.has(S.cont[i]) || S.cityGrid[i] >= 0) continue;
+      own[i] = 1;
+      if (here <= 0) continue;
+      let free = false;
+      for (const [dx, dy] of DIRS) {
+        const nx = u.x + dx, ny = u.y + dy;
+        if (!inb(nx, ny)) continue;
+        const ni = idx(nx, ny), f = LF[ni];
+        if (f < 0 || f >= here) continue;
+        const ci = S.cityGrid[ni];
+        if (occ[ni] < 0 || occ[ni] !== p || (ci >= 0 && S.cities[ci].owner === p)) { free = true; break; }
+      }
+      if (!free) stuck[i] = 1;
+    }
+  }
+  hinterCache = { key, game: S, near, conts, hint, stuck, own };
+  return hinterCache;
+}
+// Wie viele eigene Truppen (im Stau bzw. überhaupt) auf einem Kontinent mit Landung im Hinterland stehen neben dem Meeresfeld x, y?
+function around(h, mask, x, y) {
+  let n = 0;
+  for (const [dx, dy] of DIRS) {
+    const nx = x + dx, ny = y + dy;
+    if (inb(nx, ny) && mask[idx(nx, ny)] && h.conts.has(S.cont[idx(nx, ny)])) n++;
+  }
+  return n;
+}
+// Abholstelle: Meeresfeld neben mindestens zwei Einheiten im Stau oder drei eigenen Einheiten
+const pickSpot = (h, x, y, i) => S.terrain[i] === 0 && (around(h, h.stuck, x, y) >= 2 || around(h, h.own, x, y) >= 3);
+// Einheit im Stau steigt in einen eigenen Transporter mit freiem Platz auf einem Nachbarfeld (Meer)
+function boardAdjacent(u) {
+  for (const [dx, dy] of DIRS) {
+    const nx = u.x + dx, ny = u.y + dy;
+    if (!inb(nx, ny) || S.terrain[idx(nx, ny)] !== 0) continue;
+    const tr = topUnitsAt(nx, ny).find(o => o.owner === u.owner && o.type === 'trn' && cargoOf(o).length < T(o).capacity);
+    if (tr && moveStep(u, nx, ny).ok) return true;
+  }
+  return false;
+}
+// Darf ein Transporter von p seine Truppen auf Landfeld i absetzen? Auf Kontinenten mit Landung im Hinterland nur nahe einer
+// Hinterland-Stadt (höchstens 2 Felder), sonst wie bisher überall auf einem Kontinent mit Zielen.
+function landingOk(p, i, targets) {
+  const X = S.cont[i];
+  if (!targets.has(X)) return false;
+  const h = hinterInfo(p);
+  if (!h.conts.has(X)) return true;
+  const x = i % S.W, y = (i / S.W) | 0;
+  return h.hint.some(c => S.cont[idx(c.x, c.y)] === X && cheb(x, y, c.x, c.y) <= 2);
+}
+
+// Bodentruppen in eigenen Häfen, die ein Transporter abholen soll: auf Kontinenten ohne Ziele jede (wie bisher), auf Kontinenten,
+// von denen aus im Hinterland gelandet wird, nur aus Häfen mit mindestens zwei Wartenden (sonst ist die Einheit weg, bis er da ist)
 function waitingLand(p, targets) {
-  return S.units.filter(o => o.owner === p && T(o).domain === 'land' && o.carrier == null &&
-    !targets.has(S.cont[idx(o.x, o.y)]) && (() => { const c = cityAt(o.x, o.y); return c && c.owner === p && c.coastal; })());
+  const h = hinterInfo(p), per = new Map();
+  const list = S.units.filter(o => o.owner === p && T(o).domain === 'land' && o.carrier == null &&
+    (() => { const c = cityAt(o.x, o.y); return c && c.owner === p && c.coastal; })());
+  for (const o of list) { const i = idx(o.x, o.y); per.set(i, (per.get(i) || 0) + 1); }
+  return list.filter(o => { const i = idx(o.x, o.y), X = S.cont[i]; return !targets.has(X) || (h.conts.has(X) && per.get(i) >= 2); });
 }
 
 // ------------------------------------------------------------------ Transporter
@@ -430,9 +549,11 @@ function aiTransport(u) {
   while (alive(u) && u.moves > 0 && guard-- > 0) {
     const targets = contTargets(p);
     const c = cityAt(u.x, u.y);
-    if (c && c.owner === p && !targets.has(S.cont[idx(u.x, u.y)])) loadUnits(u);
+    // Einladen: im eigenen Hafen auf einem Kontinent ohne Ziele – oder auf einem, von dem aus im Hinterland gelandet wird
+    const homeCont = S.cont[idx(u.x, u.y)];
+    if (c && c.owner === p && (!targets.has(homeCont) || hinterInfo(p).conts.has(homeCont))) loadUnits(u);
     let cargo = cargoOf(u);
-    // Ausladen, wenn neben (bekanntem) Land mit Zielen
+    // Ausladen, wenn neben (bekanntem) Land mit Zielen – bei einer Landung im Hinterland nur dort (landingOk)
     if (cargo.length) {
       const tgts = knownTargets(p);
       let did = false;
@@ -443,7 +564,7 @@ function aiTransport(u) {
           const nx = u.x + dx, ny = u.y + dy;
           if (!inb(nx, ny)) continue;
           const ni = idx(nx, ny);
-          if (S.terrain[ni] !== 1 || !seenBy(p, ni) || !targets.has(S.cont[ni])) continue;
+          if (S.terrain[ni] !== 1 || !seenBy(p, ni) || !landingOk(p, ni, targets)) continue;
           const cc = cityAt(nx, ny);
           const occ = topUnitsAt(nx, ny);
           if (occ.some(x => x.owner === p) && !(cc && cc.owner === p)) continue;
@@ -458,7 +579,10 @@ function aiTransport(u) {
     }
     cargo = cargoOf(u);
     const sk = aiSkill(p) >= 1;
-    const basePass = makePassable(u, aiKnowsMap(p));
+    // Landung im Hinterland (meist Festland mit schmalen Wasserstraßen): Weg ohne eigene Einheiten planen – sonst wechselte er jede
+    // Runde den Umweg, je nachdem, wo gerade ein eigenes Schiff liegt. Steht eins im Weg, wartet er; nach zwei Runden fährt er außen herum.
+    const stable = hinterInfo(p).conts.size > 0 && (u.blk || 0) < 2;
+    const basePass = makePassable(u, aiKnowsMap(p), stable);
     let pass = basePass;
     if (sk && cargo.length) {
       // beladen nicht in die Reichweite sichtbarer feindlicher Kriegsschiffe und Jäger fahren
@@ -472,7 +596,24 @@ function aiTransport(u) {
     }
     const waiting = waitingLand(p, targets);
     let path = null;
-    const goInvade = cargo.length >= Math.min(cap, p === 1 ? diff().invadeAt : 4) || (cargo.length > 0 && (!waiting.length || (u.wait || 0) >= 3));
+    // Landung im Hinterland: Truppen, die an der Küste im Stau stehen, vom Ufer abholen (sie steigen in aiLand zu). Die gewählte
+    // Abholstelle (u.pickAt) gilt, solange dort noch eigene Truppen stehen – sonst pendelte er zwischen wechselnden Stellen.
+    const h = hinterInfo(p), invadeAt = Math.min(cap, p >= 1 ? diff().invadeAt : 4), ui = idx(u.x, u.y);
+    if (!cargo.length) u.inv = false;   // u.inv: Landung begonnen – erst alle absetzen, dann wieder abholen
+    let atPick = false, pickPath = null;
+    if (h.conts.size && cargo.length < invadeAt && !u.inv) {
+      if (u.pickAt != null && !(S.terrain[u.pickAt] === 0 && around(h, h.own, u.pickAt % S.W, (u.pickAt / S.W) | 0) >= 1)) u.pickAt = null;
+      if (u.pickAt === ui && !cargo.length && (u.wait || 0) >= 4) u.pickAt = null;   // niemand steigt zu: andere Stelle suchen
+      if (u.pickAt === ui) atPick = true;
+      else if (u.pickAt != null) pickPath = bfs(u.x, u.y, pass, (x, y, i) => i === u.pickAt);
+      if (!atPick && !pickPath) {
+        pickPath = bfs(u.x, u.y, pass, (x, y, i) => pass(x, y, i) && pickSpot(h, x, y, i));
+        if (pickPath) { const [lx, ly] = pickPath[pickPath.length - 1]; u.pickAt = idx(lx, ly); u.wait = 0; } else u.pickAt = null;
+      }
+    } else u.pickAt = null;
+    const canPick = atPick || !!pickPath;
+    const goInvade = cargo.length >= invadeAt || (cargo.length > 0 && (u.inv || (!waiting.length && !canPick) || (u.wait || 0) >= 3));
+    if (goInvade) { u.pickAt = null; if (h.conts.size) u.inv = true; }
     if (goInvade && targets.size && S.units.some(o => o.owner === p && o.type === 'bat')) {
       // bevorzugt dort landen, wo ein eigenes Schlachtschiff eine fremde Stadt unter Feuer hält
       path = bfs(u.x, u.y, pass, (x, y, i) => {
@@ -493,7 +634,7 @@ function aiTransport(u) {
           const nx = x + dx, ny = y + dy;
           if (!inb(nx, ny)) continue;
           const ni = idx(nx, ny);
-          if (S.terrain[ni] === 1 && seenBy(p, ni) && targets.has(S.cont[ni])) return true;
+          if (S.terrain[ni] === 1 && seenBy(p, ni) && landingOk(p, ni, targets)) return true;
         }
         return false;
       });
@@ -501,11 +642,16 @@ function aiTransport(u) {
       const ws = new Set(waiting.map(o => idx(o.x, o.y)));
       if (ws.has(idx(u.x, u.y))) { u.wait = (u.wait || 0) + 1; break; }
       path = bfs(u.x, u.y, pass, (x, y, i) => ws.has(i));
+    } else if (canPick) {
+      if (atPick) { u.wait = (u.wait || 0) + 1; break; }   // warten, bis die Truppen zugestiegen sind
+      path = pickPath;
     } else if (!(c && c.owner === p)) {
       // nichts zu tun (oder noch kein Ziel bekannt): im Hafen warten
       path = bfs(u.x, u.y, pass, (x, y) => { const cc = cityAt(x, y); return !!(cc && cc.owner === p && cc.coastal); });
     }
-    if (!path || !stepAlong(u, path)) break;
+    if (!path) { u.inv = false; break; }
+    if (!stepAlong(u, path)) { if (stable) u.blk = (u.blk || 0) + 1; break; }
+    u.blk = 0;
     if (!(cityAt(u.x, u.y))) u.wait = 0;
   }
 }

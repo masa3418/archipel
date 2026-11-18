@@ -29,19 +29,23 @@ function parseSeed(v) {
 }
 const fmtSeed = n => String(n).padStart(9, '0').replace(/(\d{3})(?=\d)/g, '$1 ');   // 042 113 907
 
-function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln', seedIn = null) {
+// nAi: Zahl der Computergegner (1 … MAP_SIZES[size].maxAi), jeder gegen jeden. Spieler 0 ist der Mensch, 1 … nAi die Gegner.
+function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln', seedIn = null, nAi = 1) {
   const sz = MAP_SIZES[sizeKey] || MAP_SIZES.mittel;
   if (!WORLDS[worldKey]) worldKey = 'inseln';
+  nAi = Math.max(1, Math.min(sz.maxAi || 1, PLAYERS.length - 1, Math.round(nAi) || 1));
+  const nP = nAi + 1, per = () => Array.from({ length: nP }, () => ({}));
   const seed0 = seedIn != null ? seedIn : Math.floor(Math.random() * SEED_MAX);
   let m = null, seed = seed0;
-  for (let k = 0; !m && k < 200; k++) m = generateMap(sz.w, sz.h, seed + k, worldKey);
+  for (let k = 0; !m && k < 200; k++) m = generateMap(sz.w, sz.h, seed + k, worldKey, nP);
   S = {
     W: m.W, H: m.H, size: sizeKey, terrain: m.terrain, elev: m.elev, depth: m.depth, cont: m.cont,
     cities: m.cities, units: [], nextId: 1, turn: 1, cur: 0, log: [], over: null, difficulty: DIFFICULTY[diffKey] ? diffKey : 'normal', world: worldKey, seed: seed0,
     gameId: 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),   // Kennung der Partie (Spielstände gruppieren)
-    players: [mkPlayer(m.W, m.H, m.cities.length), mkPlayer(m.W, m.H, m.cities.length)],
-    kills: [{}, {}], wasted: [{}, {}], killsFrom: 1,   // Statistik: zerstörte Einheiten je Spieler und Typ, siehe killUnit
-    built: [{}, {}], builtFrom: 1,                    // Statistik: in Städten gebaute Einheiten je Spieler und Typ (startTurn)
+    players: Array.from({ length: nP }, () => mkPlayer(m.W, m.H, m.cities.length)),
+    kills: per(), wasted: per(), lost: per(), killsFrom: 1,   // Statistik: zerstört (je Täter), verloren (je Opfer), siehe killUnit
+    built: per(), builtFrom: 1,                    // Statistik: in Städten gebaute Einheiten je Spieler und Typ (startTurn)
+    outAt: new Array(nP).fill(0),                  // Runde, in der ein Gegner ausgeschieden ist (0 = noch dabei), siehe checkGameOver
   };
   buildCityGrid();
   m.start.forEach((cid, p) => {
@@ -50,17 +54,24 @@ function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln', seedIn = null
     createUnit('inf', p, c.x, c.y);
     for (const t of p === 0 ? diff().youStart : diff().aiStart) createUnit(t, p, c.x, c.y);
   });
-  // Brutal: Gegner beginnt mit zusätzlichen Städten (die nächstgelegenen neutralen)
-  const aiHome = S.cities[m.start[1]];
-  for (let k = 0; k < diff().aiCities; k++) {
-    const near = S.cities.filter(c => c.owner === -1)
-      .sort((a, b) => cheb(a.x, a.y, aiHome.x, aiHome.y) - cheb(b.x, b.y, aiHome.x, aiHome.y))[0];
-    if (near) { near.owner = 1; near.prod = 'inf'; near.progress = 0; }
+  // Brutal: jeder Gegner beginnt mit zusätzlichen Städten (die nächstgelegenen neutralen)
+  for (let p = 1; p < nP; p++) {
+    const aiHome = S.cities[m.start[p]];
+    for (let k = 0; k < diff().aiCities; k++) {
+      const near = S.cities.filter(c => c.owner === -1)
+        .sort((a, b) => cheb(a.x, a.y, aiHome.x, aiHome.y) - cheb(b.x, b.y, aiHome.x, aiHome.y))[0];
+      if (near) { near.owner = p; near.prod = 'inf'; near.progress = 0; }
+    }
   }
-  addLog(tt('Willkommen! Erobere alle Städte der Welt.', 'Welcome! Capture every city in the world.'), 'good');
+  addLog(nAi > 1 ? tt(`Willkommen! ${nAi} Gegner kämpfen um die Welt – jeder gegen jeden. Erobere alle Städte.`, `Welcome! ${nAi} opponents fight for the world – everyone against everyone. Capture every city.`)
+    : tt('Willkommen! Erobere alle Städte der Welt.', 'Welcome! Capture every city in the world.'), 'good');
   startTurn(0);
-  computeVision(1);
+  for (let p = 1; p < nP; p++) computeVision(p);
 }
+
+// Spieler: 0 = du, 1 … = Computergegner. Bei einem Gegner heißt er „Gegner“, bei mehreren nach seiner Farbe (PLAYERS in data.js).
+const nPlayers = () => (S && S.players ? S.players.length : 2);
+function pname(p) { return p === 0 ? PLAYERS[0].name : nPlayers() <= 2 ? tt('Gegner', 'Enemy') : PLAYERS[p].name; }
 
 function buildCityGrid() {
   S.cityGrid = new Int16Array(S.W * S.H).fill(-1);
@@ -79,9 +90,10 @@ function createUnit(type, owner, x, y) {
   return u;
 }
 
-// by: Spieler (0/1), der die Einheit zerstört hat – zählt in S.kills[by] für die Statistik; -1 = ohne Zutun eines
+// by: Spieler, der die Einheit zerstört hat – zählt in S.kills[by] (Täter) und S.lost[Besitzer] (Opfer); -1 = ohne Zutun eines
 // Gegners verloren (Absturz, Angriff auf neutrale Stadt) – zählt in S.wasted[Besitzer]. Ohne Angabe wird nichts
 // gezählt (Eroberer, der als Besatzung in der Stadt aufgeht). Ladung geht mit unter und zählt genauso.
+// Bei mehreren Gegnern fallen Täter und Opfer auseinander (Gegner gegen Gegner) – deshalb beide Listen.
 function killUnit(u, by) {
   for (const c of cargoOf(u)) killUnit(c, by);
   const k = S.units.indexOf(u);
@@ -89,6 +101,8 @@ function killUnit(u, by) {
   S.units.splice(k, 1);
   const rec = by == null ? null : by >= 0 ? S.kills && S.kills[by] : S.wasted && S.wasted[u.owner];
   if (rec) rec[u.type] = (rec[u.type] || 0) + 1;
+  const lo = by != null && by >= 0 && S.lost && S.lost[u.owner];
+  if (lo) lo[u.type] = (lo[u.type] || 0) + 1;
 }
 
 // Produktion einer Stadt umstellen: Der Fortschritt beginnt neu, und das Marschziel (es galt für den alten Typ) entfällt.
@@ -140,9 +154,11 @@ const ART = {
 };
 // Englisch: "Your tank" / "Enemy tank" (nom), "your tank" / "the enemy tank" (acc)
 const ART_EN = { nom: ['Your', 'Enemy'], acc: ['your', 'the enemy'] };
+// Bei mehreren Gegnern mit Farbe: „feindlicher Zerstörer (Gelb)“
 function uname(u, kase = 'nom') {
-  if (EN) return `${ART_EN[kase][u.owner]} ${T(u).name.toLowerCase()}`;
-  return `${ART[kase][u.owner][T(u).g]} ${T(u).name}`;
+  const k = u.owner > 0 ? 1 : 0, col = k && nPlayers() > 2 && PLAYERS[u.owner] ? ` (${PLAYERS[u.owner].name})` : '';
+  if (EN) return `${ART_EN[kase][k]} ${T(u).name.toLowerCase()}${col}`;
+  return `${ART[kase][k][T(u).g]} ${T(u).name}${col}`;
 }
 // Ersten Buchstaben klein (für uname mitten im Satz)
 const lc1 = s => s.charAt(0).toLowerCase() + s.slice(1);
@@ -164,7 +180,7 @@ function canEnterTerrain(u, x, y) {
 }
 
 // Haken für die Oberfläche (Animationen); die Regeln funktionieren auch ohne
-const hooks = { move: null, combat: null, capture: null, salvo: null, cover: null };
+const hooks = { move: null, combat: null, capture: null, salvo: null, cover: null, out: null };
 
 function relocate(u, x, y) {
   if (hooks.move && (u.x !== x || u.y !== y)) hooks.move(u, u.x, u.y, x, y);
@@ -349,9 +365,10 @@ function captureCity(c, owner, by = null, support = false) {
   if (by) killUnit(by);
   if (owner === 0) addLog(tt(`Du hast ${c.name} erobert!`, `You captured ${c.name}!`) + (by ? tt(` ${{ m: 'Der', f: 'Die', n: 'Das' }[T(by).g]} ${T(by).name} geht in der Stadt auf.`, ` Your ${T(by).name.toLowerCase()} merges into the city.`) : '')
     + (support ? tt(' Dein Schlachtschiff gab Feuerunterstützung.', ' Your battleship gave fire support.') : ''), 'good', c.x, c.y);
-  else if (prev === 0) addLog(tt(`${c.name} ist an den Gegner gefallen!`, `${c.name} has fallen to the enemy!`)
+  else if (prev === 0) addLog((nPlayers() > 2 ? tt(`${c.name} ist an ${pname(owner)} gefallen!`, `${c.name} has fallen to ${pname(owner)}!`)
+      : tt(`${c.name} ist an den Gegner gefallen!`, `${c.name} has fallen to the enemy!`))
     + (support ? tt(' Ein feindliches Schlachtschiff gab Feuerunterstützung.', ' An enemy battleship gave fire support.') : ''), 'bad', c.x, c.y);
-  if (owner === 1 && typeof aiChooseProduction === 'function') aiChooseProduction(c);
+  if (owner >= 1 && typeof aiChooseProduction === 'function') aiChooseProduction(c);
 }
 
 function attack(u, nx, ny, enemies, city) {
@@ -1233,9 +1250,16 @@ function strength(p) {
   const cities = S.cities.filter(c => c.owner === p).length;
   return { cities, units: n, unitValue: Math.round(units), total: Math.round(units + cities * CITY_VALUE) };
 }
+// Stärkster Gegner (bei einem Gegner: der Gegner) – das Kräfteverhältnis vergleicht dich mit ihm: Bei mehreren Gegnern
+// (jeder gegen jeden) zählt, ob du den Stärksten schlagen kannst, nicht die Summe aller (die kämpfen auch untereinander).
+function strongestEnemy() {
+  let best = 1, bv = -1;
+  for (let p = 1; p < nPlayers(); p++) { const v = strength(p).total; if (v > bv) { bv = v; best = p; } }
+  return best;
+}
 function recordStrength() {
   if (!S.hist) S.hist = [];
-  const e = { t: S.turn, me: strength(0).total, en: strength(1).total };
+  const e = { t: S.turn, me: strength(0).total, en: strength(strongestEnemy()).total };
   const last = S.hist[S.hist.length - 1];
   if (last && last.t === S.turn) S.hist[S.hist.length - 1] = e; else S.hist.push(e);
   if (S.hist.length > 1000) S.hist.shift();
@@ -1299,7 +1323,7 @@ function startTurn(p) {
   for (const c of S.cities) {
     if (c.owner !== p || !c.prod) continue;
     if (UT[c.prod].domain === 'sea' && !c.coastal) { c.prod = 'inf'; c.progress = 0; c.rally = null; }
-    c.progress += p === 1 ? diff().aiProd : 1;
+    c.progress += p >= 1 ? diff().aiProd : 1;
     if (c.progress >= UT[c.prod].cost) {
       c.progress = Math.max(0, c.progress - UT[c.prod].cost);
       if (S.built) S.built[p][c.prod] = (S.built[p][c.prod] || 0) + 1;
@@ -1328,9 +1352,25 @@ function isAlive(p) {
   return S.cities.some(c => c.owner === p) || S.units.some(u => u.owner === p && T(u).capture);
 }
 
+// Spielende: Ein Gegner scheidet aus, sobald er keine Stadt mehr hat (S.outAt = Runde); alle seine Einheiten verschwinden
+// (hooks.out: die Wiedergabe zeigt sie bis zu diesem Moment). Gewonnen, wenn alle Gegner ausgeschieden sind – bei einem Gegner,
+// sobald er keine Stadt mehr hat. Verloren, wenn du keine Stadt und keine Einheit mehr hast, die erobern kann (du darfst mit
+// deinen Truppen noch eine Stadt zurückerobern).
 function checkGameOver() {
   if (S.over) return S.over;
-  if (!isAlive(1)) S.over = 'win';
+  const n = nPlayers();
+  if (!S.outAt || S.outAt.length !== n) S.outAt = new Array(n).fill(0);
+  let enemyLeft = false;
+  for (let p = 1; p < n; p++) {
+    if (S.outAt[p]) continue;
+    if (S.cities.some(c => c.owner === p)) { enemyLeft = true; continue; }
+    S.outAt[p] = S.turn;
+    const gone = S.units.filter(u => u.owner === p);
+    if (hooks.out) hooks.out(p, gone);
+    S.units = S.units.filter(u => u.owner !== p);
+    if (n > 2) addLog(tt(`${pname(p)} hat keine Stadt mehr und scheidet aus.`, `${pname(p)} has no city left and is out.`), 'good');
+  }
+  if (!enemyLeft) S.over = 'win';
   else if (!isAlive(0)) S.over = 'lose';
   return S.over;
 }
@@ -1399,6 +1439,10 @@ function sanitizeState(o) {
     if (!o.terrain[i] && o.depth[i] < 1) o.depth[i] = 1;   // Wasser hat immer Tiefe ≥ 1 (Farbtabelle)
   }
 
+  // 2 Spieler (du und ein Gegner) bis PLAYERS.length (mehrere Computergegner)
+  if (!Array.isArray(o.players) || o.players.length < 2 || o.players.length > PLAYERS.length) throw new Error(tt('Ungültige Spielerdaten', 'Invalid player data'));
+  const nP = o.players.length;
+  const owner = (v, d) => (Number.isInteger(v) && v >= -1 && v < nP ? v : d);   // -1 = neutral, 0 … nP-1 = Spieler
   const s = {
     W, H, terrain: o.terrain, elev: o.elev, depth: o.depth, cont: o.cont,
     size: oneOf(o.size, Object.keys(MAP_SIZES), 'mittel'),
@@ -1406,7 +1450,7 @@ function sanitizeState(o) {
     world: oneOf(o.world, Object.keys(WORLDS), 'kontinente'),   // ältere Spielstände: bisherige Welt
     seed: isNum(o.seed) ? int(o.seed, 0, 0, SEED_MAX - 1) : null,   // Kartennummer (ältere Spielstände: unbekannt)
     gameId: typeof o.gameId === 'string' && /^[a-z0-9]{1,24}$/.test(o.gameId) ? o.gameId : null,   // Kennung der Partie (ältere: keine)
-    turn: int(o.turn, 1, 1, 1e6), cur: oneOf(o.cur, [0, 1], 0),
+    turn: int(o.turn, 1, 1, 1e6), cur: Math.max(0, owner(o.cur, 0)),
     over: oneOf(o.over, ['win', 'lose'], null),
     overReason: oneOf(o.overReason, ['surrender', 'capitulation'], undefined),
     offerPause: int(o.offerPause, 0, 0, 1e6),
@@ -1417,7 +1461,7 @@ function sanitizeState(o) {
     c = c || {};
     const x = int(c.x, -1), y = int(c.y, -1);
     if (!inMap(x, y)) throw new Error(tt('Ungültige Stadt', 'Invalid city'));
-    return { id: i, x, y, name: str(c.name, 40) || 'Stadt ' + (i + 1), owner: oneOf(c.owner, [-1, 0, 1], -1),
+    return { id: i, x, y, name: str(c.name, 40) || 'Stadt ' + (i + 1), owner: owner(c.owner, -1),
       prod: UT[c.prod] ? c.prod : null, progress: num(c.progress, 0, 0, 1000), coastal: !!c.coastal,
       rally: c.owner === 0 ? pt(c.rally) : null };
   });
@@ -1440,7 +1484,7 @@ function sanitizeState(o) {
       if (pts.length && start) order = { type: 'patrol', start, pts, i: int(od.i, 0, 0, pts.length - 1) };
       if (order && od.refuel === true) order.refuel = true;   // Jäger war gerade auf dem Weg zum Tanken
     }
-    const nu = { id, type: u.type, owner: oneOf(u.owner, [0, 1], 0), x, y,
+    const nu = { id, type: u.type, owner: Math.max(0, owner(u.owner, 0)), x, y,
       hp: num(u.hp, t.hp, 0.01, t.hp), moves: int(u.moves, 0, 0, t.move), fuel: num(u.fuel, t.fuel || 0, 0, t.fuel || 0),
       carrier: isNum(u.carrier) ? int(u.carrier) : null, order, skip: !!u.skip };
     if (isNum(u.aiTarget)) nu.aiTarget = int(u.aiTarget, 0, 0, s.cities.length - 1);
@@ -1471,12 +1515,15 @@ function sanitizeState(o) {
 
   // Statistik der zerstörten Einheiten: je Spieler und Einheitentyp eine Zahl. Ältere Spielstände kennen sie nicht,
   // dort wird erst ab dem Laden gezählt (killsFrom = Runde, ab der die Zahlen gelten).
-  const tally = v => [0, 1].map(p => {
+  const tally = v => Array.from({ length: nP }, (_, p) => {
     const src = Array.isArray(v) && v[p] && typeof v[p] === 'object' ? v[p] : {}, r = {};
     for (const k of Object.keys(UT)) { const n = int(src[k], 0, 0, 1e6); if (n) r[k] = n; }
     return r;
   });
   s.kills = tally(o.kills); s.wasted = tally(o.wasted);
+  // Verluste je Opfer (S.lost). Ältere Spielstände mit einem Gegner kennen sie nicht – dort ist, was der eine zerstört hat, der Verlust des anderen.
+  s.lost = Array.isArray(o.lost) ? tally(o.lost) : nP === 2 ? [{ ...s.kills[1] }, { ...s.kills[0] }] : tally(null);
+  s.outAt = Array.from({ length: nP }, (_, p) => (p && Array.isArray(o.outAt) ? int(o.outAt[p], 0, 0, s.turn) : 0));
   s.built = tally(o.built);   // gebaute Einheiten (ältere Spielstände: ab dem Laden)
   s.builtFrom = Array.isArray(o.built) ? int(o.builtFrom, 1, 1, 1e6) : s.turn;
   s.killsFrom = Array.isArray(o.kills) ? int(o.killsFrom, 1, 1, 1e6) : s.turn;
@@ -1491,18 +1538,17 @@ function sanitizeState(o) {
         for (let i = 0; i < N; i++) if (seen[i] > s.turn) seen[i] = s.turn;
         const ev = v => (Array.isArray(v) ? v.slice(0, TL_MAX_EVENTS) : [])
           .filter(e => Array.isArray(e) && isNum(e[0]) && isNum(e[1]) && isNum(e[2]) && e[1] >= 0 && e[1] < nc)
-          .map(e => [int(e[0], 1, 0, s.turn), int(e[1], 0, 0, nc - 1), int(e[2], -1, -1, 1)])
+          .map(e => [int(e[0], 1, 0, s.turn), int(e[1], 0, 0, nc - 1), int(e[2], -1, -1, nP - 1)])
           .sort((a, b) => a[0] - b[0]);   // der Zeitraffer liest die Einträge der Reihe nach
         s.tl = { from: int(o.tl.from, 1, 1, s.turn), seen, own: ev(o.tl.own), know: ev(o.tl.know) };
       }
     } catch (e) { s.tl = null; }
   }
 
-  if (!Array.isArray(o.players) || o.players.length !== 2) throw new Error(tt('Ungültige Spielerdaten', 'Invalid player data'));
   s.players = o.players.map(P => {
     if (!P || !P.seen || P.seen.length !== N) throw new Error(tt('Ungültige Spielerdaten', 'Invalid player data'));
     const ko = new Int8Array(s.cities.length).fill(-2);
-    if (P.knownOwner) for (let i = 0; i < ko.length && i < P.knownOwner.length; i++) ko[i] = Math.min(1, Math.max(-2, P.knownOwner[i]));
+    if (P.knownOwner) for (let i = 0; i < ko.length && i < P.knownOwner.length; i++) ko[i] = Math.min(nP - 1, Math.max(-2, P.knownOwner[i]));
     for (let i = 0; i < N; i++) P.seen[i] = P.seen[i] ? 1 : 0;
     const intel = {};
     if (P.intel && typeof P.intel === 'object') for (const [k, v] of Object.entries(P.intel).slice(0, 20000)) if (UT[v] && /^\d+$/.test(k)) intel[k] = v;
@@ -1527,7 +1573,7 @@ function deserialize(json) {
   const clean = sanitizeState(o);   // wirft bei unbrauchbaren Daten – dann bleibt das alte Spiel erhalten
   S = clean;
   buildCityGrid();
-  computeVision(0); computeVision(1);
+  for (let p = 0; p < S.players.length; p++) computeVision(p);
 }
 
 function saveGame(key = SAVE_KEY) {
@@ -1548,7 +1594,7 @@ function hasSave(key = SAVE_KEY) {
 // ---- benannte Spielstände
 function saveSummary() {
   return {
-    turn: S.turn, size: S.size, difficulty: S.difficulty || 'normal', world: S.world, seed: S.seed, game: S.gameId || null,
+    turn: S.turn, size: S.size, difficulty: S.difficulty || 'normal', world: S.world, seed: S.seed, game: S.gameId || null, ais: S.players.length - 1,
     cities: S.cities.filter(c => c.owner === 0).length,
     units: S.units.filter(u => u.owner === 0).length,
     over: S.over || null,

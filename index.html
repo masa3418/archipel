@@ -231,6 +231,8 @@
   #banner span { color: var(--muted); margin-left: 8px; font-size: 13px; font-weight: 400; }
   #banner.own { background: #17243a; border-left-color: #2f7de1; color: #cfe2ff; }   /* eigene Einheiten führen Befehle aus */
   #banner[hidden] { display: none; }
+  .pdot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: -1px; box-shadow: 0 0 0 1px rgba(0,0,0,.5); }   /* Farbe eines Spielers */
+  .foes { margin-left: 4px; cursor: help; } .foes .pdot { margin-right: 3px; } .foes .pdot.out { opacity: .25; }   /* Gegner in der Kopfzeile */
   .modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
   .modal[hidden] { display: none; }
   .dlg { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 24px; max-width: 620px; width: 100%;
@@ -318,7 +320,7 @@
   .over-facts div { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; }
   .over-facts b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .over-facts span { font-size: 11px; color: var(--muted); }
-  .over-facts div:has(.seedv) { grid-column: span 2; }   /* Kartennummer braucht mehr Platz */
+  .over-facts div:has(.seedv), .over-facts div.w2 { grid-column: span 2; }   /* Kartennummer und Zahlen mehrerer Gegner brauchen mehr Platz */
   .over-facts b .seedv { font-size: inherit; color: var(--text); }
   .over-dlg i.me, .over-units .me { color: #8fc0ff; font-style: normal; }
   .over-dlg i.en, .over-units .en { color: #ff9d96; font-style: normal; }
@@ -329,6 +331,8 @@
   .over-units td.zero { color: var(--muted); opacity: .5; }
   .over-units tr.sum td { border-top: 1px solid #3d4b5e; font-weight: 700; }
   .over-units .sym { display: inline-block; width: 18px; color: var(--muted); font-weight: 700; }
+  .over-units td:first-child { white-space: nowrap; }
+  .over-units.multi td, .over-units.multi th { padding: 2px 3px; }
   #overNote { font-size: 12px; margin: 6px 0 0; }
   @media (max-width: 880px) { .over-body { grid-template-columns: 1fr; } }
   .cap-dlg.plain { border-color: var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
@@ -539,6 +543,8 @@
     <p class="muted" id="worldDesc" style="font-size:13px;margin:6px 0 0"></p>
     <label style="display:block;margin-top:10px"><span data-en="Difficulty">Schwierigkeit</span><br><select id="diffSel"></select></label>
     <p class="muted" id="diffDesc" style="font-size:13px;margin:6px 0 0"></p>
+    <label style="display:block;margin-top:10px"><span data-en="Opponents">Gegner</span><br><select id="aiSel"></select></label>
+    <p class="muted" id="aiDesc" style="font-size:13px;margin:6px 0 0"></p>
     <label style="display:block;margin-top:10px"><span data-en="Map number">Kartennummer</span><br>
       <span class="seedrow"><input id="seedIn" type="text" maxlength="40" autocomplete="off" spellcheck="false" placeholder="leer = zufällige Welt" data-en-placeholder="empty = random world">
       <button type="button" id="seedSame" title="Kartennummer, Größe und Welt der aktuellen Partie übernehmen" data-en-title="Take the map number, size and world of the current game" data-en="This world again">Diese Welt noch einmal</button></span></label>
@@ -797,18 +803,38 @@
           Vor jedem Angriff berechnet er die Siegchance und greift nur an, wenn sie hoch genug ist. Auf Leicht ist er dabei
           vorsichtiger. Seine Städte bauen zuerst Bodentruppen, solange es auf dem eigenen Kontinent noch etwas zu erobern
           gibt, danach Transporter, Nachschub und Flotte. Er hat keine übergreifende Strategie und stimmt Großangriffe nicht ab. Wer seine Kräfte bündelt,
-          ist ihm überlegen. Seine Städte lässt er unbesetzt: Er setzt ganz auf Angriff. Er baut etwa ein U-Boot je fünf Städte: Sie lauern getaucht vor deinen Häfen und greifen nur Transporter und große Schiffe an. Zerstörer als Geleitschutz sind das Gegenmittel.</p>
+          ist ihm überlegen. Seine Städte lässt er unbesetzt: Er setzt ganz auf Angriff. Auf dem Festland gilt: Hat er mehr Truppen, als er
+          braucht – etwa vor einer Engstelle –, holt er sie mit Transportern ab und landet in deinem Hinterland, bei Städten weit hinter der Front. Er baut etwa ein U-Boot je fünf Städte: Sie lauern getaucht vor deinen Häfen und greifen nur Transporter und große Schiffe an. Zerstörer als Geleitschutz sind das Gegenmittel.</p>
         <p data-lang="en"><b>How the enemy thinks:</b> It follows fixed rules for each unit (a kind of decision tree) and does not plan ahead.
           Before every attack it calculates the win chance and only attacks if it is high enough. On Easy it is
           more cautious. Its cities build ground troops first, as long as there is still something to capture on its own
           continent, then transports, reinforcements and a fleet. It has no overall strategy and does not coordinate large attacks. If you concentrate your forces,
-          you will outmatch it. It leaves its cities ungarrisoned: it relies entirely on attack. It builds about one submarine per five cities: they lurk submerged off your ports and attack only transports and big ships. Destroyers as escorts are the remedy.</p>
+          you will outmatch it. It leaves its cities ungarrisoned: it relies entirely on attack. On the mainland: if it has more troops than it
+          needs – say in front of a narrow pass – it picks them up with transports and lands in your hinterland, near cities far behind the front. It builds about one submarine per five cities: they lurk submerged off your ports and attack only transports and big ships. Destroyers as escorts are the remedy.</p>
+        <p data-lang="de"><b>Mehrere Gegner:</b> Unter <b>Neues Spiel</b> wählst du, gegen wie viele Computergegner du antrittst – auf der kleinen Karte bis zu zwei,
+          auf der mittleren und großen bis zu drei. Dann gilt <b>jeder gegen jeden</b>: Die Gegner (Rot, Gelb, Violett) bekämpfen sich auch untereinander.
+          Die Schwierigkeit gilt für alle gleich. Sie ziehen nacheinander, über der Karte steht, wer gerade dran ist. Ein Gegner, der keine Stadt
+          mehr hat, scheidet aus, und alle seine Einheiten verschwinden. Die Punkte neben der Stufe oben zeigen, wer noch im Spiel ist.
+          Du gewinnst, wenn alle Gegner ausgeschieden sind. Der Balken „Kräfteverhältnis“ vergleicht dich mit dem jeweils stärksten Gegner.
+          Lass die anderen ruhig erst einmal gegeneinander kämpfen.</p>
+        <p data-lang="en"><b>Several opponents:</b> Under <b>New game</b> you choose how many computer opponents you face – up to two on the small map,
+          up to three on the medium and large ones. Then it is <b>everyone against everyone</b>: the opponents (Red, Yellow, Purple) also fight each other.
+          The difficulty is the same for all of them. They move one after another; the bar above the map shows whose turn it is. An opponent left without
+          a city is out, and all of its units disappear. The dots next to the level at the top show who is still in the game.
+          You win once every opponent is out. The “Balance of power” bar compares you with the strongest opponent at the time.
+          Feel free to let the others wear each other down first.</p>
         <p data-lang="de" class="muted">In Testpartien gegen einen Computerspieler, der selbst erkunden muss und keine Fehler macht, gewann
           dieser auf Leicht praktisch immer, auf Normal die Hälfte bis zwei Drittel, auf Schwer etwa jede vierte bis fünfte Partie und auf Brutal fast nie.
-          Wie schwer es für dich ist, hängt natürlich von deiner Spielweise ab.</p>
+          Wie schwer es für dich ist, hängt natürlich von deiner Spielweise ab.
+          Mehrere Gegner machen es schwerer: Gegen zwei (kleine Karte) gewann derselbe Computerspieler auf Normal 40 % der Partien und auf Schwer 17 %,
+          gegen drei (mittlere Karte) auf Normal ein Drittel und auf Schwer 7 %. Leicht bleibt leicht (95 %), Brutal wird praktisch aussichtslos.
+          Eines hast du ihm aber voraus: Er nutzt nicht aus, dass sich die Gegner gegenseitig schwächen.</p>
         <p data-lang="en" class="muted">In test games against a computer player that has to explore by itself and makes no mistakes, that player
           won practically always on Easy, half to two thirds of the time on Normal, about one game in four or five on Hard and almost never on Brutal.
-          How hard it is for you naturally depends on your style of play.</p>
+          How hard it is for you naturally depends on your style of play.
+          Several opponents make it harder: against two (small map) the same computer player won 40 % of games on Normal and 17 % on Hard,
+          against three (medium map) a third on Normal and 7 % on Hard. Easy stays easy (95 %), Brutal becomes practically hopeless.
+          You do have one edge over it, though: it does not take advantage of the opponents weakening each other.</p>
         <div class="help-tip" data-lang="de"><b>Dem Gegner zusehen:</b> Unter <b>☰ Menü → Einstellungen</b> im Abschnitt „Schummeln“ lässt sich der Nebel des Krieges abschalten. Dann siehst du die ganze Karte, alle seine Einheiten und Züge. Das Spiel fragt vorher nach, denn was du einmal gesehen hast, weißt du. Schaltest du wieder zurück, kehrt der Nebel zurück – dein Kartenstand ist derselbe wie vorher, ergänzt um das, was deine Einheiten inzwischen wirklich gesehen haben. Der Haken gilt nur für die laufende Partie.</div>
         <div class="help-tip" data-lang="en"><b>Watching the enemy:</b> under <b>☰ Menu → Settings</b> in the “Cheats” section you can switch off the fog of war. You then see the whole map and all his units and moves. The game asks first, because what you have seen once, you know. Switch it back and the fog returns – your map is the same as before, plus what your units have really seen in the meantime. The checkbox only applies to the current game.</div>
       </section>
@@ -893,7 +919,7 @@
     <table class="stat-table">
       <thead><tr><th data-en="Unit">Einheit</th>
         <th class="num" title="Gegnerische Einheiten, die du zerstört hast" data-en-title="Enemy units you destroyed" data-en="You destroyed">Du hast zerstört</th>
-        <th class="num" title="Deine Einheiten, die der Gegner zerstört hat" data-en-title="Your units the enemy destroyed" data-en="Enemy destroyed">Gegner hat zerstört</th>
+        <th class="num" id="statKillsBy" title="Deine Einheiten, die der Gegner zerstört hat" data-en-title="Your units the enemy destroyed" data-en="Enemy destroyed">Gegner hat zerstört</th>
         <th class="num" title="Deine Einheiten, die ohne Zutun des Gegners verloren gingen: Jäger ohne Treibstoff, Angriffe auf neutrale Städte" data-en-title="Your units lost without the enemy's doing: fighters out of fuel, attacks on neutral cities" data-en="Lost otherwise">Sonst verloren</th></tr></thead>
       <tbody id="statKills"></tbody>
     </table>
@@ -1058,10 +1084,7 @@
       <div class="over-stats">
         <div class="over-facts" id="overFacts"></div>
         <table class="over-units">
-          <thead>
-            <tr><th></th><th colspan="2" class="grp me" data-en="You">Du</th><th colspan="2" class="grp en" data-en="Enemy">Gegner</th></tr>
-            <tr><th data-en="Unit">Einheit</th><th class="num" data-en="built">gebaut</th><th class="num" data-en="lost">verloren</th><th class="num" data-en="built">gebaut</th><th class="num" data-en="lost">verloren</th></tr>
-          </thead>
+          <thead id="overHead"></thead>
           <tbody id="overUnits"></tbody>
         </table>
         <p class="muted" id="overNote"></p>

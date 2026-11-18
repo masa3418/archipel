@@ -54,6 +54,7 @@ function animBegin(speed, follow = false) {
   anim.rec = true; anim.cursor = 0; anim.speed = speed; anim.events = []; anim.gone = []; anim.skippable = false;
   anim.follow = follow;
   anim.ownFrom = null;   // Zeitpunkt in der Zeitleiste, ab dem die eigenen Einheiten ihre Befehle ausführen (siehe updateBanner)
+  anim.phases = [];      // bei mehreren Gegnern: ab welchem Zeitpunkt welcher Gegner zieht ({ at, p }, siehe updateBanner)
   // Sichtstand vor der Aufzeichnung: neu aufgedeckte Felder erscheinen erst,
   // wenn die eigene Einheit in der Wiedergabe dort ankommt
   if (S) { anim.seen0 = S.players[0].seen.slice(); anim.vis0 = S.players[0].vis.slice(); }
@@ -120,6 +121,7 @@ function animEnd(maxMs = 3500) {
     const f = maxMs / end;
     for (const e of anim.events) { e.t0 *= f; e.dur = Math.max(40, e.dur * f); }
     if (anim.ownFrom != null) anim.ownFrom *= f;
+    for (const ph of anim.phases || []) ph.at *= f;
     end = maxMs;
   }
   anim.byUnit = new Map();
@@ -157,6 +159,11 @@ function recGone(u, until) {
   anim.gone.push({ u: { id: u.id, type: u.type, owner: u.owner, hp: Math.max(1, u.hp), x: u.x, y: u.y,
     air: u.type === 'car' && S.units.some(f => f.carrier === u.id && f.type === 'ftr') }, until });   // air: Träger gab Luftdeckung
 }
+// Gegner scheidet aus (keine Stadt mehr): seine Einheiten verschwinden in der Wiedergabe erst in diesem Moment – nur die, die du siehst
+hooks.out = (p, units) => {
+  if (!anim.rec) return;
+  for (const u of units) if (u.carrier == null && humanSeesAt(u, u.x, u.y)) recGone(u, anim.cursor);
+};
 // Besitzer einer Stadt, wie er gerade gezeigt wird: Während der Wiedergabe gilt bis zum Moment der Eroberung der alte.
 function shownOwner(c, rel, playing) {
   if (playing) for (const e of anim.events) if (e.type === 'capture' && e.cid === c.id && rel < e.t0) return Math.max(-1, e.prevShown);
@@ -209,7 +216,7 @@ hooks.capture = (c, owner, prev, by = null) => {
   if (by) recGone(by, ev.t0 + 100);   // der Eroberer geht erst jetzt in der Stadt auf
   // Eigene Eroberung: kein Schriftzug – das Eroberungsfenster folgt gleich nach dem Farbwechsel
   if (owner === 0) { captureQueue.push({ game: S, id: c.id, ev }); anim.cursor += Math.max(200, anim.speed * 2); return; }
-  const text = lost ? tt('Stadt verloren', 'City lost') : tt('Gegner erobert', 'Enemy captures');
+  const text = lost ? tt('Stadt verloren', 'City lost') : nPlayers() > 2 ? tt(`${pname(owner)} erobert`, `${pname(owner)} captures`) : tt('Gegner erobert', 'Enemy captures');
   anim.events.push({ type: 'label', x: c.x, y: c.y, text, tone: 'bad', t0: anim.cursor + 150, dur: LABEL_MS });
   anim.cursor += Math.max(200, anim.speed * 2);
 };
@@ -932,14 +939,22 @@ function enemyPlaybackRunning(now = performance.now()) { return anim.skippable &
 // eigenen Einheiten ihre Befehle ausführen (Marsch, Patrouille, Erkunden) – „Deine Einheiten führen ihre Befehle aus …“.
 let bannerMode = null;
 function updateBanner(now) {
-  const mode = !enemyPlaybackRunning(now) ? null : anim.ownFrom != null && now - anim.t0 >= anim.ownFrom ? 'own' : 'enemy';
+  let mode = !enemyPlaybackRunning(now) ? null : anim.ownFrom != null && now - anim.t0 >= anim.ownFrom ? 'own' : 'enemy';
+  // mehrere Gegner: welcher gerade zieht (letzte Phase, die schon begonnen hat)
+  let who = 1;
+  if (mode === 'enemy' && anim.phases && anim.phases.length) {
+    for (const ph of anim.phases) if (now - anim.t0 >= ph.at) who = ph.p;
+    if (nPlayers() > 2) mode = 'enemy' + who;
+  }
   if (mode === bannerMode) return;
   bannerMode = mode;
   const b = $('banner');
   b.hidden = !mode;
   if (!mode) return;
   b.classList.toggle('own', mode === 'own');
-  b.innerHTML = (mode === 'own' ? tt('Deine Einheiten führen ihre Befehle aus …', 'Your units are carrying out their orders …') : tt('Gegner zieht …', 'Enemy is moving …'))
+  const dot = nPlayers() > 2 ? `<i class="pdot" style="background:${PLAYERS[who].color}"></i>` : '';
+  b.innerHTML = (mode === 'own' ? tt('Deine Einheiten führen ihre Befehle aus …', 'Your units are carrying out their orders …')
+    : nPlayers() > 2 ? dot + tt(`${pname(who)} zieht …`, `${pname(who)} is moving …`) : tt('Gegner zieht …', 'Enemy is moving …'))
     + ' <span>' + tt('Klick oder beliebige Taste überspringt', 'Click or press any key to skip') + '</span>';
 }
 
@@ -1086,7 +1101,7 @@ function renderMini() {
     if (u.carrier != null) continue;
     if (u.owner !== 0 && !canSee(0, u) && !S.over) continue;
     if (S.cityGrid[idx(u.x, u.y)] >= 0) continue;
-    put(u.x, u.y, u.owner === 0 ? [120, 180, 255] : [255, 110, 100]);
+    put(u.x, u.y, u.owner === 0 ? [120, 180, 255] : u.owner === 1 ? [255, 110, 100] : hex(PLAYERS[u.owner].light));   // weitere Gegner in ihrer Farbe
   }
   mctx.putImageData(img, 0, 0);
   // Sichtfenster
@@ -1514,10 +1529,15 @@ function endHumanTurn() {
   animBegin(ENEMY_STEP_MS, true);
   const startScroll = [wrap.scrollLeft, wrap.scrollTop];
   endTurn(0);
-  startTurn(1);
-  aiTurn();
+  // Alle Computergegner nacheinander (jeder gegen jeden); ausgeschiedene überspringen
+  for (let p = 1; p < nPlayers() && !S.over; p++) {
+    if (!isAlive(p)) continue;
+    anim.phases.push({ at: anim.cursor, p });
+    startTurn(p);
+    aiTurn(p);
+    if (!S.over) endTurn(p);
+  }
   if (!S.over) {
-    endTurn(1);
     S.turn++;
     startTurn(0);
     // Ab hier folgen in der Zeitleiste die eigenen Einheiten mit ihren Befehlen – der Hinweis über der Karte wechselt dann
@@ -1542,7 +1562,7 @@ function endHumanTurn() {
     if (anim.events.length > ownCount) anim.ownFrom = ownMark;
     computeVision(0);
   }
-  animEnd(12000);
+  animEnd(12000 + 6000 * (nPlayers() - 2));   // mehr Gegner, mehr zu zeigen: 12 s, je weiterem Gegner 6 s mehr
   landCheck = true;   // Rückfrage für Transporter, die jetzt vor einer fremden Stadt liegen
   anim.skippable = anim.events.length > 0;
   const fresh = [];
@@ -1774,13 +1794,21 @@ let spoiler = false;
 try { spoiler = localStorage.getItem('archipel-spoiler') === '1'; } catch (e) {}
 // Ausgeschaltet verschwindet nur der Balken; der Menüeintrag „Kräfteverhältnis“ bleibt – er öffnet erst auf Wunsch das Fenster mit der Rechnung
 function applyPower() { $('power').style.display = showPower ? '' : 'none'; }
+// Anteile aller Spieler an der Gesamtstärke (Prozent, auf 100 gerundet) – bei mehreren Gegnern im Hinweistext und im Fenster
+function powerShares() {
+  const v = S.players.map((_, p) => strength(p).total), sum = v.reduce((x, y) => x + y, 0) || 1;
+  return v.map(x => Math.round(x / sum * 100));
+}
 function updatePower() {
-  const a = strength(0), b = strength(1);
+  // Du gegen den stärksten Gegner (bei einem Gegner: gegen ihn) – siehe strongestEnemy in game.js
+  const en = strongestEnemy(), multi = nPlayers() > 2;
+  const a = strength(0), b = strength(en);
   const share = a.total + b.total > 0 ? a.total / (a.total + b.total) : 0.5;
   const pct = Math.round(share * 100);
   $('powerMe').style.width = pct + '%';
   $('powerL').textContent = tt('Du ', 'You ') + pct + ' %';
-  $('powerR').textContent = (100 - pct) + tt(' % Gegner', ' % enemy');
+  $('powerR').textContent = (100 - pct) + (multi ? ' % ' + pname(en) : tt(' % Gegner', ' % enemy'));
+  $('powerMe').parentElement.style.background = multi ? `linear-gradient(90deg, ${PLAYERS[en].dark}, ${PLAYERS[en].color})` : '';
   const v = share >= 0.9 ? [tt('Erdrückend überlegen', 'Overwhelming'), 'up'] : share >= 0.65 ? [tt('Klar überlegen', 'Clearly ahead'), 'up'] : share >= 0.55 ? [tt('Überlegen', 'Ahead'), 'up']
     : share > 0.45 ? [tt('Ausgeglichen', 'Even'), 'flat'] : share > 0.35 ? [tt('Unterlegen', 'Behind'), 'down'] : share > 0.1 ? [tt('Stark unterlegen', 'Far behind'), 'down'] : [tt('Aussichtslos', 'Hopeless'), 'down'];
   $('powerVerdict').textContent = v[0]; $('powerVerdict').className = v[1];
@@ -1796,7 +1824,19 @@ function updatePower() {
     tr.className = d > 0 ? 'up' : d < 0 ? 'down' : 'flat';
     tr.title = tt('Veränderung seit Beginn der letzten Runde', 'Change since the start of the last turn');
   }
-  $('power').title = tt(`Du: ${a.cities} ${a.cities === 1 ? 'Stadt' : 'Städte'}, ${a.units} ${a.units === 1 ? 'Einheit' : 'Einheiten'} (Wert ${a.unitValue}) – Stärke ${a.total}\n`
+  // Vom Gegner nur Prozentwerte (siehe Spoiler). Bei mehreren Gegnern: Vergleich mit dem stärksten und die Anteile aller.
+  const all = multi ? powerShares() : null;
+  const allTxt = multi ? S.players.map((_, p) => p === 0 || isAlive(p) ? `${pname(p)} ${all[p]} %` : null).filter(Boolean).join(', ') : '';
+  $('power').title = multi
+    ? tt(`Du gegen den stärksten Gegner (${pname(en)}): ${pct} : ${100 - pct}\n`
+      + `Du: ${a.cities} ${a.cities === 1 ? 'Stadt' : 'Städte'}, ${a.units} ${a.units === 1 ? 'Einheit' : 'Einheiten'} (Wert ${a.unitValue}) – Stärke ${a.total}\n`
+      + `Anteile an der Stärke aller: ${allTxt}\n`
+      + 'Stärke = Wert der Einheiten (Bauzeit × Zustand) + 20 je Stadt\nKlick: die genaue Rechnung',
+      `You against the strongest enemy (${pname(en)}): ${pct} : ${100 - pct}\n`
+      + `You: ${a.cities} ${a.cities === 1 ? 'city' : 'cities'}, ${a.units} ${a.units === 1 ? 'unit' : 'units'} (value ${a.unitValue}) – strength ${a.total}\n`
+      + `Shares of everyone's strength: ${allTxt}\n`
+      + 'Strength = value of units (build time × condition) + 20 per city\nClick: the exact calculation')
+    : tt(`Du: ${a.cities} ${a.cities === 1 ? 'Stadt' : 'Städte'}, ${a.units} ${a.units === 1 ? 'Einheit' : 'Einheiten'} (Wert ${a.unitValue}) – Stärke ${a.total}\n`
     + `Gegner: ${100 - pct} % der gesamten Stärke\n`
     + 'Stärke = Wert der Einheiten (Bauzeit × Zustand) + 20 je Stadt\nKlick: die genaue Rechnung',
     `You: ${a.cities} ${a.cities === 1 ? 'city' : 'cities'}, ${a.units} ${a.units === 1 ? 'unit' : 'units'} (value ${a.unitValue}) – strength ${a.total}\n`
@@ -1809,24 +1849,43 @@ function updatePower() {
 // Vom Gegner zeigt es ohne Spoiler nur den Anteil; aufgedeckt (spoiler) auch Städte und Gesamtwert der Einheiten – nie die Typen,
 // das verriete, was im Nebel steht, etwa getarnte U-Boote.
 function renderPower() {
-  const a = strength(0), b = strength(1), sum = a.total + b.total;
+  const multi = nPlayers() > 2, en = strongestEnemy();
+  const a = strength(0), b = strength(en), sum = a.total + b.total;
   const pct = sum > 0 ? Math.round(a.total / sum * 100) : 50;
   const f1 = v => (Math.round(v * 10) / 10).toLocaleString(LANG, { maximumFractionDigits: 1 });
   const box = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
-  const row = (l, x, y) => `<tr><td>${l}</td><td class="num">${x}</td><td class="num">${y}</td></tr>`;
+  const row = (l, ...cells) => `<tr><td>${l}</td>${cells.map(c => `<td class="num">${c}</td>`).join('')}</tr>`;
   const un = n => `${n} ${tt(n === 1 ? 'Einheit' : 'Einheiten', n === 1 ? 'unit' : 'units')}`;
   const hid = `<span class="muted" title="${tt('Verdeckt – unten lässt sich das aufdecken', 'Hidden – you can reveal it below')}">${tt('verdeckt', 'hidden')}</span>`;
-  let h = `<div class="stat-summary">${box(pct + ' %', tt('Dein Anteil', 'Your share'))}${box((100 - pct) + ' %', tt('Anteil des Gegners', 'Enemy share'))}${box(a.total, tt('Deine Stärke', 'Your strength'))}`
-    + (spoiler ? box(b.total, tt('Stärke des Gegners', 'Enemy strength')) : '') + `${box(esc($('powerVerdict').textContent), tt('Lage', 'Situation'))}</div>`;
+  let h = `<div class="stat-summary">${box(pct + ' %', multi ? tt('Du gegen den Stärksten', 'You vs the strongest') : tt('Dein Anteil', 'Your share'))}`
+    + `${box((100 - pct) + ' %', multi ? `<i class="pdot" style="background:${PLAYERS[en].color}"></i>${tt(`${pname(en)}, stärkster Gegner`, `${pname(en)}, strongest enemy`)}` : tt('Anteil des Gegners', 'Enemy share'))}${box(a.total, tt('Deine Stärke', 'Your strength'))}`
+    + (spoiler ? box(b.total, multi ? tt(`Stärke von ${pname(en)}`, `Strength of ${pname(en)}`) : tt('Stärke des Gegners', 'Enemy strength')) : '') + `${box(esc($('powerVerdict').textContent), tt('Lage', 'Situation'))}</div>`;
 
-  h += `<h3>${tt('Die Rechnung', 'The calculation')}</h3><table class="stat-table">
+  if (!multi) {
+    h += `<h3>${tt('Die Rechnung', 'The calculation')}</h3><table class="stat-table">
     <thead><tr><th></th><th class="num">${tt('Du', 'You')}</th><th class="num">${tt('Gegner', 'Enemy')}</th></tr></thead><tbody>`
     + row(tt(`Städte, je ${CITY_VALUE}`, `Cities, ${CITY_VALUE} each`), `${a.cities} × ${CITY_VALUE} = <b>${a.cities * CITY_VALUE}</b>`, spoiler ? `${b.cities} × ${CITY_VALUE} = <b>${b.cities * CITY_VALUE}</b>` : hid)
     + row(tt('Wert der Einheiten', 'Value of the units'), `${un(a.units)} = <b>${a.unitValue}</b>`, spoiler ? `${un(b.units)} = <b>${b.unitValue}</b>` : hid)
     + row(`<b>${tt('Stärke', 'Strength')}</b>`, `${a.cities * CITY_VALUE} + ${a.unitValue} = <b>${a.total}</b>`, spoiler ? `${b.cities * CITY_VALUE} + ${b.unitValue} = <b>${b.total}</b>` : hid)
     + row(`<b>${tt('Anteil', 'Share')}</b>`, spoiler && sum > 0 ? `${a.total} ÷ ${sum} = <b>${pct} %</b>` : `<b>${pct} %</b>`, spoiler && sum > 0 ? `${b.total} ÷ ${sum} = <b>${100 - pct} %</b>` : `<b>${100 - pct} %</b>`)
-    + `</tbody></table>
-    <label class="spoiler"><input type="checkbox" id="spoilerChk" ${spoiler ? 'checked' : ''}> <span>${tt('Zahlen des Gegners aufdecken <span class="muted">– Spoiler: verrät, wie viele Städte und Einheiten er hat, auch die im Nebel</span>',
+    + `</tbody></table>`;
+  } else {
+    // je Spieler eine Spalte (ausgeschiedene Gegner fehlen); Zahlen der Gegner nur mit Spoiler, Anteile immer
+    const cols = S.players.map((_, p) => p).filter(p => p === 0 || isAlive(p)), st = cols.map(p => strength(p)), shares = powerShares();
+    const head = cols.map(p => `<th class="num">${p ? `<i class="pdot" style="background:${PLAYERS[p].color}"></i>` : ''}${esc(pname(p))}</th>`).join('');
+    const cell = (i, f) => (cols[i] === 0 || spoiler ? f(st[i]) : hid);
+    h += `<h3>${tt('Die Rechnung', 'The calculation')}</h3><table class="stat-table"><thead><tr><th></th>${head}</tr></thead><tbody>`
+      + row(tt(`Städte, je ${CITY_VALUE}`, `Cities, ${CITY_VALUE} each`), ...cols.map((p, i) => cell(i, s => `${s.cities} × ${CITY_VALUE} = <b>${s.cities * CITY_VALUE}</b>`)))
+      + row(tt('Wert der Einheiten', 'Value of the units'), ...cols.map((p, i) => cell(i, s => `${un(s.units)} = <b>${s.unitValue}</b>`)))
+      + row(`<b>${tt('Stärke', 'Strength')}</b>`, ...cols.map((p, i) => cell(i, s => `${s.cities * CITY_VALUE} + ${s.unitValue} = <b>${s.total}</b>`)))
+      + row(`<b>${tt('Anteil an allen', 'Share of everyone')}</b>`, ...cols.map(p => `<b>${shares[p]} %</b>`))
+      + `</tbody></table>`;
+  }
+  h += `
+    <label class="spoiler"><input type="checkbox" id="spoilerChk" ${spoiler ? 'checked' : ''}> <span>${multi
+      ? tt('Zahlen der Gegner aufdecken <span class="muted">– Spoiler: verrät, wie viele Städte und Einheiten sie haben, auch die im Nebel</span>',
+        'Reveal the enemies\' numbers <span class="muted">– spoiler: gives away how many cities and units they have, including those in the fog</span>')
+      : tt('Zahlen des Gegners aufdecken <span class="muted">– Spoiler: verrät, wie viele Städte und Einheiten er hat, auch die im Nebel</span>',
       'Reveal the enemy\'s numbers <span class="muted">– spoiler: gives away how many cities and units he has, including those in the fog</span>')}</span></label>`;
 
   const mine = S.units.filter(u => u.owner === 0);
@@ -1844,7 +1903,9 @@ function renderPower() {
 
   const hi = 100 - offerPct;
   h += `<h3>${tt('So wird gezählt', 'How it is counted')}</h3><ul class="power-notes">
-    <li>${tt('Stärke = Wert der Einheiten + 20 je Stadt. Dein Anteil ist deine Stärke geteilt durch die Stärke beider Seiten zusammen.',
+    <li>${multi ? tt('Stärke = Wert der Einheiten + 20 je Stadt. Bei mehreren Gegnern vergleicht der Balken dich mit dem stärksten Gegner: deine Stärke geteilt durch deine und seine zusammen. Die Summe aller Gegner zählt nicht – sie bekämpfen sich auch untereinander. Die letzte Zeile der Tabelle zeigt, welchen Anteil jeder an der Stärke aller hat.',
+      'Strength = value of the units + 20 per city. With several enemies the bar compares you with the strongest one: your strength divided by the sum of yours and theirs. The sum of all enemies does not count – they also fight each other. The last row of the table shows each player\'s share of everyone\'s strength.')
+      : tt('Stärke = Wert der Einheiten + 20 je Stadt. Dein Anteil ist deine Stärke geteilt durch die Stärke beider Seiten zusammen.',
       'Strength = value of the units + 20 per city. Your share is your strength divided by the strength of both sides together.')}</li>
     <li>${tt('Der Wert einer Einheit ist ihre Bauzeit in Runden. Beschädigte Einheiten zählen anteilig nach ihren Trefferpunkten, Einheiten an Bord zählen mit.',
       'The value of a unit is its build time in turns. Damaged units count in proportion to their hit points; units on board are included.')}</li>
@@ -1898,7 +1959,14 @@ function updateHeader() {
   // Runde und Schwierigkeitsstufe (mit Welt und Beschreibung im Hinweistext); ein Klick öffnet das Handbuch bei „Gegner & Stufen“
   const dk = DIFFICULTY[S.difficulty] ? S.difficulty : 'normal', dv = DIFFICULTY[dk], wv = WORLDS[S.world];
   const tip = `${tt('Schwierigkeit', 'Difficulty')}: ${dv.label}${wv ? ` · ${tt('Welt', 'World')}: ${wv.label}` : ''} – ${dv.desc}\n${tt('Klick: Erklärung der Stufen im Handbuch', 'Click: the levels explained in the handbook')}`;
-  $('turnInfo').innerHTML = `${tt('Runde', 'Turn')} <b>${S.turn}</b> <span class="lvl lvl-${dk}" title="${esc(tip)}">${esc(dv.label)}</span>`
+  // mehrere Gegner: je Gegner ein Farbpunkt, ausgeschiedene blass
+  let foes = '';
+  if (nPlayers() > 2) {
+    const ps = Array.from({ length: nPlayers() - 1 }, (_, i) => i + 1), out = p => S.outAt && S.outAt[p];
+    const ftip = tt('Gegner: ', 'Enemies: ') + ps.map(p => pname(p) + (out(p) ? tt(` (ausgeschieden in Runde ${S.outAt[p]})`, ` (out in turn ${S.outAt[p]})`) : '')).join(', ');
+    foes = ` <span class="foes" title="${esc(ftip)}">${ps.map(p => `<i class="pdot${out(p) ? ' out' : ''}" style="background:${PLAYERS[p].color}"></i>`).join('')}</span>`;
+  }
+  $('turnInfo').innerHTML = `${tt('Runde', 'Turn')} <b>${S.turn}</b> <span class="lvl lvl-${dk}" title="${esc(tip)}">${esc(dv.label)}</span>${foes}`
     + (CHEAT_FOG ? ` <span class="cheat" title="${tt('Schummelei aktiv: Du siehst die ganze Karte und alle Einheiten des Gegners samt Ladung und Besatzung. Klick schaltet den Nebel wieder ein.', 'Cheat active: you see the whole map and all enemy units including cargo and garrisons. Click to switch the fog back on.')}">👁 ${tt('Nebel aus', 'Fog off')}</span>` : '');
   updateLogHead();
   $('log').innerHTML = S.log.slice(0, 60).map(l =>
@@ -1933,7 +2001,8 @@ function updateHover() {
   const c = cityAt(x, y);
   if (c) {
     const o = P.knownOwner[c.id];
-    s += tt(` · Stadt ${c.name} (${o === 0 ? 'deine' : o === 1 ? 'feindlich' : 'neutral'})`, ` · city ${c.name} (${o === 0 ? 'yours' : o === 1 ? 'enemy' : 'neutral'})`);
+    const fo = nPlayers() > 2 && o >= 1 ? ', ' + pname(o) : '';   // bei mehreren Gegnern: wessen Stadt
+    s += tt(` · Stadt ${c.name} (${o === 0 ? 'deine' : o >= 1 ? 'feindlich' + fo : 'neutral'})`, ` · city ${c.name} (${o === 0 ? 'yours' : o >= 1 ? 'enemy' + fo : 'neutral'})`);
     if (P.vis[i] && c.owner === 0) {
       // eigene Stadt: wirkt ein Schlachtschiff auf sie?
       const pc = Math.round(captureChance(1, c) * 100);
@@ -2037,7 +2106,7 @@ function openProdDialog(c, captured = false) {
   const p = c.prod ? UT[c.prod] : null;
   if (captured) {
     const mine = S.cities.filter(o => o.owner === 0).length, total = S.cities.length;
-    const a = strength(0).total, b = strength(1).total;
+    const a = strength(0).total, b = strength(strongestEnemy()).total;   // wie der Balken: gegen den stärksten Gegner
     const pct = Math.round(a / Math.max(1, a + b) * 100);
     $('capTitle').textContent = tt(`${c.name} ist erobert!`, `${c.name} is captured!`);
     $('capCheer').textContent = CAPTURE_CHEERS[(S.turn + c.id) % CAPTURE_CHEERS.length];
@@ -2252,15 +2321,17 @@ function maybeOfferEnd() {
   const facts = tt(`Du: ${a.cities} ${a.cities === 1 ? 'Stadt' : 'Städte'}, ${a.units} ${a.units === 1 ? 'Einheit' : 'Einheiten'}`, `You: ${a.cities} ${a.cities === 1 ? 'city' : 'cities'}, ${a.units} ${a.units === 1 ? 'unit' : 'units'}`);
   if (low) {
     $('offerTitle').textContent = tt('Die Lage ist aussichtslos', 'The situation is hopeless');
-    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke unter ${offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Willst du aufgeben?`,
-      `For ${OFFER_TURNS} turns your strength has been below ${offerPct} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>Do you want to surrender?`);
+    const vsTop = nPlayers() > 2 ? tt(' im Vergleich zum stärksten Gegner', ' compared with the strongest enemy') : '';
+    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke${vsTop} unter ${offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Willst du aufgeben?`,
+      `For ${OFFER_TURNS} turns your strength${vsTop} has been below ${offerPct} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>Do you want to surrender?`);
     $('offerYes').textContent = tt('Aufgeben', 'Surrender');
     $('offerNo').textContent = tt('Weiterkämpfen', 'Keep fighting');
     $('offerYes').onclick = () => { closeModals(); S.over = 'lose'; S.overReason = 'surrender'; saveGame(); showGameOver(); };
   } else {
     $('offerTitle').textContent = tt('Der Sieg ist dir sicher', 'Victory is yours');
-    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke über ${100 - offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Der Gegner bietet die Kapitulation an. Sieg annehmen?`,
-      `For ${OFFER_TURNS} turns your strength has been above ${100 - offerPct} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>The enemy offers to surrender. Accept victory?`);
+    const multi = nPlayers() > 2, vsTop = multi ? tt(' selbst im Vergleich zum stärksten Gegner', ' even compared with the strongest enemy') : '';
+    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke${vsTop} über ${100 - offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>${multi ? 'Deine Gegner bieten die Kapitulation an' : 'Der Gegner bietet die Kapitulation an'}. Sieg annehmen?`,
+      `For ${OFFER_TURNS} turns your strength${vsTop} has been above ${100 - offerPct} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>${multi ? 'Your enemies offer to surrender' : 'The enemy offers to surrender'}. Accept victory?`);
     $('offerYes').textContent = tt('Sieg annehmen', 'Accept victory');
     $('offerNo').textContent = tt('Weiterspielen', 'Play on');
     $('offerYes').onclick = () => { closeModals(); S.over = 'win'; S.overReason = 'capitulation'; saveGame(); showGameOver(); };
@@ -2277,8 +2348,8 @@ const OVER_CHEERS = {
   win: [tt('Die Welt gehört dir!', 'The world is yours!'), tt('Das Archipel ist dein!', 'The archipelago is yours!'), tt('Ein Sieg für die Geschichtsbücher!', 'A victory for the history books!')],
   lose: [tt('Dein Reich ist gefallen.', 'Your empire has fallen.'), tt('Diesmal war der Gegner stärker.', 'This time the enemy was stronger.')],
 };
-function overCityMoves() {   // eroberte und verlorene Städte beider Seiten aus der Aufzeichnung des Zeitraffers
-  const r = { won: [0, 0], lost: [0, 0] };
+function overCityMoves() {   // eroberte und verlorene Städte je Spieler aus der Aufzeichnung des Zeitraffers
+  const r = { won: new Array(nPlayers()).fill(0), lost: new Array(nPlayers()).fill(0) };
   if (!S.tl) return r;
   const cur = new Array(S.cities.length).fill(-2);
   for (const [, id, o] of S.tl.own) {
@@ -2297,38 +2368,49 @@ function showGameOver(quiet = false) {
   $('overKicker').textContent = win ? tt('Sieg!', 'Victory!') : tt('Niederlage', 'Defeat');
   const ch = OVER_CHEERS[win ? 'win' : 'lose'];
   $('overTitle').textContent = ch[S.turn % ch.length];
+  const n = nPlayers(), multi = n > 2, ps = Array.from({ length: n }, (_, p) => p);
   $('overText').textContent = win
-    ? (S.overReason === 'capitulation' ? tt(`Der Gegner hat in Runde ${S.turn} vor deiner Übermacht kapituliert.`, `The enemy surrendered to your superior force in turn ${S.turn}.`) : tt(`Du hast die Welt in ${S.turn} Runden erobert.`, `You conquered the world in ${S.turn} turns.`))
-    : (S.overReason === 'surrender' ? tt(`Du hast in Runde ${S.turn} aufgegeben.`, `You surrendered in turn ${S.turn}.`) : tt(`Der Gegner hat in Runde ${S.turn} alle deine Städte eingenommen.`, `The enemy took all your cities in turn ${S.turn}.`));
+    ? (S.overReason === 'capitulation' ? (multi ? tt(`Deine Gegner haben in Runde ${S.turn} vor deiner Übermacht kapituliert.`, `Your enemies surrendered to your superior force in turn ${S.turn}.`) : tt(`Der Gegner hat in Runde ${S.turn} vor deiner Übermacht kapituliert.`, `The enemy surrendered to your superior force in turn ${S.turn}.`))
+      : multi ? (n === 3 ? tt(`Du hast beide Gegner besiegt und die Welt in ${S.turn} Runden erobert.`, `You defeated both enemies and conquered the world in ${S.turn} turns.`)
+        : tt(`Du hast alle ${n - 1} Gegner besiegt und die Welt in ${S.turn} Runden erobert.`, `You defeated all ${n - 1} enemies and conquered the world in ${S.turn} turns.`)) : tt(`Du hast die Welt in ${S.turn} Runden erobert.`, `You conquered the world in ${S.turn} turns.`))
+    : (S.overReason === 'surrender' ? tt(`Du hast in Runde ${S.turn} aufgegeben.`, `You surrendered in turn ${S.turn}.`)
+      : multi ? tt(`Deine Gegner haben in Runde ${S.turn} alle deine Städte eingenommen.`, `Your enemies took all your cities in turn ${S.turn}.`) : tt(`Der Gegner hat in Runde ${S.turn} alle deine Städte eingenommen.`, `The enemy took all your cities in turn ${S.turn}.`));
 
-  // Eckdaten
-  const built = S.built || [{}, {}], kills = S.kills || [{}, {}], wasted = S.wasted || [{}, {}];
+  // Eckdaten – je Spieler eine Zahl in seiner Farbe (du blau, Gegner rot, gelb, violett)
+  const per = v => (Array.isArray(v) && v.length === n ? v : ps.map(() => ({})));
+  const built = per(S.built), kills = per(S.kills), wasted = per(S.wasted), lostBy = per(S.lost);
   const sum = o => Object.values(o).reduce((x, y) => x + y, 0);
-  const lostOf = p => { const r = {}; for (const k of UNIT_ORDER) r[k] = (kills[1 - p][k] || 0) + (wasted[p][k] || 0); return r; };
-  const lost = [lostOf(0), lostOf(1)];
+  const lostOf = p => { const r = {}; for (const k of UNIT_ORDER) r[k] = (lostBy[p][k] || 0) + (wasted[p][k] || 0); return r; };
+  const lost = ps.map(lostOf);
   const cm = overCityMoves();
   const cities = p => S.cities.filter(c => c.owner === p).length;
-  const box = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
-  const vs = (a, b) => `<i class="me">${a}</i> : <i class="en">${b}</i>`;   // blau du, rot Gegner
+  // w2 = doppelt breit (mit mehreren Gegnern stehen bis zu vier Zahlen in einem Kästchen)
+  const box = (v, l, w2) => `<div${w2 ? ' class="w2"' : ''}><b>${v}</b><span>${l}</span></div>`;
+  const vs = f => ps.map(p => `<i style="color:${PLAYERS[p].light}">${f(p)}</i>`).join(' : ');
   const sz = MAP_SIZES[S.size], wd = WORLDS[S.world];
   $('overFacts').innerHTML = box(S.turn, tt('Runden', 'Turns')) + box(esc(diff().label), tt('Schwierigkeit', 'Difficulty'))
-    + box(esc(wd ? wd.label : '–'), tt('Welt', 'World') + (sz ? ' · ' + esc(sz.label.split(' ')[0]) : ''))
-    + box(vs(cities(0), cities(1)), tt('Städte am Ende', 'Cities at the end'))
-    + box(vs(cm.won[0], cm.won[1]), tt('Städte erobert', 'Cities captured'))
-    + box(vs(sum(built[0]), sum(built[1])), tt('Einheiten gebaut', 'Units built'))
-    + box(vs(sum(kills[0]), sum(kills[1])), tt('Einheiten zerstört', 'Units destroyed'))
+    + box(esc(wd ? wd.label : '–'), tt('Welt', 'World') + (sz ? ' · ' + esc(sz.label.split(' ')[0]) : ''), multi)
+    + box(vs(cities), tt('Städte am Ende', 'Cities at the end'), multi)
+    + box(vs(p => cm.won[p] || 0), tt('Städte erobert', 'Cities captured'), multi)
+    + box(vs(p => sum(built[p])), tt('Einheiten gebaut', 'Units built'), multi)
+    + box(vs(p => sum(kills[p])), tt('Einheiten zerstört', 'Units destroyed'), multi)
+    + (multi ? box(vs(p => (S.outAt && S.outAt[p]) || (p === 0 && !win ? S.turn : '–')), tt('Ausgeschieden in Runde', 'Knocked out in turn'), true) : '')
     + (S.seed != null ? box('<span class="seedv">' + fmtSeed(S.seed) + '</span>', tt('Kartennummer', 'Map number')) : '');
 
-  // je Einheitentyp
-  const cell = n => `<td class="num ${n ? '' : 'zero'}">${n}</td>`;
-  const tot = [0, 0, 0, 0];
+  // je Einheitentyp: gebaut und verloren für jeden Spieler (mit mehreren Gegnern schmaler: kurze Überschriften)
+  $('mOver').querySelector('.over-units').classList.toggle('multi', multi);
+  const hB = multi ? tt('geb.', 'built') : tt('gebaut', 'built'), hL = multi ? tt('verl.', 'lost') : tt('verloren', 'lost');
+  $('overHead').innerHTML = `<tr><th></th>${ps.map(p => `<th colspan="2" class="grp" style="color:${PLAYERS[p].light}">${esc(pname(p))}</th>`).join('')}</tr>`
+    + `<tr><th>${tt('Einheit', 'Unit')}</th>${ps.map(() => `<th class="num" title="${tt('gebaut', 'built')}">${hB}</th><th class="num" title="${tt('verloren', 'lost')}">${hL}</th>`).join('')}</tr>`;
+  const cell = v => `<td class="num ${v ? '' : 'zero'}">${v}</td>`;
+  const tot = new Array(2 * n).fill(0);
   const rows = UNIT_ORDER.map(k => {
-    const v = [built[0][k] || 0, lost[0][k], built[1][k] || 0, lost[1][k]];
+    const v = ps.flatMap(p => [built[p][k] || 0, lost[p][k]]);
     if (!v.some(Boolean)) return '';
-    v.forEach((n, i) => { tot[i] += n; });
-    return `<tr><td><span class="sym">${UT[k].sym}</span>${UT[k].name}</td>${v.map(n => cell(n)).join('')}</tr>`;
+    v.forEach((x, i) => { tot[i] += x; });
+    return `<tr><td><span class="sym">${UT[k].sym}</span>${UT[k].name}</td>${v.map(x => cell(x)).join('')}</tr>`;
   }).join('');
-  $('overUnits').innerHTML = rows + `<tr class="sum"><td>${tt('Gesamt', 'Total')}</td>${tot.map(n => `<td class="num">${n}</td>`).join('')}</tr>`;
+  $('overUnits').innerHTML = rows + `<tr class="sum"><td>${tt('Gesamt', 'Total')}</td>${tot.map(x => `<td class="num">${x}</td>`).join('')}</tr>`;
   const from = Math.max(S.builtFrom || 1, S.killsFrom || 1);
   $('overNote').textContent = tt('Gebaut: in Städten, ohne Starteinheiten. Verloren: auch Ladung versenkter Schiffe und Abstürze.',
       'Built: in cities, without starting units. Lost: including cargo of sunk ships and crashes.')
@@ -2430,7 +2512,7 @@ function tlDraw() {
   const fresh = new Set(S.cities.filter(c => prev[c.id] !== -2 && prev[c.id] !== owners[c.id]).map(c => c.id));
   // Gelände in Feldauflösung, dann vergrößert
   const octx = tlv.off.getContext('2d'), img = octx.createImageData(W, H), px = img.data;
-  const tint = [[60, 140, 245], [235, 72, 62]];   // Umland: kräftig, damit es sich vom dunklen Wasser abhebt
+  const tint = [[60, 140, 245], [235, 72, 62], [236, 172, 36], [172, 104, 232]];   // Umland je Spieler (PLAYERS): kräftig, damit es sich vom dunklen Wasser abhebt
   let seenN = 0;
   for (let i = 0; i < N; i++) {
     const known = tlv.truth || (tl.seen[i] && tl.seen[i] <= t);
@@ -2449,7 +2531,8 @@ function tlDraw() {
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(tlv.off, 0, 0, W * s, H * s);
   // Städte
-  const cnt = { 0: 0, 1: 0, '-1': 0, unk: 0 };
+  const cnt = { '-1': 0, unk: 0 };
+  for (let p = 0; p < nPlayers(); p++) cnt[p] = 0;
   const r = Math.max(2.5, s * 0.6);
   for (const c of S.cities) {
     const o = owners[c.id];
@@ -2468,7 +2551,7 @@ function tlDraw() {
   const dot = o => `<i style="background:${ownerPal(o).color}"></i>`;
   const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
   $('tlStats').innerHTML = `<span>${dot(0)}${tt('Du', 'You')}: ${plural(cnt[0], tt('Stadt', 'city'), tt('Städte', 'cities'))}</span>`
-    + `<span>${dot(1)}${tt('Gegner', 'Enemy')}: ${cnt[1]}</span>`
+    + Array.from({ length: nPlayers() - 1 }, (_, i) => `<span>${dot(i + 1)}${esc(pname(i + 1))}: ${cnt[i + 1]}</span>`).join('')
     + `<span>${dot(-1)}${tt('neutral', 'neutral')}: ${cnt[-1]}</span>`
     + (tlv.truth ? '' : `<span>${tt('unbekannt', 'unknown')}: ${cnt.unk}</span>`)
     + (tlv.truth ? '' : `<span>${tt('entdeckt', 'explored')}: ${Math.round(seenN / N * 100)} %</span>`);
@@ -2518,13 +2601,14 @@ try { const sp = localStorage.getItem('archipel-tlspeed'); if (sp && [...$('tlSp
 $('tlSpeed').onchange = e => { try { localStorage.setItem('archipel-tlspeed', e.target.value); } catch (err) {} };
 $('bTime').onclick = () => openTimelapse();
 
-function startNew(size, diffKey, worldKey, seed = null) {   // seed: Kartennummer (null = zufällig)
+function startNew(size, diffKey, worldKey, seed = null, nAi = 0) {   // seed: Kartennummer (null = zufällig), nAi: Zahl der Gegner
   prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
   resetCheatFog();   // jede neue oder geladene Partie beginnt mit Nebel
   if (!diffKey) { try { diffKey = localStorage.getItem('archipel-diff') || 'normal'; } catch (e) { diffKey = 'normal'; } }
   if (!worldKey) { try { worldKey = localStorage.getItem('archipel-world') || 'inseln'; } catch (e) { worldKey = 'inseln'; } }
+  if (!nAi) { try { nAi = +localStorage.getItem('archipel-ais') || 1; } catch (e) { nAi = 1; } }
   setTimeout(() => { logSeen = S.log[0] || null; updateLogHead(); }, 0);
-  newGame(size, diffKey, worldKey, seed);
+  newGame(size, diffKey, worldKey, seed, nAi);
   sel = null; selCity = null; hover = null; updateHover();
   resizeCanvas();
   selectNext();
@@ -3056,16 +3140,38 @@ $('bNew').onclick = () => { $('seedIn').value = ''; openModal('mNew'); };
 $('seedIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('bStart').click(); } });
 $('seedSame').onclick = () => {
   if (!S || S.seed == null) { toast(tt('Diese Partie stammt aus einer älteren Version und hat keine Kartennummer', 'This game comes from an older version and has no map number')); return; }
+  // auch die Zahl der Gegner: Sie bestimmt die Startplätze (und kann deshalb eine andere Welt ergeben)
   $('seedIn').value = fmtSeed(S.seed); $('sizeSel').value = S.size; $('worldSel').value = S.world; $('worldSel').onchange();
+  fillAiSel(S.players.length - 1);
 };
 $('bStart').onclick = () => {
   try {
     localStorage.setItem('archipel-diff', $('diffSel').value); localStorage.setItem('archipel-size', $('sizeSel').value);
-    localStorage.setItem('archipel-world', $('worldSel').value);
+    localStorage.setItem('archipel-world', $('worldSel').value); localStorage.setItem('archipel-ais', $('aiSel').value);
   } catch (e) {}
-  closeModals(); startNew($('sizeSel').value, $('diffSel').value, $('worldSel').value, parseSeed($('seedIn').value));
+  closeModals(); startNew($('sizeSel').value, $('diffSel').value, $('worldSel').value, parseSeed($('seedIn').value), +$('aiSel').value || 1);
   Sfx.play('start');   // nur hier (Klick des Spielers): Browser spielen Ton erst nach einer Benutzeraktion
 };
+// Zahl der Gegner (1 … MAP_SIZES.maxAi der gewählten Kartengröße); want = gewünschte Zahl, sonst die bisherige Wahl
+function fillAiSel(want) {
+  const max = (MAP_SIZES[$('sizeSel').value] || MAP_SIZES.mittel).maxAi;
+  let cur = want || +$('aiSel').value;
+  if (!cur) { try { cur = +localStorage.getItem('archipel-ais') || 1; } catch (e) { cur = 1; } }
+  cur = Math.max(1, Math.min(max, cur));
+  $('aiSel').innerHTML = Array.from({ length: max }, (_, i) => i + 1).map(k => `<option value="${k}" ${k === cur ? 'selected' : ''}>${k === 1
+    ? tt('1 Gegner', '1 opponent') : tt(`${k} Gegner – jeder gegen jeden`, `${k} opponents – everyone against everyone`)}</option>`).join('');
+  aiDesc();
+}
+function aiDesc() {
+  const k = +$('aiSel').value || 1, max = (MAP_SIZES[$('sizeSel').value] || MAP_SIZES.mittel).maxAi;
+  const cols = PLAYERS.slice(1, k + 1).map(p => p.name).join(', ');
+  $('aiDesc').textContent = (k === 1 ? tt('Du gegen einen Computergegner.', 'You against one computer opponent.')
+    : tt(`Jeder gegen jeden: Die Gegner (${cols}) bekämpfen sich auch untereinander. Die Schwierigkeit gilt für alle.`,
+      `Everyone against everyone: the opponents (${cols}) also fight each other. The difficulty applies to all of them.`))
+    + (max < PLAYERS.length - 1 ? ' ' + tt(`Auf dieser Kartengröße höchstens ${max}.`, `At most ${max} on this map size.`) : '');
+}
+$('aiSel').onchange = aiDesc;
+$('sizeSel').addEventListener('change', () => fillAiSel());
 $('diffSel').onchange = () => { $('diffDesc').textContent = DIFFICULTY[$('diffSel').value].desc; };
 $('worldSel').onchange = () => { $('worldDesc').textContent = WORLDS[$('worldSel').value].desc; };
 $('bOverNew').onclick = () => { closeModals(); $('bNew').onclick(); };
@@ -3089,7 +3195,7 @@ function renderStats() {
   const myCities = S.cities.filter(c => c.owner === 0).sort((a, b) => a.name.localeCompare(b.name, LANG));
   const myUnits = S.units.filter(u => u.owner === 0);
   const known = S.players[0].knownOwner;
-  const enemyC = S.cities.filter(c => known[c.id] === 1).length;
+  const enemyC = S.cities.filter(c => known[c.id] >= 1).length;
   const neutralC = S.cities.filter(c => known[c.id] === -1).length;
   const idle = myCities.filter(c => !c.prod).length;
   const box = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
@@ -3120,8 +3226,12 @@ function renderStats() {
       <td class="num ${next == null ? 'zero' : ''}">${next == null ? '–' : next + (next === 1 ? tt(' Runde', ' turn') : tt(' Runden', ' turns'))}</td></tr>`;
   }).join('') + `<tr><td><b>${tt('Gesamt', 'Total')}</b></td><td class="num"><b>${total[0]}</b></td><td></td><td class="num"><b>${total[1]}</b></td><td></td></tr>`;
 
-  // Zerstörte Einheiten: was du zerstört hast, was der Gegner zerstört hat, was sonst verloren ging (siehe killUnit)
-  const kMe = (S.kills && S.kills[0]) || {}, kEn = (S.kills && S.kills[1]) || {}, wMe = (S.wasted && S.wasted[0]) || {};
+  // Zerstörte Einheiten: was du zerstört hast, was Gegner von dir zerstört haben (S.lost – bei mehreren Gegnern zählen
+  // Kämpfe der Gegner untereinander hier nicht mit), was sonst verloren ging (siehe killUnit)
+  const kMe = (S.kills && S.kills[0]) || {}, kEn = (S.lost && S.lost[0]) || {}, wMe = (S.wasted && S.wasted[0]) || {};
+  const many = nPlayers() > 2;
+  $('statKillsBy').textContent = many ? tt('Gegner haben zerstört', 'Enemies destroyed') : tt('Gegner hat zerstört', 'Enemy destroyed');
+  $('statKillsBy').title = many ? tt('Deine Einheiten, die deine Gegner zerstört haben', 'Your units your enemies destroyed') : tt('Deine Einheiten, die der Gegner zerstört hat', 'Your units the enemy destroyed');
   const ksum = [0, 0, 0];
   const kcell = (n, b) => `<td class="num ${n ? '' : 'zero'}">${b ? '<b>' + n + '</b>' : n}</td>`;
   $('statKills').innerHTML = UNIT_ORDER.map(k => {
@@ -3240,7 +3350,8 @@ function saveGroupTitle(m) {
   const w = WORLDS[m.world] ? WORLDS[m.world].label : '';
   const sz = SIZE_NAME[m.size] || '';
   const dl = m.difficulty && DIFFICULTY[m.difficulty] ? DIFFICULTY[m.difficulty].label : '';
-  return [w, sz, dl].filter(Boolean).join(' · ') || tt('Partie', 'Game');
+  const ais = Math.trunc(Number(m.ais)) || 1, ai = ais > 1 && ais < PLAYERS.length ? tt(`${ais} Gegner`, `${ais} opponents`) : '';
+  return [w, sz, dl, ai].filter(Boolean).join(' · ') || tt('Partie', 'Game');
 }
 function renderSaves() {
   const slots = listSlots();
@@ -3407,6 +3518,7 @@ $('bLang').onclick = () => {
   $('sizeSel').innerHTML = Object.entries(MAP_SIZES).map(([k, v]) => `<option value="${k}" ${k === prefSize ? 'selected' : ''}>${v.label}</option>`).join('');
   $('diffSel').innerHTML = Object.entries(DIFFICULTY).map(([k, v]) => `<option value="${k}" ${k === prefDiff ? 'selected' : ''}>${v.label}</option>`).join('');
   $('diffDesc').textContent = DIFFICULTY[$('diffSel').value].desc;
+  fillAiSel();
   let prefWorld = 'inseln';
   try { prefWorld = localStorage.getItem('archipel-world') || 'inseln'; } catch (e) {}
   // Inselreich ist die Hauptkarte (echter Seekrieg) – Vorgabe beim ersten Spiel und in der Auswahl als empfohlen markiert

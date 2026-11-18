@@ -45,10 +45,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 
 | Datei | Inhalt |
 |---|---|
-| `js/data.js` | Sprache `LANG`/`tt()`, Einheitentypen `UT` (inkl. `stealth`, `sonar`, `noAttack`) + `canAttack`, `UNIT_ORDER`, `DIRS`, Spielerfarben, `MAP_SIZES`, Weltarten `WORLDS`, Schwierigkeitsgrade `DIFFICULTY` (inkl. `skill`) + `diff()`, `aiKnowsMap(p)`, `aiMistake(p)` |
-| `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen (getrennt mit `split`), Festland (`festland`: Küstensaum, Binnenmeere, Flüsse mit Brücken); Städte, faire Startpositionen |
+| `js/data.js` | Sprache `LANG`/`tt()`, Einheitentypen `UT` (inkl. `stealth`, `sonar`, `noAttack`) + `canAttack`, `UNIT_ORDER`, `DIRS`, Spieler `PLAYERS` (Name, Farben; Du, Rot, Gelb, Violett), `MAP_SIZES` (inkl. `maxAi`), Weltarten `WORLDS`, Schwierigkeitsgrade `DIFFICULTY` (inkl. `skill`) + `diff()`, `aiKnowsMap(p)`, `aiMistake(p)` |
+| `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen (getrennt mit `split`), Festland (`festland`: Küstensaum, Binnenmeere, Flüsse mit Brücken); Städte, faire Startpositionen (ab drei Spielern `pickStarts`) |
 | `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung `captureChance`/`cityDefenders`, Unterstützung `fireSupport`/`airCover`, Produktion, Sicht `computeVision`/`canSee`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
-| `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
+| `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`), Landung im Hinterland auf dem Festland (`hinterInfo`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
 | `js/gfx.js` | Gelände-Rendering, Einheiten-Abzeichen (SVG-Pfade → Sprites), Stadtgrafik |
 | `js/sfx.js` | Web-Audio-Synthese: Effekte, Klangteppiche je Einheitentyp, Klangtest |
 | `js/ui.js` | Zeichnen, Animationen/Zeitleiste, Kamera, Eingabe, Seitenleiste, Kontextmenü, alle Dialoge, Handbuch (`openHelp`, `buildHelp`) |
@@ -123,7 +123,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   seine Städte und den Gesamtwert seiner Einheiten – nie die Typen (das verriete Einheiten im Nebel). Überall sonst (Hinweistext des
   Balkens, Frage nach dem vorzeitigen Ende, Eroberungsfenster) steht vom Gegner nur der Prozentwert; das ist gewollt, keine Zahlen des
   Gegners außerhalb dieses Fensters anzeigen. Ändert sich die Formel, das Fenster mit anpassen.
-- **Zerstörte Einheiten** (Statistik): `killUnit(u, by)` zählt mit – `by` = Spieler, der zerstört hat (→ `S.kills[by][typ]`), `-1` = ohne
+- **Zerstörte Einheiten** (Statistik): `killUnit(u, by)` zählt mit – `by` = Spieler, der zerstört hat (→ `S.kills[by][typ]` und beim Opfer `S.lost[besitzer][typ]`), `-1` = ohne
   Gegner verloren (Absturz, neutrale Stadt → `S.wasted[besitzer][typ]`), ohne Angabe nichts (Eroberer wird Besatzung). Wer eine neue
   Stelle einbaut, an der Einheiten sterben, gibt `by` an. `S.killsFrom` = Runde, ab der gezählt wird (ältere Spielstände: ab dem Laden).
 - **Zeitraffer**: `recordTimeline()` (game.js, in `startTurn(0)`, `afterLoad`, `showGameOver`) schreibt `S.tl` mit: `from` (ältere Spielstände:
@@ -133,15 +133,16 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   auf derselben Insel (`tlZone`, ≤ 4 Felder). Kurve aus `S.hist`, folgt `showPower`. Spielstand wird dadurch 5–20 kB größer (klein–groß).
   Der Baustein `#tlView` wird in das zeigende Fenster gehängt (`openTimelapse(host)`: `#tlHome` im Fenster „Zeitraffer“ oder `#overTl`).
 - **Abschlussfenster** (`showGameOver(quiet)`, `#mOver`): Kopf wie beim Eroberungsfenster (Sieg golden, Niederlage rot), links der Zeitraffer
-  der ganzen Partie, rechts Eckdaten und je Typ gebaut/verloren für beide Seiten (nach dem Ende alles aufgedeckt). Nach dem Spielende öffnen
+  der ganzen Partie, rechts Eckdaten und je Typ gebaut/verloren für jeden Spieler (nach dem Ende alles aufgedeckt; mit mehreren Gegnern
+  doppelt breite Kästchen `.w2` und kurze Spaltenköpfe, Kästchen „Ausgeschieden in Runde“). Nach dem Spielende öffnen
   Menü „Zeitraffer“ und Taste T dieses Fenster. Gebaute Einheiten: `S.built[p][typ]` (in `startTurn`), `S.builtFrom` wie `killsFrom`.
-  Verloren = vom Gegner zerstört + `S.wasted`. Eroberte Städte: `overCityMoves` aus `S.tl.own`.
+  Verloren = `S.lost` (von Gegnern zerstört) + `S.wasted`. Eroberte Städte: `overCityMoves` aus `S.tl.own`.
 - **Kartennummer** (`S.seed`, game.js): Startwert des Kartengenerators; `newGame(size, diff, world, seed)`, `parseSeed` (Ziffern direkt, Text per Hash,
   leer = zufällig), `fmtSeed` (Dreiergruppen). Gleiche Nummer + Größe + Welt = gleiche Karte, Städte und Startplätze (nicht die KI-Züge).
   Eingabe und „Diese Welt noch einmal“ im Fenster „Neues Spiel“, Anzeige in Statistik und Abschlussfenster. Der Generator darf nur
   `mulberry32(seed)` nutzen, nie `Math.random` – sonst stimmt die Nummer nicht mehr. Ältere Spielstände: `seed = null`.
 - **Spielstände** (ui.js `renderSaves`): nach Partie gruppiert über `S.gameId` (bei `newGame` vergeben, ältere Partien in `afterLoad`; in den
-  Metadaten als `game`, dazu `world`/`seed` aus `saveSummary`). Laufende Partie oben und offen, sonst zugeklappt (`saveOpen`); ohne Kennung →
+  Metadaten als `game`, dazu `world`/`seed`/`ais` aus `saveSummary`; mehrere Gegner nennt der Gruppentitel). Laufende Partie oben und offen, sonst zugeklappt (`saveOpen`); ohne Kennung →
   „Ältere Spielstände“. Suchfeld ab 7 Ständen, `data-delgame` löscht alle Stände einer Partie.
 - **Neues Feld im Spielzustand** → in `sanitizeState` (game.js) aufnehmen, sonst wird es beim
   Laden verworfen. Spielstände aus Dateien sind nicht vertrauenswürdig (siehe `SECURITY.md`);
@@ -155,8 +156,23 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Während der Wiedergabe nach dem Rundenende bleibt die Karte stehen; erst danach geht es zur nächsten eigenen Einheit.
 - **„Wartende“ Einheiten**: `needsOrders(u)` in ui.js steuert „Nächste Einheit“, die Zahl am
   Rundenknopf und das automatische Rundenende.
-- **Schwierigkeit** wirkt nur auf Spieler 1 (Gegner). In Simulationen spielt die KI auch
+- **Schwierigkeit** wirkt auf alle Computergegner (Spieler ≥ 1: `aiKnowsMap`, `aiMistake`, `aiSkill`). In Simulationen spielt die KI auch
   Spieler 0 – dort ohne Fehler und ohne Kartenwissen.
+- **Mehrere Gegner** (jeder gegen jeden): `newGame(size, diff, world, seed, nAi)`, Spieler 0 = Mensch, 1 … nAi = Computer
+  (höchstens `MAP_SIZES[size].maxAi`: klein 2, mittel/groß 3; Wahl `aiSel` im Fenster „Neues Spiel“, gemerkt in `archipel-ais`).
+  `nPlayers()`, `pname(p)` (bei einem Gegner „Gegner“, sonst der Farbname), `uname` hängt bei mehreren Gegnern die Farbe an.
+  Computer immer mit `owner >= 1` erkennen, nie `=== 1`. Zähler je Spieler (`kills`, `wasted`, `lost`, `built`, `outAt`) sind Felder der
+  Länge `nPlayers()` – neue genauso anlegen und in `sanitizeState` prüfen. `S.lost[p][typ]` = Verluste von p durch Gegner (bei zwei Spielern
+  dasselbe wie `kills` des anderen; ältere Spielstände werden umgerechnet). Ausscheiden (Wunsch des Nutzers, einfacher): `checkGameOver` setzt `S.outAt[p]` = Runde, sobald ein
+  Gegner keine Stadt mehr hat, und entfernt alle seine Einheiten (`hooks.out`: Wiedergabe zeigt sie bis dahin); gewonnen, wenn alle Gegner
+  draußen sind – auch mit einem Gegner (vorher musste man seine letzten Bodentruppen jagen). Der Mensch verliert weiterhin erst ohne Stadt
+  und ohne Einheit, die erobern kann.
+  Zugfolge: `endHumanTurn` lässt die lebenden Gegner nacheinander ziehen, `anim.phases` merkt, ab wann wer in der Zeitleiste dran ist
+  (`updateBanner`: „Gelb zieht …“). Kräftebalken, Kurve und Angebot zum vorzeitigen Ende vergleichen mit dem stärksten Gegner
+  (`strongestEnemy`); das Kräftefenster hat eine Spalte je Gegner (Anteil immer, Zahlen nur mit dem Spoiler-Haken), das Abschlussfenster
+  Spalten je Spieler. Kopfzeile: Punkte je Gegner (`.foes`, blass = ausgeschieden). Startplätze: zwei Spieler wie bisher (gleiche
+  Kartennummer = gleiche Karte wie vor der Erweiterung), ab drei `pickStarts` (map.js: weit auseinander, möglichst auf verschiedenen
+  Landmassen, ähnlich viele Städte im Umkreis).
 - **Karte bewegen** (ui.js): Ziehen mit jeder Maustaste (links erst ab `DRAG_THRESHOLD_LEFT`, der Klick danach wird über
   `dragSwallow` verschluckt), Umschalt + Pfeiltasten, Klick auf die Übersichtskarte. Rad-Ereignisse: Mausrad zoomt,
   Touchpad-Wischen verschiebt (`looksLikeTouchpad`: kleine, krumme oder seitliche Schritte), Spreizgeste = Rad mit Strg = Zoom.
@@ -227,14 +243,19 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 4. KI-gegen-KI-Simulation (im Browser ausführen):
 
 ```js
-function simGame(size, dk, world = 'inseln', maxT = 350) {
-  newGame(size, dk, world);   // world: inseln | gemischt | kontinente
+function simGame(size, dk, world = 'inseln', maxT = 350, nAi = 1) {
+  newGame(size, dk, world, null, nAi);   // world: inseln | gemischt | kontinente
   for (let k = 0; k < maxT && !S.over; k++) {
     for (const c of S.cities) if (c.owner === 0 && c.progress === 0) aiChooseProduction(c);
     aiTurn(0); endTurn(0); if (S.over) break;
-    startTurn(1); aiTurn(1); endTurn(1); S.turn++; startTurn(0); checkGameOver();
+    for (let p = 1; p < nPlayers() && !S.over; p++) {
+      if (!isAlive(p)) continue;
+      startTurn(p); aiTurn(p); if (!S.over) endTurn(p);
+    }
+    if (S.over) break;
+    S.turn++; startTurn(0); checkGameOver();
   }
-  const a = strength(0).total, b = strength(1).total;
+  const a = strength(0).total, b = strength(strongestEnemy()).total;
   return { over: S.over, turn: S.turn, share: Math.round(a / (a + b) * 100) };
 }
 ```
@@ -257,6 +278,26 @@ mit 3 Feldern waren es 12 bzw. 2 Siege, der schnelle Träger nützte der KI also
 | Brutal | 5 | 1 | wie Schwer, 115 % Bautempo, zweite Stadt |
 
 Partiedauer bis zur Entscheidung (Normal) ca. 210 Runden. Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
+
+**Mehrere Gegner** (Platz 0 einfach ohne Fehler, je 96 Partien über alle drei Welten, Siege / offen nach 350 Runden; Skript wie `simGame` mit `nAi`):
+
+| Gegner, Karte | Leicht | Normal | Schwer | Brutal |
+|---|---|---|---|---|
+| 1, mittel (Vergleich) | 100 % / 0 | 56 % / 10 | 15 % / 5 | 1 % / 2 |
+| 2, klein | 95 % / 2 | 40 % / 0 | 17 % / 1 | 5 % / 1 |
+| 3, mittel | 96 % / 4 | 32 % / 12 | 7 % / 7 | 0 % / 2 |
+
+Die Stufen bleiben in der richtigen Reihenfolge, mehr Gegner sind schwerer (gewollt, nicht nachgestellt; der einfache Vergleichsspieler
+nutzt nicht aus, dass sich die Gegner gegenseitig schwächen). Partien mit drei Gegnern dauern auf Normal ca. 240 Runden.
+**Offene Partien auf der mittleren Karte:** schon mit einem Gegner 10 von 96 (klein: 0–3), fast alle auf dem **Festland** – dort allein
+16–33 von 96 (je nach Stichprobe). Ein Teil läuft nach 350 Runden nur noch (Partien dauern dort Ø 230–250 Runden), ein Teil ist festgefahren:
+Außerhalb von Städten steht je Feld nur eine Einheit (`aiLand` betritt keine besetzten Felder), die überlegene Seite hat Hunderte Bodentruppen im
+Stau und in den eigenen Städten (z. B. 352 von 447, im Extrem 974), und die Städte bauen weiter Bodentruppen. Im untersuchten Spielstand staute
+sich alles vor einer ein Feld breiten Landbrücke zwischen Meer und Binnenmeer – einer Abkürzung, das Land hing im Süden breit zusammen
+(Testspielstände `archipel-test-stall-*.json`, Engstelle in 164 bei x 29–33, y 2). Gemildert durch die **Landung im Hinterland** (siehe „KI messen“).
+Versuch, verworfen: Seen mit mindestens 3 Feldern Abstand zum Meer und zueinander (schmale Landstreifen je Karte halbiert, Wasseranteil mittel
+37 → 35 %, etwas mehr Brücken) – offene Partien nicht weniger (mittel 16 → 20 und 22 → 24 von 96, drei Gegner 15 → 17 von 64, klein Normal
+1 → 5). Die Engstelle war ein Einzelfall, nicht die Ursache; die Festland-Karten blieben deshalb, wie sie sind (gleiche Kartennummer, gleiche Karte).
 Inselstatistik: größte Insel ≈ 15–22 % des Landes (Inselreich, je nach Kartengröße). Gemischt (`massLen`, `massShare`, `minBig`): gleich große
 mittelgroße Landmassen, Anzahl nach Kartengröße (klein/mittel/groß: 3/4/5, je ≈ 16–29 % des Landes, Start nur dort, Startland 8–13 Städte),
 kleine Inseln ≈ 21–30 %. Vorher zwei große Kontinente – das hieß langwieriger Landkrieg oder ein Transporter bricht durch.
@@ -305,6 +346,21 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   Schwarm 54/49/31/44,5 %; angriffslustig (halber Schaden reicht) 49/49/40/46 %. Kein Effekt – der Schwarm schlägt selten zu
   (1–2 Angriffe je Partie, meist Transporter), weil ein Jäger gegen einen Kreuzer im Schnitt nur 1 Schaden macht. Auf dem Festland
   schaden die vielen Jäger (fehlende Bodentruppen). Erst neu messen, falls Jäger gegen Schiffe stärker werden.
+- **Landung im Hinterland** (Wunsch des Nutzers, nur Festland; ai.js `hinterInfo`, `landingOk`, `waitingLand`, `pickSpot`, `boardAdjacent`,
+  Schalter `AI_AMPHIB` je Platz). Vorher baute die KI auf dem Festland praktisch keine Transporter (0,3 je Partie): Sie lädt nur auf Kontinenten
+  ohne Ziele. Jetzt gilt: Übermacht auf dem Kontinent (Bodentruppen ≥ 3 je bekannter Zielstadt + 4) und eine fremde Stadt, die über Land
+  ≥ `HINTER` (6) Felder von den eigenen Truppen entfernt und vom Meer (≤ 2 Felder) erreichbar ist → Häfen bauen Transporter (höchstens
+  1 + 1 je 6 Städte), Transporter laden in Häfen mit mindestens zwei Wartenden oder holen Truppen an der Küste ab (`u.pickAt` bleibt, solange dort
+  eigene Truppen stehen, sonst pendelten sie; Truppen mit Abstand ≥ 3 zum Ziel steigen zu), setzen nur nahe einer Hinterland-Stadt ab und landen
+  alles, bevor sie wieder abholen (`u.inv`). Wege planen sie dabei ohne eigene Einheiten (`makePassable(…, true)`; steht eine im Weg, warten sie,
+  nach zwei Runden außen herum, `u.blk`) – vorher wechselten sie in schmalen Wasserstraßen jede Runde den Umweg. Messung Festland, mittel,
+  ein Gegner, Normal (drei Stichproben je 96, offen ohne → mit): 33 → 25, 26 → 20, 17 → 19, zusammen 76 → 64 von 288; ca. 11 Transporter je Partie.
+  Direkter Vergleich (beide ohne Fehler, 192 Partien): Variante gewinnt 76, Basis 83 – neutral. Kleine Karte (alle Welten, je 96, ohne → mit):
+  Leicht 100/100 %, Normal 60/63 %, Schwer 17/17 %, Brutal 1/2 %. Auf Inselreich und Gemischt gab es damit einige offene Partien mehr
+  (zusammen ca. +8) – deshalb nur Festland. Verworfen (Festland, offen von 96): Binnenstädte bauen im Stau nichts (38 statt 20), Jäger statt
+  Bodentruppen (36 statt 20, Idee des Nutzers), Jäger greifen die Front gezielt an, auch bei 50 % (34 statt 19). Grund: Im Stau sind die eigenen
+  Städte ringsum von eigenen Truppen umstellt – außerhalb von Städten darf nie mehr als eine Einheit auf einem Feld stehen, die Jäger kommen nicht
+  zum Tanken hinein und stürzen ab (z. B. 65 in 60 Runden). Weniger Bodentruppen schaden: Die Masse bricht irgendwann doch durch.
 - Flucht vom bedrohten Feld (`aiWarship`: kein gefahrloser Weg → notfalls durch bedrohte Felder aus der Reichweite; lauernde U-Boote bleiben
   nur unbedroht liegen). Vorher blieb z. B. ein U-Boot neben einem Zerstörer stehen. Messung (Können 1, je ~400 Partien): Siegquote 49 %,
   offen 9 → 10 von 408, Partien 5 Runden länger – neutral, deshalb festgeschrieben.

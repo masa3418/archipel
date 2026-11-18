@@ -41,9 +41,13 @@ const UNIT_ORDER = ['inf', 'tank', 'ftr', 'trn', 'dst', 'sub', 'crs', 'car', 'ba
 
 const DIRS = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
 
+// Spieler 0 ist immer der Mensch, 1 … 3 Computergegner (jeder gegen jeden). Bei nur einem Gegner heißt er „Gegner“, bei mehreren
+// nach seiner Farbe – siehe pname() in game.js. Die Zahl der Gegner wählt man im Fenster „Neues Spiel“ (MAP_SIZES.maxAi).
 const PLAYERS = [
-  { name: tt('Du', 'You'),     color: '#2f7de1', light: '#8fc0ff', dark: '#173f78' },
-  { name: tt('Gegner', 'Enemy'), color: '#d9433b', light: '#ff9d96', dark: '#7a1c17' },
+  { name: tt('Du', 'You'),         color: '#2f7de1', light: '#8fc0ff', dark: '#173f78' },
+  { name: tt('Rot', 'Red'),        color: '#d9433b', light: '#ff9d96', dark: '#7a1c17' },
+  { name: tt('Gelb', 'Yellow'),    color: '#d6970f', light: '#ffd56b', dark: '#6b4704' },
+  { name: tt('Violett', 'Purple'), color: '#8e54c8', light: '#d0a8f5', dark: '#3f1a6a' },
 ];
 const NEUTRAL = { color: '#9aa0a6', light: '#d7dadd', dark: '#55595e' };
 
@@ -72,15 +76,16 @@ const DIFFICULTY = {
     aiProd: 1.15, aiStart: [], youStart: [], aiCities: 1, invadeAt: 3, caution: -0.05, aiKnowsMap: true, aiMistake: 0, skill: 1 },
 };
 const diff = () => DIFFICULTY[(typeof S !== 'undefined' && S && S.difficulty) || 'normal'] || DIFFICULTY.normal;
-// Kennt Spieler p die ganze Karte? Nur der Computergegner, und nur auf Schwer/Brutal.
-const aiKnowsMap = p => p === 1 && diff().aiKnowsMap;
-// Fehlerquote des Gegners (der Spielerplatz 0 macht in Simulationen keine Fehler)
-const aiMistake = p => (p === 1 ? diff().aiMistake : 0);
+// Kennt Spieler p die ganze Karte? Nur Computergegner (Platz 1 …), und nur auf Schwer/Brutal.
+const aiKnowsMap = p => p >= 1 && diff().aiKnowsMap;
+// Fehlerquote der Gegner (der Spielerplatz 0 macht in Simulationen keine Fehler)
+const aiMistake = p => (p >= 1 ? diff().aiMistake : 0);
 
+// maxAi: höchstens so viele Computergegner (auf der kleinen Karte wird es mit drei Gegnern zu eng)
 const MAP_SIZES = {
-  klein:  { w: 48, h: 30, label: tt('Klein (48×30)', 'Small (48×30)') },
-  mittel: { w: 64, h: 40, label: tt('Mittel (64×40)', 'Medium (64×40)') },
-  gross:  { w: 90, h: 56, label: tt('Groß (90×56)', 'Large (90×56)') },
+  klein:  { w: 48, h: 30, maxAi: 2, label: tt('Klein (48×30)', 'Small (48×30)') },
+  mittel: { w: 64, h: 40, maxAi: 3, label: tt('Mittel (64×40)', 'Medium (64×40)') },
+  gross:  { w: 90, h: 56, maxAi: 3, label: tt('Groß (90×56)', 'Large (90×56)') },
 };
 
 // Weltarten für den Kartengenerator (map.js).

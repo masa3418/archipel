@@ -2,14 +2,15 @@
 
 Rundenbasiertes Eroberungsspiel im Stil der klassischen Strategiespiele der 80er:
 eine zufällige Inselwelt im Nebel des Krieges, Städte erobern, Einheiten bauen,
-Truppen per Schiff übersetzen – gegen einen Computergegner.
+Truppen per Schiff übersetzen – gegen einen Computergegner oder bis zu drei, jeder gegen jeden.
 
 Läuft komplett im Browser, ohne Installation und ohne externe Bibliotheken – [online](https://masa3418.github.io/archipel/) oder als
 [einzelne Datei zum Herunterladen](https://github.com/masa3418/archipel/releases/latest) auch ganz ohne Internet.
 Grafik und Klänge werden im Programm erzeugt, es gibt keine Bild- oder Audiodateien.
 
 *English:* a turn-based island conquest game in the spirit of the classic 80s strategy games – explore,
-capture cities, build units and ship your troops across the sea against a computer opponent. The game
+capture cities, build units and ship your troops across the sea against one computer opponent or up to three,
+everyone against everyone. The game
 is available in English: use the language button in the top bar. Play it
 [online](https://masa3418.github.io/archipel/) or download the single-file
 [offline copy](https://github.com/masa3418/archipel/releases/latest) and double-click it.
@@ -36,7 +37,7 @@ the carrier and your battleship sinks the now unprotected cruiser.
 Das Spiel speichert nach jeder Runde automatisch im Browser; über **Spielstände** lassen sich beliebig viele
 benannte Stände anlegen und als Datei exportieren. Online- und Offline-Fassung haben getrennte Spielstände – per
 Export und „Aus Datei laden“ wandern sie von der einen zur anderen. Das **Handbuch** (Knopf **Hilfe** oder Taste `H`)
-erklärt in sechs Reitern erste Schritte, Einheiten, Kampf, Steuerung und den Gegner.
+erklärt in sieben Reitern erste Schritte, Einheiten, Transporter, Kampf, Steuerung und die Gegner.
 
 ## Erklärvideos
 
@@ -71,7 +72,9 @@ trickier rules – best watched on the [video page](https://masa3418.github.io/a
 - Befehle: Marsch, Wache, Patrouille, Erkunden, Heimkehr, Ein-/Ausladen – auch über ein Rechtsklick-Menü
 - Computergegner in vier Schwierigkeitsstufen; auf Leicht/Normal muss er die Karte
   wie du erkunden und macht gelegentlich Fehler, auf Schwer/Brutal spielt er umsichtiger
-  (Geleitschutz, lauernde U-Boote, Träger)
+  (Geleitschutz, lauernde U-Boote, Träger); steckt seine Armee auf dem Festland fest, landet er per Transporter in deinem Hinterland
+- Bis zu drei Computergegner (Rot, Gelb, Violett), die sich auch untereinander bekämpfen – jeder gegen jeden;
+  auf der kleinen Karte höchstens zwei
 - Handbuch im Spiel mit Einheitenkarten und einer Tabelle „Wer schlägt wen“, die sich aus den Regeln selbst berechnet
 - Animationen, Kamerafahrten bei Gegnerzügen, Kräfteverhältnis, Statistik
 - Bedienung mit Maus, Tastatur und Touchpad

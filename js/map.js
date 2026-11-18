@@ -19,7 +19,9 @@ function makeNameGen(r) {
   };
 }
 
-function generateMap(W, H, seed, worldKey = 'inseln') {
+// nPlayers: Zahl der Startplätze (2 = du und ein Gegner; mehr bei mehreren Computergegnern). Bei 2 bleibt die Wahl wie früher,
+// damit dieselbe Kartennummer dieselben Startplätze ergibt.
+function generateMap(W, H, seed, worldKey = 'inseln', nPlayers = 2) {
   const world = WORLDS[worldKey] || WORLDS.inseln;
   const r = mulberry32(seed);
   const N = W * H;
@@ -380,7 +382,11 @@ function generateMap(W, H, seed, worldKey = 'inseln') {
   // Gemischt: Start nur auf den Landmassen (den massCount größten), nicht auf einer kleinen Insel
   const masses = massCount ? [...perCont.entries()].sort((a, b) => b[1] - a[1]).slice(0, massCount).map(e => e[0]) : null;
   const eligible = cities.filter(c => c.coastal && perCont.get(land.lab[c.y * W + c.x]) >= 4 && (!masses || masses.includes(land.lab[c.y * W + c.x])));
-  if (eligible.length < 2) return null;
+  if (eligible.length < nPlayers) return null;
+  if (nPlayers > 2) {
+    const start = pickStarts(eligible, nPlayers, c => land.lab[c.y * W + c.x], k => perCont.get(k), Math.min(W, H));
+    return start ? { W, H, terrain, elev, depth, cont: land.lab, cities, start } : null;
+  }
   let best = null, bestScore = -1;
   for (let a = 0; a < eligible.length; a++) for (let b = a + 1; b < eligible.length; b++) {
     const A = eligible[a], B = eligible[b];
@@ -392,4 +398,51 @@ function generateMap(W, H, seed, worldKey = 'inseln') {
   if (!best || cheb(cities[best[0]].x, cities[best[0]].y, cities[best[1]].x, cities[best[1]].y) < Math.min(W, H) / 2) return null;
 
   return { W, H, terrain, elev, depth, cont: land.lab, cities, start: best };
+}
+
+// Startplätze für 3 oder 4 Spieler (bei 2 gilt die Paarsuche oben): möglichst weit auseinander – es zählt der kleinste Abstand –,
+// möglichst auf verschiedenen Inseln und fair (ähnlich viele Städte auf den Startinseln). Von jeder geeigneten Stadt aus wird mit
+// dem Weitester-Punkt-Verfahren eine Auswahl gebildet und dann durch Tauschen einzelner Plätze verbessert; die beste gewinnt.
+// Ohne Zufall – dieselbe Karte ergibt dieselben Plätze. null, wenn die Plätze zu eng lägen (dann versucht newGame die nächste Karte).
+function pickStarts(el, n, contOf, citiesOf, minDim) {
+  const score = set => {
+    let md = 1e9, diffPairs = 0, pairs = 0, lo = 1e9, hi = 0;
+    for (let i = 0; i < set.length; i++) {
+      const a = el[set[i]], ka = contOf(a), na = citiesOf(ka);
+      lo = Math.min(lo, na); hi = Math.max(hi, na);
+      for (let j = i + 1; j < set.length; j++) {
+        const b = el[set[j]];
+        md = Math.min(md, cheb(a.x, a.y, b.x, b.y));
+        pairs++; if (ka !== contOf(b)) diffPairs++;
+      }
+    }
+    return { md, s: md + 20 * diffPairs / pairs - 3 * (hi - lo) };
+  };
+  let best = null, bestS = -1e9;
+  for (let f = 0; f < el.length; f++) {
+    const set = [f];
+    while (set.length < n) {
+      let pick = -1, pd = -1;
+      for (let k = 0; k < el.length; k++) {
+        if (set.includes(k)) continue;
+        let d = 1e9;
+        for (const s of set) d = Math.min(d, cheb(el[k].x, el[k].y, el[s].x, el[s].y));
+        if (d > pd) { pd = d; pick = k; }
+      }
+      set.push(pick);
+    }
+    let cur = score(set).s;
+    for (let improved = true, guard = 20; improved && guard > 0; guard--) {
+      improved = false;
+      for (let i = 0; i < n; i++) for (let k = 0; k < el.length; k++) {
+        if (set.includes(k)) continue;
+        const old = set[i]; set[i] = k;
+        const sc = score(set).s;
+        if (sc > cur + 1e-9) { cur = sc; improved = true; } else set[i] = old;
+      }
+    }
+    if (cur > bestS) { bestS = cur; best = set.slice(); }
+  }
+  if (!best || score(best).md < minDim * (n === 3 ? 0.45 : 0.36)) return null;
+  return best.map(i => el[i].id);
 }
