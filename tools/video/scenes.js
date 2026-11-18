@@ -529,12 +529,64 @@ window.Scenes = (() => {
     return R().finish();
   }
 
+  // 0. Seeschlacht – Teaser (Videoseite oben, README als GIF): kurze Einblendungen statt Erklärungen
+  async function seeschlacht() {
+    fresh(22);
+    const rx = 43, ry = 24, U = (t, p, x, y, c) => unit(t, p, rx + x, ry + y, c), P = (x, y) => [rx + x, ry + y];
+    const eCar = U('car', 1, 8, 3); U('ftr', 1, 8, 3, eCar);
+    const eCrs = U('crs', 1, 7, 3), eSub = U('sub', 1, 6, 6);
+    const mCar = U('car', 0, 1, 2), f1 = U('ftr', 0, 1, 2, mCar); U('ftr', 0, 1, 2, mCar);
+    const mDst = U('dst', 0, 2, 6), mSub = U('sub', 0, 6, 1), mBat = U('bat', 0, 5, 3);
+    ready(rx + 4.5, ry + 2);
+    await R().start('seeschlacht');
+    R().speed(165);   // gemächlicher als die Erklärvideos
+    R().caption('Seeschlacht im Inselreich', 'A sea battle in the archipelago', { big: true });
+    await R().hold(4500);
+    R().caption(null);
+    await R().hold(1800);
+    sel = mDst.id; refresh();
+    R().caption('Irgendwo hier lauert ein U-Boot. Der Zerstörer geht auf die Jagd …', 'A submarine lurks somewhere here. The destroyer goes hunting …');
+    await R().hold(3200);
+    await R().walk(mDst.id, [P(3, 6), P(4, 6)]);
+    if (canSee(0, R().byId(eSub.id))) Sfx.play('alarm');
+    R().caption('Sonarkontakt!', 'Sonar contact!');
+    await R().hold(2200);
+    await R().walk(mDst.id, [P(5, 6), P(6, 6)], () => !R().byId(eSub.id));
+    R().caption('Versenkt.', 'Sunk.');
+    await R().hold(2200);
+    sel = f1.id; refresh();
+    R().caption('Ein Jäger startet vom Träger und greift den Kreuzer an …', 'A fighter takes off from the carrier and attacks the cruiser …');
+    await R().hold(2600);
+    await R().walk(f1.id, [P(2, 2), P(3, 2), P(4, 2), P(5, 2), P(6, 2)]);
+    R().caption('… doch der feindliche Träger gibt Luftdeckung.', '… but the enemy carrier gives air cover.');
+    await R().hold(2000);
+    await R().walk(f1.id, [P(7, 3)], () => !R().byId(f1.id));
+    R().caption('Abgefangen.', 'Intercepted.');
+    await R().hold(2200);
+    sel = mSub.id; refresh();
+    R().caption('Dann eben anders: Das U-Boot torpediert den Träger.', 'Another way then: the submarine torpedoes the carrier.');
+    await R().hold(2600);
+    await R().walk(mSub.id, [P(7, 2), P(8, 3)], () => !R().byId(eCar.id) && !!R().byId(mSub.id));
+    await R().hold(1800);
+    sel = mBat.id; refresh();
+    R().caption('Ohne Luftdeckung steht der Kreuzer allein gegen das Schlachtschiff.', 'Without air cover the cruiser stands alone against the battleship.');
+    await R().hold(2800);
+    await R().walk(mBat.id, [P(6, 3), P(7, 3)], () => !R().byId(eCrs.id) && !!R().byId(mBat.id));
+    sel = null; refresh();
+    R().caption(null);
+    await R().hold(2000);
+    R().caption('Rundenbasierte Strategie im Browser – kostenlos, ohne Installation.',
+      'Turn-based strategy in your browser – free, no installation.', { big: true });
+    await R().hold(5500);
+    return R().finish();
+  }
+
   // alle Videos nacheinander; Ergebnis je Szene (oder Fehlertext)
-  async function all(list = ['landung', 'feuerschutz', 'uboot', 'kueste', 'luftdeckung', 'nachschub', 'jaeger', 'eroberung', 'steg', 'nebel']) {
+  async function all(list = ['seeschlacht', 'landung', 'feuerschutz', 'uboot', 'kueste', 'luftdeckung', 'nachschub', 'jaeger', 'eroberung', 'steg', 'nebel']) {
     const out = {};
     for (const k of list) { try { out[k] = await api[k](); } catch (e) { out[k] = String(e && e.message || e); } }
     return out;
   }
-  const api = { landung, feuerschutz, uboot, kueste, luftdeckung, nachschub, jaeger, eroberung, steg, nebel, all };
+  const api = { seeschlacht, landung, feuerschutz, uboot, kueste, luftdeckung, nachschub, jaeger, eroberung, steg, nebel, all };
   return api;
 })();

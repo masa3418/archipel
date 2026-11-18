@@ -16,12 +16,12 @@ is available in English: use the language button in the top bar. Play it
 
 ![Archipel: Seeschlacht zwischen Inseln – Zerstörer versenkt ein U-Boot, ein Jäger scheitert an der Luftdeckung, ein U-Boot torpediert den feindlichen Träger, das Schlachtschiff versenkt den Kreuzer](docs/seeschlacht.gif)
 
-*Seeschlacht im Inselreich* ([als Video mit Ton](docs/seeschlacht.mp4)): Deine Flotte (blau) trifft auf einen
+*Seeschlacht im Inselreich* ([als Video mit Ton](docs/videos/seeschlacht.mp4)): Deine Flotte (blau) trifft auf einen
 feindlichen Verband. Dein Zerstörer ortet das getauchte U-Boot und versenkt es. Ein Jäger von deinem Träger greift
 den Kreuzer an – doch der feindliche Träger gibt Luftdeckung, seine Abfangjäger schießen ihn ab. Dann torpediert dein
 U-Boot den Träger, und dein Schlachtschiff versenkt den Kreuzer, der jetzt ohne Schutz dasteht.
 
-*The scene:* a sea battle in the archipelago ([video with sound](docs/seeschlacht.mp4)). Your destroyer locates and
+*The scene:* a sea battle in the archipelago ([video with sound](docs/videos/seeschlacht.mp4)). Your destroyer locates and
 sinks a submerged submarine, a fighter is shot down by the enemy carrier's air cover, then your submarine torpedoes
 the carrier and your battleship sinks the now unprotected cruiser.
 

@@ -23,7 +23,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Keine Abhängigkeiten, kein Build.** Reines HTML/CSS/JavaScript, klassische `<script>`-Tags
   (keine ES-Module), damit `index.html` auch per Doppelklick (`file://`) läuft.
 - **Keine Asset-Dateien.** Grafik (`gfx.js`) und Klänge (`sfx.js`) werden im Code erzeugt.
-  Einzige Ausnahmen: `favicon.svg`, `docs/seeschlacht.gif` (README), `docs/seeschlacht.mp4` (Beispielvideo mit Ton) und die
+  Einzige Ausnahmen: `favicon.svg`, `docs/seeschlacht.gif` (README, aus dem Teaser `docs/videos/seeschlacht.mp4` erzeugt) und die
   Erklärvideos `docs/videos/*.mp4` – sie gehören nicht zum Spiel und nicht in den Release. `tools/pack.js` ist kein Build für den Betrieb,
   sondern verpackt nur den Release; `dist/` gehört nicht ins Repository.
 - **Installierbare App nur online:** `manifest.webmanifest` und `sw.js` (Service Worker, „erst Netz, dann Zwischenspeicher“) liegen im
@@ -316,7 +316,8 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
 ## Bekannte Eigenheiten
 
 - **Erklärvideos** (`docs/videos/*.mp4`, im README verlinkt, nicht im Release): `tools/video/` – `recv.js` (Empfänger, ruft ffmpeg),
-  `rec.js` (Aufnahme im Browser: eigene Uhr, Textleiste DE/EN, Ton offline), `scenes.js` (zehn Szenen: landung, feuerschutz, uboot, kueste, luftdeckung, nachschub, jaeger, eroberung, steg, nebel; je Video eine Szene, sucht sich die Stelle
+  `rec.js` (Aufnahme im Browser: eigene Uhr, Textleiste DE/EN, `caption(de, en, { big: true })` = Titeltafel mit Schriftzug,
+  `speed(ms)` = Zugtempo, Ton offline), `scenes.js` (zehn Szenen: landung, feuerschutz, uboot, kueste, luftdeckung, nachschub, jaeger, eroberung, steg, nebel; je Video eine Szene, sucht sich die Stelle
   auf einer erzeugten Karte; Prozentwerte aus den Regeln). Neu erzeugen nach Regeländerungen: `node tools/video/recv.js` starten,
   im Browser Ansicht 1280×800, `rec.js` und `scenes.js` per fetch + eval laden, `await Scenes.all()`, danach Seite neu laden.
   Ausnahmen „keine Asset-Dateien“ gelten auch für `docs/videos/`. Videoseite `docs/videos/index.html` (online unter
@@ -324,13 +325,14 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   Neuaufnehmen mit anpassen; sie liest `?lang=de|en`. Im Spiel verlinkt über `a[data-videos]` (Menü „Hilfe“, Handbuch „Erste Schritte“,
   Willkommensfenster), `VIDEO_URL` in ui.js setzt Adresse, Sprache und neuen Reiter – immer mit Kästchen `.ext` „online ↗“, auch in der
   Offline-Fassung (die Seite liegt nur im Internet). `sw.js` fängt `docs/` und `tools/` nicht ab (sonst landeten 8 MB Videos im Zwischenspeicher der App).
-- **Video `docs/seeschlacht.mp4` / GIF** entstehen ohne Bildschirmaufnahme, Bild für Bild: Szene im Browser aufbauen (Ansicht
-  1280×800, `replay = 'slow'`), `performance.now` durch eine eigene Uhr ersetzen, `requestAnimationFrame` und `setTimeout` auf
+- **Teaser `docs/videos/seeschlacht.mp4`** (Szene `seeschlacht`, kurze Werbetexte statt Erklärungen; Videoseite oben) und daraus das
+  README-GIF: `ffmpeg -i docs/videos/seeschlacht.mp4 -vf "fps=10,scale=680:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" -loop 0 docs/seeschlacht.gif`.
+  Prinzip der Aufnahme (in `tools/video/rec.js` umgesetzt): ohne Bildschirmaufnahme, Bild für Bild, `performance.now` durch eine eigene Uhr ersetzen, `requestAnimationFrame` und `setTimeout` auf
   diese Uhr umlenken, je Bild Uhr +33,3 ms, `loop(t)` aufrufen, sichtbaren Kartenausschnitt (`wrap.scroll*`) aus `cv` kopieren
   und per POST an einen kleinen Node-Empfänger schicken (ffmpeg liegt unter WinGet). Kampfausgänge: vor dem Abspielen prüfen,
   sonst `deserialize` und wiederholen (`rng` ist fest `Math.random`). Ton: `Sfx.play`/`Sfx.move` mit Zeitpunkt protokollieren,
   danach `sfx.js` mit einem `OfflineAudioContext` neu laden (per Textersetzung) und die Klänge mit `suspend(t)` taktgenau
-  abspielen, als WAV ausgeben. ffmpeg: H.264/AAC; GIF mit `palettegen` (15 Bilder/s, 800 px, ca. 1,4 MB für 21 s).
+  abspielen, als WAV ausgeben. ffmpeg: H.264/AAC; GIF mit `palettegen` (10 Bilder/s, 680 px, ca. 3,2 MB für 49 s – Titeltafeln mit Abblendung kosten viel).
 - Im Browser-Bereich können mehrere Reiter offen sein. Bei JavaScript-Aufrufen immer die Reiter-Kennung des Spiels angeben
   und nie `location.href` zurückgeben (ein Reiter kann eine riesige `data:`-Adresse haben).
 - Testspielstände (`archipel-test-*.json` im Projektordner, nicht im Repo) erzeugt ein Node-Skript: Partie simulieren, Einheiten

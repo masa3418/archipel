@@ -33,10 +33,14 @@ window.Rec = (() => {
     closeModals(); captureQueue.length = 0;
     // Kartenausschnitt fest auf 944×710 – unabhängig von der Fenstergröße (die Vorschau kann sie jederzeit ändern)
     if (wrap.clientWidth !== 944 || wrap.clientHeight !== 710) {
+      // Mittelpunkt der Szene merken – nach dem Ändern der Größe wieder dorthin (sonst verrutscht der Ausschnitt)
+      const mx = (wrap.scrollLeft + wrap.clientWidth / 2) / TS, my = (wrap.scrollTop + wrap.clientHeight / 2) / TS;
       Object.assign(wrap.style, { flex: 'none', width: '944px', height: '710px', minWidth: '944px', minHeight: '710px' });
       const sx = wrap.offsetWidth - wrap.clientWidth, sy = wrap.offsetHeight - wrap.clientHeight;   // Bildlaufleisten
       Object.assign(wrap.style, { width: 944 + sx + 'px', height: 710 + sy + 'px', minWidth: 944 + sx + 'px', minHeight: 710 + sy + 'px' });
-      resizeCanvas(); refresh();
+      resizeCanvas();
+      wrap.scrollLeft = mx * TS - 472; wrap.scrollTop = my * TS - 355;
+      refresh();
     }
     const W = wrap.clientWidth & ~1, H = wrap.clientHeight & ~1;
     if (W !== 944 || H !== 710) throw new Error(`Kartenausschnitt ${W}×${H} statt 944×710`);
@@ -47,8 +51,35 @@ window.Rec = (() => {
     await fetch(`${RECV}/start/${name}`, { method: 'POST' });
   }
 
-  // Textleiste: oben Deutsch, darunter kleiner Englisch
-  function caption(de, en) { V.cap = de ? { de, en, t0: window.__rec.t } : null; }
+  // Textleiste: oben Deutsch, darunter kleiner Englisch. opts.big: große Titeltafel in der Bildmitte (Karte abgedunkelt,
+  // Schriftzug ARCHIPEL darüber) – für Vor- und Abspann. Eine Titeltafel blendet beim Wechsel weich aus.
+  function caption(de, en, opts = {}) {
+    const now = window.__rec.t;
+    if (V.cap && V.cap.big) V.fade = { cap: V.cap, t1: now };
+    V.cap = de ? { de, en, t0: now, big: !!opts.big } : null;
+  }
+  function drawBig(cap, a) {
+    const c = V.octx, cx = V.W / 2;
+    c.save();
+    c.globalAlpha = a;
+    c.fillStyle = 'rgba(6,10,18,0.78)'; c.fillRect(0, 0, V.W, V.H);
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    // Schriftzug wie im Spielkopf: ARCHI weiß, PEL blau
+    c.font = '800 64px system-ui, "Segoe UI", sans-serif';
+    const w1 = c.measureText('ARCHI').width, w2 = c.measureText('PEL').width, x0 = cx - (w1 + w2) / 2, y0 = V.H * 0.36;
+    c.textAlign = 'left';
+    c.shadowColor = 'rgba(0,0,0,0.6)'; c.shadowBlur = 12;
+    c.fillStyle = '#ffffff'; c.fillText('ARCHI', x0, y0);
+    c.fillStyle = '#2f7de1'; c.fillText('PEL', x0 + w1, y0);
+    c.textAlign = 'center';
+    c.font = '700 30px system-ui, "Segoe UI", sans-serif'; c.fillStyle = '#ffffff';
+    const de = wrapText(c, cap.de, V.W - 120);
+    de.forEach((l, i) => c.fillText(l, cx, y0 + 78 + i * 38));
+    c.font = '20px system-ui, "Segoe UI", sans-serif'; c.fillStyle = '#b9c6da';
+    const en = cap.en ? wrapText(c, cap.en, V.W - 120) : [];
+    en.forEach((l, i) => c.fillText(l, cx, y0 + 78 + de.length * 38 + 14 + i * 28));
+    c.restore();
+  }
   function wrapText(c, text, max) {
     const words = text.replace(/ %/g, ' %').split(' '), lines = [];   // nie vor „%“ umbrechen
     let line = '';
@@ -57,8 +88,11 @@ window.Rec = (() => {
     return lines;
   }
   function drawCaption() {
+    const now = window.__rec.t;
+    if (V.fade) { const a = 1 - (now - V.fade.t1) / 600; if (a > 0) drawBig(V.fade.cap, a); else V.fade = null; }
     if (!V.cap) return;
-    const c = V.octx, a = Math.min(1, (window.__rec.t - V.cap.t0) / 300), pad = 16, max = V.W - 2 * pad - 24;
+    if (V.cap.big) { drawBig(V.cap, Math.min(1, (now - V.cap.t0) / 600)); return; }
+    const c = V.octx, a = Math.min(1, (now - V.cap.t0) / 300), pad = 16, max = V.W - 2 * pad - 24;
     c.save();
     c.font = '700 21px system-ui, "Segoe UI", sans-serif';
     const de = wrapText(c, V.cap.de, max);
@@ -99,7 +133,7 @@ window.Rec = (() => {
   async function act(fn, want) {
     const snap = want ? serialize() : null;
     for (let k = 0; k < 200; k++) {
-      animBegin(120); fn(); computeVision(0); computeVision(1); animEnd(); refresh();   // Sicht wie nach einem normalen Zug
+      animBegin(V.speed || 120); fn(); computeVision(0); computeVision(1); animEnd(); refresh();   // Sicht wie nach einem normalen Zug
       if (!want || want()) break;
       if (k === 199) throw new Error('Gewünschter Ausgang nicht erreicht');
       deserialize(snap); computeVision(0); computeVision(1);
@@ -145,5 +179,7 @@ window.Rec = (() => {
     return { name: V.name, seconds: +total.toFixed(1), frames: V.n, sounds: V.log.length };
   }
 
-  return { start, caption, hold, act, walk, finish, byId, frame };
+  // Zugtempo der Aufnahme (Grundwert wie im Spiel 120 ms je Schritt, mal Wiedergabe „langsam“); größer = gemächlicher
+  const speed = ms => { V.speed = ms; };
+  return { start, caption, hold, act, walk, finish, byId, frame, speed };
 })();
