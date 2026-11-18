@@ -164,7 +164,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   `buildPathCache()` sammelt Märsche (weiß, Pfeil), Patrouillen (türkis, Punkte) und Marschziele (gelb, Fähnchen), `drawRoute` zeichnet;
   `refresh()` verwirft den Cache (Wegsuche nie in jedem Bild). Legende mit Anzahl: `updatePathLegend` (`#pathLegend`).
 - **Marschziel einer Stadt**: `c.rally = [x, y]` (nur Städte des Menschen, wird gespeichert). `startTurn` gibt jeder dort fertiggestellten
-  Einheit über `applyRally` den Marschbefehl; `rallyCheck(c, typ, x, y)` (game.js) prüft Ziel und Weg – beim Setzen und bei der
+  Einheit über `applyRally` den Marschbefehl; `rallyCheck(c, typ, x, y)` (game.js) prüft Ziel und Weg (ohne Einheiten: `findPath(…, 'all')` – wer gerade wo steht, zählt nicht) – beim Setzen und bei der
   Fertigstellung (Zielfeld für den Typ betretbar, Weg vorhanden, Jäger nur zu eigener Stadt in Treibstoff-Reichweite).
   Produktion immer über `setProduction` (game.js) bzw. `changeProd` (ui.js) umstellen: Das löscht das Marschziel, weil es für den
   alten Typ galt; auch eine Eroberung löscht es. Gesetzt wird es über Stadtkarte oder Kontextmenü (`actRally`, `rallyMode`, Klick aufs Zielfeld).

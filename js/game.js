@@ -109,7 +109,9 @@ function rallyCheck(c, type, x, y) {
   // Das Zielfeld selbst muss der Typ betreten können (soweit das Gelände bekannt ist) – die Wegsuche lässt das Ziel immer zu
   if (S.players[c.owner].seen[idx(x, y)] && !canEnterTerrain(probe, x, y))
     return { ok: false, msg: tt(`${t.name} kann dieses Feld nicht betreten`, `${t.name} cannot enter this tile`) };
-  const path = findPath(probe, x, y, aiKnowsMap(c.owner));
+  // Einheiten unterwegs zählen nicht: Das Marschziel gilt dauerhaft, wer gerade wo steht, ändert sich. Folgt eine Einheit der
+  // Route, plant runGoto mit den Einheiten (und wartet an einem Stau)
+  const path = findPath(probe, x, y, aiKnowsMap(c.owner), 'all');
   if (!path || !path.length) return { ok: false, msg: tt(`Kein Weg dorthin für ${t.name}`, `No path there for ${t.name.toLowerCase()}`) };
   if (t.domain === 'air') {
     const tc = cityAt(x, y);
@@ -731,11 +733,12 @@ function bfs(sx, sy, passable, goal, maxDist = 9999) {
   return null;
 }
 
-// Passierbarkeit aus Sicht eines Spielers (knowAll: kennt die ganze Karte)
+// Passierbarkeit aus Sicht eines Spielers (knowAll: kennt die ganze Karte). ignoreOwn: eigene Einheiten sind kein Hindernis;
+// 'all': gar keine Einheiten (Route eines Marschziels – sie gilt unabhängig davon, wer gerade wo steht)
 function makePassable(u, knowAll, ignoreOwn = false) {
   const p = u.owner, P = S.players[p], t = T(u);
   const occ = new Map();
-  for (const o of S.units) {
+  for (const o of ignoreOwn === 'all' ? [] : S.units) {
     if (o.carrier != null || o === u) continue;
     const i = idx(o.x, o.y);
     if (o.owner !== p) { if (canSee(p, o)) occ.set(i, 2); }
