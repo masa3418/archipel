@@ -295,6 +295,26 @@ function attackOdds(a, d, x, y) {
   return winProb(a.hp, c.as, d.hp, c.ds, c.p, c.first);
 }
 
+// Mittlerer Schaden, den a an d anrichtet, bis einer der beiden fällt. Der Schaden bleibt, bis d in einer eigenen Stadt
+// repariert wird – deshalb zeigt das Handbuch ihn bei geringen Siegchancen mit an (Jäger gegen Kreuzer: 0 %, aber Ø 1 Schaden).
+function expDamage(a, d, x, y) {
+  const c = combatSpec(a, d, x, y);
+  let ah = a.hp, dh = d.hp, pre = 0;
+  if (c.first === 'att') { pre = Math.min(dh, c.as); dh -= c.as; }
+  if (c.first === 'def') ah -= c.ds;
+  if (dh <= 0 || ah <= 0 || c.as <= 0) return pre;
+  if (c.ds <= 0) return pre + dh;   // wehrlos (Transporter): wird sicher versenkt
+  const memo = new Map();
+  const f = (h, e) => {
+    if (h <= 0 || e <= 0) return 0;
+    const k = h * 1000 + e;
+    if (memo.has(k)) return memo.get(k);
+    const v = c.p * (Math.min(e, c.as) + f(h, e - c.as)) + (1 - c.p) * f(h - c.ds, e);
+    memo.set(k, v); return v;
+  };
+  return pre + f(ah, dh);
+}
+
 function winProb(ahp, astr, dhp, dstr, p = 0.5, first = null) {
   if (first === 'att') dhp -= astr;
   if (first === 'def') ahp -= dstr;

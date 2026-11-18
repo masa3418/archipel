@@ -98,7 +98,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Handbuch** (Hilfe): sieben Reiter in `index.html` (alles zum Laden, Landen und Angriff vom Schiff steht gesammelt unter
   „Transporter“; „Erste Schritte“ bleibt kurz, Verweise mit `data-helptab`), Aufbau über `data-tab`/`data-pane`, geöffnet über `openHelp(tab, unit)`.
   Einheitenkarten (`UNIT_INFO`, `UNIT_ROLE`) und die Tabelle „Wer schlägt wen“ (`oddsMatrix` über `attackOdds`) entstehen
-  in `buildHelp()` aus den Spieldaten – Prozentwerte nie von Hand in die Hilfe schreiben. Neue Sonderregeln als Zeile in der
+  in `buildHelp()` aus den Spieldaten – Prozentwerte nie von Hand in die Hilfe schreiben. Unter Siegchancen < 40 % steht der mittlere
+  Schaden (`expDamage` in game.js, „Ø 1 / 8“), ein Punkt in der Ecke markiert Paarungen mit Sonderregel (Hinweistext nennt sie, aus `combatSpec().notes`). Neue Sonderregeln als Zeile in der
   Tabelle `.help-rules` (Reiter „Kampf“) ergänzen, den Einheitentext in `UNIT_INFO`.
 - **Schummeln „Nebel aus“**: `CHEAT_FOG` (game.js), geschaltet mit `setCheatFog` (ui.js, Haken im Menü mit Rückfrage `askCheatFog`; wird nicht gemerkt,
   `resetCheatFog` in `startNew`/`afterLoad` – jede neue oder geladene Partie beginnt mit Nebel). `computeVision(0)`

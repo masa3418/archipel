@@ -439,6 +439,9 @@
   .help-matrix td.mid { background: rgba(242,184,75,.18); color: #ffe2a6; }
   .help-matrix td.lo { background: rgba(255,107,97,.14); color: #ffc5c0; }
   .help-matrix td.none { color: var(--muted); }
+  .help-matrix td small { display: block; font-size: 10.5px; opacity: .8; }
+  .help-matrix td.rule { position: relative; }
+  .help-matrix td.rule::after { content: ''; position: absolute; top: 3px; right: 3px; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: .7; }
   .help-rules td:first-child, .help-keys td:first-child { white-space: nowrap; font-weight: 600; vertical-align: top; }
   .help-keys td:first-child { font-weight: 400; }
   .help-setting { margin: 14px 0 4px; font-size: 13px; }
@@ -664,8 +667,12 @@
         <p data-lang="de">In jeder Kampfrunde trifft eine Seite zufällig (50:50) und richtet so viel Schaden an, wie ihre Stärke beträgt. Wer keine Trefferpunkte mehr hat, verliert. <b>Fahr mit der Maus über einen Gegner:</b> Die Zeile über der Karte zeigt deine Siegchance und nennt den Grund für Zu- oder Abschläge. Einheiten in eigenen Städten werden repariert, Panzer nicht.</p>
         <p data-lang="en">In each combat round one side hits at random (50:50) and deals as much damage as its strength. Whoever runs out of hit points loses. <b>Hover over an enemy:</b> the line above the map shows your win chance and names the reason for any bonus or penalty. Units in your own cities are repaired, tanks are not.</p>
         <h3 data-en="Who beats whom">Wer schlägt wen</h3>
-        <p class="muted" data-lang="de">Siegchance des Angreifers (Zeile) gegen den Verteidiger (Spalte), beide unbeschädigt, auf offenem Feld. Die Werte berechnet das Spiel aus den geltenden Regeln.</p>
-        <p class="muted" data-lang="en">Win chance of the attacker (row) against the defender (column), both undamaged, in the open. The game calculates the values from the current rules.</p>
+        <p class="muted" data-lang="de">Siegchance des Angreifers (Zeile) gegen den Verteidiger (Spalte), beide unbeschädigt, auf offenem Feld. Die Werte berechnet das Spiel aus den geltenden Regeln.
+          Bei geringer Siegchance steht darunter der mittlere Schaden des Angriffs, etwa „Ø 1 / 8“: im Schnitt 1 von 8 Trefferpunkten. Der Schaden bleibt, bis das Ziel in einer eigenen Stadt repariert wird – mehrere Angriffe nacheinander können also auch ein starkes Schiff versenken.
+          Ein Punkt in der Ecke heißt: Hier gilt eine Sonderregel (siehe unten). Fahr mit der Maus über ein Feld, um sie zu sehen.</p>
+        <p class="muted" data-lang="en">Win chance of the attacker (row) against the defender (column), both undamaged, in the open. The game calculates the values from the current rules.
+          Where the win chance is low, the average damage of the attack is shown below, e.g. “Ø 1 / 8”: 1 of 8 hit points on average. The damage stays until the target is repaired in one of its cities – so several attacks in a row can sink even a strong ship.
+          A dot in the corner means a special rule applies here (see below). Hover over a cell to see which.</p>
         <div class="help-matrix-wrap"><table class="help-matrix" id="helpMatrix"></table></div>
         <h3 data-en="Special rules">Sonderregeln</h3>
         <table class="help-rules">

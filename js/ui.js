@@ -2039,9 +2039,19 @@ function oddsMatrix() {
   for (let k = 0; k < S.W * S.H; k++) if (S.cityGrid[k] < 0 && S.terrain[k] === 0) { x = k % S.W; y = (k / S.W) | 0; break; }
   const mk = (t, o) => ({ type: t, hp: UT[t].hp, owner: o, x: -9, y: -9, carrier: null });   // Besitzer ohne Einheiten: keine Unterstützung
   const m = {};
-  for (const a of UNIT_ORDER) { m[a] = {}; for (const d of UNIT_ORDER) m[a][d] = canAttack(a) && canStrike(mk(a, 7), mk(d, 8)) ? attackOdds(mk(a, 7), mk(d, 8), x, y) : null; }
+  m.info = {};   // je Paarung: mittlerer Schaden und Sonderregeln (für die Tabelle „Wer schlägt wen“)
+  for (const a of UNIT_ORDER) {
+    m[a] = {}; m.info[a] = {};
+    for (const d of UNIT_ORDER) {
+      const A = mk(a, 7), D = mk(d, 8), ok = canAttack(a) && canStrike(A, D);
+      m[a][d] = ok ? attackOdds(A, D, x, y) : null;
+      if (ok) m.info[a][d] = { dmg: expDamage(A, D, x, y), notes: combatSpec(A, D, x, y).notes };
+    }
+  }
   return m;
 }
+// Zahl mit höchstens einer Nachkommastelle, Komma im Deutschen
+const fmt1 = v => { const r = Math.round(v * 10) / 10; return EN ? String(r) : String(r).replace('.', ','); };
 function buildHelp() {
   const m = oddsMatrix(), pc = v => Math.round(v * 100);
   const names = list => list.map(k => UT[k].name).join(', ') || '–';
@@ -2066,7 +2076,15 @@ function buildHelp() {
   $('helpMatrix').innerHTML = head + UNIT_ORDER.filter(canAttack).map(a => `<tr><th class="row">${UT[a].sym} · ${UT[a].name}</th>` + UNIT_ORDER.map(d => {
     const v = m[a][d], p = pc(v);
     if (v == null) return `<td class="none" title="${tt(`${UT[a].name} kann ${UT[d].name} nicht angreifen`, `${UT[a].name} cannot attack ${UT[d].name.toLowerCase()}`)}">–</td>`;
-    return `<td class="${p >= 60 ? 'hi' : p >= 40 ? 'mid' : p > 0 ? 'lo' : 'none'}" title="${UT[a].name} → ${UT[d].name}">${p} %</td>`;
+    // Bei geringer Siegchance zählt, was der Angriff trotzdem anrichtet: Der Schaden bleibt bis zur Reparatur
+    const { dmg, notes } = m.info[a][d], hp = UT[d].hp, showDmg = p < 40 && dmg >= 0.05;
+    let tip = tt(`${UT[a].name} greift ${UT[d].name} an: ${p} % Siegchance`, `${UT[a].name} attacks ${UT[d].name.toLowerCase()}: ${p} % win chance`);
+    if (showDmg) tip += tt(`. Im Schnitt ${fmt1(dmg)} von ${hp} Trefferpunkten Schaden – `, `. On average ${fmt1(dmg)} of ${hp} hit points damage – `) +
+      (UT[d].noRepair ? tt(`er bleibt für immer (${UT[d].name} werden nicht repariert)`, `it stays for good (${UT[d].name.toLowerCase()}s are never repaired)`)
+        : tt('er bleibt, bis das Ziel in einer eigenen Stadt repariert wird', 'it stays until the target is repaired in one of its cities'));
+    if (notes.length) tip += tt('. Sonderregel: ', '. Special rule: ') + notes.join(', ');
+    return `<td class="${p >= 60 ? 'hi' : p >= 40 ? 'mid' : p > 0 ? 'lo' : 'none'}${notes.length ? ' rule' : ''}" title="${esc(tip)}">${p} %` +
+      (showDmg ? `<small>Ø ${fmt1(dmg)} / ${hp}</small>` : '') + '</td>';
   }).join('') + '</tr>').join('');
 }
 function helpTab(name) {
