@@ -2033,27 +2033,86 @@ const UNIT_INFO = {
   bat: tt('Beherrscht das Seegefecht und gibt Feuerunterstützung auf alle Nachbarfelder: Fremde Städte dort fallen zu 75 %, eigene nur zu 25 %. Verwundbar durch U-Boote und Jäger-Schwärme. Beschießt auch Einheiten an Land und in Städten an der Küste.',
     'Rules the sea battle and gives fire support to all adjacent tiles: foreign cities there fall 75 % of the time, your own only 25 %. Vulnerable to submarines and fighter swarms. Also bombards units on land and in coastal cities.'),
 };
-// Siegchancen aller Einheiten gegeneinander, unbeschädigt und ohne örtliche Zu- oder Abschläge
+// Siegchancen aller Einheiten gegeneinander, unbeschädigt und ohne örtliche Zu- oder Abschläge.
+// m[a][d] = Siegchance (null: kann nicht angreifen), m.info[a][d] = { loss: verlorene Angreifer je zerstörtem Ziel, notes: Sonderregeln }
 function oddsMatrix() {
   let x = 0, y = 0;
   for (let k = 0; k < S.W * S.H; k++) if (S.cityGrid[k] < 0 && S.terrain[k] === 0) { x = k % S.W; y = (k / S.W) | 0; break; }
   const mk = (t, o) => ({ type: t, hp: UT[t].hp, owner: o, x: -9, y: -9, carrier: null });   // Besitzer ohne Einheiten: keine Unterstützung
-  const m = {};
-  m.info = {};   // je Paarung: mittlerer Schaden und Sonderregeln (für die Tabelle „Wer schlägt wen“)
+  const m = { info: {} };
   for (const a of UNIT_ORDER) {
     m[a] = {}; m.info[a] = {};
     for (const d of UNIT_ORDER) {
       const A = mk(a, 7), D = mk(d, 8), ok = canAttack(a) && canStrike(A, D);
       m[a][d] = ok ? attackOdds(A, D, x, y) : null;
-      if (ok) m.info[a][d] = { dmg: expDamage(A, D, x, y), notes: combatSpec(A, D, x, y).notes };
+      if (ok) m.info[a][d] = { loss: lossesToKill(A, D, x, y), notes: combatSpec(A, D, x, y).notes };
     }
   }
   return m;
 }
-// Zahl mit höchstens einer Nachkommastelle, Komma im Deutschen
-const fmt1 = v => { const r = Math.round(v * 10) / 10; return EN ? String(r) : String(r).replace('.', ','); };
+// Zahl mit höchstens einer Nachkommastelle (ab 10 ganzzahlig), Komma im Deutschen
+const fmt1 = v => { const r = v >= 10 ? Math.round(v) : Math.round(v * 10) / 10; return EN ? String(r) : String(r).replace('.', ','); };
+// Bilanz immer mit einer Nachkommastelle (1,0 statt 1), ab 10 ganzzahlig
+const fmtR = v => { const r = v >= 10 ? String(Math.round(v)) : v.toFixed(1); return EN ? r : r.replace('.', ','); };
+// Tabelle „Wer schlägt wen“: 'duel' = Einer gegen einen (Siegchance), 'econ' = Gleiche Bauzeit (Bilanz), wird gemerkt
+let matrixMode = 'duel', matrixData = null;
+try { if (localStorage.getItem('archipel-matrix') === 'econ') matrixMode = 'econ'; } catch (e) {}
+function renderMatrix() {
+  const m = matrixData; if (!m) return;
+  const pc = v => Math.round(v * 100), econ = matrixMode === 'econ';
+  for (const b of $('matrixSw').querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === matrixMode);
+  // Bilanz: Bauzeit des Ziels je verlorener Bauzeit der Angreifer (null = praktisch verlustfrei)
+  const ratio = (a, d) => { const L = m.info[a][d].loss; return L < 0.05 ? null : UT[d].cost / (L * UT[a].cost); };
+  let note;
+  if (econ) {
+    note = tt('Lohnt sich der Angriff? Angreifer derselben Art greifen nacheinander an, bis das Ziel zerstört ist – der Schaden am Ziel bleibt. Die Zahl sagt, wie viel Bauzeit du zerstörst je Bauzeit, die du dabei verlierst: <b>über 1 lohnt es sich</b>, unter 1 zahlst du drauf. „frei“ heißt: kaum eigene Verluste.',
+      'Does the attack pay off? Attackers of the same type attack one after another until the target is destroyed – the damage to the target stays. The number tells how much build time you destroy for each unit of build time you lose: <b>above 1 it pays off</b>, below 1 you lose out. “free” means: hardly any losses of your own.');
+    const r = m.inf.tank != null ? ratio('inf', 'tank') : null;
+    if (r) {
+      const p = pc(m.inf.tank), n = fmt1(m.info.inf.tank.loss), bt = fmt1(m.info.inf.tank.loss * UT.inf.cost);
+      note += ' ' + tt(`Beispiel: Infanterie gewinnt gegen einen Panzer einer gegen einen nur zu ${p} %, doch im Schnitt reichen ${n} Infanterie (Bauzeit ${bt}) für einen Panzer (Bauzeit ${UT.tank.cost}) – das ergibt ${fmtR(r)}.`,
+        `Example: infantry beats a tank one on one only ${p} % of the time, but on average ${n} infantry (build time ${bt}) are enough for a tank (build time ${UT.tank.cost}) – that makes ${fmtR(r)}.`);
+    }
+    note += ' ' + tt('Gezählt werden nur zerstörte Einheiten, auf offenem Feld und ohne Reparatur zwischen den Angriffen.', 'Only destroyed units count, in the open and without repairs between the attacks.');
+  } else {
+    note = tt('Siegchance des Angreifers (Zeile) gegen den Verteidiger (Spalte), beide unbeschädigt, auf offenem Feld. Die Werte berechnet das Spiel aus den geltenden Regeln.',
+      'Win chance of the attacker (row) against the defender (column), both undamaged, in the open. The game calculates the values from the current rules.');
+  }
+  note += ' ' + tt('Ein Punkt in der Ecke heißt: Hier gilt eine Sonderregel (siehe unten) – fahr mit der Maus über das Feld.', 'A dot in the corner means a special rule applies (see below) – hover over the cell.');
+  $('matrixNote').innerHTML = note;
+  const head = '<tr><th class="row">' + tt('Angreifer ↓ / Verteidiger →', 'Attacker ↓ / defender →') + '</th>' +
+    UNIT_ORDER.map(d => `<th title="${UT[d].name}"><img src="${iconUrl('u', d)}" alt="">${UT[d].sym}</th>`).join('') + '</tr>';
+  $('helpMatrix').innerHTML = head + UNIT_ORDER.filter(canAttack).map(a => `<tr><th class="row">${UT[a].sym} · ${UT[a].name}</th>` + UNIT_ORDER.map(d => {
+    const v = m[a][d];
+    if (v == null) return `<td class="none" title="${tt(`${UT[a].name} kann ${UT[d].name} nicht angreifen`, `${UT[a].name} cannot attack ${UT[d].name.toLowerCase()}`)}">–</td>`;
+    const { loss, notes } = m.info[a][d], A = UT[a].name, D = UT[d].name;
+    let cls, txt, tip;
+    if (econ) {
+      const r0 = ratio(a, d), r = r0 == null ? null : Math.round(r0 * 10) / 10;   // Farbe und Urteil nach der angezeigten Zahl
+      cls = r == null || r >= 1.5 ? 'hi' : r >= 0.8 ? 'mid' : 'lo';
+      txt = r == null ? tt('frei', 'free') : fmtR(r);
+      const verdict = r == null ? '' : r >= 1.5 ? tt('lohnt sich', 'pays off') : r >= 0.8 ? tt('etwa ausgeglichen', 'roughly even') : tt('Verlustgeschäft', 'a losing deal');
+      tip = r == null ? tt(`${A} gegen ${D}: zerstört das Ziel praktisch ohne eigene Verluste`, `${A} against ${D.toLowerCase()}: destroys the target with hardly any losses`)
+        : tt(`${A} gegen ${D}: Bis das Ziel zerstört ist, gehen im Schnitt ${fmt1(loss)} × ${A} verloren (Bauzeit ${fmt1(loss * UT[a].cost)}). ${D} kostet ${UT[d].cost} – ${verdict}`,
+          `${A} against ${D.toLowerCase()}: on average ${fmt1(loss)} × ${A.toLowerCase()} are lost (build time ${fmt1(loss * UT[a].cost)}) until the target is destroyed. It costs ${UT[d].cost} – ${verdict}`);
+    } else {
+      const p = pc(v);
+      cls = p >= 60 ? 'hi' : p >= 40 ? 'mid' : p > 0 ? 'lo' : 'none';
+      txt = p + ' %';
+      tip = tt(`${A} greift ${D} an: ${p} % Siegchance`, `${A} attacks ${D.toLowerCase()}: ${p} % win chance`);
+    }
+    if (notes.length) tip += tt('. Sonderregel: ', '. Special rule: ') + notes.join(', ');
+    return `<td class="${cls}${notes.length ? ' rule' : ''}" title="${esc(tip)}">${txt}</td>`;
+  }).join('') + '</tr>').join('');
+}
+$('matrixSw').addEventListener('click', e => {
+  const b = e.target.closest('button[data-mode]'); if (!b) return;
+  matrixMode = b.dataset.mode;
+  try { localStorage.setItem('archipel-matrix', matrixMode); } catch (err) {}
+  renderMatrix();
+});
 function buildHelp() {
-  const m = oddsMatrix(), pc = v => Math.round(v * 100);
+  const m = oddsMatrix();
   const names = list => list.map(k => UT[k].name).join(', ') || '–';
   $('helpUnits').innerHTML = UNIT_ORDER.map(k => {
     const t = UT[k];
@@ -2071,21 +2130,8 @@ function buildHelp() {
       ${canAttack(k) ? `<div class="vs"><b class="good">${tt('Stark gegen', 'Strong against')}:</b> ${names(strong)}</div>` : ''}
       <div class="vs"><b class="bad">${tt('Verwundbar durch', 'Vulnerable to')}:</b> ${weakTxt}</div></div>`;
   }).join('');
-  const head = '<tr><th class="row">' + tt('Angreifer ↓ / Verteidiger →', 'Attacker ↓ / defender →') + '</th>' +
-    UNIT_ORDER.map(d => `<th title="${UT[d].name}"><img src="${iconUrl('u', d)}" alt="">${UT[d].sym}</th>`).join('') + '</tr>';
-  $('helpMatrix').innerHTML = head + UNIT_ORDER.filter(canAttack).map(a => `<tr><th class="row">${UT[a].sym} · ${UT[a].name}</th>` + UNIT_ORDER.map(d => {
-    const v = m[a][d], p = pc(v);
-    if (v == null) return `<td class="none" title="${tt(`${UT[a].name} kann ${UT[d].name} nicht angreifen`, `${UT[a].name} cannot attack ${UT[d].name.toLowerCase()}`)}">–</td>`;
-    // Bei geringer Siegchance zählt, was der Angriff trotzdem anrichtet: Der Schaden bleibt bis zur Reparatur
-    const { dmg, notes } = m.info[a][d], hp = UT[d].hp, showDmg = p < 40 && dmg >= 0.05;
-    let tip = tt(`${UT[a].name} greift ${UT[d].name} an: ${p} % Siegchance`, `${UT[a].name} attacks ${UT[d].name.toLowerCase()}: ${p} % win chance`);
-    if (showDmg) tip += tt(`. Im Schnitt ${fmt1(dmg)} von ${hp} Trefferpunkten Schaden – `, `. On average ${fmt1(dmg)} of ${hp} hit points damage – `) +
-      (UT[d].noRepair ? tt(`er bleibt für immer (${UT[d].name} werden nicht repariert)`, `it stays for good (${UT[d].name.toLowerCase()}s are never repaired)`)
-        : tt('er bleibt, bis das Ziel in einer eigenen Stadt repariert wird', 'it stays until the target is repaired in one of its cities'));
-    if (notes.length) tip += tt('. Sonderregel: ', '. Special rule: ') + notes.join(', ');
-    return `<td class="${p >= 60 ? 'hi' : p >= 40 ? 'mid' : p > 0 ? 'lo' : 'none'}${notes.length ? ' rule' : ''}" title="${esc(tip)}">${p} %` +
-      (showDmg ? `<small>Ø ${fmt1(dmg)} / ${hp}</small>` : '') + '</td>';
-  }).join('') + '</tr>').join('');
+  matrixData = m;
+  renderMatrix();
 }
 function helpTab(name) {
   const tabs = [...$('helpTabs').querySelectorAll('button')];

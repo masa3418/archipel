@@ -295,24 +295,28 @@ function attackOdds(a, d, x, y) {
   return winProb(a.hp, c.as, d.hp, c.ds, c.p, c.first);
 }
 
-// Mittlerer Schaden, den a an d anrichtet, bis einer der beiden fällt. Der Schaden bleibt, bis d in einer eigenen Stadt
-// repariert wird – deshalb zeigt das Handbuch ihn bei geringen Siegchancen mit an (Jäger gegen Kreuzer: 0 %, aber Ø 1 Schaden).
-function expDamage(a, d, x, y) {
-  const c = combatSpec(a, d, x, y);
-  let ah = a.hp, dh = d.hp, pre = 0;
-  if (c.first === 'att') { pre = Math.min(dh, c.as); dh -= c.as; }
-  if (c.first === 'def') ah -= c.ds;
-  if (dh <= 0 || ah <= 0 || c.as <= 0) return pre;
-  if (c.ds <= 0) return pre + dh;   // wehrlos (Transporter): wird sicher versenkt
-  const memo = new Map();
-  const f = (h, e) => {
-    if (h <= 0 || e <= 0) return 0;
-    const k = h * 1000 + e;
-    if (memo.has(k)) return memo.get(k);
-    const v = c.p * (Math.min(e, c.as) + f(h, e - c.as)) + (1 - c.p) * f(h - c.ds, e);
-    memo.set(k, v); return v;
-  };
-  return pre + f(ah, dh);
+// Wie viele Angreifer vom Typ a gehen im Schnitt verloren, bis ein unbeschädigtes Ziel d zerstört ist? Sie greifen
+// nacheinander an, der Schaden am Ziel bleibt (keine Reparatur dazwischen). Für die Handbuch-Tabelle „Gleiche Bauzeit“.
+function lossesToKill(a, d, x, y) {
+  const c = combatSpec(a, d, x, y);   // hängt nicht von den Trefferpunkten ab
+  const E = [0];
+  for (let h = 1; h <= T(d).hp; h++) {
+    // Ausgänge eines Angriffs auf ein Ziel mit h Trefferpunkten: Angreifer fällt, Ziel bleibt mit r übrig
+    const lose = new Map();
+    const go = (A, D, p) => {
+      if (D <= 0 || p < 1e-12) return;
+      if (A <= 0) { lose.set(D, (lose.get(D) || 0) + p); return; }
+      if (c.ds <= 0) return;   // wehrlos: Angreifer gewinnt sicher
+      go(A, D - c.as, p * c.p); go(A - c.ds, D, p * (1 - c.p));
+    };
+    go(T(a).hp - (c.first === 'def' ? c.ds : 0), h - (c.first === 'att' ? c.as : 0), 1);
+    const same = lose.get(h) || 0;
+    if (same > 1 - 1e-9) return Infinity;
+    let sum = 0;
+    for (const [r, p] of lose) sum += p * (1 + (r === h ? 0 : E[r]));
+    E[h] = sum / (1 - same);
+  }
+  return E[T(d).hp];
 }
 
 function winProb(ahp, astr, dhp, dstr, p = 0.5, first = null) {
