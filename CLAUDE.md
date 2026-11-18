@@ -99,6 +99,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Verborgene Stärke:** Ladung fremder Transporter/Träger und die Zahl der Einheiten in fremden Städten zeigt die Karte nicht (Marke ohne
   Zahl, Hinweiszeile nennt nur den Verteidiger, erst nach Spielende oder mit `CHEAT_FOG` alles); die KI schätzt fremde Ladung mit `cargoSeen` (Transporter halb voll).
   Neue Anzeigen über fremde Einheiten dürfen keine Anzahl verraten. Handbuch: Zeile „Verborgene Stärke“ im Reiter „Kampf“.
+  Messung (je 192 Partien, alt → gedeckter Transporter + KI-Korrektur → zusätzlich verborgene Ladung): Leicht 98/98/97 %,
+  Normal 59/65/62 %, Schwer 17/20/22 %, Brutal 2/2/3 %, offen 20/12/13 – im Rahmen, Stufen nicht nachgestellt.
 - **Handbuch** (Hilfe): sieben Reiter in `index.html` (alles zum Laden, Landen und Angriff vom Schiff steht gesammelt unter
   „Transporter“; „Erste Schritte“ bleibt kurz, Verweise mit `data-helptab`), Aufbau über `data-tab`/`data-pane`, geöffnet über `openHelp(tab, unit)`.
   Einheitenkarten (`UNIT_INFO`, `UNIT_ROLE`) und die Tabelle „Wer schlägt wen“ (`oddsMatrix` über `attackOdds`) entstehen
