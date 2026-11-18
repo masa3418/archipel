@@ -3,6 +3,31 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.7.1
+
+Der Hafen als Schutzraum und ein Kräfteverhältnis für alle Parteien.
+
+**Seekampf**
+
+- **Der eigene Hafen schützt:** Zerstörer und U-Boote schießen nicht mehr in Städte – auch nicht auf Schiffe im Hafen. Ein
+  Transporter im eigenen Hafen ist vor ihnen sicher. Kreuzer, Schlachtschiffe und Jäger erreichen Schiffe im Hafen weiterhin.
+- **Zerstörer greifen keine Jäger über Land an**, nur über Wasser. Auf Einheiten an Land oder darüber schießen von den Schiffen
+  nur Kreuzer und Schlachtschiffe.
+
+**Mehrere Gegner**
+
+- **Kräfteverhältnis mit allen Parteien:** Der Balken zeigt den Anteil jeder Partei an der Stärke aller, jede in ihrer Farbe;
+  Kurve und Trend darunter deinen Anteil. Die Einschätzung („Überlegen“ …) vergleicht dich weiter mit dem stärksten Gegner.
+- Auch die Kurve im Zeitraffer und im Abschlussfenster zeigt alle Parteien, gestapelt in ihren Farben.
+- **Behoben:** Die Hinweiszeile über einer eigenen Stadt warnte nur vor Schlachtschiffen von Rot, nicht von Gelb und Violett.
+
+Die Schwierigkeitsstufen bleiben gültig (nachgemessen mit 672 bis 864 Partien je Änderung).
+
+*English:* your own port is now a safe haven: destroyers and submarines no longer fire into cities, not even at ships in port,
+and destroyers no longer attack fighters over land. With several opponents the balance-of-power bar shows every party's share
+of the total strength, and the timelapse curve shows all of them. Fixed: the hint line over your own city only warned about
+red battleships.
+
 ## 1.7.0
 
 Mehrere Gegner – jeder gegen jeden.
