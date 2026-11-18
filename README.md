@@ -14,18 +14,16 @@ is available in English: use the language button in the top bar. Play it
 [online](https://masa3418.github.io/archipel/) or download the single-file
 [offline copy](https://github.com/masa3418/archipel/releases/latest) and double-click it.
 
-![Archipel: Landung an einer feindlichen Küstenstadt – ein Schlachtschiff gibt Feuerunterstützung, daneben Träger und Transporter; rechts Übersichtskarte, Kräfteverhältnis und die Karte der gewählten Einheit](docs/screenshot.png)
+![Archipel: Seeschlacht zwischen Inseln – Zerstörer versenkt ein U-Boot, ein Jäger scheitert an der Luftdeckung, ein U-Boot torpediert den feindlichen Träger, das Schlachtschiff versenkt den Kreuzer](docs/seeschlacht.gif)
 
-*Landung im Inselreich, Runde 71:* Dein Schlachtschiff liegt vor der feindlichen Stadt Maristad und hält
-sie unter Feuer – die Eckwinkel um die Stadt zeigen es, und die Seitenleiste nennt die Wirkung: Sie fällt
-jetzt zu 75 % statt zu 50 %. Daneben wartet ein Transporter mit zwei weiteren Truppen, an Land stehen
-Infanterie und Panzer zum Sturm bereit, feindliche Truppen (rot) halten dagegen. Der Träger links
-(gestrichelter Ring) überblickt das Seegebiet und schützt mit seinem Jäger an Bord die Flotte vor
-Luftangriffen. Rechts oben die Übersichtskarte mit den Inseln, darunter das Kräfteverhältnis.
+*Seeschlacht im Inselreich* ([als Video mit Ton](docs/seeschlacht.mp4)): Deine Flotte (blau) trifft auf einen
+feindlichen Verband. Dein Zerstörer ortet das getauchte U-Boot und versenkt es. Ein Jäger von deinem Träger greift
+den Kreuzer an – doch der feindliche Träger gibt Luftdeckung, seine Abfangjäger schießen ihn ab. Dann torpediert dein
+U-Boot den Träger, und dein Schlachtschiff versenkt den Kreuzer, der jetzt ohne Schutz dasteht.
 
-*The scene:* a landing in the archipelago. Your battleship lies off the enemy city of Maristad and gives
-fire support (corner brackets; the city now falls 75 % of the time instead of 50 %), a transport brings
-more troops, and the carrier on the left watches the sea and shields the fleet from air attacks.
+*The scene:* a sea battle in the archipelago ([video with sound](docs/seeschlacht.mp4)). Your destroyer locates and
+sinks a submerged submarine, a fighter is shot down by the enemy carrier's air cover, then your submarine torpedoes
+the carrier and your battleship sinks the now unprotected cruiser.
 
 ## Spielen
 

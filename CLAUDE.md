@@ -23,7 +23,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Keine Abhängigkeiten, kein Build.** Reines HTML/CSS/JavaScript, klassische `<script>`-Tags
   (keine ES-Module), damit `index.html` auch per Doppelklick (`file://`) läuft.
 - **Keine Asset-Dateien.** Grafik (`gfx.js`) und Klänge (`sfx.js`) werden im Code erzeugt.
-  Einzige Ausnahmen: `favicon.svg`, `docs/screenshot.png` (README). `tools/pack.js` ist kein Build für den Betrieb,
+  Einzige Ausnahmen: `favicon.svg`, `docs/seeschlacht.gif` (README) und `docs/seeschlacht.mp4` (Beispielvideo mit Ton) –
+  beide gehören nicht zum Spiel und nicht in den Release. `tools/pack.js` ist kein Build für den Betrieb,
   sondern verpackt nur den Release; `dist/` gehört nicht ins Repository.
 - **Installierbare App nur online:** `manifest.webmanifest` und `sw.js` (Service Worker, „erst Netz, dann Zwischenspeicher“) liegen im
   Repository für GitHub Pages, gehören aber **nicht** in den Release: `pack.js` entfernt den Manifest-Verweis aus Einzeldatei und ZIP-Ordner,
@@ -314,9 +315,13 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
 
 ## Bekannte Eigenheiten
 
-- Das Screenshot-Werkzeug des eingebauten Browsers liefert höchstens 800 px Breite. `docs/screenshot.png` entsteht so:
-  Ansicht auf 800×760 stellen, Partie simulieren und Szene aufbauen, Screenshot machen, die abgelegte JPG-Datei mit
-  PowerShell (`System.Drawing`) als PNG speichern.
+- **Video `docs/seeschlacht.mp4` / GIF** entstehen ohne Bildschirmaufnahme, Bild für Bild: Szene im Browser aufbauen (Ansicht
+  1280×800, `replay = 'slow'`), `performance.now` durch eine eigene Uhr ersetzen, `requestAnimationFrame` und `setTimeout` auf
+  diese Uhr umlenken, je Bild Uhr +33,3 ms, `loop(t)` aufrufen, sichtbaren Kartenausschnitt (`wrap.scroll*`) aus `cv` kopieren
+  und per POST an einen kleinen Node-Empfänger schicken (ffmpeg liegt unter WinGet). Kampfausgänge: vor dem Abspielen prüfen,
+  sonst `deserialize` und wiederholen (`rng` ist fest `Math.random`). Ton: `Sfx.play`/`Sfx.move` mit Zeitpunkt protokollieren,
+  danach `sfx.js` mit einem `OfflineAudioContext` neu laden (per Textersetzung) und die Klänge mit `suspend(t)` taktgenau
+  abspielen, als WAV ausgeben. ffmpeg: H.264/AAC; GIF mit `palettegen` (15 Bilder/s, 800 px, ca. 1,4 MB für 21 s).
 - Im Browser-Bereich können mehrere Reiter offen sein. Bei JavaScript-Aufrufen immer die Reiter-Kennung des Spiels angeben
   und nie `location.href` zurückgeben (ein Reiter kann eine riesige `data:`-Adresse haben).
 - Testspielstände (`archipel-test-*.json` im Projektordner, nicht im Repo) erzeugt ein Node-Skript: Partie simulieren, Einheiten
