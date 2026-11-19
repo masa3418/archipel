@@ -4,7 +4,10 @@
 // ---------------------------------------------------------------------------
 
 const $ = id => document.getElementById(id);
-const cv = $('map'), ctx = cv.getContext('2d');
+const cv = $('map');
+// Die Zeichenfunktionen der Karte (drawToken, drawEffect, drawRoute …) zeichnen auf ctx in der Kachelgröße TS. Die Grafik-Übersicht
+// leitet beide mit drawOn kurz auf eine eigene kleine Leinwand um – deshalb let. Neue Zeichenfunktionen ebenso über ctx/TS schreiben.
+let ctx = cv.getContext('2d');
 const mini = $('mini'), mctx = mini.getContext('2d');
 const wrap = $('mapWrap');
 
@@ -224,8 +227,8 @@ hooks.capture = (c, owner, prev, by = null) => {
 const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
 // Position einer Einheit während der Wiedergabe (oder null = normale Darstellung)
-function animPos(u, rel) {
-  const evs = anim.byUnit.get(u.id);
+function animPos(u, rel, byUnit = anim.byUnit) {
+  const evs = byUnit.get(u.id);
   if (!evs) return null;
   const last = evs[evs.length - 1];
   if (rel >= last.t0 + last.dur) return null;
@@ -337,17 +340,18 @@ function viewNow(rel, playing) {
   return { seen, vis };
 }
 
-function drawFog(P = S.players[0]) {
-  if (fogC.width !== S.W || fogC.height !== S.H) { fogC.width = S.W; fogC.height = S.H; }
-  const img = fogG.createImageData(S.W, S.H);
-  for (let i = 0; i < S.W * S.H; i++) {
-    const a = S.over ? 0 : !P.seen[i] ? 255 : !P.vis[i] ? 105 : 0;
+// st: Kartenstück (Grafik-Übersicht), sonst die laufende Partie
+function drawFog(P = S.players[0], st = S) {
+  if (fogC.width !== st.W || fogC.height !== st.H) { fogC.width = st.W; fogC.height = st.H; }
+  const img = fogG.createImageData(st.W, st.H);
+  for (let i = 0; i < st.W * st.H; i++) {
+    const a = st.over ? 0 : !P.seen[i] ? 255 : !P.vis[i] ? 105 : 0;
     img.data[i * 4] = 7; img.data[i * 4 + 1] = 10; img.data[i * 4 + 2] = 18; img.data[i * 4 + 3] = a;
   }
   fogG.putImageData(img, 0, 0);
   ctx.save();
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(fogC, 0, 0, S.W * TS, S.H * TS);
+  ctx.drawImage(fogC, 0, 0, st.W * TS, st.H * TS);
   ctx.restore();
 }
 
@@ -413,27 +417,27 @@ function setProdView(on) {
 }
 const prodLeft = c => Math.max(1, Math.ceil(UT[c.prod].cost - c.progress));
 function drawProdView() {
+  for (const c of S.cities) if (c.owner === 0) drawProdCity(c, hover && hover[0] === c.x && hover[1] === c.y);
+}
+// eine Stadt in der Produktionsansicht (c: x, y, prod, progress); hot = Maus darüber
+function drawProdCity(c, hot) {
   const fs = Math.max(9, Math.round(TS * 0.34));
-  for (const c of S.cities) {
-    if (c.owner !== 0) continue;
-    const cx = c.x * TS + TS / 2, cy = c.y * TS + TS / 2, r = TS * 0.54;
-    ctx.fillStyle = 'rgba(10,14,20,0.6)'; ctx.beginPath(); ctx.arc(cx, cy, r + TS * 0.06, 0, 7); ctx.fill();
-    const hot = hover && hover[0] === c.x && hover[1] === c.y;
-    ctx.lineWidth = Math.max(2, TS / 10);
-    ctx.strokeStyle = hot ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
-    if (!c.prod || !UT[c.prod]) continue;
-    const t = UT[c.prod], size = Math.round(TS * 0.8), spr = unitSprite(c.prod, 0, size);
-    ctx.drawImage(spr, cx - size / 2 - spr.pad, cy - size / 2 - spr.pad);
-    // Fortschritt als Ring, beginnend oben
-    const f = Math.min(1, c.progress / t.cost);
-    if (f > 0) { ctx.strokeStyle = '#f2b84b'; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); ctx.stroke(); ctx.lineCap = 'butt'; }
-    // Restzeit in Runden
-    const txt = String(prodLeft(c));
-    ctx.font = `700 ${fs}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const w = Math.max(fs * 1.25, ctx.measureText(txt).width + fs * 0.6), h = fs * 1.25, bx = cx + TS * 0.4, by = cy + TS * 0.42;
-    roundRectPath(ctx, bx - w / 2, by - h / 2, w, h, h / 2); ctx.fillStyle = '#f2b84b'; ctx.fill();
-    ctx.fillStyle = '#1b1406'; ctx.fillText(txt, bx, by + 0.5);
-  }
+  const cx = c.x * TS + TS / 2, cy = c.y * TS + TS / 2, r = TS * 0.54;
+  ctx.fillStyle = 'rgba(10,14,20,0.6)'; ctx.beginPath(); ctx.arc(cx, cy, r + TS * 0.06, 0, 7); ctx.fill();
+  ctx.lineWidth = Math.max(2, TS / 10);
+  ctx.strokeStyle = hot ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
+  if (!c.prod || !UT[c.prod]) return;
+  const t = UT[c.prod], size = Math.round(TS * 0.8), spr = unitSprite(c.prod, 0, size);
+  ctx.drawImage(spr, cx - size / 2 - spr.pad, cy - size / 2 - spr.pad);
+  // Fortschritt als Ring, beginnend oben
+  const f = Math.min(1, c.progress / t.cost);
+  if (f > 0) { ctx.strokeStyle = '#f2b84b'; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); ctx.stroke(); ctx.lineCap = 'butt'; }
+  // Restzeit in Runden
+  const txt = String(prodLeft(c));
+  ctx.font = `700 ${fs}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const w = Math.max(fs * 1.25, ctx.measureText(txt).width + fs * 0.6), h = fs * 1.25, bx = cx + TS * 0.4, by = cy + TS * 0.42;
+  roundRectPath(ctx, bx - w / 2, by - h / 2, w, h, h / 2); ctx.fillStyle = '#f2b84b'; ctx.fill();
+  ctx.fillStyle = '#1b1406'; ctx.fillText(txt, bx, by + 0.5);
 }
 
 // ------------------------------------------------------------------ Wegeansicht und Marschziele
@@ -568,6 +572,115 @@ function changeProd(c, k) {
   return true;
 }
 
+// Effekt der Zeitleiste (Explosion, Salve, Luftdeckung, Schriftzug, Eroberung) beim Fortschritt f (0 … 1) – auf der Karte
+// und in der Grafik-Übersicht
+function drawEffect(e, f) {
+  const cx = e.x * TS + TS / 2, cy = e.y * TS + TS / 2;
+  if (e.type === 'boom') {
+    const r = TS * (0.2 + 0.55 * ease(Math.min(1, f * 1.6)));
+    const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grd.addColorStop(0, `rgba(255,250,210,${1 - f})`);
+    grd.addColorStop(0.4, `rgba(255,170,60,${0.9 * (1 - f)})`);
+    grd.addColorStop(1, 'rgba(200,60,20,0)');
+    ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+    ctx.strokeStyle = `rgba(255,220,140,${1 - f})`; ctx.lineWidth = Math.max(1, TS / 20);
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4 + 0.3, r0 = TS * 0.25 + f * TS * 0.4, r1 = r0 + TS * 0.15;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.stroke();
+    }
+    ctx.fillStyle = `rgba(60,60,60,${0.45 * (1 - f)})`;
+    ctx.beginPath(); ctx.arc(cx + TS * 0.1, cy - TS * 0.2 - f * TS * 0.4, TS * (0.15 + f * 0.25), 0, 7); ctx.fill();
+  } else if (e.type === 'salvo') {
+    const sx = e.fx * TS + TS / 2, sy = e.fy * TS + TS / 2;
+    const ddx = cx - sx, ddy = cy - sy, len = Math.hypot(ddx, ddy) || 1, nx = -ddy / len, ny = ddx / len;
+    if (f < 0.3) {   // Mündungsfeuer
+      ctx.fillStyle = `rgba(255,238,180,${1 - f / 0.3})`;
+      ctx.beginPath(); ctx.arc(sx + ddx / len * TS * 0.4, sy + ddy / len * TS * 0.4, TS * (0.16 + f * 0.5), 0, 7); ctx.fill();
+    }
+    for (let k = 0; k < 3; k++) {   // drei Granaten mit Leuchtspur, leicht versetzt
+      const g = f * 1.45 - k * 0.14;
+      if (g <= 0 || g >= 1) continue;
+      const at = t => [sx + ddx * t + nx * (k - 1) * TS * 0.12, sy + ddy * t + ny * (k - 1) * TS * 0.12 - Math.sin(Math.PI * t) * TS * 0.3];
+      const [hx, hy] = at(g), [tx, ty] = at(Math.max(0, g - 0.22));
+      ctx.strokeStyle = 'rgba(255,215,140,0.9)'; ctx.lineWidth = Math.max(1.5, TS / 14); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, TS / 12), 0, 7); ctx.fill();
+    }
+    if (f > 0.62) {   // Einschläge
+      const a = (1 - f) / 0.38;
+      ctx.fillStyle = `rgba(255,190,90,${0.85 * a})`;
+      ctx.beginPath(); ctx.arc(cx, cy, TS * (0.2 + (1 - a) * 0.35), 0, 7); ctx.fill();
+    }
+  } else if (e.type === 'cover') {
+    // Schutzschirm um das angegriffene Schiff (gestrichelt wie die Markierung der Luftdeckung)
+    const px = e.sx * TS + TS / 2, py = e.sy * TS + TS / 2, sh = Math.sin(Math.PI * f);
+    ctx.save();
+    ctx.strokeStyle = e.col; ctx.globalAlpha = 0.9 * sh; ctx.lineWidth = Math.max(1.5, TS / 16);
+    ctx.setLineDash([TS / 7, TS / 9]); ctx.lineDashOffset = -f * TS;
+    ctx.beginPath(); ctx.arc(px, py, TS * (0.55 + 0.1 * f), 0, 7); ctx.stroke();
+    ctx.restore();
+    // zwei Abfangjäger steigen vom Träger auf und fliegen in leichtem Bogen auf den Angreifer zu
+    const sx = e.fx * TS + TS / 2, sy = e.fy * TS + TS / 2, ddx = cx - sx, ddy = cy - sy, len = Math.hypot(ddx, ddy) || 1;
+    const nx = -ddy / len, ny = ddx / len;
+    for (let k = 0; k < 2; k++) {
+      const side = k ? 1 : -1, g = Math.min(1, Math.max(0, (f - k * 0.08) / 0.6));
+      if (f - k * 0.08 <= 0) continue;
+      // Ziel: schräg vor dem Angreifer, links und rechts von ihm (nicht auf seiner Marke); dorthin in leichtem Bogen
+      const ex = cx - ddx / len * TS * 0.7 + nx * side * TS * 0.45, ey = cy - ddy / len * TS * 0.7 + ny * side * TS * 0.45;
+      const at = t => [sx + (ex - sx) * t + nx * side * Math.sin(Math.PI * t) * TS * 0.35, sy + (ey - sy) * t + ny * side * Math.sin(Math.PI * t) * TS * 0.35];
+      const [hx, hy] = at(g), [bx, by] = at(Math.max(0, g - 0.05));
+      const ang = Math.atan2(hy - by, hx - bx) || Math.atan2(ddy, ddx);
+      // Leuchtspur der Bordkanonen, sobald der Angreifer in Reichweite ist
+      if (g > 0.55 && f < 0.9) {
+        ctx.strokeStyle = '#fff1a0'; ctx.lineWidth = Math.max(1.5, TS / 16); ctx.lineCap = 'round';
+        for (let j = 0; j < 3; j++) {
+          const q = ((f * 9 + j * 0.33) % 1);
+          const tx0 = hx + (cx - hx) * q, ty0 = hy + (cy - hy) * q, tl = 0.18;
+          ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.moveTo(tx0, ty0);
+          ctx.lineTo(tx0 + (cx - hx) * tl, ty0 + (cy - hy) * tl); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+      // Jäger als kleiner Pfeil in Flugrichtung
+      const s = Math.max(6, TS * 0.3);
+      ctx.save(); ctx.translate(hx, hy); ctx.rotate(ang);
+      ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 3;
+      ctx.fillStyle = e.col; ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, TS / 30);
+      ctx.beginPath(); ctx.moveTo(s, 0); ctx.lineTo(-s * 0.7, s * 0.75); ctx.lineTo(-s * 0.35, 0); ctx.lineTo(-s * 0.7, -s * 0.75); ctx.closePath();
+      ctx.fill(); ctx.stroke(); ctx.restore();
+    }
+    if (f > 0.6 && f < 0.95) {   // Treffer-Funken am Angreifer
+      const a = 1 - (f - 0.6) / 0.35;
+      ctx.strokeStyle = `rgba(255,190,80,${a})`; ctx.lineWidth = Math.max(1.5, TS / 18);
+      for (let k = 0; k < 6; k++) {
+        const w = k * Math.PI / 3 + f * 4, r0 = TS * 0.12, r1 = TS * (0.2 + 0.15 * (1 - a));
+        ctx.beginPath(); ctx.moveTo(cx + Math.cos(w) * r0, cy + Math.sin(w) * r0); ctx.lineTo(cx + Math.cos(w) * r1, cy + Math.sin(w) * r1); ctx.stroke();
+      }
+    }
+  } else if (e.type === 'label') {
+    // steigt leicht auf, blendet am Ende aus
+    const alpha = f < 0.12 ? f / 0.12 : f > 0.75 ? (1 - f) / 0.25 : 1;
+    const yy = cy - TS * 0.7 - ease(Math.min(1, f * 1.3)) * TS * 0.6;
+    const fs = Math.max(13, Math.round(TS * 0.5));
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = `800 ${fs}px system-ui, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const w = ctx.measureText(e.text).width + fs * 0.9, h = fs * 1.5;
+    roundRectPath(ctx, cx - w / 2, yy - h / 2, w, h, h / 2);
+    ctx.fillStyle = e.tone === 'good' ? 'rgba(18,60,38,0.92)' : 'rgba(80,20,18,0.92)'; ctx.fill();
+    ctx.strokeStyle = e.tone === 'good' ? '#4cc38a' : '#ff6b61'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = e.tone === 'good' ? '#bdf5d6' : '#ffd2cd';
+    ctx.fillText(e.text, cx, yy + 1);
+    ctx.restore();
+  } else if (e.type === 'capture') {
+    const pal = PLAYERS[e.owner];
+    ctx.strokeStyle = pal.light; ctx.globalAlpha = 1 - f; ctx.lineWidth = Math.max(2, TS / 8) * (1 - f) + 1;
+    ctx.beginPath(); ctx.arc(cx, cy, TS * (0.3 + 1.1 * ease(f)), 0, 7); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+
 function render(now = performance.now()) {
   if (!S || !terrainCache) return;
   const P = S.players[0];
@@ -630,22 +743,7 @@ function render(now = performance.now()) {
 
   const su = selUnit();
   // Zugmarker der ausgewählten Einheit
-  if (su && !(now < anim.t0 + (anim.coreEnd || 0) + 30)) {
-    for (const [x, y, kind] of moveHints(su)) {
-      const cx = x * TS + TS / 2, cy = y * TS + TS / 2;
-      if (kind === 'attack') {
-        ctx.strokeStyle = 'rgba(255,95,85,0.9)'; ctx.lineWidth = Math.max(1.5, TS / 16);
-        ctx.beginPath(); ctx.arc(cx, cy, TS * 0.36, 0, 7); ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(cx - TS * 0.48, cy); ctx.lineTo(cx - TS * 0.24, cy); ctx.moveTo(cx + TS * 0.24, cy); ctx.lineTo(cx + TS * 0.48, cy);
-        ctx.moveTo(cx, cy - TS * 0.48); ctx.lineTo(cx, cy - TS * 0.24); ctx.moveTo(cx, cy + TS * 0.24); ctx.lineTo(cx, cy + TS * 0.48);
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = kind === 'board' ? 'rgba(242,184,75,0.85)' : 'rgba(255,255,255,0.55)';
-        ctx.beginPath(); ctx.arc(cx, cy, TS * 0.09, 0, 7); ctx.fill();
-      }
-    }
-  }
+  if (su && !(now < anim.t0 + (anim.coreEnd || 0) + 30)) for (const [x, y, kind] of moveHints(su)) drawHint(x, y, kind);
 
   // Einheiten
   const groups = new Map();
@@ -696,160 +794,27 @@ function render(now = performance.now()) {
   if (playing) {
     for (const e of anim.events) {
       if (e.type === 'move' || rel < e.t0 || rel > e.t0 + e.dur) continue;
-      const f = (rel - e.t0) / e.dur, cx = e.x * TS + TS / 2, cy = e.y * TS + TS / 2;
-      if (e.type === 'boom') {
-        const r = TS * (0.2 + 0.55 * ease(Math.min(1, f * 1.6)));
-        const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-        grd.addColorStop(0, `rgba(255,250,210,${1 - f})`);
-        grd.addColorStop(0.4, `rgba(255,170,60,${0.9 * (1 - f)})`);
-        grd.addColorStop(1, 'rgba(200,60,20,0)');
-        ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
-        ctx.strokeStyle = `rgba(255,220,140,${1 - f})`; ctx.lineWidth = Math.max(1, TS / 20);
-        for (let k = 0; k < 8; k++) {
-          const a = k * Math.PI / 4 + 0.3, r0 = TS * 0.25 + f * TS * 0.4, r1 = r0 + TS * 0.15;
-          ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.stroke();
-        }
-        ctx.fillStyle = `rgba(60,60,60,${0.45 * (1 - f)})`;
-        ctx.beginPath(); ctx.arc(cx + TS * 0.1, cy - TS * 0.2 - f * TS * 0.4, TS * (0.15 + f * 0.25), 0, 7); ctx.fill();
-      } else if (e.type === 'salvo') {
-        const sx = e.fx * TS + TS / 2, sy = e.fy * TS + TS / 2;
-        const ddx = cx - sx, ddy = cy - sy, len = Math.hypot(ddx, ddy) || 1, nx = -ddy / len, ny = ddx / len;
-        if (f < 0.3) {   // Mündungsfeuer
-          ctx.fillStyle = `rgba(255,238,180,${1 - f / 0.3})`;
-          ctx.beginPath(); ctx.arc(sx + ddx / len * TS * 0.4, sy + ddy / len * TS * 0.4, TS * (0.16 + f * 0.5), 0, 7); ctx.fill();
-        }
-        for (let k = 0; k < 3; k++) {   // drei Granaten mit Leuchtspur, leicht versetzt
-          const g = f * 1.45 - k * 0.14;
-          if (g <= 0 || g >= 1) continue;
-          const at = t => [sx + ddx * t + nx * (k - 1) * TS * 0.12, sy + ddy * t + ny * (k - 1) * TS * 0.12 - Math.sin(Math.PI * t) * TS * 0.3];
-          const [hx, hy] = at(g), [tx, ty] = at(Math.max(0, g - 0.22));
-          ctx.strokeStyle = 'rgba(255,215,140,0.9)'; ctx.lineWidth = Math.max(1.5, TS / 14); ctx.lineCap = 'round';
-          ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
-          ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, TS / 12), 0, 7); ctx.fill();
-        }
-        if (f > 0.62) {   // Einschläge
-          const a = (1 - f) / 0.38;
-          ctx.fillStyle = `rgba(255,190,90,${0.85 * a})`;
-          ctx.beginPath(); ctx.arc(cx, cy, TS * (0.2 + (1 - a) * 0.35), 0, 7); ctx.fill();
-        }
-      } else if (e.type === 'cover') {
-        // Schutzschirm um das angegriffene Schiff (gestrichelt wie die Markierung der Luftdeckung)
-        const px = e.sx * TS + TS / 2, py = e.sy * TS + TS / 2, sh = Math.sin(Math.PI * f);
-        ctx.save();
-        ctx.strokeStyle = e.col; ctx.globalAlpha = 0.9 * sh; ctx.lineWidth = Math.max(1.5, TS / 16);
-        ctx.setLineDash([TS / 7, TS / 9]); ctx.lineDashOffset = -f * TS;
-        ctx.beginPath(); ctx.arc(px, py, TS * (0.55 + 0.1 * f), 0, 7); ctx.stroke();
-        ctx.restore();
-        // zwei Abfangjäger steigen vom Träger auf und fliegen in leichtem Bogen auf den Angreifer zu
-        const sx = e.fx * TS + TS / 2, sy = e.fy * TS + TS / 2, ddx = cx - sx, ddy = cy - sy, len = Math.hypot(ddx, ddy) || 1;
-        const nx = -ddy / len, ny = ddx / len;
-        for (let k = 0; k < 2; k++) {
-          const side = k ? 1 : -1, g = Math.min(1, Math.max(0, (f - k * 0.08) / 0.6));
-          if (f - k * 0.08 <= 0) continue;
-          // Ziel: schräg vor dem Angreifer, links und rechts von ihm (nicht auf seiner Marke); dorthin in leichtem Bogen
-          const ex = cx - ddx / len * TS * 0.7 + nx * side * TS * 0.45, ey = cy - ddy / len * TS * 0.7 + ny * side * TS * 0.45;
-          const at = t => [sx + (ex - sx) * t + nx * side * Math.sin(Math.PI * t) * TS * 0.35, sy + (ey - sy) * t + ny * side * Math.sin(Math.PI * t) * TS * 0.35];
-          const [hx, hy] = at(g), [bx, by] = at(Math.max(0, g - 0.05));
-          const ang = Math.atan2(hy - by, hx - bx) || Math.atan2(ddy, ddx);
-          // Leuchtspur der Bordkanonen, sobald der Angreifer in Reichweite ist
-          if (g > 0.55 && f < 0.9) {
-            ctx.strokeStyle = '#fff1a0'; ctx.lineWidth = Math.max(1.5, TS / 16); ctx.lineCap = 'round';
-            for (let j = 0; j < 3; j++) {
-              const q = ((f * 9 + j * 0.33) % 1);
-              const tx0 = hx + (cx - hx) * q, ty0 = hy + (cy - hy) * q, tl = 0.18;
-              ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.moveTo(tx0, ty0);
-              ctx.lineTo(tx0 + (cx - hx) * tl, ty0 + (cy - hy) * tl); ctx.stroke();
-            }
-            ctx.globalAlpha = 1;
-          }
-          // Jäger als kleiner Pfeil in Flugrichtung
-          const s = Math.max(6, TS * 0.3);
-          ctx.save(); ctx.translate(hx, hy); ctx.rotate(ang);
-          ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 3;
-          ctx.fillStyle = e.col; ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, TS / 30);
-          ctx.beginPath(); ctx.moveTo(s, 0); ctx.lineTo(-s * 0.7, s * 0.75); ctx.lineTo(-s * 0.35, 0); ctx.lineTo(-s * 0.7, -s * 0.75); ctx.closePath();
-          ctx.fill(); ctx.stroke(); ctx.restore();
-        }
-        if (f > 0.6 && f < 0.95) {   // Treffer-Funken am Angreifer
-          const a = 1 - (f - 0.6) / 0.35;
-          ctx.strokeStyle = `rgba(255,190,80,${a})`; ctx.lineWidth = Math.max(1.5, TS / 18);
-          for (let k = 0; k < 6; k++) {
-            const w = k * Math.PI / 3 + f * 4, r0 = TS * 0.12, r1 = TS * (0.2 + 0.15 * (1 - a));
-            ctx.beginPath(); ctx.moveTo(cx + Math.cos(w) * r0, cy + Math.sin(w) * r0); ctx.lineTo(cx + Math.cos(w) * r1, cy + Math.sin(w) * r1); ctx.stroke();
-          }
-        }
-      } else if (e.type === 'label') {
-        // steigt leicht auf, blendet am Ende aus
-        const alpha = f < 0.12 ? f / 0.12 : f > 0.75 ? (1 - f) / 0.25 : 1;
-        const yy = cy - TS * 0.7 - ease(Math.min(1, f * 1.3)) * TS * 0.6;
-        const fs = Math.max(13, Math.round(TS * 0.5));
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.font = `800 ${fs}px system-ui, sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        const w = ctx.measureText(e.text).width + fs * 0.9, h = fs * 1.5;
-        roundRectPath(ctx, cx - w / 2, yy - h / 2, w, h, h / 2);
-        ctx.fillStyle = e.tone === 'good' ? 'rgba(18,60,38,0.92)' : 'rgba(80,20,18,0.92)'; ctx.fill();
-        ctx.strokeStyle = e.tone === 'good' ? '#4cc38a' : '#ff6b61'; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = e.tone === 'good' ? '#bdf5d6' : '#ffd2cd';
-        ctx.fillText(e.text, cx, yy + 1);
-        ctx.restore();
-      } else if (e.type === 'capture') {
-        const pal = PLAYERS[e.owner];
-        ctx.strokeStyle = pal.light; ctx.globalAlpha = 1 - f; ctx.lineWidth = Math.max(2, TS / 8) * (1 - f) + 1;
-        ctx.beginPath(); ctx.arc(cx, cy, TS * (0.3 + 1.1 * ease(f)), 0, 7); ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
+      drawEffect(e, (rel - e.t0) / e.dur);
     }
   }
 
   // Auswahl, Marschweg, Mausfeld
   const pulse = (Math.sin(now / 260) + 1) / 2;
-  const ring = (x, y) => {
-    const cx = x * TS + TS / 2, cy = y * TS + TS / 2;
-    ctx.save();
-    ctx.shadowColor = 'rgba(255,230,150,0.9)'; ctx.shadowBlur = TS * 0.3;
-    ctx.strokeStyle = `rgba(255,${220 + pulse * 35},${120 + pulse * 120},0.95)`; ctx.lineWidth = Math.max(2, TS / 11);
-    ctx.beginPath(); ctx.arc(cx, cy, TS * (0.5 + 0.04 * pulse), 0, 7); ctx.stroke();
-    ctx.restore();
-  };
   if (su && !(now < anim.t0 + (anim.coreEnd || 0) + 30)) {
     const route = patrolMode && patrolMode.id === su.id ? { pts: patrolMode.pts, start: [su.x, su.y], editing: true }
       : su.order && su.order.type === 'patrol' ? { pts: su.order.pts.slice(0, -1), start: su.order.start, editing: false } : null;
     if (route) drawPatrolRoute(route, now);
     if (su.order && su.order.type === 'goto') {
       const path = findPath(su, su.order.x, su.order.y);
-      if (path && path.length) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = Math.max(1.5, TS / 14);
-        ctx.setLineDash([TS * 0.16, TS * 0.14]); ctx.lineDashOffset = -now / 40;
-        ctx.beginPath(); ctx.moveTo(su.x * TS + TS / 2, su.y * TS + TS / 2);
-        for (const [px, py] of path) ctx.lineTo(px * TS + TS / 2, py * TS + TS / 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        const [ex, ey] = path[path.length - 1];
-        ctx.beginPath(); ctx.arc(ex * TS + TS / 2, ey * TS + TS / 2, TS * 0.18, 0, 7); ctx.stroke();
-        ctx.restore();
-      }
+      if (path && path.length) drawGotoPath(su.x, su.y, path, now);
     }
-    ring(su.x, su.y);
+    drawSelRing(su.x, su.y, pulse);
     // Sturm vom Schiff: Über jeder Stadt, die die Truppen des gewählten Transporters angreifen können, steht die Chance –
     // dauerhaft und pulsierend, damit man auf der Karte sieht, was jetzt möglich ist (Klick auf die Stadt oder Taste U)
-    if (T(su).carries === 'land' && su.owner === 0) for (const o of assaultOptions(su)) {
-      const txt = '⚔ ' + Math.round(o.chance * 100) + ' %', hx = o.x, hy = o.y;
-      ctx.font = `700 ${Math.max(11, Math.round(TS * 0.42))}px system-ui, sans-serif`;
-      const w = ctx.measureText(txt).width + 12, h = Math.max(16, TS * 0.6);
-      const bx = hx * TS + TS / 2 - w / 2, by = hy * TS - h - 3 - pulse * TS * 0.08;
-      roundRectPath(ctx, bx, by, w, h, h / 2);
-      ctx.fillStyle = 'rgba(15,20,28,0.92)'; ctx.fill();
-      ctx.strokeStyle = `rgba(255,95,85,${0.55 + 0.4 * pulse})`; ctx.lineWidth = Math.max(1.5, TS / 18); ctx.stroke();
-      ctx.fillStyle = o.chance >= 0.5 ? '#7ee2ae' : '#ff8a80';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(txt, hx * TS + TS / 2, by + h / 2 + 0.5);
-    }
+    if (T(su).carries === 'land' && su.owner === 0) for (const o of assaultOptions(su)) drawAssaultChance(o.x, o.y, o.chance, pulse);
   } else if (selCity != null && !su) {
     const c = S.cities[selCity];
-    if (c) ring(c.x, c.y); else selCity = null;
+    if (c) drawSelRing(c.x, c.y, pulse); else selCity = null;
   }
   if (hover) {
     const [hx, hy] = hover;
@@ -857,22 +822,79 @@ function render(now = performance.now()) {
     // kein Land für Zerstörer & Co., keine Schiffe im Hafen, wenn Bodentruppen die Stadt angreifen
     const seen = su && S.players[0].vis[idx(hx, hy)] ? topUnitsAt(hx, hy).filter(o => o.owner !== 0 && canSee(0, o)) : [];
     const en = seen.length ? cityDefenders(su, cityAt(hx, hy), seen).filter(o => canStrike(su, o)) : [];
-    ctx.strokeStyle = en.length ? 'rgba(255,110,100,0.9)' : 'rgba(255,255,255,0.45)';
-    ctx.lineWidth = en.length ? 2 : 1;
-    roundRectPath(ctx, hx * TS + 1.5, hy * TS + 1.5, TS - 3, TS - 3, TS * 0.15); ctx.stroke();
-    if (en.length && canAttack(su.type) && cheb(su.x, su.y, hx, hy) <= 1) {
-      const d = pickDefender(en);
-      const pct = Math.round(attackOdds(su, d, hx, hy) * 100) + ' %';
-      ctx.font = `700 ${Math.max(11, Math.round(TS * 0.42))}px system-ui, sans-serif`;
-      const w = ctx.measureText(pct).width + 10, h = Math.max(16, TS * 0.6);
-      const bx = hx * TS + TS / 2 - w / 2, by = hy * TS - h - 3;
-      roundRectPath(ctx, bx, by, w, h, h / 2);
-      ctx.fillStyle = 'rgba(15,20,28,0.9)'; ctx.fill();
-      ctx.fillStyle = parseInt(pct) >= 50 ? '#7ee2ae' : '#ff8a80';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(pct, hx * TS + TS / 2, by + h / 2 + 0.5);
-    }
+    drawHoverFrame(hx, hy, en.length > 0);
+    if (en.length && canAttack(su.type) && cheb(su.x, su.y, hx, hy) <= 1) drawOdds(hx, hy, attackOdds(su, pickDefender(en), hx, hy));
   }
+}
+
+// Bausteine der Karte (auch für die Grafik-Übersicht): Zugmarker, Auswahlring, Marschweg, Chancen, Mausfeld
+// Zugmarker: Punkt = Feld frei, goldener Punkt = an Bord gehen, rotes Fadenkreuz = angreifen
+function drawHint(x, y, kind) {
+  const cx = x * TS + TS / 2, cy = y * TS + TS / 2;
+  if (kind === 'attack') {
+    ctx.strokeStyle = 'rgba(255,95,85,0.9)'; ctx.lineWidth = Math.max(1.5, TS / 16);
+    ctx.beginPath(); ctx.arc(cx, cy, TS * 0.36, 0, 7); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - TS * 0.48, cy); ctx.lineTo(cx - TS * 0.24, cy); ctx.moveTo(cx + TS * 0.24, cy); ctx.lineTo(cx + TS * 0.48, cy);
+    ctx.moveTo(cx, cy - TS * 0.48); ctx.lineTo(cx, cy - TS * 0.24); ctx.moveTo(cx, cy + TS * 0.24); ctx.lineTo(cx, cy + TS * 0.48);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = kind === 'board' ? 'rgba(242,184,75,0.85)' : 'rgba(255,255,255,0.55)';
+    ctx.beginPath(); ctx.arc(cx, cy, TS * 0.09, 0, 7); ctx.fill();
+  }
+}
+// leuchtender Ring um die gewählte Einheit oder Stadt; pulse 0 … 1
+function drawSelRing(x, y, pulse) {
+  const cx = x * TS + TS / 2, cy = y * TS + TS / 2;
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,230,150,0.9)'; ctx.shadowBlur = TS * 0.3;
+  ctx.strokeStyle = `rgba(255,${220 + pulse * 35},${120 + pulse * 120},0.95)`; ctx.lineWidth = Math.max(2, TS / 11);
+  ctx.beginPath(); ctx.arc(cx, cy, TS * (0.5 + 0.04 * pulse), 0, 7); ctx.stroke();
+  ctx.restore();
+}
+// Marschweg der gewählten Einheit: laufende Striche von (x, y) über path, Kreis am Ziel
+function drawGotoPath(x, y, path, now) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = Math.max(1.5, TS / 14);
+  ctx.setLineDash([TS * 0.16, TS * 0.14]); ctx.lineDashOffset = -now / 40;
+  ctx.beginPath(); ctx.moveTo(x * TS + TS / 2, y * TS + TS / 2);
+  for (const [px, py] of path) ctx.lineTo(px * TS + TS / 2, py * TS + TS / 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const [ex, ey] = path[path.length - 1];
+  ctx.beginPath(); ctx.arc(ex * TS + TS / 2, ey * TS + TS / 2, TS * 0.18, 0, 7); ctx.stroke();
+  ctx.restore();
+}
+// Chance eines Sturms vom Schiff über der Stadt (hx, hy), pulsierend
+function drawAssaultChance(hx, hy, chance, pulse) {
+  const txt = '⚔ ' + Math.round(chance * 100) + ' %';
+  ctx.font = `700 ${Math.max(11, Math.round(TS * 0.42))}px system-ui, sans-serif`;
+  const w = ctx.measureText(txt).width + 12, h = Math.max(16, TS * 0.6);
+  const bx = hx * TS + TS / 2 - w / 2, by = hy * TS - h - 3 - pulse * TS * 0.08;
+  roundRectPath(ctx, bx, by, w, h, h / 2);
+  ctx.fillStyle = 'rgba(15,20,28,0.92)'; ctx.fill();
+  ctx.strokeStyle = `rgba(255,95,85,${0.55 + 0.4 * pulse})`; ctx.lineWidth = Math.max(1.5, TS / 18); ctx.stroke();
+  ctx.fillStyle = chance >= 0.5 ? '#7ee2ae' : '#ff8a80';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(txt, hx * TS + TS / 2, by + h / 2 + 0.5);
+}
+// Rahmen um das Feld unter der Maus – rot, wenn dort ein Gegner steht, den die gewählte Einheit angreifen kann
+function drawHoverFrame(hx, hy, enemy) {
+  ctx.strokeStyle = enemy ? 'rgba(255,110,100,0.9)' : 'rgba(255,255,255,0.45)';
+  ctx.lineWidth = enemy ? 2 : 1;
+  roundRectPath(ctx, hx * TS + 1.5, hy * TS + 1.5, TS - 3, TS - 3, TS * 0.15); ctx.stroke();
+}
+// Siegchance p (0 … 1) über dem Feld
+function drawOdds(hx, hy, p) {
+  const pct = Math.round(p * 100) + ' %';
+  ctx.font = `700 ${Math.max(11, Math.round(TS * 0.42))}px system-ui, sans-serif`;
+  const w = ctx.measureText(pct).width + 10, h = Math.max(16, TS * 0.6);
+  const bx = hx * TS + TS / 2 - w / 2, by = hy * TS - h - 3;
+  roundRectPath(ctx, bx, by, w, h, h / 2);
+  ctx.fillStyle = 'rgba(15,20,28,0.9)'; ctx.fill();
+  ctx.fillStyle = parseInt(pct) >= 50 ? '#7ee2ae' : '#ff8a80';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(pct, hx * TS + TS / 2, by + h / 2 + 0.5);
 }
 
 function drawPatrolRoute(route, now) {
@@ -909,22 +931,26 @@ function playAnimSounds(now) {
     e.played = true;
     if (rel > e.t0 + e.dur + 250) continue;
     if (e.type === 'cam') { camTo(e.cx, e.cy, e.dur * 0.95); continue; }
-    if (e.type === 'move') {
-      // ein Geräusch pro zusammenhängender Bewegung, so lang wie die Animation
-      const evs = anim.byUnit.get(e.id);
-      if (evs && evs[0] === e) {
-        const lastE = evs[evs.length - 1];
-        const dur = Math.min(2.8, Math.max(0.8, (lastE.t0 + lastE.dur - e.t0) / 1000 + 0.35));
-        Sfx.move(e.utype, dur, e.owner === 0 ? 1 : 0.7);
-      }
-    }
-    else if (e.type === 'salvo') Sfx.play('salvo', 60);
-    else if (e.type === 'cover') Sfx.play('cover', 60);
-    else if (e.type === 'boom') { Sfx.play('boom', 80); if (e.hl) setTimeout(() => Sfx.play('lost', 300), 380); }
-    else if (e.type === 'capture') { if (e.owner === 0) Sfx.play('capture'); else if (e.lost) Sfx.play('cityLost'); else Sfx.play('boom', 80); }
+    eventSound(e, anim.byUnit);
   }
   if (anim.after && now >= anim.end) { const f = anim.after; anim.after = null; f(); }
   if (captureQueue.length && !anyModalOpen() && now >= captureReadyAt(captureQueue[0])) showCaptureDialog();
+}
+// Klang zu einem Ereignis der Zeitleiste (auch für die Animationen in der Grafik-Übersicht)
+function eventSound(e, byUnit) {
+  if (e.type === 'move') {
+    // ein Geräusch pro zusammenhängender Bewegung, so lang wie die Animation
+    const evs = byUnit.get(e.id);
+    if (evs && evs[0] === e) {
+      const lastE = evs[evs.length - 1];
+      const dur = Math.min(2.8, Math.max(0.8, (lastE.t0 + lastE.dur - e.t0) / 1000 + 0.35));
+      Sfx.move(e.utype, dur, e.owner === 0 ? 1 : 0.7);
+    }
+  }
+  else if (e.type === 'salvo') Sfx.play('salvo', 60);
+  else if (e.type === 'cover') Sfx.play('cover', 60);
+  else if (e.type === 'boom') { Sfx.play('boom', 80); if (e.hl) setTimeout(() => Sfx.play('lost', 300), 380); }
+  else if (e.type === 'capture') { if (e.owner === 0) Sfx.play('capture'); else if (e.lost) Sfx.play('cityLost'); else Sfx.play('boom', 80); }
 }
 
 // Wiedergabe der Gegnerzüge: Tempo und Überspringen
@@ -3352,6 +3378,441 @@ function renderSoundTest() {
 }
 function openSoundTest() { Sfx.unlock(); renderSoundTest(); openModal('mSound'); }
 $('bSndTest').onclick = () => { closeModals(); openSoundTest(); };   // aus dem Fenster „Einstellungen“
+
+// ------------------------------------------------------------------ Grafik-Übersicht
+// Wie der Klangtest, nur für die Bilder (Einstellungen → Anzeige → Grafiken): Abzeichen in allen Farben samt Zeichen, Städte,
+// Gelände, Markierungen und Animationen. Gezeichnet wird mit denselben Funktionen wie auf der Karte (drawToken, drawEffect,
+// drawRoute, drawSupportMark …): drawOn leitet ctx und TS kurz auf eine kleine Leinwand um, buildTerrain und drawFog bekommen ein
+// Kartenstück (gfxMap). Ändert sich eine Grafik im Spiel, ändert sie sich hier mit. SVG-Code gibt es für die Einheitensymbole
+// (ICON_SRC → unitSvg) und die SVG-Symbole der Oberfläche; Städte, Gelände und Effekte entstehen aus Zeichenbefehlen.
+function drawOn(g, ts, fn) {
+  const c0 = ctx, t0 = TS;
+  ctx = g; TS = ts;
+  try { fn(); } finally { ctx = c0; TS = t0; }
+}
+const gfx = { tab: 'units', owner: 0, svg: null, badge: true, raf: 0, live: [], scenes: [], appSvg: null };
+const gfxEl = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+// Leinwand für w × h Felder zu je ts CSS-Pixeln, gezeichnet in Gerätepixeln (scharf auch auf hochauflösenden Bildschirmen)
+function gfxCanvas(w, h, ts) {
+  const dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * ts * dpr); c.height = Math.round(h * ts * dpr);
+  c.style.width = w * ts + 'px'; c.style.height = h * ts + 'px';
+  c.ts = ts * dpr;
+  return c;
+}
+// Kartenstück aus Zeichen: ~ Wasser, . Wiese, f Wald, h Hügel, m Berg, M Gipfel, C Stadt (auf Wiese)
+const GFX_ELEV = { '.': 0.08, f: 0.38, h: 0.62, m: 0.74, M: 0.9, C: 0.08 };
+function gfxMap(rows) {
+  const H = rows.length, W = rows[0].length, N = W * H;
+  const st = { W, H, over: false, cities: [], terrain: new Uint8Array(N), depth: new Uint8Array(N).fill(255), elev: new Float32Array(N), cityGrid: new Int16Array(N).fill(-1) };
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const ch = rows[y][x], i = y * W + x;
+    if (ch === '~') continue;
+    st.terrain[i] = 1; st.elev[i] = GFX_ELEV[ch] || 0.08;
+    if (ch === 'C') { st.cityGrid[i] = st.cities.length; st.cities.push([x, y]); }
+  }
+  // Wassertiefe wie im Kartengenerator: Abstand zum nächsten Land, auch über Eck
+  for (let i = 0; i < N; i++) {
+    if (st.terrain[i]) { st.depth[i] = 0; continue; }
+    for (let j = 0; j < N; j++) if (st.terrain[j]) st.depth[i] = Math.min(st.depth[i], Math.max(Math.abs(j % W - i % W), Math.abs(((j / W) | 0) - ((i / W) | 0))));
+  }
+  return st;
+}
+const gu = (type, owner = 0, more = {}) => Object.assign({ id: 0, type, owner, hp: UT[type].hp }, more);
+// Bild aus einem Kartenstück: Gelände, Städte (o.cities: Besitzer je Stadt), dann draw(now) mit den Zeichenfunktionen der Karte.
+// o.crop = [x, y, w, h]: nur dieser Ausschnitt (Ränder sehen so aus wie mitten auf der Karte); o.live: in jedem Bild neu zeichnen.
+function gfxPic(rows, ts, draw, o = {}) {
+  const st = gfxMap(rows), [x0, y0, w, h] = o.crop || [0, 0, st.W, st.H], c = gfxCanvas(w, h, ts);
+  const bg = buildTerrain(c.ts, st), bgx = bg.getContext('2d');
+  st.cities.forEach(([x, y], k) => { const ow = (o.cities || [])[k]; if (ow !== undefined) bgx.drawImage(citySprite(ow, c.ts, k % 2), x * c.ts, y * c.ts); });
+  const frame = now => {
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, c.width, c.height);
+    g.drawImage(bg, -x0 * c.ts, -y0 * c.ts);
+    if (!draw) return;
+    g.save(); g.translate(-x0 * c.ts, -y0 * c.ts);
+    drawOn(g, c.ts, () => draw(now, st));
+    g.restore();
+  };
+  frame(performance.now());
+  if (o.live) gfx.live.push(frame);
+  return c;
+}
+const gfxPulse = now => (Math.sin(now / 260) + 1) / 2;   // wie auf der Karte
+function gfxCard(pic, title, note, button) {
+  const d = gfxEl('div', 'gfx-card');
+  d.append(pic, gfxEl('div', 'gfx-t', title));
+  if (note) d.append(gfxEl('div', 'gfx-n', note));
+  if (button) d.append(button);
+  return d;
+}
+function gfxSection(body, title, note, cw = 0) {   // cw: feste Breite der Karten in px
+  body.append(gfxEl('h3', null, title));
+  if (note) body.append(gfxEl('p', null, note));
+  const grid = gfxEl('div', 'gfx-grid' + (cw ? ' fix' : ''));
+  if (cw) grid.style.setProperty('--cw', cw + 'px');
+  body.append(grid);
+  return grid;
+}
+function gfxButton(text, data, on = false) {
+  const b = gfxEl('button', on ? 'on' : '', text);
+  Object.assign(b.dataset, data);
+  return b;
+}
+
+// Reiter „Einheiten“: Abzeichen je Farbe mit SVG-Code, Zeichen an der Marke, SVG-Symbole der Oberfläche
+function gfxUnits(body) {
+  const bar = gfxEl('div', 'gfx-colors');
+  bar.append(gfxEl('span', 'muted', tt('Farbe:', 'Colour:')));
+  PLAYERS.forEach((p, k) => {
+    const b = gfxButton('', { gowner: k }, k === gfx.owner), dot = gfxEl('i');
+    dot.style.background = p.color;
+    b.append(dot, p.name);
+    bar.append(b);
+  });
+  body.append(bar);
+  const grid = gfxEl('div', 'gfx-grid fix');
+  grid.style.setProperty('--cw', '148px');
+  body.append(grid);
+  for (const k of UNIT_ORDER) {
+    const c = gfxCanvas(1, 1, 80), spr = unitSprite(k, gfx.owner, Math.round(c.ts * 0.8));
+    c.getContext('2d').drawImage(spr, (c.width - spr.width) / 2, (c.height - spr.height) / 2);
+    const on = gfx.svg && gfx.svg.kind === 'unit' && gfx.svg.type === k;
+    grid.append(gfxCard(c, UT[k].name, UNIT_ROLE[k], gfxButton(tt('SVG-Code', 'SVG code'), { gsvg: k }, on)));
+  }
+  if (gfx.svg && gfx.svg.kind === 'unit') body.append(gfxSvgPanel());
+
+  const st = gfxSection(body, tt('Zeichen an der Marke', 'Marks on the badge'),
+    tt('So zeigt die Karte, was mit einer Einheit los ist. Die Zahl steht nur an eigenen Einheiten – wie viel der Gegner an Bord oder in einer Stadt hat, bleibt verborgen.',
+      'How the map shows what is going on with a unit. The number only appears on your own units – how much the enemy has on board or in a city stays hidden.'), 124);
+  const LAND = ['...', '...', '...'], SEA = ['~~~', '~~~', '~~~'], CITY = ['...', '.C.', '...'];
+  const marks = [
+    [LAND, gu('tank'), {}, tt('Bereit', 'Ready'), tt('hat noch Züge', 'has moves left')],
+    [LAND, gu('tank'), { dim: true }, tt('Fertig', 'Done'), tt('keine Züge mehr oder auf Wache: blasser', 'no moves left or on sentry: faded')],
+    [SEA, gu('bat', 0, { hp: 9 }), {}, tt('Leicht beschädigt', 'Lightly damaged'), tt('Balken = Trefferpunkte', 'bar = hit points')],
+    [SEA, gu('bat', 0, { hp: 5 }), {}, tt('Beschädigt', 'Damaged'), tt('unter der Hälfte gelb', 'yellow below half')],
+    [SEA, gu('bat', 0, { hp: 2 }), {}, tt('Schwer beschädigt', 'Badly damaged'), tt('unter einem Viertel rot', 'red below a quarter')],
+    [SEA, gu('trn'), { badge: 4 }, tt('Ladung', 'Cargo'), tt('Zahl = Einheiten an Bord', 'number = units on board')],
+    [CITY, gu('inf'), { badge: 3 }, tt('In der Stadt', 'In a city'), tt('kleiner; Zahl = Einheiten in der Stadt', 'smaller; number = units in the city'), true],
+    [LAND, gu('inf'), { sentry: true, dim: true }, tt('Wache', 'Sentry'), tt('auch „Laden bis voll“ beim Transporter', 'also “load until full” on a transport')],
+    [LAND, gu('tank'), { explore: true }, tt('Erkunden', 'Explore')],
+    [LAND, gu('ftr'), { patrol: true }, tt('Patrouille', 'Patrol')],
+    [LAND, gu('tank'), { goto: true }, tt('Marsch', 'March')],
+    [SEA, gu('trn'), { landing: true, badge: 2 }, tt('Ausladen, wenn möglich', 'Unload when possible')],
+    [SEA, gu('sub'), {}, tt('U-Boot getaucht', 'Submarine submerged'), tt('der Normalfall, ohne Zeichen', 'the normal state, no mark')],
+    [SEA, gu('sub', 0, { surf: true }), {}, tt('U-Boot aufgetaucht', 'Submarine surfaced'), tt('nach einem Angriff, für alle sichtbar', 'after an attack, visible to all')],
+  ];
+  for (const [rows, u, opts, title, note, inCity] of marks) {
+    const pic = gfxPic(rows, 58, () => {
+      if (inCity) drawToken(u, TS + TS * 0.36, TS + TS * 0.36, TS * 0.66, opts);
+      else drawToken(u, TS, TS, TS, opts);
+    }, { crop: [1, 1, 1, 1], cities: [0] });
+    st.append(gfxCard(pic, title, note));
+  }
+
+  const ui = gfxSection(body, tt('Symbole der Oberfläche', 'Interface symbols'), tt('Ebenfalls SVG: das Symbol der App und der Knopf „Zentrieren“ oben in der Leiste.',
+    'Also SVG: the app icon and the “Centre” button in the top bar.'));
+  const icon = document.querySelector('link[rel="icon"]');
+  const app = gfxEl('img'); app.src = icon ? icon.href : 'favicon.svg'; app.width = app.height = 64; app.alt = '';
+  ui.append(gfxCard(app, tt('App-Symbol', 'App icon'), tt('Reiter des Browsers, installierte App', 'browser tab, installed app'),
+    gfxButton(tt('SVG-Code', 'SVG code'), { gicon: 'app' }, !!gfx.svg && gfx.svg.id === 'app')));
+  const foc = gfxEl('div'); foc.style.cssText = 'width:64px;height:64px;display:flex;align-items:center;justify-content:center;color:var(--text)';
+  foc.innerHTML = gfxFocusSvg().replace(/width="\d+" height="\d+"/, 'width="40" height="40"');
+  ui.append(gfxCard(foc, tt('Zentrieren', 'Centre'), tt('Knopf oben, Taste F', 'top button, key F'),
+    gfxButton(tt('SVG-Code', 'SVG code'), { gicon: 'focus' }, !!gfx.svg && gfx.svg.id === 'focus')));
+  if (gfx.svg && gfx.svg.kind === 'icon') body.append(gfxSvgPanel());
+}
+// SVG des Knopfs „Zentrieren“ (steht in index.html) als eigenständige Datei: mit xmlns, ohne Stil der Leiste, eine Zeile je Element
+function gfxFocusSvg() {
+  const s = $('bFocus').querySelector('svg').cloneNode(true);
+  s.removeAttribute('style');
+  return new XMLSerializer().serializeToString(s).replace(/></g, '>\n  <').replace(/\n {2}<\/svg>$/, '\n</svg>') + '\n';
+}
+// SVG des App-Symbols: in der Einzeldatei steht es als data:-Adresse im Kopf, sonst liegt es als favicon.svg daneben
+function gfxLoadAppSvg() {
+  if (gfx.appSvg != null) return;
+  gfx.appSvg = '';
+  const href = (document.querySelector('link[rel="icon"]') || {}).href || '';
+  const m = /^data:image\/svg\+xml;base64,(.*)$/.exec(href);
+  if (m) { gfx.appSvg = new TextDecoder().decode(Uint8Array.from(atob(m[1]), ch => ch.charCodeAt(0))); return; }
+  fetch(href).then(r => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
+    .then(t => { gfx.appSvg = t; }, () => { gfx.appSvg = false; })
+    .then(() => { if (!$('mGfx').hidden && gfx.tab === 'units') renderGfx(); });
+}
+// Code, Vorschau und Knöpfe zum gewählten SVG
+function gfxSvgCode() {
+  const s = gfx.svg;
+  if (s.kind === 'unit') {
+    const name = UT[s.type].name;
+    return { title: name, file: `archipel-${s.type}${gfx.badge ? '-' + (EN ? ['blue', 'red', 'yellow', 'purple'] : ['blau', 'rot', 'gelb', 'violett'])[gfx.owner] : ''}.svg`,
+      code: unitSvg(s.type, gfx.owner, gfx.badge, `Archipel – ${name}${gfx.badge ? ' (' + PLAYERS[gfx.owner].name + ')' : ''}`) };
+  }
+  if (s.id === 'focus') return { title: tt('Zentrieren', 'Centre'), file: 'archipel-zentrieren.svg', code: gfxFocusSvg() };
+  gfxLoadAppSvg();
+  return { title: tt('App-Symbol', 'App icon'), file: 'favicon.svg', code: gfx.appSvg || '',
+    note: gfx.appSvg === false ? tt('Der Code lässt sich hier nicht lesen (Offline-Ordner) – es ist die Datei favicon.svg neben index.html.',
+      'The code cannot be read here (offline folder) – it is the file favicon.svg next to index.html.') : !gfx.appSvg ? tt('Lädt …', 'Loading …') : '' };
+}
+function gfxSvgPanel() {
+  const { title, code, note } = gfxSvgCode();
+  const p = gfxEl('div', 'gfx-svg');
+  p.id = 'gfxSvg';
+  const head = gfxEl('div', 'gfx-svg-head');
+  head.append(gfxEl('b', null, tt(`SVG-Code: ${title}`, `SVG code: ${title}`)));
+  if (gfx.svg.kind === 'unit') {
+    const seg = gfxEl('span', 'gfx-seg');
+    seg.append(gfxButton(tt('Abzeichen wie im Spiel', 'Badge as in the game'), { gmode: 'badge' }, gfx.badge),
+      gfxButton(tt('Nur Symbol', 'Symbol only'), { gmode: 'symbol' }, !gfx.badge));
+    head.append(seg);
+  }
+  const bodyEl = gfxEl('div', 'gfx-svg-body'), prev = gfxEl('div', 'gfx-svg-prev' + (gfx.svg.kind === 'unit' && !gfx.badge ? ' light' : ''));
+  if (code) { const img = gfxEl('img'); img.alt = ''; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(code); prev.append(img); }
+  bodyEl.append(prev, gfxEl('pre', null, code || note));
+  const row = gfxEl('div', 'row');
+  row.append(gfxButton(tt('Kopieren', 'Copy'), { gcopy: 1 }), gfxButton(tt('Als Datei speichern', 'Save as file'), { gsave: 1 }),
+    gfxButton(tt('Schließen', 'Close'), { gclose: 1 }));
+  if (!code) row.querySelectorAll('[data-gcopy], [data-gsave]').forEach(b => { b.disabled = true; });
+  if (gfx.svg.kind === 'unit') row.append(gfxEl('span', 'muted', gfx.badge
+    ? tt('Vorschau links: genau dieser Code. Die Pfade stammen aus dem Spiel, Kreis, Verlauf und Schatten sind nachgebaut.', 'Preview: exactly this code. The paths come from the game; circle, gradient and shadow are rebuilt.')
+    : tt('Die Pfade im 100×100-Raster, so wie das Spiel sie zeichnet; Aussparungen als Maske, Farbe frei wählbar (currentColor).', 'The paths on the 100×100 grid as the game draws them; cut-outs as a mask, colour free to choose (currentColor).')));
+  p.append(head, bodyEl, row);
+  return p;
+}
+async function gfxCopy(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  // ohne Zwischenablage-Schnittstelle (z. B. Offline-Datei): über eine unsichtbare Auswahl kopieren
+  const ta = gfxEl('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;opacity:0';
+  document.body.append(ta); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) {}
+  ta.remove();
+  return ok;
+}
+
+// Reiter „Städte und Gelände“
+function gfxLand(body) {
+  const cg = gfxSection(body, tt('Städte', 'Cities'), tt('Dächer und Fahne in der Farbe des Besitzers; zwei Anordnungen der Häuser wechseln sich ab.',
+    'Roofs and flag in the owner\'s colour; two layouts of the houses alternate.'));
+  [[-1, tt('Neutral', 'Neutral')], ...PLAYERS.map((p, k) => [k, p.name])].forEach(([ow, name]) =>
+    cg.append(gfxCard(gfxPic(['....', '.CC.', '....'], 56, null, { crop: [1, 1, 2, 1], cities: [ow, ow] }), name)));
+
+  const tg = gfxSection(body, tt('Gelände', 'Terrain'), tt('Das Wasser wird dunkler, je weiter das Land entfernt ist; an der Küste schimmert Flachwasser. Wald, Hügel und Berge folgen der Höhe – sie sind nur Bild und ändern nichts an den Regeln.',
+    'The water gets darker the further away land is; shallow water shimmers along the coast. Forest, hills and mountains follow the height – they are only pictures and do not change the rules.'));
+  const pano = gfxPic(['~~~~~..ffhhmmMM', '~~~~...ffhhmmMM', '~~~~~..ffhhmmMM', '~~~~~~.ffhhmmMM', '~~~~~..ffhhmmMM'], 40);
+  const wrapP = gfxEl('div', 'gfx-card');
+  const leg = gfxEl('div', 'gfx-legend');
+  const cols = [[4, tt('Meer', 'Sea')], [3, tt('Küste und Wiese', 'Coast and meadow')], [2, tt('Wald', 'Forest')], [2, tt('Hügel', 'Hills')], [2, tt('Berge', 'Mountains')], [2, tt('Gipfel', 'Peaks')]];
+  leg.style.gridTemplateColumns = cols.map(([n]) => n * 40 + 'px').join(' ');
+  for (const [, t] of cols) leg.append(gfxEl('span', null, t));
+  wrapP.append(pano, leg);
+  tg.append(wrapP);
+  tg.append(gfxCard(gfxPic(['..~~~', '..~~~', '~~...'], 40), tt('Steg über Eck', 'Corner bridge'),
+    tt('Land, das sich nur an einer Ecke berührt: Bodentruppen gehen hinüber, Schiffe fahren darunter durch. Auf dem Festland sind das die Brücken über die Flüsse.',
+      'Land touching only at a corner: land units cross, ships sail underneath. On the mainland these are the bridges over the rivers.')));
+
+  const fg = gfxSection(body, tt('Nebel', 'Fog'), tt('Von links nach rechts: unerforscht, erforscht – aber gerade nicht in Sicht (dort zeigt die Karte den letzten bekannten Stand), in Sicht.',
+    'Left to right: unexplored, explored but not in sight right now (the map shows the last known state there), in sight.'));
+  const fogPic = gfxPic(['~~~..f...', '~~...C.f.', '~~~..h...'], 40, (now, st) => {
+    const seen = new Uint8Array(st.W * st.H), vis = new Uint8Array(st.W * st.H);
+    for (let i = 0; i < seen.length; i++) { const x = i % st.W; seen[i] = x >= 3 ? 1 : 0; vis[i] = x >= 6 ? 1 : 0; }
+    drawFog({ seen, vis }, st);
+  }, { cities: [1] });
+  const fogCard = gfxEl('div', 'gfx-card'), fogLeg = gfxEl('div', 'gfx-legend');
+  fogLeg.style.gridTemplateColumns = '120px 120px 120px';
+  for (const t of [tt('unerforscht', 'unexplored'), tt('erforscht', 'explored'), tt('in Sicht', 'in sight')]) fogLeg.append(gfxEl('span', null, t));
+  fogCard.append(fogPic, fogLeg);
+  fg.append(fogCard);
+}
+
+// Reiter „Markierungen“
+function gfxMarks(body) {
+  const P0 = PLAYERS[0].light, pct = v => Math.round(v * 100) + ' %';
+  const sel = gfxSection(body, tt('Gewählte Einheit', 'Selected unit'));
+  sel.append(gfxCard(gfxPic(['...', '...', '...'], 40, now => { drawToken(gu('tank'), TS, TS, TS); drawSelRing(1, 1, gfxPulse(now)); }, { live: true }),
+    tt('Auswahl', 'Selection'), tt('pulsierender Ring', 'pulsing ring')));
+  sel.append(gfxCard(gfxPic(['...', '..~', '..~'], 40, now => {
+    drawToken(gu('inf', 1), 0, 0, TS); drawToken(gu('trn'), 2 * TS, TS, TS);
+    for (const [x, y, k] of [[0, 0, 'attack'], [1, 0, 'move'], [2, 0, 'move'], [0, 1, 'move'], [2, 1, 'board'], [0, 2, 'move'], [1, 2, 'move']]) drawHint(x, y, k);
+    drawToken(gu('tank'), TS, TS, TS); drawSelRing(1, 1, gfxPulse(now));
+  }, { live: true }), tt('Zugmarker', 'Move markers'), tt('Punkt: frei · gold: an Bord gehen · Fadenkreuz: angreifen', 'dot: free · gold: go aboard · crosshair: attack')));
+  sel.append(gfxCard(gfxPic(['....', '..f.', '....'], 40, now => {
+    drawGotoPath(0, 2, [[1, 1], [2, 1], [3, 0]], now); drawToken(gu('tank'), 0, 2 * TS, TS, { goto: true }); drawSelRing(0, 2, gfxPulse(now));
+  }, { live: true }), tt('Marschweg', 'March route'), tt('laufende Striche bis zum Ziel', 'moving dashes to the destination')));
+  sel.append(gfxCard(gfxPic(['....', '....', '~~..'], 40, now => {
+    drawToken(gu('ftr'), 0, TS, TS, { patrol: true });
+    drawPatrolRoute({ start: [0, 1], pts: [[2, 0], [3, 2]], editing: false }, now);
+  }, { live: true }), tt('Patrouille', 'Patrol'), tt('S = Start, Zahlen = Wegpunkte', 'S = start, numbers = waypoints')));
+
+  const mouse = gfxSection(body, tt('Maus und Chancen', 'Mouse and odds'));
+  mouse.append(gfxCard(gfxPic(['...', '...', '...'], 40, () => drawHoverFrame(1, 1, false)), tt('Feld unter der Maus', 'Tile under the mouse')));
+  mouse.append(gfxCard(gfxPic(['...', '...', '...'], 40, () => {
+    drawToken(gu('tank'), 0, TS, TS); drawToken(gu('inf', 1), TS, TS, TS); drawHoverFrame(1, 1, true); drawOdds(1, 1, 0.72);
+  }), tt('Siegchance', 'Odds of winning'), tt('grün ab 50 %', 'green from 50 %')));
+  mouse.append(gfxCard(gfxPic(['...', '...', '...'], 40, () => {
+    drawToken(gu('inf'), 0, TS, TS); drawToken(gu('tank', 1), TS, TS, TS); drawHoverFrame(1, 1, true); drawOdds(1, 1, 0.31);
+  }), tt('Siegchance gering', 'Poor odds'), tt('rot unter 50 %', 'red below 50 %')));
+  mouse.append(gfxCard(gfxPic(['~~..', '~C..', '~~..'], 40, now => {
+    drawToken(gu('trn'), 0, TS, TS, { badge: 3 }); drawSelRing(0, 1, gfxPulse(now)); drawAssaultChance(1, 1, CAPTURE_BASE + SUPPORT_CAPTURE, gfxPulse(now));
+  }, { live: true, cities: [1] }), tt('Sturm vom Schiff', 'Assault from the ship'), tt('Chance, die Stadt mit den Truppen an Bord zu nehmen', 'chance to take the city with the troops on board')));
+
+  const sup = gfxSection(body, tt('Unterstützung', 'Support'), tt('In der Farbe des Schiffs, das unterstützt.', 'In the colour of the supporting ship.'));
+  sup.append(gfxCard(gfxPic(['~~.', '~C.', '~..'], 44, () => { drawToken(gu('bat'), 0, TS, TS); drawSupportMark(1, 1, false, P0); }, { cities: [1] }),
+    tt('Stadt unter Feuer', 'City under fire'), tt(`Schlachtschiff daneben: fällt zu ${pct(CAPTURE_BASE + SUPPORT_CAPTURE)}`, `battleship next to it: falls at ${pct(CAPTURE_BASE + SUPPORT_CAPTURE)}`)));
+  sup.append(gfxCard(gfxPic(['~~.', '~C.', '~..'], 44, () => { drawToken(gu('bat'), 0, TS, TS); drawSupportMark(1, 1, true, P0); }, { cities: [0] }),
+    tt('Feuerschutz', 'Fire cover'), tt(`eigene Stadt fällt nur zu ${pct(CAPTURE_BASE - SUPPORT_CAPTURE)}`, `own city falls only at ${pct(CAPTURE_BASE - SUPPORT_CAPTURE)}`)));
+  sup.append(gfxCard(gfxPic(['~~~~', '~~~~', '~~~~'], 44, () => {
+    drawSupportMark(1, 1, true, P0); drawSupportMark(2, 1, true, P0);
+    drawToken(gu('car'), TS, TS, TS, { badge: 2 }); drawToken(gu('trn'), 2 * TS, TS, TS, { badge: 6 });
+  }), tt('Luftdeckung', 'Air cover'), tt('Träger mit Jägern schützt die Schiffe nebenan', 'a carrier with fighters protects the ships next to it')));
+
+  const rt = gfxSection(body, tt('Wegeansicht (Taste G)', 'Route view (key G)'), tt('Alle Befehle auf einen Blick – unterscheidbar auch ohne Farbe: Striche, Punkte, Strich-Punkt.',
+    'All orders at a glance – distinguishable without colour too: dashes, dots, dash-dot.'));
+  rt.append(gfxCard(gfxPic(['....', '..f.', '....'], 40, () => { drawRoute({ kind: 'goto', pts: [[0, 2], [1, 1], [2, 1], [3, 0]] }); drawToken(gu('tank'), 0, 2 * TS, TS, { goto: true }); }),
+    tt('Marsch', 'March')));
+  rt.append(gfxCard(gfxPic(['....', '....', '~~..'], 40, () => { drawRoute({ kind: 'patrol', pts: [[0, 1], [2, 0], [3, 2]], at: [1, 1], next: [2, 0] }); drawToken(gu('ftr'), TS, TS, TS, { patrol: true }); }),
+    tt('Patrouille', 'Patrol')));
+  rt.append(gfxCard(gfxPic(['....', 'C...', '....'], 40, () => drawRoute({ kind: 'rally', pts: [[0, 1], [1, 1], [2, 0], [3, 0]] }), { cities: [0] }),
+    tt('Marschziel einer Stadt', 'Rally point of a city')));
+  rt.append(gfxCard(gfxPic(['..~~', 'C.~~', '..~~'], 40, () => drawRoute({ kind: 'rally', pts: [[0, 1], [3, 1]], bad: true }), { cities: [0] }),
+    tt('Marschziel ungültig', 'Rally point invalid'), tt('kein Weg dorthin', 'no way there')));
+
+  const pv = gfxSection(body, tt('Produktionsansicht (Taste V)', 'Production view (key V)'), tt('Symbol der Einheit im Bau, Fortschritt als Ring, Restzeit in Runden.',
+    'Symbol of the unit being built, progress as a ring, turns remaining.'));
+  pv.append(gfxCard(gfxPic(['...', '.C.', '...'], 48, () => drawProdCity({ x: 1, y: 1, prod: 'tank', progress: 3 }, false), { cities: [0] }), UT.tank.name));
+  pv.append(gfxCard(gfxPic(['~..', '~C.', '~..'], 48, () => drawProdCity({ x: 1, y: 1, prod: 'crs', progress: 26 }, true), { cities: [0] }), UT.crs.name,
+    tt('mit der Maus darüber', 'with the mouse over it')));
+}
+
+// Reiter „Animationen“: kleine Zeitleisten mit denselben Ereignissen wie auf der Karte (anim.events), abgespielt mit drawEffect,
+// animPos und eventSound. Zeiten wie in den hooks (Explosion 650 ms, Salve 560 ms …), Bewegung im Tempo „normal“.
+function gfxAnimSpecs() {
+  const MV = 120 * REPLAY.normal.f;
+  const mv = (id, utype, owner, pts, t0 = 0) => pts.slice(1).map((p, k) => ({ type: 'move', id, utype, owner, fx: pts[k][0], fy: pts[k][1], tx: p[0], ty: p[1], t0: t0 + k * MV, dur: MV }));
+  const boom = (x, y, t0, hl = false) => ({ type: 'boom', x, y, t0, dur: 650, hl });
+  const label = (x, y, text, tone, t0) => ({ type: 'label', x, y, text, tone, t0, dur: LABEL_MS });
+  const P0 = PLAYERS[0].light;
+  return [
+    { title: tt('Bewegung', 'Movement'), note: tt('Feld für Feld, mit dem Klang der Einheit', 'tile by tile, with the unit\'s sound'),
+      rows: ['~..f.', '.....', '~~.h.'], units: [gu('tank', 0, { id: 1, x: 1, y: 1 })], events: mv(1, 'tank', 0, [[1, 1], [2, 1], [3, 1], [4, 0]]) },
+    { title: tt('Angriff gewonnen', 'Attack won'), note: tt('Explosion, der Verlierer verschwindet, Schriftzug', 'explosion, the loser vanishes, label'),
+      rows: ['..f..', '.....', 'f...h'], units: [gu('tank', 0, { id: 1, x: 1, y: 1 }), gu('inf', 1, { id: 2, x: 2, y: 1, gone: 280 })],
+      events: [boom(2, 1, 0), label(2, 1, tt('Sieg!', 'Victory!'), 'good', 250)] },
+    { title: tt('Angriff verloren', 'Attack lost'), note: tt('eigener Verlust: zusätzlicher Klang', 'own loss: an extra sound'),
+      rows: ['..f..', '.....', 'f...h'], units: [gu('tank', 0, { id: 1, x: 1, y: 1, gone: 280 }), gu('inf', 1, { id: 2, x: 2, y: 1 })],
+      events: [boom(2, 1, 0, true), label(2, 1, tt('Verloren', 'Lost'), 'bad', 250)] },
+    { title: tt('Salve und Eroberung', 'Salvo and capture'), note: tt('Schlachtschiff feuert, dann fällt die Stadt', 'the battleship fires, then the city falls'),
+      rows: ['~~~.f', '~~~C.', '~~~..'], cities: [{ owner: 1, to: 0, at: 560 }],
+      units: [gu('bat', 0, { id: 1, x: 2, y: 1 }), gu('inf', 0, { id: 2, x: 4, y: 1, gone: 660 })],
+      marks: rel => drawSupportMark(3, 1, rel >= 560, P0),
+      events: [{ type: 'salvo', fx: 2, fy: 1, x: 3, y: 1, t0: 0, dur: 560 }, { type: 'capture', x: 3, y: 1, owner: 0, lost: false, t0: 560, dur: 900 }] },
+    { title: tt('Luftdeckung', 'Air cover'), note: tt('Jäger vom Träger fangen den Angreifer ab', 'fighters from the carrier intercept the attacker'),
+      rows: ['~~~~~', '~~~~~', '~~~~~'], units: [gu('car', 0, { id: 1, x: 1, y: 1 }), gu('trn', 0, { id: 2, x: 2, y: 1 }), gu('ftr', 1, { id: 3, x: 3, y: 0, gone: 800 })],
+      marks: () => { drawSupportMark(1, 1, true, P0); drawSupportMark(2, 1, true, P0); },
+      events: [{ type: 'cover', fx: 1, fy: 1, x: 3, y: 0, sx: 2, sy: 1, col: P0, t0: 0, dur: 700 }, boom(2, 1, 520), label(2, 1, tt('Abgewehrt!', 'Repelled!'), 'good', 770)] },
+    { title: tt('Stadt erobert', 'City captured'), note: tt('der Eroberer geht in der Stadt auf', 'the conqueror merges into the city'),
+      rows: ['..f..', '..C..', '~~..h'], cities: [{ owner: -1, to: 0, at: 0 }], units: [gu('inf', 0, { id: 1, x: 3, y: 1, gone: 100 })],
+      events: [{ type: 'capture', x: 2, y: 1, owner: 0, lost: false, t0: 0, dur: 900 }] },
+    { title: tt('Stadt verloren', 'City lost'), note: tt('der Gegner nimmt eine eigene Stadt', 'the enemy takes one of your cities'),
+      rows: ['..f..', '..C..', '~~..h'], cities: [{ owner: 0, to: 1, at: 0 }], units: [gu('inf', 1, { id: 1, x: 3, y: 1, gone: 100 })],
+      events: [{ type: 'capture', x: 2, y: 1, owner: 1, lost: true, t0: 0, dur: 900 }, label(2, 1, tt('Stadt verloren', 'City lost'), 'bad', 150)] },
+  ];
+}
+function gfxScene(spec) {
+  const st = gfxMap(spec.rows), c = gfxCanvas(st.W, st.H, 46), bg = buildTerrain(c.ts, st);
+  const byUnit = new Map();
+  for (const e of spec.events) if (e.type === 'move') { if (!byUnit.has(e.id)) byUnit.set(e.id, []); byUnit.get(e.id).push(e); }
+  const sc = { c, t0: null, done: true, played: new Set(), end: Math.max(...spec.events.map(e => e.t0 + e.dur)) };
+  sc.frame = now => {
+    const rel = sc.t0 == null ? -1 : now - sc.t0;   // -1: Ausgangslage
+    const g = c.getContext('2d');
+    g.drawImage(bg, 0, 0);
+    st.cities.forEach(([x, y], k) => { const cs = spec.cities[k]; g.drawImage(citySprite(rel >= cs.at ? cs.to : cs.owner, c.ts, k % 2), x * c.ts, y * c.ts); });
+    drawOn(g, c.ts, () => {
+      if (spec.marks) spec.marks(rel);
+      for (const u of spec.units) {
+        if (u.gone != null && rel >= u.gone) continue;
+        const evs = byUnit.get(u.id), last = evs && evs[evs.length - 1];
+        const [x, y] = animPos(u, rel, byUnit) || (last && rel >= 0 ? [last.tx, last.ty] : [u.x, u.y]);
+        drawToken(u, x * TS, y * TS, TS);
+      }
+      if (rel >= 0) for (const e of spec.events) if (e.type !== 'move' && rel >= e.t0 && rel <= e.t0 + e.dur) drawEffect(e, (rel - e.t0) / e.dur);
+    });
+    if (rel >= 0) for (const e of spec.events) if (!sc.played.has(e) && rel >= e.t0) { sc.played.add(e); eventSound(e, byUnit); }
+    if (rel > sc.end + 60) sc.done = true;
+  };
+  sc.frame(performance.now());
+  return sc;
+}
+function gfxAnims(body) {
+  body.append(gfxEl('p', null, tt('▶ spielt die Animation so ab wie auf der Karte, mit Ton (Lautstärke wie im Spiel). Die Zeitleiste der Karte nutzt dieselben Bausteine.',
+    '▶ plays the animation as on the map, with sound (volume as in the game). The timeline on the map uses the same building blocks.')));
+  const grid = gfxEl('div', 'gfx-grid');
+  body.append(grid);
+  gfxAnimSpecs().forEach((spec, k) => {
+    const sc = gfxScene(spec);
+    gfx.scenes.push(sc);
+    grid.append(gfxCard(sc.c, spec.title, spec.note, gfxButton(tt('▶ Abspielen', '▶ Play'), { gplay: k })));
+  });
+}
+
+function gfxLoop(now) {
+  gfx.raf = 0;
+  if ($('mGfx').hidden) return;
+  for (const f of gfx.live) f(now);
+  for (const sc of gfx.scenes) if (!sc.done) sc.frame(now);
+  gfx.raf = requestAnimationFrame(gfxLoop);
+}
+function renderGfx() {
+  const body = $('gfxBody'), keep = body.dataset.tab === gfx.tab ? body.scrollTop : 0;
+  gfx.live = []; gfx.scenes = [];
+  for (const b of $('gfxTabs').querySelectorAll('button')) b.classList.toggle('on', b.dataset.gtab === gfx.tab);
+  body.textContent = '';
+  body.dataset.tab = gfx.tab;
+  ({ units: gfxUnits, land: gfxLand, marks: gfxMarks, anim: gfxAnims })[gfx.tab](body);
+  body.scrollTop = keep;
+  if (!gfx.raf) gfx.raf = requestAnimationFrame(gfxLoop);
+}
+function openGfx() { Sfx.unlock(); gfx.svg = null; renderGfx(); openModal('mGfx'); }
+$('bGfx').onclick = () => { closeModals(); openGfx(); };   // aus dem Fenster „Einstellungen“
+$('mGfx').addEventListener('click', async e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const d = b.dataset;
+  if (d.gtab) { if (gfx.tab !== d.gtab) { gfx.tab = d.gtab; gfx.svg = null; renderGfx(); } return; }
+  if (d.gowner != null) { gfx.owner = +d.gowner; renderGfx(); return; }
+  if (d.gsvg || d.gicon) {
+    const next = d.gsvg ? { kind: 'unit', type: d.gsvg } : { kind: 'icon', id: d.gicon };
+    const same = gfx.svg && gfx.svg.kind === next.kind && (gfx.svg.type || gfx.svg.id) === (next.type || next.id);
+    gfx.svg = same ? null : next;   // noch einmal geklickt: zuklappen
+    renderGfx();
+    const p = $('gfxSvg');
+    if (p) p.scrollIntoView({ block: 'nearest' });
+    return;
+  }
+  if (d.gmode) { gfx.badge = d.gmode === 'badge'; renderGfx(); return; }
+  if (d.gclose) { gfx.svg = null; renderGfx(); return; }
+  if (d.gcopy || d.gsave) {
+    const { code, file } = gfxSvgCode();
+    if (!code) return;
+    if (d.gcopy) {
+      const ok = await gfxCopy(code);
+      toast(ok ? tt('SVG-Code kopiert', 'SVG code copied') : tt('Kopieren ging nicht – Code im Feld markieren und mit Strg+C kopieren', 'Copying failed – select the code in the box and press Ctrl+C'), 2200);
+      Sfx.play(ok ? 'select' : 'error');
+    } else {
+      const url = URL.createObjectURL(new Blob([code], { type: 'image/svg+xml' }));
+      const a = gfxEl('a'); a.href = url; a.download = file; document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+    return;
+  }
+  if (d.gplay != null) {
+    const sc = gfx.scenes[+d.gplay];
+    if (!sc) return;
+    sc.t0 = performance.now(); sc.done = false; sc.played.clear();
+    if (!gfx.raf) gfx.raf = requestAnimationFrame(gfxLoop);
+  }
+});
 // Fenster „Einstellungen“ (☰ Menü → Einstellungen …): Ton, Anzeige, Spielablauf, Steuerung, Schummeln. Die Bedienelemente behalten
 // ihre Kennungen (vol, replaySel, powerChk …) und werden an ihren bisherigen Stellen verdrahtet; neue Einstellungen gehören hierher.
 function openSettings() { closeMenu(); closeCtx(); openModal('mSettings'); }

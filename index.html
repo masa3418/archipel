@@ -262,6 +262,42 @@
   .patrolbox { margin-top: 8px; padding: 8px 10px; border: 1px solid #2f6f66; background: #12302c; border-radius: 8px; font-size: 13px; }
   .patrolbox b { color: #7fe0d0; }
   .dlg.wide { max-width: 760px; }
+  /* Grafik-Übersicht (Einstellungen → Anzeige → Grafiken) */
+  .dlg.gfx-dlg { max-width: 900px; display: flex; flex-direction: column; height: min(90vh, 840px); }
+  .gfx-intro { margin: 0 0 6px; font-size: 13px; }
+  .gfx-tabs { padding: 0; margin: 0 0 2px; }
+  .gfx-body { flex: 1; min-height: 0; overflow: auto; padding: 0 2px 8px; }
+  .gfx-body h3 { margin: 16px 0 4px; }
+  .gfx-body > p { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+  .gfx-grid { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+  .gfx-card { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .gfx-grid.fix > .gfx-card { width: var(--cw); box-sizing: border-box; }
+  .gfx-card canvas, .gfx-card img, .gfx-card svg { display: block; border-radius: 4px; }
+  .gfx-t { font-size: 13px; font-weight: 600; text-align: center; }
+  .gfx-n { font-size: 12px; color: var(--muted); text-align: center; max-width: 200px; }
+  .gfx-card button { padding: 2px 10px; font-size: 12.5px; margin: 2px 0 0; }
+  .gfx-card button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .gfx-legend { display: grid; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.25; }
+  .gfx-colors { display: flex; gap: 6px; align-items: center; margin: 10px 0; flex-wrap: wrap; font-size: 13px; }
+  .gfx-colors button { padding: 3px 10px; font-size: 13px; margin: 0; display: inline-flex; align-items: center; gap: 6px; }
+  .gfx-colors button i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .gfx-colors button.on i { box-shadow: 0 0 0 1.5px #fff; }
+  .gfx-colors button.on, .gfx-seg button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .gfx-svg { margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--bg); }
+  .gfx-svg-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .gfx-seg { display: inline-flex; }
+  .gfx-seg button { margin: 0; padding: 3px 10px; font-size: 12.5px; border-radius: 0; }
+  .gfx-seg button:first-child { border-radius: 6px 0 0 6px; }
+  .gfx-seg button:last-child { border-radius: 0 6px 6px 0; }
+  .gfx-svg-body { display: flex; gap: 12px; align-items: flex-start; }
+  .gfx-svg-prev { flex-shrink: 0; width: 136px; height: 136px; display: flex; align-items: center; justify-content: center; border-radius: 6px;
+    background: repeating-conic-gradient(#2a3442 0% 25%, #222b37 0% 50%) 50% / 16px 16px; }
+  .gfx-svg-prev.light { background: repeating-conic-gradient(#e6eaf0 0% 25%, #ffffff 0% 50%) 50% / 16px 16px; }
+  .gfx-svg-prev img { max-width: 120px; max-height: 120px; }
+  .gfx-svg pre { flex: 1; min-width: 0; margin: 0; max-height: 280px; overflow: auto; font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+    background: #0d131b; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; white-space: pre; color: #cfe2ff; user-select: text; }
+  .gfx-svg .row { margin-top: 8px; gap: 8px; flex-wrap: wrap; }
+  @media (max-width: 640px) { .gfx-svg-body { flex-direction: column; } }
   /* Fenster „Einstellungen“: Abschnitte, je Einstellung eine Zeile und ein erklärender Satz */
   .settings-dlg { max-width: 560px; }
   .set-sec { border-top: 1px solid var(--line); padding: 8px 0 4px; }
@@ -939,6 +975,22 @@
   </div>
 </div>
 
+<div id="mGfx" class="modal" hidden>
+  <div class="dlg gfx-dlg">
+    <h2 data-en="Graphics">Grafiken</h2>
+    <p data-lang="de" class="muted gfx-intro">Alle Bilder und Animationen des Spiels – gezeichnet mit denselben Bausteinen wie die Karte, ohne Bilddateien. Die Einheitensymbole sind SVG-Pfade: „SVG-Code“ zeigt sie zum Kopieren oder Speichern.</p>
+    <p data-lang="en" class="muted gfx-intro">All pictures and animations of the game – drawn with the same building blocks as the map, without image files. The unit symbols are SVG paths: “SVG code” shows them to copy or save.</p>
+    <nav class="help-tabs gfx-tabs" id="gfxTabs">
+      <button data-gtab="units" data-en="Units">Einheiten</button>
+      <button data-gtab="land" data-en="Cities and terrain">Städte und Gelände</button>
+      <button data-gtab="marks" data-en="Map markers">Markierungen</button>
+      <button data-gtab="anim" data-en="Animations">Animationen</button>
+    </nav>
+    <div class="gfx-body" id="gfxBody"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="primary" data-close data-en="Done">Fertig</button></div>
+  </div>
+</div>
+
 <div id="mStats" class="modal" hidden>
   <div class="dlg wide">
     <h2 data-en="Statistics">Statistik</h2>
@@ -997,6 +1049,8 @@
       <p class="set-d" data-en="The “You / enemy” bar in the side panel. Switched off, you do not know how strong the enemy is.">Der Balken „Du / Gegner“ in der Seitenleiste. Ausgeschaltet weißt du nicht, wie stark der Gegner ist.</p>
       <label class="set-row chk"><input type="checkbox" id="keysChk"><span class="set-l"><span data-en="Show keyboard shortcuts on the map">Tastenkürzel auf der Karte einblenden</span></span></label>
       <p class="set-d" data-en="The most important keys at the bottom left of the map; what is not possible right now is dimmed.">Unten links auf der Karte die wichtigsten Tasten; was gerade nicht geht, ist abgeblendet.</p>
+      <div class="set-row"><span class="set-l" data-en="Graphics">Grafiken</span><button id="bGfx" data-en="Open …">Öffnen …</button></div>
+      <p class="set-d" data-en="All pictures and animations of the game at a glance – with the SVG code of the unit symbols.">Alle Bilder und Animationen des Spiels im Überblick – mit dem SVG-Code der Einheitensymbole.</p>
     </section>
     <section class="set-sec">
       <h3 data-en="Game flow">Spielablauf</h3>

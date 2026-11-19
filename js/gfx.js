@@ -97,6 +97,39 @@ function unitSprite(type, owner, size) {
   return c;
 }
 
+// SVG-Code eines Einheiten-Abzeichens (Grafik-Übersicht): dieselben Pfade und Maße wie unitSprite bei Größe 100.
+// badge = false: nur das Symbol im 100×100-Raster (Aussparungen als Maske, Farbe currentColor – schwarz, wenn nichts anderes gilt).
+function unitSvg(type, owner, badge = true, title = '') {
+  const src = ICON_SRC[type], pal = PLAYERS[owner], cut = src.cut || [];
+  const xml = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const n = v => String(+v.toFixed(2));
+  const paths = (list, ind, attr = '') => list.map(d => `${ind}<path d="${d}"${attr}/>`).join('\n');
+  const head = (w, h) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">\n`
+    + (title ? `  <title>${xml(title)}</title>\n` : '');
+  if (!badge) {
+    return head(100, 100)
+      + (cut.length ? `  <mask id="${type}-cut">\n    <rect width="100" height="100" fill="#fff"/>\n${paths(cut, '    ', ' fill="#000"')}\n  </mask>\n` : '')
+      + `  <g fill="currentColor"${cut.length ? ` mask="url(#${type}-cut)"` : ''}>\n${paths(src.fill, '    ')}\n  </g>\n</svg>\n`;
+  }
+  // wie unitSprite: Rand 10 %, Radius 0,42 · Größe, Symbol auf 1,5 · Radius skaliert, Schatten 2 px tief und 3 px weich
+  const size = 100, pad = Math.ceil(size * 0.1), w = size + pad * 2, c = w / 2, r = size * 0.42, s = r * 1.5 / 100;
+  return head(w, w)
+    + `  <defs>\n`
+    + `    <radialGradient id="${type}-badge" gradientUnits="userSpaceOnUse" cx="${n(c)}" cy="${n(c)}" r="${n(r)}" fx="${n(c - r * 0.35)}" fy="${n(c - r * 0.45)}" fr="${n(r * 0.1)}">\n`
+    + `      <stop offset="0" stop-color="${pal.light}"/>\n      <stop offset="0.5" stop-color="${pal.color}"/>\n      <stop offset="1" stop-color="${pal.dark}"/>\n`
+    + `    </radialGradient>\n`
+    + `    <filter id="${type}-shadow" x="-20%" y="-20%" width="140%" height="150%">\n`
+    + `      <feDropShadow dx="0" dy="${n(size * 0.02 / s)}" stdDeviation="${n(size * 0.03 / 2 / s)}" flood-color="#000" flood-opacity="0.5"/>\n`
+    + `    </filter>\n  </defs>\n`
+    + `  <circle cx="${n(c)}" cy="${n(c + r * 0.16)}" r="${n(r * 1.02)}" fill="#000" fill-opacity="0.38"/>\n`
+    + `  <circle cx="${n(c)}" cy="${n(c)}" r="${n(r)}" fill="url(#${type}-badge)" stroke="${pal.dark}" stroke-width="${n(size * 0.045)}"/>\n`
+    + `  <circle cx="${n(c)}" cy="${n(c)}" r="${n(r * 0.86)}" fill="none" stroke="#fff" stroke-opacity="0.35" stroke-width="${n(size * 0.025)}"/>\n`
+    + `  <g transform="translate(${n(c - 50 * s)} ${n(c - 50 * s)}) scale(${n(s)})">\n`
+    + `    <g fill="#fff" filter="url(#${type}-shadow)">\n${paths(src.fill, '      ')}\n    </g>\n`
+    + (cut.length ? `    <g fill="${pal.dark}">\n${paths(cut, '      ')}\n    </g>\n` : '')
+    + `  </g>\n</svg>\n`;
+}
+
 function roundRectPath(g, x, y, w, h, r) {
   g.beginPath();
   g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
@@ -162,13 +195,13 @@ function landColor(e) {
   return c0.map((v, j) => v + (c1[j] - v) * f);
 }
 
-function buildTerrain(TS) {
-  const W = S.W, H = S.H;
+function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht, sonst die laufende Partie
+  const W = st.W, H = st.H;
   const oc = document.createElement('canvas');
   oc.width = W * TS; oc.height = H * TS;
   const g = oc.getContext('2d');
   const r = mulberry32(4711);
-  const isW = (x, y) => x < 0 || y < 0 || x >= W || y >= H || !S.terrain[y * W + x];
+  const isW = (x, y) => x < 0 || y < 0 || x >= W || y >= H || !st.terrain[y * W + x];
 
   // 1) Wasser: weiche Tiefenverläufe
   const wc = document.createElement('canvas'); wc.width = W; wc.height = H;
@@ -176,8 +209,8 @@ function buildTerrain(TS) {
   const lc = document.createElement('canvas'); lc.width = W; lc.height = H;
   const lg = lc.getContext('2d'), li = lg.createImageData(W, H);
   for (let i = 0; i < W * H; i++) {
-    const wcol = S.terrain[i] ? WATER_COL[0] : WATER_COL[Math.min(WATER_COL.length - 1, S.depth[i] - 1)];
-    const lcol = S.terrain[i] ? landColor(S.elev[i]) : SAND;
+    const wcol = st.terrain[i] ? WATER_COL[0] : WATER_COL[Math.min(WATER_COL.length - 1, st.depth[i] - 1)];
+    const lcol = st.terrain[i] ? landColor(st.elev[i]) : SAND;
     for (let j = 0; j < 3; j++) { wi.data[i * 4 + j] = wcol[j]; li.data[i * 4 + j] = lcol[j]; }
     wi.data[i * 4 + 3] = 255; li.data[i * 4 + 3] = 255;
   }
@@ -188,7 +221,7 @@ function buildTerrain(TS) {
   // Wellen
   g.strokeStyle = 'rgba(255,255,255,0.13)'; g.lineWidth = Math.max(1, TS / 18); g.lineCap = 'round';
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    if (S.terrain[y * W + x] || S.depth[y * W + x] < 2 || r() > 0.22) continue;
+    if (st.terrain[y * W + x] || st.depth[y * W + x] < 2 || r() > 0.22) continue;
     const cx = (x + 0.2 + r() * 0.6) * TS, cy = (y + 0.2 + r() * 0.6) * TS, w = TS * 0.18;
     g.beginPath(); g.moveTo(cx - w, cy); g.quadraticCurveTo(cx - w / 2, cy - w * 0.6, cx, cy); g.quadraticCurveTo(cx + w / 2, cy - w * 0.6, cx + w, cy); g.stroke();
   }
@@ -233,8 +266,8 @@ function buildTerrain(TS) {
   // Wälder, Hügel, Berge
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const i = y * W + x;
-    if (isW(x, y) || S.cityGrid[i] >= 0) continue;
-    const el = S.elev[i];
+    if (isW(x, y) || st.cityGrid[i] >= 0) continue;
+    const el = st.elev[i];
     const X = x * TS, Y = y * TS;
     if (el > 0.68) {
       const peaks = el > 0.82 ? 2 : 1;

@@ -59,9 +59,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen (getrennt mit `split`), Festland (`festland`: Küstensaum, Binnenmeere, Flüsse mit Brücken); Städte, faire Startpositionen (ab drei Spielern `pickStarts`) |
 | `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung `captureChance`/`cityDefenders`, Unterstützung `fireSupport`/`airCover`, Produktion, Sicht `computeVision`/`canSee`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
 | `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`), Landung im Hinterland auf dem Festland (`hinterInfo`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
-| `js/gfx.js` | Gelände-Rendering, Einheiten-Abzeichen (SVG-Pfade → Sprites), Stadtgrafik |
+| `js/gfx.js` | Gelände-Rendering (`buildTerrain(TS, st)`), Einheiten-Abzeichen (SVG-Pfade `ICON_SRC` → Sprites, als SVG-Code `unitSvg`), Stadtgrafik |
 | `js/sfx.js` | Web-Audio-Synthese: Effekte, Klangteppiche je Einheitentyp, Klangtest |
-| `js/ui.js` | Zeichnen, Animationen/Zeitleiste, Kamera, Eingabe, Seitenleiste, Kontextmenü, alle Dialoge, Handbuch (`openHelp`, `buildHelp`) |
+| `js/ui.js` | Zeichnen, Animationen/Zeitleiste, Kamera, Eingabe, Seitenleiste, Kontextmenü, alle Dialoge, Handbuch (`openHelp`, `buildHelp`), Grafik-Übersicht (`openGfx`) |
 | `index.html` | Layout, CSS, Dialoge (Handbuch, Statistik, Spielstände, Klangtest …) |
 | `tools/serve.js` | Mini-Webserver für die Entwicklung |
 | `tools/pack.js` | Verpackt die Offline-Fassung nach `dist/` (Einzeldatei `archipel.html`, Ordner fürs ZIP, Release-Text; ohne Manifest-Verweis) |
@@ -88,7 +88,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Infanterie → Zerstörer 50 %, Panzer → Zerstörer 75 %, Panzer → Träger 31 %. Die KI-Bedrohungskarte (`threatMap`) berücksichtigt das.
 - **Schlachtschiffe**: `fireSupport(owner, x, y)` und `captureChance(owner, c)` (game.js) – Feuerunterstützung/Feuerschutz auf
   Nachbarfelder (Eroberung 75 % / 25 %, Bodentruppen treffen zu 2/3 bzw. werden zu 1/3 getroffen). Eroberungschancen nie fest
-  mit 50 % rechnen, immer `captureChance` nehmen. Salven meldet `hooks.salvo`; Markierungen zeichnet `drawSupportMark` (ui.js). Luftdeckung im Kampf: `hooks.cover` (in `attack`, Jäger gegen Schiff unter `airCover`) – Abfangjäger, Schutzring, Klang `cover`.
+  mit 50 % rechnen, immer `captureChance` nehmen (Grundwert `CAPTURE_BASE`, Zuschlag `SUPPORT_CAPTURE`). Salven meldet `hooks.salvo`; Markierungen zeichnet `drawSupportMark` (ui.js). Luftdeckung im Kampf: `hooks.cover` (in `attack`, Jäger gegen Schiff unter `airCover`) – Abfangjäger, Schutzring, Klang `cover`.
 - **Getarnte U-Boote**: `canSee(p, u)` (game.js) entscheidet, ob Spieler p eine Einheit sieht. Für fremde Einheiten immer
   diese Funktion benutzen, nie nur `P.vis` des Feldes. `P.sonar` = Ortungsbereich (jede Einheit/Stadt Umkreis 1, Einheiten mit
   `sonar: true` volle Sichtweite), wird in `computeVision` berechnet und nicht gespeichert. `u.surf` = aufgetaucht nach einem
@@ -204,7 +204,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Kopfzeile und Menü**: Oben stehen nur Runde + Stufe (`updateHeader`), `☰ Menü`, Zoom, Zentrieren (Fadenkreuz/Taste F, `actFocus` → `focusOn`), Ton, Handbuch, Sprache. Seltenes liegt im
   Menü `#menu` (`openMenu`/`closeMenu`, ui.js): Neues Spiel, Spielstände, Statistik, Zeitraffer und „Einstellungen …“. Die Einstellungen stehen im
   eigenen Fenster `#mSettings` (`openSettings`), nach Abschnitten (Ton, Anzeige, Spielablauf, Steuerung, Schummeln), je Zeile ein erklärender Satz
-  (`.set-row` + `.set-d`): Lautstärke, Klangtest, Wiedergabe der Züge, Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Tastenlegende über
+  (`.set-row` + `.set-d`): Lautstärke, Klangtest, Wiedergabe der Züge, Grafiken (Übersicht, siehe unten), Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Tastenlegende über
   der Karte (`showKeys`, `archipel-keys`; beim ersten Besuch an, sonst aus; `updateKeyLegend` in `refresh()`, blendet ab, was gerade nicht geht – neue Tastenkürzel dort
   und in der Tastentabelle des Handbuchs eintragen), automatisches Rundenende, Schwelle fürs Angebot zum vorzeitigen Ende (`offerPct`, `archipel-offer`,
   0 = nie, Standard 10 %; `maybeOfferEnd`), Mausrad/Touchpad, Nebel aus. Neue Einstellungen dort einhängen, nicht ins Menü, in die Kopfzeile oder Seitenleiste.
@@ -255,6 +255,17 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   In Inselwelten selten (0–5 je Karte); auf dem Festland sind es die Brücken über die Flüsse (Flussschritt über Eck alle 2–4 Felder, im Schnitt 5 / 11 / 21 je Karte nach Größe).
   Wer die Regel an Ecken ändert, muss auch diese Darstellung, den Festland-Generator und den Handbuchsatz anpassen.
 - **Grafik-Caches**: Gelände (`buildTerrainCache`) und Sprites hängen von der Zoomstufe `TS` ab.
+- **Grafik-Übersicht** (Wunsch des Nutzers, wie der Klangtest; Einstellungen → Anzeige → Grafiken, `#mGfx`, ui.js `openGfx`/`renderGfx`): Reiter
+  Einheiten (Abzeichen je Farbe, Zeichen an der Marke, SVG-Symbole der Oberfläche), Städte und Gelände, Markierungen, Animationen (▶ mit Ton).
+  Alles wird mit den Zeichenfunktionen der Karte gezeichnet, nie nachgebaut: `drawOn(g, ts, fn)` leitet `ctx` und `TS` kurz auf eine kleine
+  Leinwand um (deshalb `let ctx`), `buildTerrain(TS, st)` und `drawFog(P, st)` nehmen ein Kartenstück aus `gfxMap(rows)`. Dafür aus `render()`
+  herausgelöst: `drawEffect(e, f)` (Explosion, Salve, Luftdeckung, Schriftzug, Eroberung), `drawHint`, `drawSelRing`, `drawGotoPath`,
+  `drawAssaultChance`, `drawHoverFrame`, `drawOdds`, `drawProdCity`; Klänge der Zeitleiste in `eventSound`. Neue Zeichenfunktionen ebenso über
+  `ctx`/`TS` schreiben und neue Grafiken oder Effekte in der Übersicht ergänzen. Animationen = kleine Zeitleisten (`gfxAnimSpecs`) mit denselben
+  Ereignissen wie `anim.events`, Zeiten wie in den `hooks`. SVG-Code: `unitSvg(type, owner, badge)` aus `ICON_SRC` – Abzeichen wie `unitSprite`
+  (Bildvergleich: im Mittel ≤ 1 von 255 Farbstufen Abweichung) oder nur Symbol (Maske, `currentColor`); App-Symbol aus dem `<link rel=icon>`
+  (Einzeldatei: data-Adresse, sonst `fetch`; im Offline-Ordner über file:// nicht lesbar → Hinweis), „Zentrieren“ aus `index.html`. Städte, Gelände
+  und Effekte entstehen aus Zeichenbefehlen und haben keinen SVG-Code. Kopieren braucht einen echten Klick (Zwischenablage); per Skript lehnt der Browser ab.
 
 ## Entwickeln und testen
 

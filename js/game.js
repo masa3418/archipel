@@ -238,6 +238,7 @@ function pickDefender(list) {
 const BATTERY = 2;
 const BIG_SHIPS = ['bat', 'crs', 'car'];
 const SUPPORT_HIT = 2 / 3, SUPPORT_CAPTURE = 0.25;
+const CAPTURE_BASE = 0.5;   // Grundchance, eine Stadt zu erobern – Anzeigen rechnen damit, nie mit festen 50 %
 const SUB_VS_DST = 2;   // Torpedoschaden gegen den wendigen Zerstörer (sonst UT.sub.str = 3, ein Treffer versenkt ihn)
 // Küstenangriff: Bodentruppen, die ein Schiff auf einem Nachbarfeld angreifen, richten COAST.str-fachen Schaden an und treffen mit
 // COAST.p – außer gegen Kreuzer und Schlachtschiff (UT.shore), die für die Küste gebaut sind. U-Boote sind für sie unerreichbar.
@@ -262,7 +263,7 @@ function airCover(owner, x, y) {
 }
 // Erfolgschance, mit der Spieler `owner` die Stadt c erobert
 function captureChance(owner, c) {
-  let p = 0.5;
+  let p = CAPTURE_BASE;
   if (fireSupport(owner, c.x, c.y)) p += SUPPORT_CAPTURE;
   if (fireSupport(c.owner, c.x, c.y)) p -= SUPPORT_CAPTURE;
   return p;
