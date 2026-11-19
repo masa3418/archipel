@@ -3,6 +3,30 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.7.2
+
+Beispiel-Spielstände zum Ausprobieren und Anschauen.
+
+**Beispiel-Spielstände**
+
+- **Sieben Partien in ganz verschiedenen Lagen:** vom ersten Erkunden im Inselreich über Seekrieg, Landkrieg auf dem Festland und
+  drei Gegner bis zur schweren Lage auf Stufe Schwer und einem Sieg gegen drei Gegner – jeweils mit Zeitraffer und Kräftekurve
+  vom ersten Zug an.
+- **Online direkt im Handbuch laden:** unter „Über das Spiel“ → „Beispiel-Spielstände“ genügt ein Klick auf „Laden“. Läuft gerade
+  eine Partie, fragt das Spiel vorher nach. Ein Hinweis unter „Erste Schritte“ führt dorthin.
+- Die Offline-Fassung enthält die Beispiele nicht; ihr Handbuch verweist auf die Dateien bei GitHub (herunterladen, dann
+  „☰ Menü → Spielstände → Aus Datei laden“).
+
+**Behoben**
+
+- Meldungen lagen hinter geöffneten Fenstern und waren nicht zu sehen – etwa „Gelöscht“ oder „Speicher voll“ im Fenster
+  „Spielstände“. Jetzt erscheinen sie immer obenauf.
+
+*English:* seven example games in very different situations – from the first exploring to a victory over three opponents, each
+with the timelapse from the first turn. In the online version they load right from the handbook (About → Example games); the
+offline copy points to the files on GitHub. Fixed: messages were hidden behind open windows, e.g. “Deleted” in the saved games
+window.
+
 ## 1.7.1
 
 Der Hafen als Schutzraum und ein Kräfteverhältnis für alle Parteien.
