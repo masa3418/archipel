@@ -59,6 +59,25 @@ trickier rules – best watched on the [video page](https://masa3418.github.io/a
 | [Stege, Brücken und Stau](docs/videos/steg.mp4) | Diagonal über Ecken, Brücken auf dem Festland, Kolonnen warten vor einem besetzten Übergang |
 | [Nebel und Erkunden](docs/videos/nebel.mp4) | Der Nebel des Krieges, Befehl „Erkunden“, Kartengedächtnis und neutrale Städte |
 
+## Beispiel-Spielstände
+
+Sieben Spielstände zum Ausprobieren und Anschauen – mitten in einer Partie, mit Zeitraffer und Kräftekurve vom ersten Zug an.
+In der [Online-Fassung](https://masa3418.github.io/archipel/) lädst du sie direkt im **Handbuch** unter **Über das Spiel → Beispiel-Spielstände**.
+Die Offline-Fassung enthält sie nicht: Datei hier anklicken, auf GitHub oben rechts **„Download raw file“** wählen und im Spiel unter
+**☰ Menü → Spielstände → Aus Datei laden …** öffnen. *Seven saved games to try out, each with the timelapse from the first turn. In the
+online version, load them right from the handbook (About → Example games); for the offline copy, download a file (“Download raw file”
+on GitHub) and open it via ☰ Menu → Saved games → Load from file.*
+
+| Spielstand | Lage |
+|---|---|
+| [Inselreich, Anfang](docs/spielstaende/beispiel-1-inselreich-anfang.json) | Runde 43, mittlere Karte, Normal: die ersten Städte und Transporter, die Inseln noch kaum erkundet |
+| [Inselreich, Seekrieg](docs/spielstaende/beispiel-2-inselreich-seekrieg.json) | Runde 108, ausgeglichen (11 : 11 Städte), Flotten und Transporter auf beiden Seiten |
+| [Festland, Front](docs/spielstaende/beispiel-3-festland-front.json) | Runde 90, Landkrieg mit Binnenmeeren, Flüssen und Brücken (22 : 17 Städte) |
+| [Drei Gegner](docs/spielstaende/beispiel-4-drei-gegner.json) | Runde 90, Gemischt, jeder gegen jeden – Rot, Gelb und Violett sind alle noch im Spiel |
+| [Kurz vor dem Sieg](docs/spielstaende/beispiel-5-kurz-vor-dem-sieg.json) | Runde 179, kleine Karte: 27 : 4 Städte, der Gegner hält sich noch auf seinen letzten Inseln |
+| [Schwere Lage](docs/spielstaende/beispiel-6-schwere-lage.json) | Runde 60, Stufe Schwer: du bist klar unterlegen (9 : 15 Städte) – schaffst du die Wende? |
+| [Sieg gegen drei](docs/spielstaende/beispiel-7-sieg-gegen-drei.json) | Gewonnene Partie (Runde 209): öffnet sofort das Abschlussfenster mit dem Zeitraffer der ganzen Partie |
+
 ## Inhalt
 
 - Deutsch und Englisch (Sprachknopf oben in der Leiste)

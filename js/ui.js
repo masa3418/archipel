@@ -2323,7 +2323,13 @@ function openHelp(tab = null, unit = null) {
 $('turnInfo').addEventListener('click', e => { if (e.target.closest('.cheat')) setCheatFog(false); else if (e.target.closest('.lvl')) openHelp('ai'); });
 $('helpTabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) helpTab(b.dataset.tab); });
 // Verweise im Text auf eine andere Seite des Handbuchs
-$('helpBody').addEventListener('click', e => { const b = e.target.closest('[data-helptab]'); if (b) helpTab(b.dataset.helptab); });
+$('helpBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-helptab]');
+  if (!b) return;
+  helpTab(b.dataset.helptab);
+  const a = b.dataset.helpanchor && $(b.dataset.helpanchor);   // Sprung zu einem Abschnitt im Reiter
+  if (a) a.scrollIntoView({ block: 'start' });
+});
 function closeModals() { document.querySelectorAll('.modal').forEach(m => m.hidden = true); Sfx.preview(null); }
 
 // ------------------------------------------------------------------ Aufgeben / vorzeitiger Sieg
@@ -3350,6 +3356,46 @@ for (const a of document.querySelectorAll('a[data-videos]')) {
   a.href = VIDEO_URL + '?lang=' + (EN ? 'en' : 'de'); a.target = '_blank'; a.rel = 'noopener';
   a.addEventListener('click', () => closeMenu());
 }
+// Beispiel-Spielstände (docs/spielstaende/, erzeugt mit tools/beispiele.js; nicht im Release). Online liegen sie auf demselben Server
+// wie das Spiel und lassen sich im Handbuch („Über das Spiel“) direkt laden. Die Offline-Fassung lädt nichts aus dem Internet – dort
+// nur der Link zum Herunterladen (danach „Aus Datei laden“). Neue Beispiele hier und in der Tabelle im README eintragen.
+const EXAMPLES = [
+  ['beispiel-1-inselreich-anfang', tt('Inselreich, Anfang', 'Archipelago, opening'), tt('Die ersten Städte und Transporter, die Inseln noch kaum erkundet.', 'The first cities and transports, the islands still barely explored.')],
+  ['beispiel-2-inselreich-seekrieg', tt('Inselreich, Seekrieg', 'Archipelago, naval war'), tt('Ausgeglichene Lage, Flotten und Transporter auf beiden Seiten.', 'An even match, fleets and transports on both sides.')],
+  ['beispiel-3-festland-front', tt('Festland, Front', 'Mainland, front line'), tt('Landkrieg mit Binnenmeeren, Flüssen und Brücken.', 'Land war with inland seas, rivers and bridges.')],
+  ['beispiel-4-drei-gegner', tt('Drei Gegner', 'Three opponents'), tt('Jeder gegen jeden: Rot, Gelb und Violett sind alle noch im Spiel.', 'Everyone against everyone: Red, Yellow and Purple are all still in the game.')],
+  ['beispiel-5-kurz-vor-dem-sieg', tt('Kurz vor dem Sieg', 'Close to victory'), tt('Der Gegner hält sich nur noch auf seinen letzten Inseln.', 'The enemy is holding out on its last islands.')],
+  ['beispiel-6-schwere-lage', tt('Schwere Lage', 'A tough spot'), tt('Stufe Schwer, du bist klar unterlegen – schaffst du die Wende?', 'Hard level, you are clearly behind – can you turn it around?')],
+  ['beispiel-7-sieg-gegen-drei', tt('Sieg gegen drei', 'Victory over three'), tt('Eine gewonnene Partie: Das Abschlussfenster zeigt den Zeitraffer der ganzen Partie.', 'A won game: the final window shows the timelapse of the whole game.')],
+];
+const EXAMPLE_ONLINE = /^https?:$/.test(location.protocol);
+function renderExamples() {
+  const rows = EXAMPLES.map(([f, title, desc]) => `<div class="ex-row"><div><b>${title}</b><span>${desc}</span></div>`
+    + (EXAMPLE_ONLINE ? `<button data-example="${f}">${tt('Laden', 'Load')}</button>` : '') + '</div>').join('');
+  $('helpExamples').innerHTML = rows + (EXAMPLE_ONLINE ? ''
+    : `<p class="ex-off muted">${tt('In der Offline-Fassung lassen sie sich hier nicht laden – sie liegen im Internet:', 'In the offline copy they cannot be loaded from here – they are on the internet:')}
+      <a href="https://github.com/masa3418/archipel/tree/main/docs/spielstaende" target="_blank" rel="noopener">${tt('Beispiele auf GitHub', 'examples on GitHub')}</a> <span class="ext">online ↗</span>
+      ${tt('Dort eine Datei öffnen, „Download raw file“ wählen und unter ☰ Menü → Spielstände → Aus Datei laden öffnen.', 'Open a file there, choose “Download raw file” and open it via ☰ Menu → Saved games → Load from file.')}</p>`);
+}
+renderExamples();
+$('helpExamples').addEventListener('click', async e => {
+  const b = e.target.closest('[data-example]');
+  if (!b) return;
+  const ex = EXAMPLES.find(x => x[0] === b.dataset.example);
+  if (!ex) return;
+  if (S && !S.over && !confirm(tt(`Beispiel „${ex[1]}“ laden? Deine laufende Partie (Runde ${S.turn}) wird dabei ersetzt – speichere sie vorher unter ☰ Menü → Spielstände, wenn du sie behalten willst.`,
+    `Load the example “${ex[1]}”? Your current game (turn ${S.turn}) will be replaced – save it first under ☰ Menu → Saved games if you want to keep it.`))) return;
+  b.disabled = true;   // kein zweiter Klick, solange die Datei kommt
+  try {
+    const r = await fetch(`docs/spielstaende/${ex[0]}.json`);
+    if (!r.ok) throw new Error(String(r.status));
+    const text = await r.text();
+    const backup = S;
+    try { deserialize(text); } catch (err) { S = backup; buildCityGrid(); throw err; }
+    afterSlotLoad(tt(`Beispiel geladen: ${ex[1]}`, `Example loaded: ${ex[1]}`));
+  } catch (err) { toast(tt('Beispiel konnte nicht geladen werden – dafür ist eine Internetverbindung nötig.', 'The example could not be loaded – this needs an internet connection.')); Sfx.play('error'); }
+  finally { b.disabled = false; }
+});
 
 $('mSound').addEventListener('click', e => {
   const b = e.target.closest('button');

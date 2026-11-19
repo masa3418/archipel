@@ -24,7 +24,12 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   (keine ES-Module), damit `index.html` auch per Doppelklick (`file://`) läuft.
 - **Keine Asset-Dateien.** Grafik (`gfx.js`) und Klänge (`sfx.js`) werden im Code erzeugt.
   Einzige Ausnahmen: `favicon.svg`, `docs/seeschlacht.gif` (README, aus dem Teaser `docs/videos/seeschlacht.mp4` erzeugt) und die
-  Erklärvideos `docs/videos/*.mp4` – sie gehören nicht zum Spiel und nicht in den Release. `tools/pack.js` ist kein Build für den Betrieb,
+  Erklärvideos `docs/videos/*.mp4` – sie gehören nicht zum Spiel und nicht in den Release. Ebenso die Beispiel-Spielstände
+  `docs/spielstaende/*.json` (im README aufgeführt): erzeugt mit `node tools/beispiele.js` (die KI spielt beide Seiten, gespeichert wird,
+  sobald eine gewünschte Lage erreicht ist; Zeitraffer und Kurve ab Runde 1). Nach Regeländerungen oder Änderungen am Spielstand neu
+  erzeugen und die Tabelle im README (Runden, Städte) anpassen. Online lädt das Handbuch sie direkt (Reiter „Über das Spiel“,
+  `EXAMPLES` in ui.js – Dateinamen dort und im README gleich halten; Hinweis mit Sprung dorthin in „Erste Schritte“ per `data-helpanchor`);
+  die Offline-Fassung (`file://`) lädt nichts aus dem Internet und zeigt stattdessen den Link zu GitHub. `tools/pack.js` ist kein Build für den Betrieb,
   sondern verpackt nur den Release; `dist/` gehört nicht ins Repository.
 - **Installierbare App nur online:** `manifest.webmanifest` und `sw.js` (Service Worker, „erst Netz, dann Zwischenspeicher“) liegen im
   Repository für GitHub Pages, gehören aber **nicht** in den Release: `pack.js` entfernt den Manifest-Verweis aus Einzeldatei und ZIP-Ordner,
@@ -55,6 +60,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `index.html` | Layout, CSS, Dialoge (Handbuch, Statistik, Spielstände, Klangtest …) |
 | `tools/serve.js` | Mini-Webserver für die Entwicklung |
 | `tools/pack.js` | Verpackt die Offline-Fassung nach `dist/` (Einzeldatei `archipel.html`, Ordner fürs ZIP, Release-Text; ohne Manifest-Verweis) |
+| `tools/beispiele.js` | Erzeugt die Beispiel-Spielstände `docs/spielstaende/*.json` (nicht im Release) |
 | `manifest.webmanifest`, `sw.js` | Installierbare App für die Online-Fassung (nur GitHub Pages, nicht im Release) |
 | `.github/workflows/release.yml` | Legt bei einem Tag `vX.Y.Z` den Release mit der Offline-Fassung an |
 
