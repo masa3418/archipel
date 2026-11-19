@@ -2330,7 +2330,12 @@ $('helpBody').addEventListener('click', e => {
   const a = b.dataset.helpanchor && $(b.dataset.helpanchor);   // Sprung zu einem Abschnitt im Reiter
   if (a) a.scrollIntoView({ block: 'start' });
 });
-function closeModals() { document.querySelectorAll('.modal').forEach(m => m.hidden = true); Sfx.preview(null); }
+function closeModals() {
+  // Fokus nicht im verborgenen Fenster lassen – sonst gingen die folgenden Spieltasten in ein unsichtbares Eingabefeld
+  const f = document.activeElement;
+  if (f && f.closest && f.closest('.modal')) f.blur();
+  document.querySelectorAll('.modal').forEach(m => m.hidden = true); Sfx.preview(null);
+}
 
 // ------------------------------------------------------------------ Aufgeben / vorzeitiger Sieg
 // Liegt das Kräfteverhältnis 5 Runden in Folge unter der Schwelle (bzw. über 100 % minus Schwelle), bietet das
@@ -2967,9 +2972,12 @@ document.addEventListener('keydown', e => {
   }
   if (autoEndAt) { if (e.key === 'Enter') { e.preventDefault(); endHumanTurn(); } else cancelAutoEnd(); return; }
   if (enemyPlaybackRunning() && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); skipAnim(); return; }
+  const modalOpen = [...document.querySelectorAll('.modal')].some(m => !m.hidden);
+  // Esc schließt ein Fenster auch, wenn darin ein Eingabefeld, Häkchen, Regler oder eine Auswahl den Fokus hat (Spielstände:
+  // Namensfeld). Nur ein Suchfeld mit Text leert Esc zuerst – wie gewohnt –, das nächste Esc schließt.
+  if (modalOpen && e.key === 'Escape' && !(e.target.type === 'search' && e.target.value)) { closeModals(); return; }
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  const modalOpen = [...document.querySelectorAll('.modal')].some(m => !m.hidden);
   if (modalOpen && tlv.modal && !tlv.modal.hidden) {   // Zeitraffer: Leertaste spielt/hält an, Pfeile gehen eine Runde vor/zurück
     if (e.key === ' ') { e.preventDefault(); tlPlay(!tlv.play); return; }
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); tlPlay(false); tlSet(tlv.t + (e.key === 'ArrowRight' ? 1 : -1)); return; }
