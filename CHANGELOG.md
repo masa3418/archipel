@@ -3,6 +3,32 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.7.3
+
+Eine Übersicht aller Grafiken – mit dem SVG-Code der Einheitensymbole.
+
+**Grafik-Übersicht**
+
+- Neu unter **☰ Menü → Einstellungen → Anzeige → Grafiken**, wie der Klangtest: alle Bilder und Animationen des Spiels in vier
+  Reitern – Einheiten in allen Farben samt den Zeichen an der Marke (Wache, Marsch, Ladung, beschädigt …), Städte und Gelände,
+  Markierungen auf der Karte und sieben Animationen, die sich mit Ton abspielen lassen (Bewegung, Angriff, Salve, Luftdeckung,
+  Eroberung …).
+- **SVG-Code:** Für jede Einheit lässt sich der Code des Abzeichens anzeigen, kopieren oder als Datei speichern – wahlweise das
+  Abzeichen wie im Spiel oder nur das Symbol. Ebenso für das App-Symbol und den Knopf „Zentrieren“.
+- Die Übersicht zeichnet mit denselben Bausteinen wie die Karte; ändert sich eine Grafik im Spiel, ändert sie sich dort mit.
+
+**Bedienung**
+
+- **Esc schließt jedes Fenster**, auch wenn darin gerade ein Eingabefeld, Häkchen oder Regler aktiv ist – vorher blieb zum Beispiel
+  „Spielstände“ offen, weil das Namensfeld den Cursor hat. Ein Suchfeld mit Text leert Esc zuerst.
+- Die Online-Fassung holt nach einem Update sofort die neuen Dateien; vorher konnte ein Browser bis zu zehn Minuten die alte
+  Fassung zeigen.
+
+*English:* a new graphics overview under ☰ Menu → Settings → Display → Graphics, like the sound test: all pictures and animations
+of the game – units in every colour with their marks, cities and terrain, map markers and seven animations you can play with
+sound. The SVG code of every unit badge (or just the symbol), of the app icon and of the “Centre” button can be shown, copied or
+saved. Esc now closes every window, even with an input field focused. The online version picks up updates immediately.
+
 ## 1.7.2
 
 Beispiel-Spielstände zum Ausprobieren und Anschauen.
