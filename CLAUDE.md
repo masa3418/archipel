@@ -35,6 +35,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Repository für GitHub Pages, gehören aber **nicht** in den Release: `pack.js` entfernt den Manifest-Verweis aus Einzeldatei und ZIP-Ordner,
   ui.js meldet `sw.js` nur bei https/localhost an (nicht über file://). Als App-Symbol dient `favicon.svg` – keine weiteren Bilddateien.
   Kommt eine neue Skriptdatei hinzu, auch in `CORE` von `sw.js` eintragen.
+  „Erst Netz“ fragt jedes Mal beim Server nach (`fromNet`: `cache: 'no-cache'`, Antwort 304 wenn unverändert) und gibt der Seite alles mit
+  `Cache-Control: no-cache` weiter (`askFirst`). Ohne das galten nach einem Update die 10 Minuten von GitHub Pages (`max-age=600`): erst im
+  HTTP-Zwischenspeicher, dann beim Neuladen im selben Tab im Arbeitsspeicher von Chrome, der den Service Worker gar nicht fragt – neue Seite,
+  alte Skripte. Geprüft mit einem Testserver, der GitHub Pages nachahmt (max-age, ETag/304, vorgetäuschtes Update, Anfrageprotokoll):
+  alt blieb die Versionsnummer stehen, neu sofort aktuell; ohne Netz startet die App weiter. `tools/serve.js` sendet `no-store`, zeigt das also nicht.
 - Alle Skripte teilen sich den globalen Namensraum. Reihenfolge in `index.html`:
   `data.js → map.js → game.js → ai.js → gfx.js → sfx.js → ui.js`.
 - Spielzustand liegt komplett in der globalen Variable `S`.
