@@ -87,6 +87,17 @@
     column-width: 175px; column-gap: 20px; width: 400px; padding: 8px 12px 6px; background: rgba(13, 17, 23, .88); border: 1px solid #3d4b5e;
     border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, .45); font-size: 12px; color: var(--text); pointer-events: none; }
   .keylegend[hidden] { display: none; }
+  /* Einstiegstipps: Karte oben links über der Karte (updateTips in ui.js) */
+  .tipbox { position: absolute; left: 10px; top: 36px; z-index: 3; width: 340px; max-width: calc(100% - 36px); background: rgba(18,24,33,.96);
+    border: 1px solid #3d6aa8; border-left: 4px solid var(--accent); border-radius: 8px; padding: 9px 12px 10px; font-size: 13px; line-height: 1.4;
+    box-shadow: 0 6px 20px rgba(0,0,0,.45); }
+  .tipbox[hidden] { display: none; }
+  .tipbox .tip-h { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: #9fc4ff; font-weight: 700; margin-bottom: 3px; }
+  .tipbox .tip-b { display: flex; gap: 8px; margin-top: 8px; }
+  .tipbox .tip-b button { margin: 0; padding: 3px 10px; font-size: 12.5px; }
+  .tipbox .tip-b button:not(.primary) { background: none; border-color: transparent; color: var(--muted); }
+  .tipbox .tip-b button:not(.primary):hover { color: var(--text); }
+  .tipbox kbd { font-size: 11px; padding: 0 4px; }
   .keylegend .kl-x { position: absolute; top: 3px; right: 4px; pointer-events: auto; background: none; border: 0; color: var(--muted);
     font-size: 15px; line-height: 1; padding: 2px 5px; cursor: pointer; }
   .keylegend .kl-x:hover { color: var(--text); }
@@ -557,6 +568,7 @@
     </div>
     <div id="mapWrap"><div id="mapPad"><canvas id="map"></canvas></div></div>
     <div id="keyLegend" class="keylegend" hidden></div>
+    <div id="tipBox" class="tipbox" hidden></div>
   </div>
   <aside>
     <canvas id="mini"></canvas>
@@ -1061,6 +1073,8 @@
     </section>
     <section class="set-sec">
       <h3 data-en="Game flow">Spielablauf</h3>
+      <label class="set-row chk"><input type="checkbox" id="tipsChk"><span class="set-l"><span data-en="Show tips for getting started">Tipps für den Einstieg anzeigen</span></span></label>
+      <p class="set-d" data-en="Seven short hints at the top left of the map lead through the first steps – from the first infantry to the first transport; more explain each kind of unit when you get your first, your first victory and loss and a few useful orders. Switching them on starts from the beginning.">Sieben kurze Hinweise oben links auf der Karte führen durch die ersten Schritte – von der ersten Infanterie bis zum ersten Transporter; weitere erklären jede Einheitenart, sobald du die erste bekommst, den ersten Sieg und Verlust und ein paar nützliche Befehle. Einschalten beginnt von vorn.</p>
       <label class="set-row chk"><input type="checkbox" id="autoEndChk"><span class="set-l"><span data-en="End the turn automatically when all units have moved">Runde automatisch beenden, wenn alle gezogen haben</span></span></label>
       <p class="set-d" data-en="A short countdown on the turn button; any click or key press stops it.">Ein kurzer Countdown am Rundenknopf; jeder Klick oder Tastendruck hält ihn an.</p>
       <label class="set-row"><span class="set-l"><span data-en="Offer early end below">Vorzeitiges Ende anbieten unter</span></span><select id="offerSel">

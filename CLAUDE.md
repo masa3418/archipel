@@ -237,6 +237,19 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Die Hinweiszeile `#hover` (Feld unter der Maus, Siegchance) steht über der Karte (`#infoBar` in `#mapCol`, so breit wie die Karte);
   während die Zeitleiste nach dem Rundenende läuft, liegt dort `#banner` darüber – erst „Gegner zieht …“, ab `anim.ownFrom`
   (eigene Märsche/Patrouillen der neuen Runde) „Deine Einheiten führen ihre Befehle aus …“ (`updateBanner`). Meldungen fürs Spielgeschehen gehören an diese eine Stelle.
+- **Einstiegstipps** (ui.js `TIPS`, `tipState`, `updateTips` in `refresh()`, Karte `#tipBox` oben links; Wunsch des Nutzers: Ein Erstspieler wusste
+  am Anfang nicht, was zu tun ist): sieben kurze Hinweise, ausgelöst vom Spielstand, jeder einmal – Start, Maus und Karte (ab Runde 2), Städte erobern,
+  Produktion (Städte bauen von selbst Infanterie – der Tipp sagt ausdrücklich, dass man nichts einstellen muss), Transporter
+  (erst wenn das eigene Land zu ≥ 90 % erkundet ist und keine bekannte fremde Stadt mehr über Land erreichbar), Zerstörer zum Erkunden, Feindkontakt.
+  Dazu je ein Tipp zur ersten eigenen Einheit jeder Art außer Infanterie (`UNIT_TIPS`, Kopf „Neue Einheit · …“, Zahlen aus den Spieldaten) –
+  ändert sich eine Einheitenregel, den Tipp mit anpassen. Und je einer nach dem ersten Sieg (`S.kills[0]`: Kampfablauf, Schaden, Reparatur in der
+  Stadt) und dem ersten Verlust (`S.lost[0]` oder gescheiterte Eroberung in `S.wasted[0]`: Siegchance vorher ansehen, Fehlschläge sind normal) sowie nach dem ersten abgestürzten Jäger (`S.wasted[0].ftr`: Treibstoff, rechtzeitig landen) und dem ersten versenkten beladenen
+  Transporter (`tips.sunk`: `updateTips` merkt sich die beladenen eigenen Transporter und sieht nach, ob einer fehlt; gilt zugleich als „erster Verlust“, `also`). Die erste eroberte Stadt deckt der Grundtipp `build` ab („Erste Stadt erobert!“), die erste
+  verlorene `citylost` (`tips.cityLost`, eigene Städte ebenso verfolgt), die erste einem Gegner abgenommene `foecity` (`tips.foeTaken`). Befehle kommen in der Lage, in der sie helfen: Heimkehr `home` (Jäger mit
+  knappem Treibstoff), Wache `sentry` (ab Runde 8 mit ≥ 4 Wartenden), Marschziel `rally` (ab 4 Städten), Produktionsansicht und Statistik `plan`
+  (ab 6 Städten). Patrouille bleibt bewusst im Handbuch. Mit jedem weiteren Tipp steigt die Gefahr, dass sie nur weggeklickt werden – sparsam bleiben. „Verstanden“ blendet aus, „Tipps ausschalten“ oder Einstellungen → Spielablauf (`tipsChk`) schaltet ab; Einschalten beginnt von vorn.
+  `archipel-tips-on` / `archipel-tips` (erledigte, über alle Partien). Vorgabe: an nur beim allerersten Besuch. Bewusst wenige und kurze Texte –
+  nicht zum Regelwerk ausbauen, dafür ist das Handbuch da. Probelauf (KI spielt, 4 Karten): Tipps kamen in sinnvoller Reihenfolge (R1, 4, 5–22, 22–57 …).
 - **Produktionsansicht** (ui.js): `prodView`, umgeschaltet mit `setProdView(on)` (Schalter in der Seitenleiste, Taste V).
   `render()` zeichnet dann nach dem Nebel nur `drawProdView()` (Symbol, Fortschrittsring, Restzeit je eigener Stadt) und
   bricht ab; Klicks öffnen `openProdDialog`, Einheitentasten sind gesperrt. Direkt unter dem Schalter steht die Tabelle `#prodStats`

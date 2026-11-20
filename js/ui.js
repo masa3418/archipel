@@ -1341,7 +1341,7 @@ function afterAction(u) {
   scheduleAutoEnd();
 }
 
-function refresh() { dirty = true; pathCache = null; rallyCache = null; hoverPath = null; renderMini(); updatePanel(); updateHeader(); updateKeyLegend(); queueSave(); }
+function refresh() { dirty = true; pathCache = null; rallyCache = null; hoverPath = null; renderMini(); updatePanel(); updateHeader(); updateKeyLegend(); updateTips(); queueSave(); }
 
 // Automatisch speichern nach jeder Änderung (refresh folgt auf jeden Zug, Angriff, Befehl): gebündelt kurz danach und beim Verlassen
 // der Seite. Ein Spielstand braucht unter 1 ms. So geht beim Neuladen oder Absturz nichts verloren – und ein verlorener Kampf lässt sich
@@ -2850,6 +2850,7 @@ function startNew(size, diffKey, worldKey, seed = null, nAi = 0) {   // seed: Ka
 }
 
 function afterLoad() {
+  tips.game = null;   // geladener Stand: Transporter neu erfassen, sonst gälte ein fehlender als versenkt
   if (!S.gameId) S.gameId = 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);   // ältere Partie: ab jetzt gruppierbar
   landCheck = true;
   prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
@@ -3322,6 +3323,171 @@ $('keysChk').checked = showKeys;
 $('keysChk').onchange = e => setShowKeys(e.target.checked);
 $('routeChk').checked = showRoute;
 $('routeChk').onchange = e => { showRoute = e.target.checked; try { localStorage.setItem('archipel-route', showRoute ? '1' : '0'); } catch (err) {} dirty = true; };
+
+// ------------------------------------------------------------------ Einstiegstipps
+// Kleine Hinweise für die ersten Runden (Wunsch des Nutzers: Ein Erstspieler wusste am Anfang nicht, was zu tun ist). Je Tipp eine
+// Karte oben links über der Karte, ausgelöst vom Spielstand (when), jeder nur einmal – „Verstanden“ blendet ihn aus, der nächste kommt,
+// sobald seine Bedingung zutrifft. Bewusst wenige und kurze: nur die Schritte, um ins Spiel zu kommen. Abschaltbar (Karte und
+// Einstellungen → Spielablauf); Einschalten beginnt von vorn. Gemerkt in archipel-tips-on / archipel-tips (erledigte Tipps, über alle
+// Partien). Vorgabe: an beim allerersten Besuch, sonst aus (wer das Spiel kennt, bekommt nichts Neues eingeblendet).
+const tips = { on: false, done: new Set(), cur: null, cache: null };
+try {
+  const v = localStorage.getItem('archipel-tips-on');
+  if (v === null && !welcomeSeen()) { tips.on = true; localStorage.setItem('archipel-tips-on', '1'); }
+  else tips.on = v === '1';
+  tips.done = new Set(JSON.parse(localStorage.getItem('archipel-tips') || '[]'));
+} catch (e) {}
+// Lage für die Bedingungen – nur neu berechnet, wenn sich Runde, Städte oder bekannte Städte ändern (Wegsuche)
+function tipState() {
+  const P = S.players[0], mine = S.cities.filter(c => c.owner === 0);
+  const known = S.cities.filter(c => c.owner !== 0 && P.seen[idx(c.x, c.y)]);
+  const key = S.gameId + '|' + S.turn + '|' + mine.length + '|' + known.length;
+  if (tips.cache && tips.cache.key === key) return tips.cache;
+  // Gibt es eine bekannte fremde Stadt, die Bodentruppen von einer eigenen Stadt aus über Land erreichen?
+  let byLand = false;
+  for (const c of mine.slice(0, 6)) {
+    const probe = { id: -1, type: 'inf', owner: 0, x: c.x, y: c.y, carrier: null, fuel: 0 };
+    if (known.some(k => cheb(k.x, k.y, c.x, c.y) <= 14 && (p => p && p.length)(findPath(probe, k.x, k.y, false, 'all')))) { byLand = true; break; }
+  }
+  // Ist das eigene Land erkundet? Anteil der gesehenen Felder der Landmasse(n) unter den eigenen Städten. Erst dann heißt „keine Stadt
+  // mehr über Land“ wirklich „die Insel gehört dir“ – sonst käme der Transporter-Tipp schon, bevor man die Nachbarstadt entdeckt hat.
+  const mark = new Uint8Array(S.W * S.H), q = [];
+  for (const c of mine) { const i = idx(c.x, c.y); if (!mark[i]) { mark[i] = 1; q.push(i); } }
+  let all = 0, seenN = 0;
+  for (let h = 0; h < q.length; h++) {
+    const i = q[h], x = i % S.W, y = (i / S.W) | 0;
+    all++; if (P.seen[i]) seenN++;
+    for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy, j = ny * S.W + nx; if (inb(nx, ny) && S.terrain[j] === 1 && !mark[j]) { mark[j] = 1; q.push(j); } }
+  }
+  const explored = all > 0 && seenN / all >= 0.9;
+  return (tips.cache = { key, cities: mine.length, port: mine.some(c => c.coastal), byLand, explored,
+    neutral: known.some(k => P.knownOwner[k.id] === -1), foe: known.some(k => P.knownOwner[k.id] > 0) });
+}
+const TIPS = [
+  { id: 'start', when: s => S.turn <= 5 && s.cities <= 1,
+    text: tt('<b>So geht es los:</b> Deine Infanterie ist schon gewählt (gelber Ring). Ein Klick auf ein Nachbarfeld bewegt sie – oder drück <kbd>R</kbd>, dann erkundet sie von selbst. Hat alles gezogen: <b>Runde beenden</b> (<kbd>Enter</kbd>). Deine Stadt baut derweil die nächste Infanterie.',
+      '<b>Getting started:</b> your infantry is already selected (yellow ring). Click an adjacent tile to move it – or press <kbd>R</kbd> and it explores on its own. When everything has moved: <b>End turn</b> (<kbd>Enter</kbd>). Meanwhile your city builds the next infantry.') },
+  { id: 'mouse', when: () => S.turn >= 2,
+    text: tt('<b>Maus und Karte:</b> <b>Linksklick</b> wählt eine Einheit oder Stadt aus und schickt die gewählte Einheit auf ein Feld. <b>Rechtsklick</b> auf eine eigene Einheit oder Stadt öffnet ihre Befehle, ins Leere hebt er die Auswahl auf. Karte verschieben: Maustaste gedrückt halten und ziehen. Das Mausrad zoomt.',
+      '<b>Mouse and map:</b> a <b>left click</b> selects a unit or city and sends the selected unit to a tile. A <b>right click</b> on one of your units or cities opens its orders; on empty ground it clears the selection. To move the map, hold a mouse button and drag. The wheel zooms.') },
+  { id: 'capture', when: s => s.neutral && s.byLand && s.cities <= 2,
+    text: tt('<b>Städte erobern:</b> Zieh eine Infanterie auf eine graue, neutrale Stadt. Das gelingt in der Hälfte der Fälle; die Infanterie geht dabei in der Stadt auf oder ist verloren. Darum braucht es Nachschub – schick jede neue Infanterie los.',
+      '<b>Capturing cities:</b> move an infantry onto a grey, neutral city. It works half of the time; the infantry merges into the city or is lost. So you need a steady supply – send every new infantry out.') },
+  { id: 'build', when: s => s.cities >= 2,
+    text: tt('<b>Erste Stadt erobert!</b> Die Infanterie ist in der Stadt aufgegangen; die Stadt steht jetzt leer und baut von selbst Infanterie – du musst nichts einstellen. Für den Anfang ist das genau richtig, bis dir alle Städte deiner Insel gehören. Umstellen kannst du es jederzeit: Stadt anklicken und rechts die Produktion wählen.',
+      '<b>First city captured!</b> The infantry has merged into the city; the city now stands empty and builds infantry by itself – you do not have to set anything. That is just right to begin with, until every city on your island is yours. You can change it at any time: click the city and choose the production on the right.') },
+  { id: 'transport', when: s => s.cities >= 2 && !s.byLand && s.explored && s.port,
+    text: tt('<b>Runter von der Insel:</b> Über Land ist nichts mehr zu holen. Stell eine Hafenstadt auf <b>Transporter</b> um – er trägt 6 Bodentruppen übers Meer. Im Hafen laden: <kbd>L</kbd>. An fremder Küste ausladen oder eine Stadt stürmen: <kbd>U</kbd>.',
+      '<b>Off the island:</b> there is nothing left to take by land. Switch a port city to <b>transports</b> – one carries 6 land units across the sea. Load in port: <kbd>L</kbd>. Unload on a foreign coast or storm a city: <kbd>U</kbd>.') },
+  { id: 'scout', when: s => s.cities >= 2 && !s.byLand && s.explored && s.port,
+    text: tt('<b>Die Welt erkunden:</b> Bau auch einen <b>Zerstörer</b> und schick ihn mit <kbd>R</kbd> auf Erkundung. Er findet neue Inseln und den Gegner – und schützt später deine Transporter.',
+      '<b>Exploring the world:</b> build a <b>destroyer</b> too and send it exploring with <kbd>R</kbd>. It finds new islands and the enemy – and later protects your transports.') },
+  { id: 'enemy', when: s => s.foe || S.units.some(u => u.owner !== 0 && u.carrier == null && canSee(0, u)),
+    text: tt('<b>Feindkontakt:</b> Wähl eine Einheit und zeig auf den Gegner – über dem Feld steht deine Siegchance. Wer wen schlägt und alles Weitere steht im <b>Handbuch</b> (<kbd>H</kbd>). Viel Erfolg!',
+      '<b>Enemy contact:</b> select a unit and point at the enemy – your odds of winning appear above the tile. Who beats whom and everything else is in the <b>handbook</b> (<kbd>H</kbd>). Good luck!') },
+];
+
+// Dazu je ein Tipp zur ersten eigenen Einheit jeder Art (Wunsch des Nutzers) – was sie kann und worauf man achten muss, in zwei, drei
+// Sätzen. Zahlen kommen aus den Spieldaten. Die Infanterie erklären schon die Tipps oben.
+const TIP_BASE = TIPS.length;
+const pctTip = v => Math.round(v * 100) + ' %';
+const UNIT_TIPS = {
+  tank: tt(`Der <b>Panzer</b> zieht ${UT.tank.move} Felder pro Runde und hält ${UT.tank.hp} Treffer aus. Er erobert Städte wie die Infanterie und geht dabei ebenfalls in der Stadt auf – zum Erobern ist die billigere Infanterie meist die bessere Wahl, der Panzer räumt ihr den Weg frei.`,
+    `The <b>tank</b> moves ${UT.tank.move} tiles per turn and takes ${UT.tank.hp} hits. It captures cities like infantry and also merges into the city – for capturing, the cheaper infantry is usually the better choice; the tank clears the way for it.`),
+  ftr: tt(`Der <b>Jäger</b> fliegt ${UT.ftr.move} Felder pro Runde, hat aber nur Treibstoff für ${UT.ftr.fuel}. Er muss rechtzeitig in einer eigenen Stadt oder auf einem Träger landen, sonst stürzt er ab – die Wegvorschau warnt, wenn der Rückweg nicht reicht. Ideal zum Erkunden.`,
+    `The <b>fighter</b> flies ${UT.ftr.move} tiles per turn but only has fuel for ${UT.ftr.fuel}. It must land in one of your cities or on a carrier in time, or it crashes – the route preview warns when the way back is too far. Ideal for scouting.`),
+  trn: tt(`Der <b>Transporter</b> trägt ${UT.trn.capacity} Bodentruppen. Im Hafen: <kbd>L</kbd> lädt, bis er voll ist. Neben fremder Küste: <kbd>U</kbd> lädt aus oder stürmt eine Stadt direkt vom Schiff. Er kann sich nicht wehren – gib ihm ein Kriegsschiff als Schutz mit. Mehr im Handbuch unter „Transporter“.`,
+    `The <b>transport</b> carries ${UT.trn.capacity} land units. In port: <kbd>L</kbd> loads until it is full. Next to a foreign coast: <kbd>U</kbd> unloads or storms a city straight from the ship. It cannot defend itself – give it a warship as an escort. More in the handbook under “Transports”.`),
+  dst: tt('Der <b>Zerstörer</b> ist schnell und günstig: der beste Erkunder zur See (<kbd>R</kbd>) und Geleitschutz für Transporter. Er ortet getauchte U-Boote und jagt sie. Auf Land und in Städte schießt er nicht.',
+    'The <b>destroyer</b> is fast and cheap: the best scout at sea (<kbd>R</kbd>) and an escort for transports. It locates submerged submarines and hunts them. It does not fire at land or into cities.'),
+  sub: tt('Das <b>U-Boot</b> ist getaucht unsichtbar, bis ein Gegner direkt daneben steht. Es greift nur Schiffe an – gefährlich für Transporter und große Schiffe, schwach gegen Zerstörer. Nach einem Angriff bleibt es bis zu deiner nächsten Runde aufgetaucht und für alle sichtbar.',
+    'The <b>submarine</b> is invisible while submerged until an enemy is right next to it. It only attacks ships – dangerous for transports and big ships, weak against destroyers. After an attack it stays surfaced and visible to all until your next turn.'),
+  crs: tt('Der <b>Kreuzer</b> ist robust und vielseitig – das Rückgrat der Flotte. Als eines von zwei Schiffen kann er auch Einheiten an Land und in Städten auf dem Nachbarfeld beschießen. Vor U-Booten braucht er einen Zerstörer als Schutz.',
+    'The <b>cruiser</b> is sturdy and versatile – the backbone of the fleet. It is one of two ships that can also fire at units on land and in cities on an adjacent tile. Against submarines it needs a destroyer for protection.'),
+  car: tt(`Der <b>Träger</b> greift nie selbst an. Er sieht ${UT.car.vision} Felder weit, und Jäger können auf ihm landen und tanken. Mit einem Jäger an Bord gibt er sich und den eigenen Schiffen nebenan Luftdeckung gegen feindliche Jäger.`,
+    `The <b>carrier</b> never attacks by itself. It sees ${UT.car.vision} tiles, and fighters can land and refuel on it. With a fighter on board it gives itself and your ships next to it air cover against enemy fighters.`),
+  bat: tt(`Das <b>Schlachtschiff</b> ist das stärkste Schiff. Liegt es neben einer fremden Stadt, erobern deine Truppen sie zu ${pctTip(CAPTURE_BASE + SUPPORT_CAPTURE)} statt ${pctTip(CAPTURE_BASE)}; eine eigene Stadt daneben fällt nur noch zu ${pctTip(CAPTURE_BASE - SUPPORT_CAPTURE)}. Vor U-Booten braucht es Zerstörer als Schutz.`,
+    `The <b>battleship</b> is the strongest ship. When it lies next to a foreign city, your troops capture it at ${pctTip(CAPTURE_BASE + SUPPORT_CAPTURE)} instead of ${pctTip(CAPTURE_BASE)}; one of your own cities next to it only falls at ${pctTip(CAPTURE_BASE - SUPPORT_CAPTURE)}. Against submarines it needs destroyers for protection.`),
+};
+for (const k of UNIT_ORDER) if (UNIT_TIPS[k]) TIPS.push({ id: 'u-' + k, unit: k, when: () => S.units.some(u => u.owner === 0 && u.type === k), text: UNIT_TIPS[k] });
+// … und je einer zum ersten Kampfergebnis (Wunsch des Nutzers): nach dem ersten Sieg und nach dem ersten Verlust
+const tipSum = (o, keys) => !o ? 0 : (keys || Object.keys(o)).reduce((n, k) => n + (o[k] || 0), 0);
+TIPS.push({ id: 'won', head: tt('Erster Sieg', 'First victory'), when: () => tipSum(S.kills && S.kills[0]) > 0,
+  text: tt('Im Kampf trifft in jeder Runde eine Seite zufällig, bis eine keine Trefferpunkte mehr hat. Auch der Sieger kann dabei Schaden nehmen – der Balken unter der Marke zeigt ihn. In einer eigenen Stadt wird repariert: Schiffe einen Trefferpunkt je Runde, alle anderen sofort.',
+    'In combat one side hits at random each round until one has no hit points left. The winner can take damage too – the bar under the badge shows it. Units are repaired in one of your cities: ships one hit point per turn, all others at once.') });
+// Beladener Transporter versenkt (Wunsch des Nutzers). Das Spiel zählt nicht mit, ob ein Transporter beladen unterging – updateTips merkt
+// sich deshalb die eigenen beladenen Transporter und sieht nach, ob einer fehlt (tips.sunk). Der Tipp deckt den „ersten Verlust“ mit ab.
+TIPS.push({ id: 'sunk', head: tt('Transporter versenkt', 'Transport sunk'), also: ['lost'], when: () => tips.sunk,
+  text: tt('Mit dem Transporter geht die ganze Ladung unter – er kann sich nicht wehren. Gib ihm ein Kriegsschiff als Geleit mit und erkunde die Route vorher. Im eigenen Hafen ist er vor Zerstörern und U-Booten sicher. Verluste gehören dazu: Vor jedem eigenen Angriff zeigt die Karte deine Siegchance über dem Ziel.',
+    'When a transport goes down, its whole cargo goes with it – it cannot defend itself. Give it a warship as an escort and scout the route first. In your own port it is safe from destroyers and submarines. Losses are part of the game: before each of your attacks the map shows your odds above the target.') });
+// Erste verlorene Stadt (Wunsch des Nutzers) – wie beim Transporter verfolgt updateTips die eigenen Städte (tips.cityLost)
+TIPS.push({ id: 'citylost', head: tt('Stadt verloren', 'City lost'), when: () => tips.cityLost,
+  text: tt('Der Gegner hat eine deiner Städte erobert – Schiffe, die im Hafen liegen, gehen dabei mit unter. Seine Einheit ist dabei in der Stadt aufgegangen – die Stadt steht also leer und lässt sich zurückerobern. Am besten fängst du Landungen vorher ab: Transporter des Gegners versenken, bevor sie die Küste erreichen.',
+    'The enemy has captured one of your cities – ships lying in its port go down with it. His unit merged into the city – so the city stands empty and can be taken back. Best of all, stop landings beforehand: sink enemy transports before they reach the coast.') });
+// Erste Stadt, die man einem Gegner abnimmt (Wunsch des Nutzers; tips.foeTaken, Städte der Gegner ebenso verfolgt)
+TIPS.push({ id: 'foecity', head: tt('Stadt des Gegners erobert', 'Enemy city captured'), when: () => tips.foeTaken,
+  text: tt('Das trifft ihn doppelt: Du baust dort jetzt selbst, und ihm fehlt die Produktion. Hat ein Gegner keine Stadt mehr, scheidet er aus und alle seine Einheiten verschwinden. Rechne aber mit einem Gegenangriff – deine Einheit ist in der Stadt aufgegangen, sie steht leer.',
+    'That hurts him twice: you now build there yourself, and he loses the production. An opponent without any city is out, and all his units vanish. But expect a counter-attack – your unit merged into the city, so it stands empty.') });
+// Befehle, die man nicht von selbst findet – jeweils in der Lage, in der sie gerade helfen (Patrouille bleibt bewusst im Handbuch:
+// keine eindeutige Lage, und das komplizierteste Konzept)
+TIPS.push({ id: 'home', head: tt('Treibstoff wird knapp', 'Fuel is running low'),
+  when: () => S.units.some(u => u.owner === 0 && u.type === 'ftr' && u.carrier == null && !isBase(u) && u.fuel - Math.max(0, u.moves) < distHome(0, u.x, u.y) + UT.ftr.move),
+  text: tt('Ein Jäger muss bald zurück. Wähl ihn aus und drück <kbd>B</kbd> (Heimkehr): Er fliegt von selbst zur nächsten eigenen Stadt oder zum Träger und tankt dort. Rechts siehst du jederzeit „Treibstoff“ und „Nächste Basis“.',
+    'A fighter has to head back soon. Select it and press <kbd>B</kbd> (return home): it flies to your nearest city or carrier by itself and refuels there. On the right you can always see “Fuel” and “Nearest base”.') });
+TIPS.push({ id: 'sentry', head: tt('Viele Einheiten warten', 'Many units are waiting'), when: () => S.turn >= 8 && S.units.filter(needsOrders).length >= 4,
+  text: tt('Nicht jede Einheit braucht jede Runde einen Befehl. <kbd>S</kbd> stellt sie auf <b>Wache</b>: Sie ruht, bis du sie anklickst oder ein Feind auftaucht, und wird nicht mehr abgefragt. Die <kbd>Leertaste</kbd> überspringt eine Einheit nur für diese Runde.',
+    'Not every unit needs an order every turn. <kbd>S</kbd> puts it on <b>sentry</b>: it rests until you click it or an enemy shows up, and is no longer asked for orders. The <kbd>space bar</kbd> skips a unit for this turn only.') });
+TIPS.push({ id: 'rally', head: tt('Marschziel', 'Rally point'), when: s => s.cities >= 4,
+  text: tt('Mit mehreren Städten wird das Einsammeln mühsam. Gib einer Stadt ein <b>Marschziel</b>: Stadt anklicken, rechts „⚑ Marschziel setzen …“ und das Zielfeld anklicken. Jede dort fertige Einheit marschiert dann von selbst dorthin – etwa zum Hafen, in dem der Transporter lädt.',
+    'With several cities, gathering units gets tedious. Give a city a <b>rally point</b>: click the city, then “⚑ Set rally point …” on the right and click the target tile. Every unit finished there then marches to it by itself – for example to the port where the transport is loading.') });
+TIPS.push({ id: 'plan', head: tt('Den Überblick behalten', 'Keeping track'), when: s => s.cities >= 6,
+  text: tt('Was baut gerade wo? Die <b>Produktionsansicht</b> (<kbd>V</kbd>) zeigt auf der Karte, was jede Stadt baut und wie lange es noch dauert; ein Klick auf eine Stadt stellt um. Die <b>Statistik</b> (<kbd>I</kbd>) listet alle Städte und Einheiten in einer Tabelle – auch dort lässt sich die Produktion ändern.',
+    'What is being built where? The <b>production view</b> (<kbd>V</kbd>) shows on the map what each city builds and how long it still takes; a click on a city changes it. The <b>statistics</b> (<kbd>I</kbd>) list all cities and units in a table – production can be changed there as well.') });
+TIPS.push({ id: 'crash', head: tt('Jäger abgestürzt', 'Fighter crashed'), when: () => tipSum(S.wasted && S.wasted[0], ['ftr']) > 0,
+  text: tt(`Der Treibstoff war aufgebraucht. Ein Jäger hat Treibstoff für ${UT.ftr.fuel} Felder und verbraucht ihn auch, wenn er in der Luft stehen bleibt. Er muss rechtzeitig in einer eigenen Stadt oder auf einem Träger landen. Rechts steht bei „Treibstoff“ und „Nächste Basis“, wie viel Luft noch ist; die Wegvorschau warnt mit „kein Rückweg!“.`,
+    `It ran out of fuel. A fighter has fuel for ${UT.ftr.fuel} tiles and also burns it while staying in the air – so it has to land in one of your cities or on a carrier in time. On the right, “Fuel” and “Nearest base” show how much margin is left; the route preview warns with “no way back!”.`) });
+TIPS.push({ id: 'lost', head: tt('Erster Verlust', 'First loss'), when: () => tipSum(S.lost && S.lost[0]) + tipSum(S.wasted && S.wasted[0], ['inf', 'tank']) > 0,
+  text: tt(`Das gehört dazu: Kämpfe und Eroberungen sind Glückssache mit bekannten Chancen. Wähl vor einem Angriff die Einheit und zeig auf das Ziel – über dem Feld steht deine Siegchance. Eine Stadt fällt nur zu ${pctTip(CAPTURE_BASE)}; ein Fehlschlag ist normal, schick die nächste Einheit.`,
+    `That is part of it: battles and captures are a matter of luck with known odds. Before attacking, select the unit and point at the target – your odds of winning appear above the tile. A city only falls at ${pctTip(CAPTURE_BASE)}; a failure is normal, send the next unit.`) });
+function updateTips() {
+  const box = $('tipBox');
+  tips.cur = null;
+  if (S) {   // beladene eigene Transporter verfolgen: Fehlt einer beim nächsten Mal, ist er mit Ladung untergegangen
+    if (tips.game !== S.gameId) { tips.game = S.gameId; tips.loaded = new Set(); tips.sunk = false; tips.mine = new Set(); tips.cityLost = false; tips.foes = new Set(); tips.foeTaken = false; }
+    for (const id of tips.foes) if (S.cities[id] && S.cities[id].owner === 0) tips.foeTaken = true;
+    tips.foes = new Set(S.cities.filter(c => c.owner > 0).map(c => c.id));
+    for (const id of tips.mine) if (S.cities[id] && S.cities[id].owner !== 0) tips.cityLost = true;
+    tips.mine = new Set(S.cities.filter(c => c.owner === 0).map(c => c.id));
+    const ids = new Set(S.units.map(u => u.id));
+    for (const id of tips.loaded) if (!ids.has(id)) tips.sunk = true;
+    tips.loaded = new Set(S.units.filter(u => u.owner === 0 && u.type === 'trn' && cargoOf(u).length).map(u => u.id));
+  }
+  if (tips.on && S && !S.over) { const s = tipState(); tips.cur = TIPS.find(t => !tips.done.has(t.id) && t.when(s)) || null; }
+  box.hidden = !tips.cur;
+  if (!tips.cur || box.dataset.id === tips.cur.id) return;
+  box.dataset.id = tips.cur.id;
+  const n = TIPS.indexOf(tips.cur) + 1;
+  const head = tips.cur.head || (tips.cur.unit ? tt('Neue Einheit', 'New unit') + ' · ' + UT[tips.cur.unit].name : `${tt('Tipp', 'Tip')} ${n} / ${TIP_BASE}`);
+  box.innerHTML = `<div class="tip-h">${head}</div><div class="tip-t">${tips.cur.text}</div>`
+    + `<div class="tip-b"><button class="primary" data-tip="ok">${tt('Verstanden', 'Got it')}</button><button data-tip="off">${tt('Tipps ausschalten', 'Switch tips off')}</button></div>`;
+}
+function saveTips() { try { localStorage.setItem('archipel-tips-on', tips.on ? '1' : '0'); localStorage.setItem('archipel-tips', JSON.stringify([...tips.done])); } catch (e) {} }
+function setTips(on) {
+  tips.on = !!on;
+  if (tips.on) tips.done.clear();   // einschalten = von vorn
+  $('tipBox').dataset.id = '';
+  $('tipsChk').checked = tips.on;
+  saveTips(); updateTips();
+}
+$('tipBox').addEventListener('click', e => {
+  const b = e.target.closest('[data-tip]');
+  if (!b || !tips.cur) return;
+  if (b.dataset.tip === 'off') { setTips(false); toast(tt('Tipps aus – wieder einschalten unter ☰ Menü → Einstellungen → Spielablauf', 'Tips off – switch them on again under ☰ Menu → Settings → Game flow'), 3200); return; }
+  tips.done.add(tips.cur.id); for (const id of tips.cur.also || []) tips.done.add(id);
+  saveTips(); Sfx.play('tick'); updateTips();
+});
+$('tipsChk').checked = tips.on;
+$('tipsChk').onchange = e => setTips(e.target.checked);
 
 $('powerChk').checked = showPower;
 $('powerChk').onchange = e => {
