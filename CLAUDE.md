@@ -205,7 +205,15 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Auch auf dem Nachbarfeld steht der Grund, wenn die Einheit dort nichts tun kann (kein Zugmarker aus `moveHints`: Schiff neben Land, Bodentruppen
   neben Wasser) – mit Angriffs- oder Bordmarker bleibt es ein gültiges Ziel. Eigener Transporter/Träger mit freiem Platz in der Ferne:
   Linie plus „… · Umschalt + Klick: an Bord gehen“ – der einfache Klick wählt ihn weiter aus (ein Erstspieler fand den Weg an Bord nicht; zwei Klicks
-  wie bei der Stadt wären beim ständigen Umschalten zwischen Einheiten lästig). Die Vorschau rechnet mit Gelände und sichtbaren Gegnern, aber ohne eigene Einheiten (`findPath(…, false, true)`): Die ziehen weiter, der Marsch
+  wie bei der Stadt wären beim ständigen Umschalten zwischen Einheiten lästig). Vorschau und Klick sind deckungsgleich: Was als
+  unerreichbar gezeigt wird, lehnt auch der Klick mit demselben Grund ab (vorher fuhr ein Schiff bei Klick auf Land bis an die Küste); fremde
+  Städte und sichtbare Gegner sind gültige Marschziele. Steht auf dem Feld eine eigene Einheit, wählt der Klick sie aus; der Hinweis erscheint
+  trotzdem, wenn das Gelände selbst sperrt (`noGoReason`: Transporter zeigt auf Infanterie an Land, Infanterie auf vollen Transporter → „… ist voll“).
+  Eigene Einheit auf betretbarem Feld in der Ferne: Linie plus „… · Umschalt + Klick: hinmarschieren“. Die Vorschau unter der Maus ist abschaltbar
+  (`showRoute`, `archipel-route`, Einstellungen → Anzeige; Wunsch des Nutzers für erfahrene Spieler) – der festgehaltene Weg zur Stadt und die
+  Ablehnung beim Klick bleiben. Esc verwirft erst nur den festgehaltenen Weg; Umschalt + Klick auf eine eigene Stadt marschiert sofort. Getestet mit einer Matrix im Browser
+  (9 Einheitentypen × 15 Fernziele und × 11 Nachbarziele, je Vorschau gegen Klick-Ergebnis).
+  Die Vorschau rechnet mit Gelände und sichtbaren Gegnern, aber ohne eigene Einheiten (`findPath(…, false, true)`): Die ziehen weiter, der Marsch
   wartet oder weicht aus – sonst hieße es vor einer besetzten Brücke „kein Weg“. Wegsuche nur bei Feldwechsel (`hoverPath`, `refresh()` verwirft). Tastentabelle im Handbuch beachten.
 - **Rand um die Karte** (ui.js `pad`, `view`, `applyPad`; `#mapPad` in index.html): Um die Leinwand liegt ein leerer Streifen von einer halben
   Fensterbreite/-höhe, damit jedes Feld in die Bildmitte passt (ein Erstspieler war verwirrt: Start am Kartenrand lag am Bildrand, unten links
@@ -222,7 +230,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Kopfzeile und Menü**: Oben stehen nur Runde + Stufe (`updateHeader`), `☰ Menü`, Zoom, Zentrieren (Fadenkreuz/Taste F, `actFocus` → `focusOn`), Ton, Handbuch, Sprache. Seltenes liegt im
   Menü `#menu` (`openMenu`/`closeMenu`, ui.js): Neues Spiel, Spielstände, Statistik, Zeitraffer und „Einstellungen …“. Die Einstellungen stehen im
   eigenen Fenster `#mSettings` (`openSettings`), nach Abschnitten (Ton, Anzeige, Spielablauf, Steuerung, Schummeln), je Zeile ein erklärender Satz
-  (`.set-row` + `.set-d`): Lautstärke, Klangtest, Wiedergabe der Züge, Grafiken (Übersicht, siehe unten), Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Tastenlegende über
+  (`.set-row` + `.set-d`): Lautstärke, Klangtest, Wiedergabe der Züge, Wegvorschau beim Zeigen (`showRoute`), Grafiken (Übersicht, siehe unten), Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Tastenlegende über
   der Karte (`showKeys`, `archipel-keys`; beim ersten Besuch an, sonst aus; `updateKeyLegend` in `refresh()`, blendet ab, was gerade nicht geht – neue Tastenkürzel dort
   und in der Tastentabelle des Handbuchs eintragen), automatisches Rundenende, Schwelle fürs Angebot zum vorzeitigen Ende (`offerPct`, `archipel-offer`,
   0 = nie, Standard 10 %; `maybeOfferEnd`), Mausrad/Touchpad, Nebel aus. Neue Einstellungen dort einhängen, nicht ins Menü, in die Kopfzeile oder Seitenleiste.

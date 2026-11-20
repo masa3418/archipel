@@ -828,7 +828,7 @@ function render(now = performance.now()) {
       if (path && path.length) drawGotoPath(su.x, su.y, path, now);
     }
     drawSelRing(su.x, su.y, pulse);
-    const gp = gotoPreviewFor(su), hp = hoverRoute(su);
+    const gp = gotoPreviewFor(su), hp = showRoute ? hoverRoute(su) : null;
     if (hp && !(gp && gp.x === hp.x && gp.y === hp.y)) drawGotoConfirm(su, hp, false);
     if (gp) drawGotoConfirm(su, gp);
     // Sturm vom Schiff: Über jeder Stadt, die die Truppen des gewählten Transporters angreifen können, steht die Chance –
@@ -1561,8 +1561,14 @@ function onTileClick(x, y, shift) {
     if (adjacent) { gotoPreview = null; doMove(u, x, y); return; }
     // Entferntes Feld: Marschbefehl (den Weg zeigt die Karte schon beim Überfahren, siehe hoverRoute). Nur bei einer eigenen Stadt zeigt
     // der erste Klick erst die Stadt in der Seitenleiste, der zweite schickt die Einheit hinein – ansehen und hinschicken sind dort zweierlei.
+    // Was die Vorschau als unerreichbar zeigt, lehnt auch der Klick ab – mit demselben Grund. (Vorher fuhr ein Schiff bei einem Klick auf
+    // Land bis an die Küste und meldete dann „Marsch unterbrochen“.)
+    const h0 = hover; hover = [x, y];
+    const hv = hoverRoute(u); hover = h0;
+    if (hv && hv.none) { gotoPreview = null; toast(hv.none, 2600); Sfx.play('error'); refresh(); return; }
     const pv = gotoPreviewFor(u);
-    const path = ownCity && !(pv && pv.x === x && pv.y === y) ? findPath(u, x, y, false, true) : null;
+    // Umschalt + Klick heißt ausdrücklich „marschieren“ – dann ohne den Zwischenschritt
+    const path = ownCity && !shift && !(pv && pv.x === x && pv.y === y) ? findPath(u, x, y, false, true) : null;
     if (!path || !path.length) { gotoPreview = null; doGoto(u, x, y); return; }   // auch ohne Weg: die Meldung dazu kommt vom Marschbefehl
     gotoPreview = { id: u.id, ox: u.x, oy: u.y, x, y, path };
     selCity = city.id;
@@ -1581,6 +1587,10 @@ function onTileClick(x, y, shift) {
 // 2. Eigene Stadt (gotoPreview): Der erste Klick zeigt die Stadt in der Seitenleiste und hält den Weg fest, erst der zweite schickt los.
 //    Gilt nur, solange dieselbe Einheit gewählt ist und am selben Platz steht; Esc, Rechtsklick, andere Auswahl oder ein Klick
 //    woandershin verwerfen es. Züge aufs Nachbarfeld und Angriffe bleiben beim einfachen Klick.
+// Abschaltbar (Einstellungen → Anzeige, archipel-route; Wunsch des Nutzers: Erfahrene stört die Vorschau beim Überfahren). Aus = keine Linie
+// und keine Hinweise unter der Maus; der festgehaltene Weg zur eigenen Stadt und die Ablehnung unerreichbarer Ziele beim Klick bleiben.
+let showRoute = true;
+try { showRoute = localStorage.getItem('archipel-route') !== '0'; } catch (e) {}
 let hoverPath = null;   // { key, path } – Wegsuche nur, wenn sich Feld oder Einheit ändern; refresh() verwirft
 function hoverRoute(u) {
   if (!hover || patrolMode || rallyMode || u.owner !== 0) return null;
@@ -1592,8 +1602,10 @@ function hoverRoute(u) {
     // Nachbarfeld: keine Linie – aber der Grund, wenn die Einheit dort nichts tun kann (Schiff neben Land, Bodentruppen neben Wasser).
     // Gibt es dort einen Zugmarker (Angriff, an Bord gehen, Sturm vom Schiff), ist das Feld ein gültiges Ziel.
     if (!hoverPath || hoverPath.key !== key) {
+      // Das gilt auch, wenn dort eine eigene Einheit steht (der Klick wählt sie aus, hin kann die gewählte Einheit trotzdem nicht) –
+      // sonst fehlte der Hinweis z. B. beim Transporter neben der Infanterie, die er abholen soll.
       const dead = S.players[0].seen[idx(x, y)] && !canEnterTerrain(u, x, y) && !moveHints(u).some(h => h[0] === x && h[1] === y);
-      hoverPath = { key, path: null, none: !dead ? null : T(u).domain === 'land' ? tt('Bodentruppen kommen nicht übers Wasser – dafür braucht es einen Transporter', 'Land units cannot cross water – that takes a transport') : tt('Schiffe fahren nicht an Land', 'Ships cannot go on land') };
+      hoverPath = { key, path: null, none: dead ? noGoReason(u, x, y) : null };
     }
     return hoverPath.none ? { x, y, path: [], none: hoverPath.none } : null;
   }
@@ -1603,24 +1615,35 @@ function hoverRoute(u) {
     // Feld mit eigenen Einheiten (außer in eigener Stadt): Der Klick wählt dort aus, statt zu marschieren – keine Linie
     const sel2 = !(c && c.owner === 0) && topUnitsAt(x, y).some(o => o.owner === 0);
     // Die Wegsuche lässt jedes Zielfeld zu (Angriff, an Bord gehen) – ein erforschtes Feld, das die Einheit nicht betreten kann, ist kein Ziel
-    const blocked = S.players[0].seen[idx(x, y)] && !canEnterTerrain(u, x, y);
+    // Ausnahme: fremde Stadt oder sichtbarer Gegner – dorthin führt ein Marsch (er hält bei Feindkontakt davor an), also Linie zeigen
+    const foe = (c && S.players[0].knownOwner[c.id] !== 0) || topUnitsAt(x, y).some(e => e.owner !== 0 && canSee(0, e));
+    const blocked = !foe && S.players[0].seen[idx(x, y)] && !canEnterTerrain(u, x, y);
     // Eigene Einheiten zählen nicht als Hindernis: Sie ziehen weiter, und der Marsch wartet oder weicht aus (runGoto) – sonst hieße es vor
     // einer besetzten Brücke „kein Weg“, und Linie und Dauer sprängen mit jeder eigenen Einheit. Sichtbare Gegner versperren den Weg.
     // Eigener Transporter/Träger mit freiem Platz: Der einfache Klick wählt ihn aus – hinmarschieren und an Bord gehen geht mit
     // Umschalt + Klick. Die Vorschau zeigt den Weg und sagt das dazu (ein Erstspieler fand den Weg an Bord nicht).
     const board = sel2 && topUnitsAt(x, y).some(o => o.owner === 0 && T(o).carries === T(u).domain && cargoOf(o).length < T(o).capacity);
-    const path = board ? findPath(u, x, y, false, true) : sel2 || blocked ? null : findPath(u, x, y, false, true);
+    // Eigene Einheit auf einem Feld, das die gewählte betreten könnte: Der Klick wählt sie aus, Umschalt + Klick marschiert dorthin (bis das
+    // Ziel erreicht ist, ist die andere oft längst weg) – Linie und Hinweis dazu
+    const shiftGo = sel2 && !board && !blocked;
+    const path = board || shiftGo ? findPath(u, x, y, false, true) : sel2 || blocked ? null : findPath(u, x, y, false, true);
     // kein Weg: sagen, warum (Bodentruppen aufs Wasser, Schiff an Land) – nur für erforschte Felder, sonst verriete es das Gelände
+    // Steht dort eine eigene Einheit, wählt der Klick sie aus: dann nur ein Hinweis, wenn das Gelände selbst sperrt (Transporter zeigt auf
+    // die Infanterie an Land, Infanterie auf einen vollen Transporter) – nicht „kein Weg“ zu einem Feld, das man gar nicht ansteuert.
     let none = null;
-    if (!sel2 && !(path && path.length)) {
-      const known = S.players[0].seen[idx(x, y)], land = S.terrain[idx(x, y)] === 1, d = T(u).domain;
-      none = known && d === 'land' && !land ? tt('Bodentruppen kommen nicht übers Wasser – dafür braucht es einen Transporter', 'Land units cannot cross water – that takes a transport')
-        : known && d === 'sea' && land ? tt('Schiffe fahren nicht an Land', 'Ships cannot go on land')
-        : tt('Kein Weg dorthin', 'No way there');
-    }
-    hoverPath = { key, path, none, board };
+    if (!(path && path.length) && (sel2 ? blocked && !board : true)) none = noGoReason(u, x, y);
+    hoverPath = { key, path, none, board, shiftGo };
   }
-  return hoverPath.path && hoverPath.path.length ? { x, y, path: hoverPath.path, board: hoverPath.board } : hoverPath.none ? { x, y, path: [], none: hoverPath.none } : null;
+  return hoverPath.path && hoverPath.path.length ? { x, y, path: hoverPath.path, board: hoverPath.board, shiftGo: hoverPath.shiftGo } : hoverPath.none ? { x, y, path: [], none: hoverPath.none } : null;
+}
+// Warum die Einheit ein Feld nicht ansteuern kann – Gelände nur für erforschte Felder, sonst verriete der Grund, was dort liegt
+function noGoReason(u, x, y) {
+  const known = S.players[0].seen[idx(x, y)], land = S.terrain[idx(x, y)] === 1, d = T(u).domain;
+  const full = topUnitsAt(x, y).find(o => o.owner === 0 && T(o).carries === d);   // passender Transporter/Träger, aber kein Platz mehr
+  if (full) return tt(`${T(full).name} ist voll`, `${T(full).name} is full`);
+  return known && d === 'land' && !land ? tt('Bodentruppen kommen nicht übers Wasser – dafür braucht es einen Transporter', 'Land units cannot cross water – that takes a transport')
+    : known && d === 'sea' && land ? tt('Schiffe fahren nicht an Land', 'Ships cannot go on land')
+    : tt('Kein Weg dorthin', 'No way there');
 }
 let gotoPreview = null;
 function gotoPreviewFor(u) {
@@ -1654,7 +1677,7 @@ function drawGotoConfirm(u, p, pinned = true) {
   ctx.restore();
   const n = gotoTurns(u, p.path.length), turns = tt(`${n} ${n === 1 ? 'Runde' : 'Runden'}`, `${n} ${n === 1 ? 'turn' : 'turns'}`);
   const txt = fs === 'far' ? tt(`Treibstoff reicht nicht · ${p.path.length} Felder, Treibstoff für ${u.fuel}`, `Not enough fuel · ${p.path.length} tiles, fuel for ${u.fuel}`)
-    : (pinned ? turns + tt(' · noch einmal klicken', ' · click again') : turns) + (p.board ? tt(' · Umschalt + Klick: an Bord gehen', ' · Shift + click: go aboard') : '')
+    : (pinned ? turns + tt(' · noch einmal klicken', ' · click again') : turns) + (p.board ? tt(' · Umschalt + Klick: an Bord gehen', ' · Shift + click: go aboard') : p.shiftGo ? tt(' · Umschalt + Klick: hinmarschieren', ' · Shift + click: march there') : '')
       + (fs && !p.board ? tt(' · kein Rückweg!', ' · no way back!') : '');
   drawRoutePill(p, txt, col, fs === 'far' ? '#ffd2cd' : fs ? '#ffe2a8' : '#fff');
 }
@@ -3172,7 +3195,9 @@ document.addEventListener('keydown', e => {
     case 'l': actLoad(); break;
     case 'u': actUnload(); break;
     case 'Enter': e.preventDefault(); endHumanTurn(); break;
-    case 'Escape': sel = null; selCity = null; refresh(); break;
+    case 'Escape':
+      if (gotoPreview) { gotoPreview = null; refresh(); break; }   // erst nur den festgehaltenen Weg verwerfen, die Einheit bleibt gewählt
+      sel = null; selCity = null; refresh(); break;
     case '+': setZoom(TS + 4); break;
     case '-': setZoom(TS - 4); break;
     case 'h': case '?': openHelp(); break;
@@ -3295,6 +3320,8 @@ function updateKeyLegend() {
 }
 $('keysChk').checked = showKeys;
 $('keysChk').onchange = e => setShowKeys(e.target.checked);
+$('routeChk').checked = showRoute;
+$('routeChk').onchange = e => { showRoute = e.target.checked; try { localStorage.setItem('archipel-route', showRoute ? '1' : '0'); } catch (err) {} dirty = true; };
 
 $('powerChk').checked = showPower;
 $('powerChk').onchange = e => {
