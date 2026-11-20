@@ -1606,7 +1606,10 @@ function hoverRoute(u) {
     const blocked = S.players[0].seen[idx(x, y)] && !canEnterTerrain(u, x, y);
     // Eigene Einheiten zählen nicht als Hindernis: Sie ziehen weiter, und der Marsch wartet oder weicht aus (runGoto) – sonst hieße es vor
     // einer besetzten Brücke „kein Weg“, und Linie und Dauer sprängen mit jeder eigenen Einheit. Sichtbare Gegner versperren den Weg.
-    const path = sel2 || blocked ? null : findPath(u, x, y, false, true);
+    // Eigener Transporter/Träger mit freiem Platz: Der einfache Klick wählt ihn aus – hinmarschieren und an Bord gehen geht mit
+    // Umschalt + Klick. Die Vorschau zeigt den Weg und sagt das dazu (ein Erstspieler fand den Weg an Bord nicht).
+    const board = sel2 && topUnitsAt(x, y).some(o => o.owner === 0 && T(o).carries === T(u).domain && cargoOf(o).length < T(o).capacity);
+    const path = board ? findPath(u, x, y, false, true) : sel2 || blocked ? null : findPath(u, x, y, false, true);
     // kein Weg: sagen, warum (Bodentruppen aufs Wasser, Schiff an Land) – nur für erforschte Felder, sonst verriete es das Gelände
     let none = null;
     if (!sel2 && !(path && path.length)) {
@@ -1615,9 +1618,9 @@ function hoverRoute(u) {
         : known && d === 'sea' && land ? tt('Schiffe fahren nicht an Land', 'Ships cannot go on land')
         : tt('Kein Weg dorthin', 'No way there');
     }
-    hoverPath = { key, path, none };
+    hoverPath = { key, path, none, board };
   }
-  return hoverPath.path && hoverPath.path.length ? { x, y, path: hoverPath.path } : hoverPath.none ? { x, y, path: [], none: hoverPath.none } : null;
+  return hoverPath.path && hoverPath.path.length ? { x, y, path: hoverPath.path, board: hoverPath.board } : hoverPath.none ? { x, y, path: [], none: hoverPath.none } : null;
 }
 let gotoPreview = null;
 function gotoPreviewFor(u) {
@@ -1651,7 +1654,8 @@ function drawGotoConfirm(u, p, pinned = true) {
   ctx.restore();
   const n = gotoTurns(u, p.path.length), turns = tt(`${n} ${n === 1 ? 'Runde' : 'Runden'}`, `${n} ${n === 1 ? 'turn' : 'turns'}`);
   const txt = fs === 'far' ? tt(`Treibstoff reicht nicht · ${p.path.length} Felder, Treibstoff für ${u.fuel}`, `Not enough fuel · ${p.path.length} tiles, fuel for ${u.fuel}`)
-    : (pinned ? turns + tt(' · noch einmal klicken', ' · click again') : turns) + (fs ? tt(' · kein Rückweg!', ' · no way back!') : '');
+    : (pinned ? turns + tt(' · noch einmal klicken', ' · click again') : turns) + (p.board ? tt(' · Umschalt + Klick: an Bord gehen', ' · Shift + click: go aboard') : '')
+      + (fs && !p.board ? tt(' · kein Rückweg!', ' · no way back!') : '');
   drawRoutePill(p, txt, col, fs === 'far' ? '#ffd2cd' : fs ? '#ffe2a8' : '#fff');
 }
 // Schild über dem Zielfeld der Wegvorschau

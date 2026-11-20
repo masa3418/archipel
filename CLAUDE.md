@@ -203,7 +203,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   („Bodentruppen kommen nicht übers Wasser …“, „Schiffe fahren nicht an Land“, sonst „Kein Weg dorthin“). Achtung: `findPath` lässt jedes Zielfeld zu
   (Angriff, an Bord gehen) – ob die Einheit das Feld betreten kann, prüft `hoverRoute` mit `canEnterTerrain`, nur für erforschte Felder.
   Auch auf dem Nachbarfeld steht der Grund, wenn die Einheit dort nichts tun kann (kein Zugmarker aus `moveHints`: Schiff neben Land, Bodentruppen
-  neben Wasser) – mit Angriffs- oder Bordmarker bleibt es ein gültiges Ziel. Die Vorschau rechnet mit Gelände und sichtbaren Gegnern, aber ohne eigene Einheiten (`findPath(…, false, true)`): Die ziehen weiter, der Marsch
+  neben Wasser) – mit Angriffs- oder Bordmarker bleibt es ein gültiges Ziel. Eigener Transporter/Träger mit freiem Platz in der Ferne:
+  Linie plus „… · Umschalt + Klick: an Bord gehen“ – der einfache Klick wählt ihn weiter aus (ein Erstspieler fand den Weg an Bord nicht; zwei Klicks
+  wie bei der Stadt wären beim ständigen Umschalten zwischen Einheiten lästig). Die Vorschau rechnet mit Gelände und sichtbaren Gegnern, aber ohne eigene Einheiten (`findPath(…, false, true)`): Die ziehen weiter, der Marsch
   wartet oder weicht aus – sonst hieße es vor einer besetzten Brücke „kein Weg“. Wegsuche nur bei Feldwechsel (`hoverPath`, `refresh()` verwirft). Tastentabelle im Handbuch beachten.
 - **Rand um die Karte** (ui.js `pad`, `view`, `applyPad`; `#mapPad` in index.html): Um die Leinwand liegt ein leerer Streifen von einer halben
   Fensterbreite/-höhe, damit jedes Feld in die Bildmitte passt (ein Erstspieler war verwirrt: Start am Kartenrand lag am Bildrand, unten links
