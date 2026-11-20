@@ -69,7 +69,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `tools/test.js` | Automatische Regeltests ohne Browser: `node tools/test.js` (nicht im Release) |
 | `tools/test-ui.js` | Oberflächentest im Browser: Wegvorschau gegen Klick, Klick-Abläufe, Einstiegstipps (nicht im Release) |
 | `manifest.webmanifest`, `sw.js` | Installierbare App für die Online-Fassung (nur GitHub Pages, nicht im Release) |
-| `.github/workflows/release.yml` | Legt bei einem Tag `vX.Y.Z` den Release mit der Offline-Fassung an |
+| `.github/workflows/release.yml` | Legt bei einem Tag `vX.Y.Z` den Release mit der Offline-Fassung an – erst nach bestandenen Regeltests |
+| `.github/workflows/tests.yml` | Lässt bei jedem Push auf `main` (und bei Pull Requests) Syntaxprüfung und `node tools/test.js` laufen |
 
 ## Wichtige Zusammenhänge (beim Ändern beachten)
 
@@ -326,6 +327,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
    - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 2 s, 265 Prüfungen) – 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
+   GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
+   (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
+   Pull Requests (Entscheidung mit dem Nutzer: für eine Person zu viel Zeremonie; neu überlegen, wenn andere beitragen).
    Neue Regel oder behobener Fehler → Test ergänzen. Ändert sich ein Wert absichtlich, den Test und die Zahl in dieser Datei mit anpassen.
    Gegenprobe beim Anlegen: verstellte Regel (`CAPTURE_BASE` 0,6) und abgeschaltete Hinweise (`noGoReason`) fielen auf (1 bzw. 32 Fehler).
    Dabei gefunden, kein Fehler: Lehnt der Generator eine Kartennummer ab (Festland: etwa zwei von drei, sonst selten), nimmt `newGame` die

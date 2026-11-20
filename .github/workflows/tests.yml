@@ -1,0 +1,24 @@
+# Lässt bei jedem Push auf main (und bei Pull Requests) die Regeltests laufen: Syntax aller Skripte und node tools/test.js.
+# Schlägt etwas fehl, steht ein rotes Kreuz am Commit und GitHub schickt eine Mail. Die Online-Fassung (GitHub Pages) wird
+# davon nicht aufgehalten – sie baut unabhängig aus main. Der Oberflächentest (tools/test-ui.js) braucht einen Browser und läuft lokal.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax prüfen
+        run: for f in js/*.js tools/*.js tools/video/*.js sw.js; do node --check "$f"; done
+
+      - name: Regeln testen
+        run: node tools/test.js

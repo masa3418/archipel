@@ -18,6 +18,10 @@ jobs:
       - name: Syntax prüfen
         run: for f in js/*.js tools/*.js; do node --check "$f"; done
 
+      # Sperre: kein Release, wenn eine Regel nicht mehr stimmt
+      - name: Regeln testen
+        run: node tools/test.js
+
       - name: Offline-Fassung bauen
         run: node tools/pack.js
 
