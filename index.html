@@ -101,7 +101,10 @@
   .keylegend .kl-pad kbd { margin: 0; padding: 0; text-align: center; }
   .keylegend .kl-pad i { display: block; width: 7px; height: 7px; margin: auto; border-radius: 50%; background: var(--accent); }
   #mapWrap { flex: 1; min-height: 0; overflow: auto; position: relative; background: #070a0f; }
-  #map { display: block; cursor: crosshair; image-rendering: auto; }
+  /* Karte mit leerem Rand ringsum, Maße setzt applyPad (ui.js). Der Bereich außerhalb ist schraffiert und die Karte gerahmt,
+     damit man ihn nicht mit unerforschtem Gebiet (fast schwarz) verwechselt. */
+  #mapPad { position: relative; background: repeating-linear-gradient(135deg, #141a23 0 10px, #10151c 10px 20px); }
+  #map { display: block; position: absolute; cursor: crosshair; image-rendering: auto; outline: 2px solid #4a5a70; box-shadow: 0 0 0 5px #0b0f15, 0 0 22px 6px rgba(0,0,0,.6); }
   aside { width: 320px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--line);
     display: flex; flex-direction: column; overflow: hidden; }
   #mini { display: block; margin: 10px auto 6px; border: 1px solid var(--line); cursor: pointer; background: #000; }
@@ -552,7 +555,7 @@
       <div id="hover">&nbsp;</div>
       <div id="banner" hidden data-en="Enemy is moving … <span>Click or press any key to skip</span>">Gegner zieht … <span>Klick oder beliebige Taste überspringt</span></div>
     </div>
-    <div id="mapWrap"><canvas id="map"></canvas></div>
+    <div id="mapWrap"><div id="mapPad"><canvas id="map"></canvas></div></div>
     <div id="keyLegend" class="keylegend" hidden></div>
   </div>
   <aside>

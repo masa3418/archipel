@@ -10,6 +10,24 @@ const cv = $('map');
 let ctx = cv.getContext('2d');
 const mini = $('mini'), mctx = mini.getContext('2d');
 const wrap = $('mapWrap');
+// Rand um die Karte: Rings um die Leinwand liegt ein leerer Streifen von einer halben Fensterbreite/-höhe (#mapPad), damit sich auch
+// Felder am Kartenrand in die Bildmitte holen lassen (Start am Rand lag sonst am Bildrand, unten links unter der Tastenlegende).
+// view.x / view.y = Kartenpixel an der linken oberen Ecke des Sichtfensters (darf negativ sein) – immer darüber rechnen,
+// nie direkt mit wrap.scrollLeft / scrollTop.
+const pad = { x: 0, y: 0 };
+const view = {
+  get x() { return wrap.scrollLeft - pad.x; }, set x(v) { wrap.scrollLeft = v + pad.x; },
+  get y() { return wrap.scrollTop - pad.y; }, set y(v) { wrap.scrollTop = v + pad.y; },
+};
+function applyPad() {
+  const x = view.x, y = view.y;   // Ausschnitt halten, wenn sich die Fenstergröße ändert
+  pad.x = Math.floor(wrap.clientWidth / 2); pad.y = Math.floor(wrap.clientHeight / 2);
+  const box = $('mapPad');
+  box.style.width = cv.width + pad.x * 2 + 'px'; box.style.height = cv.height + pad.y * 2 + 'px';
+  cv.style.left = pad.x + 'px'; cv.style.top = pad.y + 'px';
+  view.x = x; view.y = y;
+}
+window.addEventListener('resize', () => { if (S) { applyPad(); dirty = true; } });
 
 let TS = 28;            // Kachelgröße in Pixeln
 let sel = null;         // ausgewählte Einheit (id)
@@ -62,8 +80,8 @@ function animBegin(speed, follow = false) {
   // wenn die eigene Einheit in der Wiedergabe dort ankommt
   if (S) { anim.seen0 = S.players[0].seen.slice(); anim.vis0 = S.players[0].vis.slice(); }
   // gedachte Kameraposition während der Aufzeichnung (Kachelmitte des Sichtfensters)
-  anim.vcx = (wrap.scrollLeft + wrap.clientWidth / 2) / TS;
-  anim.vcy = (wrap.scrollTop + wrap.clientHeight / 2) / TS;
+  anim.vcx = (view.x + wrap.clientWidth / 2) / TS;
+  anim.vcy = (view.y + wrap.clientHeight / 2) / TS;
 }
 
 // ------------------------------------------------------------------ Kamera
@@ -73,8 +91,9 @@ const CAM_MS = 550;
 function viewHalf() { return [wrap.clientWidth / TS / 2, wrap.clientHeight / TS / 2]; }
 function clampCenter(cx, cy) {
   const [hw, hh] = viewHalf();
-  return [S.W <= hw * 2 ? S.W / 2 : Math.min(S.W - hw, Math.max(hw, cx)),
-          S.H <= hh * 2 ? S.H / 2 : Math.min(S.H - hh, Math.max(hh, cy))];
+  // Karte kleiner als das Fenster: in die Mitte; sonst darf jedes Feld in die Bildmitte (der Rand um die Karte macht es möglich)
+  return [S.W <= hw * 2 ? S.W / 2 : Math.min(S.W - 0.5, Math.max(0.5, cx)),
+          S.H <= hh * 2 ? S.H / 2 : Math.min(S.H - 0.5, Math.max(0.5, cy))];
 }
 function inVirtualView(x, y) {
   const [hw, hh] = viewHalf(), m = 2;
@@ -91,7 +110,7 @@ function recCam(x1, y1, x2 = x1, y2 = y1) {
 const cam = { active: false };
 function camTo(cx, cy, dur) {
   [cx, cy] = clampCenter(cx, cy);
-  cam.sx = wrap.scrollLeft; cam.sy = wrap.scrollTop;
+  cam.sx = view.x; cam.sy = view.y;
   cam.tx = cx * TS - wrap.clientWidth / 2; cam.ty = cy * TS - wrap.clientHeight / 2;
   cam.t0 = performance.now(); cam.dur = dur; cam.active = true;
 }
@@ -101,7 +120,7 @@ function pan(cx, cy, dur) {
   if (replay === 'off') {
     cam.active = false;
     [cx, cy] = clampCenter(cx, cy);
-    wrap.scrollLeft = cx * TS - wrap.clientWidth / 2; wrap.scrollTop = cy * TS - wrap.clientHeight / 2;
+    view.x = cx * TS - wrap.clientWidth / 2; view.y = cy * TS - wrap.clientHeight / 2;
     dirty = true;
     return;
   }
@@ -110,8 +129,8 @@ function pan(cx, cy, dur) {
 function camStep(now) {
   if (!cam.active) return;
   const f = Math.min(1, (now - cam.t0) / cam.dur), e = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2;
-  wrap.scrollLeft = cam.sx + (cam.tx - cam.sx) * e;
-  wrap.scrollTop = cam.sy + (cam.ty - cam.sy) * e;
+  view.x = cam.sx + (cam.tx - cam.sx) * e;
+  view.y = cam.sy + (cam.ty - cam.sy) * e;
   if (f >= 1) cam.active = false;
   dirty = true;
 }
@@ -1132,7 +1151,7 @@ function renderMini() {
   mctx.putImageData(img, 0, 0);
   // Sichtfenster
   mctx.strokeStyle = '#fff'; mctx.lineWidth = 1;
-  mctx.strokeRect(wrap.scrollLeft / TS * s + 0.5, wrap.scrollTop / TS * s + 0.5, wrap.clientWidth / TS * s, wrap.clientHeight / TS * s);
+  mctx.strokeRect(view.x / TS * s + 0.5, view.y / TS * s + 0.5, wrap.clientWidth / TS * s, wrap.clientHeight / TS * s);
 }
 
 // ------------------------------------------------------------------ Hilfen
@@ -1152,9 +1171,9 @@ function toast(msg, ms = 1800) {
 function centerOn(x, y, force = false) {
   const px = x * TS + TS / 2, py = y * TS + TS / 2;
   const m = TS * 3;
-  const vx = wrap.scrollLeft, vy = wrap.scrollTop, vw = wrap.clientWidth, vh = wrap.clientHeight;
+  const vx = view.x, vy = view.y, vw = wrap.clientWidth, vh = wrap.clientHeight;
   if (force || px < vx + m || px > vx + vw - m || py < vy + m || py > vy + vh - m) {
-    wrap.scrollLeft = px - vw / 2; wrap.scrollTop = py - vh / 2;
+    view.x = px - vw / 2; view.y = py - vh / 2;
   }
 }
 
@@ -1178,17 +1197,18 @@ function actFocus() {
 function setZoom(nts, ax = wrap.clientWidth / 2, ay = wrap.clientHeight / 2) {
   nts = Math.max(14, Math.min(48, nts));
   if (nts === TS) return;
-  const cx = (wrap.scrollLeft + ax) / TS, cy = (wrap.scrollTop + ay) / TS;
+  const cx = (view.x + ax) / TS, cy = (view.y + ay) / TS;
   TS = nts;
   resizeCanvas();
   cam.active = false;
-  wrap.scrollLeft = cx * TS - ax; wrap.scrollTop = cy * TS - ay;
+  view.x = cx * TS - ax; view.y = cy * TS - ay;
   try { localStorage.setItem('archipel-zoom', String(TS)); } catch (e) {}
   render();
 }
 
 function resizeCanvas() {
   cv.width = S.W * TS; cv.height = S.H * TS;
+  applyPad();
   buildTerrainCache();
 }
 
@@ -1207,8 +1227,8 @@ function select(u, center = true) {
 let pendingCenter = null;
 function inViewMargin(x, y, m = 3) {
   const px = x * TS + TS / 2, py = y * TS + TS / 2, mm = TS * m;
-  return px >= wrap.scrollLeft + mm && px <= wrap.scrollLeft + wrap.clientWidth - mm &&
-         py >= wrap.scrollTop + mm && py <= wrap.scrollTop + wrap.clientHeight - mm;
+  return px >= view.x + mm && px <= view.x + wrap.clientWidth - mm &&
+         py >= view.y + mm && py <= view.y + wrap.clientHeight - mm;
 }
 function pendingCenterStep(now) {
   if (!pendingCenter || now < pendingCenter.at) return;
@@ -1553,7 +1573,7 @@ function endHumanTurn() {
   Sfx.play('endTurn');
   const logMark = S.log[0];
   animBegin(ENEMY_STEP_MS, true);
-  const startScroll = [wrap.scrollLeft, wrap.scrollTop];
+  const startScroll = [view.x, view.y];
   endTurn(0);
   // Alle Computergegner nacheinander (jeder gegen jeden); ausgeschiedene überspringen
   for (let p = 1; p < nPlayers() && !S.over; p++) {
@@ -1603,7 +1623,7 @@ function endHumanTurn() {
   selectNext(!hasReplay);
   const su = selUnit(), home = su || S.cities.find(c => c.owner === 0);
   if (hasReplay) {
-    wrap.scrollLeft = startScroll[0]; wrap.scrollTop = startScroll[1];
+    view.x = startScroll[0]; view.y = startScroll[1];
   } else if (!su && home) centerOn(home.x, home.y);
   anim.after = () => {
     // Erkennung über Schlüsselwörter der Meldungen (game.js) – in beiden Sprachen
@@ -2850,21 +2870,21 @@ cv.addEventListener('mousedown', e => {
   if (e.button === 0) {
     // Linke Taste: Ein kurzer Klick wählt und zieht wie gewohnt; erst Halten und Ziehen verschiebt die Karte
     // (so lässt sich die Karte auch am Touchpad bewegen).
-    drag = { btn: 0, x: e.clientX, y: e.clientY, sl: wrap.scrollLeft, st: wrap.scrollTop, moved: false };
+    drag = { btn: 0, x: e.clientX, y: e.clientY, sl: view.x, st: view.y, moved: false };
     return;
   }
   e.preventDefault();                       // verhindert das Auto-Scrollen
   if (enemyPlaybackRunning()) skipAnim();
   cam.active = false;
-  drag = { btn: e.button, x: e.clientX, y: e.clientY, sl: wrap.scrollLeft, st: wrap.scrollTop, moved: false };
+  drag = { btn: e.button, x: e.clientX, y: e.clientY, sl: view.x, st: view.y, moved: false };
 });
 window.addEventListener('mousemove', e => {
   if (!drag) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (!drag.moved && Math.hypot(dx, dy) < (drag.btn === 0 ? DRAG_THRESHOLD_LEFT : DRAG_THRESHOLD)) return;
   if (!drag.moved) { drag.moved = true; cam.active = false; cv.style.cursor = 'grabbing'; }
-  wrap.scrollLeft = drag.sl - dx;
-  wrap.scrollTop = drag.st - dy;
+  view.x = drag.sl - dx;
+  view.y = drag.st - dy;
 });
 window.addEventListener('mouseup', e => {
   if (!drag || e.button !== drag.btn) return;
@@ -2910,7 +2930,7 @@ wrap.addEventListener('wheel', e => {
   showWheelInfo(e, pan, pinch);
   if (pan) {
     cam.active = false;
-    wrap.scrollLeft += e.deltaX; wrap.scrollTop += e.deltaY;
+    view.x += e.deltaX; view.y += e.deltaY;
     return;
   }
   const unit = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 400 : 1;
@@ -2934,7 +2954,7 @@ wrap.addEventListener('scroll', () => renderMini());
 mini.addEventListener('click', e => {
   const r = mini.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * S.W, y = (e.clientY - r.top) / r.height * S.H;
-  wrap.scrollLeft = x * TS - wrap.clientWidth / 2; wrap.scrollTop = y * TS - wrap.clientHeight / 2;
+  view.x = x * TS - wrap.clientWidth / 2; view.y = y * TS - wrap.clientHeight / 2;
 });
 
 $('panel').addEventListener('click', e => {
@@ -3012,7 +3032,7 @@ document.addEventListener('keydown', e => {
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (e.shiftKey && KEYDIR[k] && k.startsWith('Arrow')) {   // Umschalt + Pfeiltaste: Karte verschieben
     e.preventDefault(); cam.active = false;
-    wrap.scrollLeft += KEYDIR[k][0] * TS * 3; wrap.scrollTop += KEYDIR[k][1] * TS * 3;
+    view.x += KEYDIR[k][0] * TS * 3; view.y += KEYDIR[k][1] * TS * 3;
     return;
   }
   if (k === 'v') { setProdView(!prodView); return; }

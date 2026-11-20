@@ -193,6 +193,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Spoiler-Haken), das Abschlussfenster Spalten je Spieler. Kopfzeile: Punkte je Gegner (`.foes`, blass = ausgeschieden). Startplätze: zwei Spieler wie bisher (gleiche
   Kartennummer = gleiche Karte wie vor der Erweiterung), ab drei `pickStarts` (map.js: weit auseinander, möglichst auf verschiedenen
   Landmassen, ähnlich viele Städte im Umkreis).
+- **Rand um die Karte** (ui.js `pad`, `view`, `applyPad`; `#mapPad` in index.html): Um die Leinwand liegt ein leerer Streifen von einer halben
+  Fensterbreite/-höhe, damit jedes Feld in die Bildmitte passt (ein Erstspieler war verwirrt: Start am Kartenrand lag am Bildrand, unten links
+  unter der Tastenlegende). `view.x`/`view.y` = Kartenpixel an der linken oberen Ecke des Sichtfensters (auch negativ) – immer darüber rechnen,
+  nie mit `wrap.scrollLeft`/`scrollTop`; `clampCenter` begrenzt nur noch auf die Karte. Auch `tools/video/rec.js` rechnet mit `view`.
 - **Karte bewegen** (ui.js): Ziehen mit jeder Maustaste (links erst ab `DRAG_THRESHOLD_LEFT`, der Klick danach wird über
   `dragSwallow` verschluckt), Umschalt + Pfeiltasten, Klick auf die Übersichtskarte. Rad-Ereignisse: Mausrad zoomt,
   Touchpad-Wischen verschiebt (`looksLikeTouchpad`: kleine, krumme oder seitliche Schritte), Spreizgeste = Rad mit Strg = Zoom.

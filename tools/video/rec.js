@@ -34,12 +34,12 @@ window.Rec = (() => {
     // Kartenausschnitt fest auf 944×710 – unabhängig von der Fenstergröße (die Vorschau kann sie jederzeit ändern)
     if (wrap.clientWidth !== 944 || wrap.clientHeight !== 710) {
       // Mittelpunkt der Szene merken – nach dem Ändern der Größe wieder dorthin (sonst verrutscht der Ausschnitt)
-      const mx = (wrap.scrollLeft + wrap.clientWidth / 2) / TS, my = (wrap.scrollTop + wrap.clientHeight / 2) / TS;
+      const mx = (view.x + wrap.clientWidth / 2) / TS, my = (view.y + wrap.clientHeight / 2) / TS;
       Object.assign(wrap.style, { flex: 'none', width: '944px', height: '710px', minWidth: '944px', minHeight: '710px' });
       const sx = wrap.offsetWidth - wrap.clientWidth, sy = wrap.offsetHeight - wrap.clientHeight;   // Bildlaufleisten
       Object.assign(wrap.style, { width: 944 + sx + 'px', height: 710 + sy + 'px', minWidth: 944 + sx + 'px', minHeight: 710 + sy + 'px' });
       resizeCanvas();
-      wrap.scrollLeft = mx * TS - 472; wrap.scrollTop = my * TS - 355;
+      view.x = mx * TS - 472; view.y = my * TS - 355;
       refresh();
     }
     const W = wrap.clientWidth & ~1, H = wrap.clientHeight & ~1;
@@ -117,7 +117,7 @@ window.Rec = (() => {
     R.q.sort((a, b) => a[0] - b[0]);
     while (R.q.length && R.q[0][0] <= R.t) { const [, fn, a] = R.q.shift(); try { fn(...a); } catch (e) {} }
     dirty = true; loop(R.t);
-    V.octx.drawImage(cv, wrap.scrollLeft, wrap.scrollTop, V.W, V.H, 0, 0, V.W, V.H);
+    V.octx.drawImage(cv, view.x, view.y, V.W, V.H, 0, 0, V.W, V.H);
     drawCaption();
     // toDataURL statt toBlob: toBlob wird im Hintergrund auf ein Bild je Sekunde gedrosselt, toDataURL läuft sofort
     const bin = atob(V.off.toDataURL('image/png').split(',')[1]), arr = new Uint8Array(bin.length);
