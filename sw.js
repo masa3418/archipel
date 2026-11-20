@@ -35,6 +35,12 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
     .then(keys => Promise.all(keys.filter(k => k.startsWith('archipel-') && k !== CACHE).map(k => caches.delete(k))))
+    // Skripte, die es nicht mehr gibt, aus dem Zwischenspeicher nehmen (z. B. js/ui.js nach dem Aufteilen in ui-*.js)
+    .then(() => caches.open(CACHE))
+    .then(c => c.keys().then(reqs => Promise.all(reqs
+      .filter(r => { const p = new URL(r.url).pathname, i = p.lastIndexOf('/js/'); return i >= 0 && p.endsWith('.js') && !CORE.includes(p.slice(i + 1)); })
+      .map(r => c.delete(r)))))
+    .catch(() => {})
     .then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {

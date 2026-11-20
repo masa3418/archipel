@@ -34,7 +34,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Installierbare App nur online:** `manifest.webmanifest` und `sw.js` (Service Worker, „erst Netz, dann Zwischenspeicher“) liegen im
   Repository für GitHub Pages, gehören aber **nicht** in den Release: `pack.js` entfernt den Manifest-Verweis aus Einzeldatei und ZIP-Ordner,
   ui.js meldet `sw.js` nur bei https/localhost an (nicht über file://). Als App-Symbol dient `favicon.svg` – keine weiteren Bilddateien.
-  Kommt eine neue Skriptdatei hinzu, auch in `CORE` von `sw.js` eintragen.
+  Kommt eine neue Skriptdatei hinzu, auch in `CORE` von `sw.js` eintragen. Beim Aktivieren wirft der Service Worker zwischengespeicherte
+  `js/*.js` hinaus, die nicht mehr in `CORE` stehen (nach dem Aufteilen blieb sonst `js/ui.js` liegen).
   „Erst Netz“ fragt jedes Mal beim Server nach (`fromNet`: `cache: 'no-cache'`, Antwort 304 wenn unverändert) und gibt der Seite alles mit
   `Cache-Control: no-cache` weiter (`askFirst`). Ohne das galten nach einem Update die 10 Minuten von GitHub Pages (`max-age=600`): erst im
   HTTP-Zwischenspeicher, dann beim Neuladen im selben Tab im Arbeitsspeicher von Chrome, der den Service Worker gar nicht fragt – neue Seite,
