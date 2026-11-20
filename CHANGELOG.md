@@ -3,6 +3,46 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.7.4
+
+Leichterer Einstieg – nach dem Test mit einem Erstspieler.
+
+**Einstiegstipps**
+
+- Kurze Hinweise oben links über der Karte führen durch die ersten Runden: der erste Zug, Maus und Karte, Städte erobern, die erste
+  eigene Stadt, Transporter und Zerstörer, der erste Feindkontakt. Jeder Tipp erscheint einmal, sobald er zur Lage passt.
+- Weitere Tipps erklären jede Einheitenart, sobald du die erste bekommst, und besondere Momente: erster Sieg und Verlust, abgestürzter
+  Jäger, versenkter Transporter, verlorene Stadt, die erste Stadt des Gegners – dazu Heimkehr, Wache, Marschziel und
+  Produktionsansicht, wenn sie gerade helfen.
+- Eingeschaltet beim allerersten Besuch; abschaltbar auf der Karte oder unter **Einstellungen → Spielablauf** (Einschalten beginnt von vorn).
+
+**Wegvorschau**
+
+- Ist eine Einheit gewählt, zeigt die Karte zum Feld unter der Maus den **Weg und die Dauer in Runden** – oder warum die Einheit
+  nicht hinkommt („Schiffe fahren nicht an Land“, „Bodentruppen kommen nicht übers Wasser“, „Transporter ist voll“). Was die Vorschau
+  als unerreichbar zeigt, lehnt auch der Klick ab.
+- **Jäger:** orange „kein Rückweg!“, wenn der Treibstoff hin, aber nicht mehr zurück reicht; rot, wenn das Ziel außer Reichweite liegt.
+- **Eigene Stadt erst ansehen:** Der erste Klick auf eine entfernte eigene Stadt zeigt sie in der Seitenleiste, der zweite schickt die
+  Einheit hin. Vorher marschierte die gewählte Einheit sofort los, wenn man die Stadt nur ansehen wollte.
+- Hinweise auf **Umschalt + Klick**: zu einem entfernten Transporter oder Träger marschieren und an Bord gehen, oder auf das Feld
+  einer eigenen Einheit marschieren.
+- Abschaltbar unter **Einstellungen → Anzeige**.
+
+**Karte und Regeln**
+
+- **Rand um die Karte:** Jedes Feld lässt sich in die Bildmitte holen. Der Startplatz liegt jetzt immer mittig – auch in einer
+  Kartenecke, wo er vorher am Bildrand und teils unter der Tastenlegende lag. Die Karte ist gerahmt, der Bereich außerhalb schraffiert.
+- **Jäger auf dem Marsch:** In den Runden nach dem Befehl hält ein Jäger an, bevor der Treibstoff für den Rückweg nicht mehr reicht,
+  statt von selbst in den Absturz zu fliegen. In der Runde des Befehls fliegt er wie befohlen.
+- Esc verwirft zuerst nur einen festgehaltenen Weg; die Einheit bleibt gewählt.
+
+*English:* an easier start, after watching a first-time player. Short tips at the top left of the map lead through the first turns
+and explain each unit type and special moments when they come up; they can be switched off. With a unit selected, the map shows the
+route and the number of turns to the tile under the mouse – or why the unit cannot get there – with fuel warnings for fighters.
+Clicking one of your distant cities first shows the city, the second click sends the unit. A margin around the map lets every tile
+be centred, so the starting position is always in the middle. On a multi-turn march a fighter now stops before it would lose its way
+back.
+
 ## 1.7.3
 
 Eine Übersicht aller Grafiken – mit dem SVG-Code der Einheitensymbole.
