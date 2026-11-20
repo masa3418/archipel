@@ -1585,8 +1585,19 @@ let hoverPath = null;   // { key, path } – Wegsuche nur, wenn sich Feld oder E
 function hoverRoute(u) {
   if (!hover || patrolMode || rallyMode || u.owner !== 0) return null;
   const [x, y] = hover;
-  if (cheb(u.x, u.y, x, y) <= 1) return null;   // auch ins Unerforschte: Der Klick marschiert dorthin, die Wegsuche verrät nichts
+  const near = cheb(u.x, u.y, x, y);
+  if (near === 0) return null;
   const key = u.id + ',' + u.x + ',' + u.y + ',' + x + ',' + y;
+  if (near === 1) {
+    // Nachbarfeld: keine Linie – aber der Grund, wenn die Einheit dort nichts tun kann (Schiff neben Land, Bodentruppen neben Wasser).
+    // Gibt es dort einen Zugmarker (Angriff, an Bord gehen, Sturm vom Schiff), ist das Feld ein gültiges Ziel.
+    if (!hoverPath || hoverPath.key !== key) {
+      const dead = S.players[0].seen[idx(x, y)] && !canEnterTerrain(u, x, y) && !moveHints(u).some(h => h[0] === x && h[1] === y);
+      hoverPath = { key, path: null, none: !dead ? null : T(u).domain === 'land' ? tt('Bodentruppen kommen nicht übers Wasser – dafür braucht es einen Transporter', 'Land units cannot cross water – that takes a transport') : tt('Schiffe fahren nicht an Land', 'Ships cannot go on land') };
+    }
+    return hoverPath.none ? { x, y, path: [], none: hoverPath.none } : null;
+  }
+  // entferntes Feld, auch im Unerforschten: Der Klick marschiert dorthin, die Wegsuche verrät nichts
   if (!hoverPath || hoverPath.key !== key) {
     const c = cityAt(x, y);
     // Feld mit eigenen Einheiten (außer in eigener Stadt): Der Klick wählt dort aus, statt zu marschieren – keine Linie
