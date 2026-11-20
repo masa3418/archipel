@@ -12,7 +12,8 @@
 // ---------------------------------------------------------------------------
 const CACHE = 'archipel-v1';
 const CORE = ['./', 'index.html', 'favicon.svg', 'manifest.webmanifest',
-  'js/data.js', 'js/map.js', 'js/game.js', 'js/ai.js', 'js/gfx.js', 'js/sfx.js', 'js/ui.js'];
+  'js/data.js', 'js/map.js', 'js/game.js', 'js/ai.js', 'js/gfx.js', 'js/sfx.js',
+  'js/ui-karte.js', 'js/ui-zug.js', 'js/ui-leiste.js', 'js/ui-fenster.js', 'js/ui-eingabe.js', 'js/ui-schau.js', 'js/ui-start.js'];
 
 // Aufrufe der Seite selbst (mode 'navigate') lassen sich nicht in jedem Browser mit geänderten Optionen nachbauen – dort über die Adresse
 const fromNet = req => req.mode === 'navigate'

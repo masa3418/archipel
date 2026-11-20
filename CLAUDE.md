@@ -41,7 +41,15 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   alte Skripte. Geprüft mit einem Testserver, der GitHub Pages nachahmt (max-age, ETag/304, vorgetäuschtes Update, Anfrageprotokoll):
   alt blieb die Versionsnummer stehen, neu sofort aktuell; ohne Netz startet die App weiter. `tools/serve.js` sendet `no-store`, zeigt das also nicht.
 - Alle Skripte teilen sich den globalen Namensraum. Reihenfolge in `index.html`:
-  `data.js → map.js → game.js → ai.js → gfx.js → sfx.js → ui.js`.
+  `data.js → map.js → game.js → ai.js → gfx.js → sfx.js`, dann die sieben Teile der Oberfläche `ui-karte.js → ui-zug.js → ui-leiste.js →
+  ui-fenster.js → ui-eingabe.js → ui-schau.js → ui-start.js`. **„ui.js“ meint in dieser Datei und in Kommentaren diese sieben Teile zusammen**
+  (bis 1.7.4 eine Datei mit 4.400 Zeilen; aufgeteilt an Abschnittsgrenzen, Inhalt und Reihenfolge unverändert). Welche Funktion wo steht:
+  `grep -n "function name" js/ui-*.js`.
+  **Ladereihenfolge beachten:** Funktionen eines späteren Skripts gibt es beim Laden eines früheren noch nicht. Code, der beim Laden sofort
+  läuft (Zuweisungen auf oberster Ebene, `try { … }`-Blöcke für Einstellungen, Anbindung von Knöpfen), darf nur Funktionen aus demselben oder
+  einem früheren Skript aufrufen; in Funktionen und Ereignis-Behandlern ist alles erlaubt. Innerhalb eines `try/catch` bliebe ein Verstoß
+  ohne Fehlermeldung – beim Aufteilen wären so Tipps und Tastenlegende beim ersten Besuch aus geblieben (`welcomeSeen` stand im letzten Teil,
+  jetzt in `ui-karte.js`). `UiTest.run()` prüft das (Attrappen für alle späteren Funktionen, vier Ausgangslagen).
 - Spielzustand liegt komplett in der globalen Variable `S`.
 - **Zweisprachigkeit**: `LANG`/`EN`/`tt(deutsch, englisch)` stehen oben in `data.js`. Im Code jeden sichtbaren
   Text als `tt('…', '…')` schreiben. Feste Texte in `index.html`: `data-en="…"` (englischer Inhalt),
@@ -61,7 +69,13 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`), Landung im Hinterland auf dem Festland (`hinterInfo`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
 | `js/gfx.js` | Gelände-Rendering (`buildTerrain(TS, st)`), Einheiten-Abzeichen (SVG-Pfade `ICON_SRC` → Sprites, als SVG-Code `unitSvg`), Stadtgrafik |
 | `js/sfx.js` | Web-Audio-Synthese: Effekte, Klangteppiche je Einheitentyp, Klangtest |
-| `js/ui.js` | Zeichnen, Animationen/Zeitleiste, Kamera, Eingabe, Seitenleiste, Kontextmenü, alle Dialoge, Handbuch (`openHelp`, `buildHelp`), Grafik-Übersicht (`openGfx`) |
+| `js/ui-karte.js` | Oberfläche 1: Grundlagen (`$`, `view`, `pad`), Aufzeichnung der Animationen (`anim`, `hooks`), Kamera, Zeichnen der Karte (`render`, `drawToken`, `drawEffect` …), Produktions- und Wegeansicht |
+| `js/ui-zug.js` | Oberfläche 2: Landung, Auswahl (`select`, `needsOrders`), automatisches Rundenende, Aktionen (`doMove`, `doGoto`, `act…`), Patrouille, Klick auf die Karte (`onTileClick`), Wegvorschau (`hoverRoute`), `endHumanTurn` |
+| `js/ui-leiste.js` | Oberfläche 3: Seitenleiste (`updatePanel`), Kräfteverhältnis (`renderPower`), Kopf- und Hinweiszeile |
+| `js/ui-fenster.js` | Oberfläche 4: Eroberung/Produktion, Handbuch (`openHelp`, `buildHelp`), vorzeitiges Ende, Abschlussfenster, Zeitraffer, `startNew`, `afterLoad` |
+| `js/ui-eingabe.js` | Oberfläche 5: Maus und Tastatur, Kontextmenü, Meldungen, Schummeln, Tastenlegende, Einstiegstipps (`TIPS`), Menü der Kopfzeile |
+| `js/ui-schau.js` | Oberfläche 6: Statistik, Klangtest, Grafik-Übersicht (`openGfx`), Einstellungen, Beispiel-Spielstände |
+| `js/ui-start.js` | Oberfläche 7: Spielstände, Sprache (`applyLang`), Willkommensfenster, Start des Spiels – muss als Letztes geladen werden |
 | `index.html` | Layout, CSS, Dialoge (Handbuch, Statistik, Spielstände, Klangtest …) |
 | `tools/serve.js` | Mini-Webserver für die Entwicklung |
 | `tools/pack.js` | Verpackt die Offline-Fassung nach `dist/` (Einzeldatei `archipel.html`, Ordner fürs ZIP, Release-Text; ohne Manifest-Verweis) |
@@ -325,11 +339,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
    Repo) oder `node tools/serve.js .` → http://localhost:8765
 2. Syntax prüfen: `for f in js/*.js; do node --check $f; done`
    **Tests laufen lassen – vor jedem Commit, der Regeln oder Oberfläche ändert:**
-   - `node tools/test.js` (ca. 3 s, 21 Tests): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
+   - `node tools/test.js` (ca. 3 s, 22 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 2 s, 265 Prüfungen) – 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 6 s, 279 Prüfungen) – Ladereihenfolge der Skripte, 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

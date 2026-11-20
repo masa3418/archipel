@@ -179,8 +179,55 @@ window.UiTest = (() => {
     tips.on = wasOn; tips.done = new Set(done0); $('tipsChk').checked = wasOn; saveTips(); $('tipBox').dataset.id = ''; refresh();
   }
 
+  // 5) Ladereihenfolge: Die Skripte werden nacheinander geladen. Code, der beim Laden sofort läuft, darf keine Funktion aus einem
+  // späteren Skript aufrufen – innerhalb eines try/catch bliebe das ohne Fehlermeldung (so wären beim Aufteilen von ui.js Tipps und
+  // Tastenlegende beim allerersten Besuch stillschweigend aus geblieben). Die Seite wird in einem unsichtbaren Rahmen neu aufgebaut;
+  // vor jedem Skript stehen Attrappen für alle Funktionen der späteren, die jeden Aufruf melden. Geprüft in vier Ausgangslagen.
+  async function loadOrder() {
+    let html = await (await fetch('index.html', { cache: 'no-store' })).text();
+    const files = [...html.matchAll(/<script src="(js\/[\w-]+\.js)"><\/script>/g)].map(m => m[1]);
+    const fnOf = {};
+    for (const f of files) for (const m of (await (await fetch(f, { cache: 'no-store' })).text()).matchAll(/^(?:async )?function (\w+)/gm)) fnOf[m[1]] = f;
+    html = html.replace(/<script src="js\/[\w-]+\.js"><\/script>\s*/g, '');
+    let tags = '<script>window.__fwd = []; window.__err = []; window.addEventListener("error", e => window.__err.push(e.message));<\/script>';
+    files.forEach((f, k) => {
+      const later = Object.keys(fnOf).filter(n => files.indexOf(fnOf[n]) > k);
+      tags += '<script>' + later.map(n => `var ${n} = function () { window.__fwd.push(${JSON.stringify(f + ' ruft beim Laden ' + n + '() aus ' + fnOf[n])}); throw new ReferenceError(${JSON.stringify(n)}); };`).join('') + '<\/script>';
+      tags += `<script src="${f}"><\/script>`;
+    });
+    html = html.replace('</body>', tags + '</body>');
+    const once = async name => {
+      const fr = document.createElement('iframe'); fr.style.cssText = 'position:fixed;left:-3000px;width:1200px;height:900px';
+      document.body.append(fr); fr.srcdoc = html;
+      await new Promise(r => { fr.onload = r; }); await new Promise(r => setTimeout(r, 1200));
+      const w = fr.contentWindow, fwd = [...new Set(w.__fwd)];
+      check(!fwd.length, `Ladereihenfolge (${name}): ${fwd.join('; ')}`);
+      check(!w.__err.length, `Fehler beim Laden (${name}): ${w.__err.join('; ')}`);
+      check(w.eval('typeof S !== "undefined" && !!S && S.turn >= 1'), `nach dem Laden läuft keine Partie (${name})`);
+      const state = { tipps: w.eval('tips.on'), legende: w.eval('showKeys'), willkommen: w.eval('!document.getElementById("mWelcome").hidden') };
+      fr.remove();
+      return state;
+    };
+    const keep = Object.entries(localStorage);
+    try {
+      await once('gewohnter Start');
+      localStorage.clear();
+      const first = await once('allererster Besuch');
+      check(first.tipps && first.legende && first.willkommen, 'allererster Besuch: Tipps, Tastenlegende und Willkommensfenster sind an');
+      localStorage.clear(); localStorage.setItem('archipel-welcome', '1'); localStorage.setItem('archipel-lang', 'en');
+      const known = await once('bekannter Besucher, Englisch');
+      check(!known.tipps && !known.willkommen, 'bekannter Besucher: keine Tipps, kein Willkommensfenster');
+      localStorage.clear(); localStorage.setItem('archipel-welcome', '1'); localStorage.setItem('archipel-save-v1', '{kaputt'); localStorage.setItem('archipel-tips', 'kein json');
+      await once('kaputte gespeicherte Daten');
+    } finally {
+      localStorage.clear();
+      for (const [k, v] of keep) localStorage.setItem(k, v);
+    }
+  }
+
   async function run() {
     fails.length = 0; passed = 0;
+    await loadOrder();
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;

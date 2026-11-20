@@ -71,6 +71,17 @@ test('Daten: Einheitentypen vollständig', () => {
   eq(UNIT_ORDER.filter(k => UT[k].shore), ['crs', 'bat'], 'nur Kreuzer und Schlachtschiff beschießen Land');
 });
 
+test('Dateien: index.html, App-Zwischenspeicher und js/ nennen dieselben Skripte', () => {
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8'), sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+  const inHtml = [...html.matchAll(/<script src="(js\/[\w-]+\.js)"><\/script>/g)].map(m => m[1]);
+  const inSw = [...sw.matchAll(/'(js\/[\w-]+\.js)'/g)].map(m => m[1]);
+  const onDisk = fs.readdirSync(path.join(root, 'js')).filter(f => f.endsWith('.js')).map(f => 'js/' + f).sort();
+  eq([...inHtml].sort(), onDisk, 'index.html lädt nicht genau die Dateien aus js/');
+  eq([...inSw].sort(), onDisk, 'CORE in sw.js nennt nicht genau die Dateien aus js/');
+  eq(inHtml.slice(0, 6), ['data', 'map', 'game', 'ai', 'gfx', 'sfx'].map(f => 'js/' + f + '.js'), 'Reihenfolge der Grundskripte');
+  eq(inHtml[inHtml.length - 1], 'js/ui-start.js', 'ui-start.js muss als Letztes geladen werden');
+});
+
 // ------------------------------------------------------------------ Karte
 test('Karte: gleiche Kartennummer = gleiche Karte, Städte und Startplätze', () => {
   for (const size of Object.keys(MAP_SIZES)) for (const world of ['inseln', 'gemischt', 'kontinente']) {
