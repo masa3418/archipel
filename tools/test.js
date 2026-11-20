@@ -245,6 +245,48 @@ test('Jäger: mehrrundiger Marsch hält an, bevor der Rückweg nicht mehr reicht
   }
 });
 
+// ------------------------------------------------------------------ Rundenwechsel
+test('Rundenwechsel: Daueraufträge laufen in der neuen Runde weiter', () => {
+  board();
+  for (const u of S.units.slice()) killUnit(u);
+  const c = myCity();
+  // Marsch über mehrere Runden: Infanterie kommt am Ziel an
+  const start = nb(c.x, c.y).find(([x, y]) => land(x, y) && free(x, y));
+  const inf = createUnit('inf', 0, ...start);
+  const goal = tiles((x, y) => land(x, y) && free(x, y) && (p => p && p.length === 3)(findPath(inf, x, y)))[0];
+  ok(goal, 'kein Marschziel in drei Feldern Entfernung');
+  inf.order = { type: 'goto', x: goal[0], y: goal[1] }; runGoto(inf);
+  let n = 0; while (inf.order && n++ < 6) { endTurn(0); if (nextRound()) runStandingOrders(0); }
+  ok(inf.x === goal[0] && inf.y === goal[1] && !inf.order, 'Marsch kommt an und der Befehl endet');
+  // Wache bleibt Wache – bis ein Feind daneben steht
+  const guard = createUnit('inf', 0, ...start); guard.order = { type: 'sentry' };
+  endTurn(0); if (nextRound()) runStandingOrders(0);
+  ok(guard.order && guard.order.type === 'sentry', 'Wache ohne Feind bleibt auf Wache');
+  const beside = nb(...start).find(([x, y]) => land(x, y) && free(x, y));
+  createUnit('inf', 1, ...beside); computeVision(0);
+  runStandingOrders(0);
+  ok(!guard.order, 'Wache wird geweckt, wenn ein Feind daneben steht');
+  ok(S.log.some(l => /Feindkontakt/.test(l.text)), 'Meldung „Feindkontakt“');
+  // der Einschub der Oberfläche läuft vor dem Laden
+  const seq = []; const trn = createUnit('trn', 0, ...tiles((x, y) => !land(x, y) && free(x, y))[0]); trn.order = { type: 'load' };
+  const realLoad = runLoad; runLoad = u => { seq.push('laden'); return realLoad(u); };
+  runStandingOrders(0, () => seq.push('einschub')); runLoad = realLoad;
+  eq(seq, ['einschub', 'laden'], 'Reihenfolge am Ende der Daueraufträge');
+});
+test('Rundenwechsel: nextRound lässt alle lebenden Gegner ziehen und zählt die Runde weiter', () => {
+  newGame('klein', 'normal', 'inseln', 4711, 2);
+  const turn = S.turn, order = [];
+  endTurn(0);
+  ok(nextRound(p => order.push(p)), 'Partie läuft weiter');
+  eq(order, [1, 2], 'beide Gegner waren dran, in ihrer Reihenfolge');
+  eq(S.turn, turn + 1, 'Runde weitergezählt');
+  for (const c of S.cities) if (c.owner === 2) c.owner = -1;
+  for (const u of S.units.slice()) if (u.owner === 2) killUnit(u);
+  checkGameOver(); order.length = 0;
+  endTurn(0); nextRound(p => order.push(p));
+  eq(order, [1], 'ausgeschiedener Gegner zieht nicht mehr');
+});
+
 // ------------------------------------------------------------------ Sicht
 test('Sicht: getauchtes U-Boot erst auf dem Nachbarfeld geortet', () => {
   board();
@@ -318,9 +360,7 @@ test('Spielstand: alle Beispiel-Spielstände lassen sich laden', () => {
 function simRound() {
   for (const c of S.cities) if (c.owner === 0 && c.progress === 0) aiChooseProduction(c);
   aiTurn(0); endTurn(0); if (S.over) return;
-  for (let p = 1; p < nPlayers() && !S.over; p++) { if (!isAlive(p)) continue; startTurn(p); aiTurn(p); if (!S.over) endTurn(p); }
-  if (S.over) return;
-  S.turn++; startTurn(0); checkGameOver();
+  if (nextRound()) checkGameOver();
 }
 // Was in jeder Lage gelten muss
 function invariants(where) {

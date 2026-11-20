@@ -57,7 +57,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 |---|---|
 | `js/data.js` | Sprache `LANG`/`tt()`, Einheitentypen `UT` (inkl. `stealth`, `sonar`, `noAttack`) + `canAttack`, `UNIT_ORDER`, `DIRS`, Spieler `PLAYERS` (Name, Farben; Du, Rot, Gelb, Violett), `MAP_SIZES` (inkl. `maxAi`), Weltarten `WORLDS`, Schwierigkeitsgrade `DIFFICULTY` (inkl. `skill`) + `diff()`, `aiKnowsMap(p)`, `aiMistake(p)` |
 | `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen (getrennt mit `split`), Festland (`festland`: Küstensaum, Binnenmeere, Flüsse mit Brücken); Städte, faire Startpositionen (ab drei Spielern `pickStarts`) |
-| `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung `captureChance`/`cityDefenders`, Unterstützung `fireSupport`/`airCover`, Produktion, Sicht `computeVision`/`canSee`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
+| `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung `captureChance`/`cityDefenders`, Unterstützung `fireSupport`/`airCover`, Produktion, Sicht `computeVision`/`canSee`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Rundenwechsel `nextRound`/`runStandingOrders`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
 | `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`), Landung im Hinterland auf dem Festland (`hinterInfo`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
 | `js/gfx.js` | Gelände-Rendering (`buildTerrain(TS, st)`), Einheiten-Abzeichen (SVG-Pfade `ICON_SRC` → Sprites, als SVG-Code `unitSvg`), Stadtgrafik |
 | `js/sfx.js` | Web-Audio-Synthese: Effekte, Klangteppiche je Einheitentyp, Klangtest |
@@ -174,6 +174,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   prefers-reduced-motion) skaliert `animBegin`-Tempo, Kamerafahrten (`anim.camMs`) und die Obergrenze in `animEnd`; „off“ setzt die Zeitleiste
   sofort auf den Endstand. Kamerabewegungen außerhalb der Zeitleiste immer über `pan()` (bei „off“ ohne Schwenk), nicht direkt `camTo`.
   Während der Wiedergabe nach dem Rundenende bleibt die Karte stehen; erst danach geht es zur nächsten eigenen Einheit.
+- **Rundenwechsel** (game.js): `nextRound(onPhase)` nach `endTurn(0)` – alle lebenden Gegner ziehen (`enemyTurns`), dann `S.turn++` und
+  `startTurn(0)`; `runStandingOrders(p, beforeLoad)` führt die Daueraufträge in fester Reihenfolge aus (Wachen wecken, Marsch, Patrouille,
+  Erkunden, Einschub der Oberfläche, Laden). `endHumanTurn` (ui.js), `simGame`, `tools/beispiele.js` und `tools/test.js` rufen dieselben
+  Funktionen auf – den Ablauf nie wieder nachbauen (vorher lag er in ui.js, mit drei Kopien der Gegnerschleife).
 - **„Wartende“ Einheiten**: `needsOrders(u)` in ui.js steuert „Nächste Einheit“, die Zahl am
   Rundenknopf und das automatische Rundenende.
 - **Schwierigkeit** wirkt auf alle Computergegner (Spieler ≥ 1: `aiKnowsMap`, `aiMistake`, `aiSkill`). In Simulationen spielt die KI auch
@@ -321,7 +325,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
    Repo) oder `node tools/serve.js .` → http://localhost:8765
 2. Syntax prüfen: `for f in js/*.js; do node --check $f; done`
    **Tests laufen lassen – vor jedem Commit, der Regeln oder Oberfläche ändert:**
-   - `node tools/test.js` (ca. 3 s, 19 Tests): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
+   - `node tools/test.js` (ca. 3 s, 21 Tests): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
@@ -345,12 +349,7 @@ function simGame(size, dk, world = 'inseln', maxT = 350, nAi = 1) {
   for (let k = 0; k < maxT && !S.over; k++) {
     for (const c of S.cities) if (c.owner === 0 && c.progress === 0) aiChooseProduction(c);
     aiTurn(0); endTurn(0); if (S.over) break;
-    for (let p = 1; p < nPlayers() && !S.over; p++) {
-      if (!isAlive(p)) continue;
-      startTurn(p); aiTurn(p); if (!S.over) endTurn(p);
-    }
-    if (S.over) break;
-    S.turn++; startTurn(0); checkGameOver();
+    if (nextRound()) checkGameOver();   // Gegner ziehen, neue Runde – derselbe Ablauf wie im Spiel
   }
   const a = strength(0).total, b = strength(strongestEnemy()).total;
   return { over: S.over, turn: S.turn, share: Math.round(a / (a + b) * 100) };

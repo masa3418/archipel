@@ -33,12 +33,9 @@ const SCENARIOS = [
 ];
 
 function round() {
-  const n = S.players.length;
   for (const c of S.cities) if (c.owner === 0 && (c.progress === 0 || !c.prod)) aiChooseProduction(c);
   aiTurn(0); endTurn(0); if (S.over) return;
-  for (let p = 1; p < n && !S.over; p++) { if (!isAlive(p)) continue; startTurn(p); aiTurn(p); if (!S.over) endTurn(p); }
-  if (S.over) return;
-  S.turn++; startTurn(0); checkGameOver();
+  if (nextRound()) checkGameOver();   // Gegner ziehen, neue Runde – derselbe Ablauf wie im Spiel (game.js)
 }
 
 fs.mkdirSync(out, { recursive: true });

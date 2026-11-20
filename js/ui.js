@@ -1707,36 +1707,12 @@ function endHumanTurn() {
   animBegin(ENEMY_STEP_MS, true);
   const startScroll = [view.x, view.y];
   endTurn(0);
-  // Alle Computergegner nacheinander (jeder gegen jeden); ausgeschiedene überspringen
-  for (let p = 1; p < nPlayers() && !S.over; p++) {
-    if (!isAlive(p)) continue;
-    anim.phases.push({ at: anim.cursor, p });
-    startTurn(p);
-    aiTurn(p);
-    if (!S.over) endTurn(p);
-  }
-  if (!S.over) {
-    S.turn++;
-    startTurn(0);
+  // Der Rundenwechsel selbst steht bei den Regeln (game.js: nextRound, runStandingOrders) – hier nur, was die Zeitleiste dazu braucht.
+  // Alle Computergegner nacheinander (jeder gegen jeden); anim.phases merkt, ab wann wer zieht
+  if (nextRound(p => anim.phases.push({ at: anim.cursor, p }))) {
     // Ab hier folgen in der Zeitleiste die eigenen Einheiten mit ihren Befehlen – der Hinweis über der Karte wechselt dann
     const ownMark = anim.cursor, ownCount = anim.events.length;
-    // Wachen wecken, wenn Feinde in der Nähe sind
-    for (const u of S.units) {
-      if (u.owner !== 0 || !u.order || (u.order.type !== 'sentry' && u.order.type !== 'load') || u.carrier != null) continue;
-      let enemy = false;
-      for (const [dx, dy] of DIRS) if (inb(u.x + dx, u.y + dy) && visibleEnemyAt(0, u.x + dx, u.y + dy)) enemy = true;
-      if (enemy) { u.order = null; addLog(tt(`${T(u).name} meldet Feindkontakt!`, `${T(u).name} reports enemy contact!`), 'bad', u.x, u.y); }
-    }
-    for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'goto')) {
-      // Feind ist während des Gegnerzugs herangerückt: Marsch anhalten
-      if (u.carrier == null && enemyAdjacent(u)) { u.order = null; addLog(tt(`${T(u).name}: Marsch angehalten – Feindkontakt!`, `${T(u).name}: march stopped – enemy contact!`), 'bad', u.x, u.y); continue; }
-      runGoto(u, true);   // Folgerunde: Jäger halten an, bevor sie außer Reichweite geraten
-    }
-    for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'patrol')) runPatrol(u);
-    for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'explore')) runExplore(u);
-    landingUpdate();   // „Ausladen, wenn möglich“: Truppen an der Küste wecken, damit sie als wartend zählen
-    // Transporter mit „Laden bis voll“: zuletzt, damit auch gerade angekommene Einheiten an Bord gehen
-    for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'load')) runLoad(u);
+    runStandingOrders(0, landingUpdate);   // landingUpdate: „Ausladen, wenn möglich“ weckt Truppen an der Küste, damit sie als wartend zählen
     if (anim.events.length > ownCount) anim.ownFrom = ownMark;
     computeVision(0);
   }

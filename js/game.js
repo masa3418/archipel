@@ -1371,6 +1371,49 @@ function endTurn(p) {
   }
 }
 
+// ------------------------------------------------------------------ Rundenwechsel
+// Der Ablauf zwischen zwei Zügen von Spieler 0 steht hier an einer Stelle – das Spiel (endHumanTurn in ui.js), die Simulation
+// (simGame in CLAUDE.md), tools/beispiele.js und tools/test.js rufen dasselbe auf. Vorher lag er in ui.js, und die anderen bauten ihn nach.
+// Alle lebenden Computergegner ziehen nacheinander (jeder gegen jeden). onPhase(p): unmittelbar bevor Gegner p zieht (Zeitleiste).
+function enemyTurns(onPhase) {
+  for (let p = 1; p < nPlayers() && !S.over; p++) {
+    if (!isAlive(p)) continue;
+    if (onPhase) onPhase(p);
+    startTurn(p);
+    aiTurn(p);
+    if (!S.over) endTurn(p);
+  }
+}
+// Nach endTurn(0): Gegner ziehen, dann beginnt die neue Runde für Spieler 0. false = die Partie ist dabei zu Ende gegangen.
+function nextRound(onPhase) {
+  enemyTurns(onPhase);
+  if (S.over) return false;
+  S.turn++;
+  startTurn(0);
+  return true;
+}
+// Daueraufträge der Einheiten von Spieler p zu Beginn seiner Runde, in fester Reihenfolge: Wachen wecken, Märsche, Patrouillen, Erkunden,
+// zuletzt „Laden bis voll“ (damit auch gerade angekommene Einheiten an Bord gehen). beforeLoad: Einschub der Oberfläche vor dem Laden
+// („Ausladen, wenn möglich“ weckt Truppen an der Küste).
+function runStandingOrders(p = 0, beforeLoad = null) {
+  const mine = type => S.units.filter(o => o.owner === p && o.order && o.order.type === type);
+  for (const u of S.units) {   // Wachen (und ladende Transporter) wecken, wenn ein Feind daneben auftaucht
+    if (u.owner !== p || !u.order || (u.order.type !== 'sentry' && u.order.type !== 'load') || u.carrier != null) continue;
+    let enemy = false;
+    for (const [dx, dy] of DIRS) if (inb(u.x + dx, u.y + dy) && visibleEnemyAt(p, u.x + dx, u.y + dy)) enemy = true;
+    if (enemy) { u.order = null; if (p === 0) addLog(tt(`${T(u).name} meldet Feindkontakt!`, `${T(u).name} reports enemy contact!`), 'bad', u.x, u.y); }
+  }
+  for (const u of mine('goto')) {
+    // Feind ist während des Gegnerzugs herangerückt: Marsch anhalten
+    if (u.carrier == null && enemyAdjacent(u)) { u.order = null; if (p === 0) addLog(tt(`${T(u).name}: Marsch angehalten – Feindkontakt!`, `${T(u).name}: march stopped – enemy contact!`), 'bad', u.x, u.y); continue; }
+    runGoto(u, true);   // Folgerunde: Jäger halten an, bevor sie außer Reichweite geraten
+  }
+  for (const u of mine('patrol')) runPatrol(u);
+  for (const u of mine('explore')) runExplore(u);
+  if (beforeLoad) beforeLoad();
+  for (const u of mine('load')) runLoad(u);
+}
+
 function isAlive(p) {
   return S.cities.some(c => c.owner === p) || S.units.some(u => u.owner === p && T(u).capture);
 }
