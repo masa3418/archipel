@@ -66,6 +66,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `tools/serve.js` | Mini-Webserver für die Entwicklung |
 | `tools/pack.js` | Verpackt die Offline-Fassung nach `dist/` (Einzeldatei `archipel.html`, Ordner fürs ZIP, Release-Text; ohne Manifest-Verweis) |
 | `tools/beispiele.js` | Erzeugt die Beispiel-Spielstände `docs/spielstaende/*.json` (nicht im Release) |
+| `tools/test.js` | Automatische Regeltests ohne Browser: `node tools/test.js` (nicht im Release) |
+| `tools/test-ui.js` | Oberflächentest im Browser: Wegvorschau gegen Klick, Klick-Abläufe, Einstiegstipps (nicht im Release) |
 | `manifest.webmanifest`, `sw.js` | Installierbare App für die Online-Fassung (nur GitHub Pages, nicht im Release) |
 | `.github/workflows/release.yml` | Legt bei einem Tag `vX.Y.Z` den Release mit der Offline-Fassung an |
 
@@ -317,6 +319,18 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 1. Server starten: Vorschau-Konfiguration „archipel“ (`.claude/launch.json`, lokal, nicht im
    Repo) oder `node tools/serve.js .` → http://localhost:8765
 2. Syntax prüfen: `for f in js/*.js; do node --check $f; done`
+   **Tests laufen lassen – vor jedem Commit, der Regeln oder Oberfläche ändert:**
+   - `node tools/test.js` (ca. 3 s, 19 Tests): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
+     Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
+     alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
+     außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 2 s, 265 Prüfungen) – 9 Einheiten
+     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
+   Neue Regel oder behobener Fehler → Test ergänzen. Ändert sich ein Wert absichtlich, den Test und die Zahl in dieser Datei mit anpassen.
+   Gegenprobe beim Anlegen: verstellte Regel (`CAPTURE_BASE` 0,6) und abgeschaltete Hinweise (`noGoReason`) fielen auf (1 bzw. 32 Fehler).
+   Dabei gefunden, kein Fehler: Lehnt der Generator eine Kartennummer ab (Festland: etwa zwei von drei, sonst selten), nimmt `newGame` die
+   nächste passende (höchstens 11 weiter gemessen, Grenze 200) – Nachbarnummern ergeben dort oft dieselbe Karte. Nicht ändern: Die Nummern
+   bestehender Karten und Beispiele blieben sonst nicht gültig.
 3. Im eingebauten Browser testen; Spielfunktionen lassen sich per JavaScript direkt aufrufen
    (`S`, `newGame`, `startNew`, `doMove`, `endHumanTurn`, `skipAnim` …).
 4. KI-gegen-KI-Simulation (im Browser ausführen):
