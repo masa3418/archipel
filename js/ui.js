@@ -828,6 +828,9 @@ function render(now = performance.now()) {
       if (path && path.length) drawGotoPath(su.x, su.y, path, now);
     }
     drawSelRing(su.x, su.y, pulse);
+    const gp = gotoPreviewFor(su), hp = hoverRoute(su);
+    if (hp && !(gp && gp.x === hp.x && gp.y === hp.y)) drawGotoConfirm(su, hp, false);
+    if (gp) drawGotoConfirm(su, gp);
     // Sturm vom Schiff: Über jeder Stadt, die die Truppen des gewählten Transporters angreifen können, steht die Chance –
     // dauerhaft und pulsierend, damit man auf der Karte sieht, was jetzt möglich ist (Klick auf die Stadt oder Taste U)
     if (T(su).carries === 'land' && su.owner === 0) for (const o of assaultOptions(su)) drawAssaultChance(o.x, o.y, o.chance, pulse);
@@ -1214,7 +1217,7 @@ function resizeCanvas() {
 
 function select(u, center = true) {
   if (patrolMode && (!u || u.id !== patrolMode.id)) patrolMode = null;
-  rallyMode = null;
+  rallyMode = null; gotoPreview = null;
   if (!u) { sel = null; return; }
   sel = u.id;
   if (u.order && u.order.type === 'sentry') u.order = null;
@@ -1338,7 +1341,7 @@ function afterAction(u) {
   scheduleAutoEnd();
 }
 
-function refresh() { dirty = true; pathCache = null; rallyCache = null; renderMini(); updatePanel(); updateHeader(); updateKeyLegend(); queueSave(); }
+function refresh() { dirty = true; pathCache = null; rallyCache = null; hoverPath = null; renderMini(); updatePanel(); updateHeader(); updateKeyLegend(); queueSave(); }
 
 // Automatisch speichern nach jeder Änderung (refresh folgt auf jeden Zug, Angriff, Befehl): gebündelt kurz danach und beim Verlassen
 // der Seite. Ein Spielstand braucht unter 1 ms. So geht beim Neuladen oder Absturz nichts verloren – und ein verlorener Kampf lässt sich
@@ -1555,7 +1558,15 @@ function onTileClick(x, y, shift) {
     if (!shift && !ownCity && own.length && (!adjacent || !boardable)) {
       select(own.find(needsOrders) || own[0]); Sfx.play('select'); refresh(); return;
     }
-    if (adjacent) doMove(u, x, y); else doGoto(u, x, y);
+    if (adjacent) { gotoPreview = null; doMove(u, x, y); return; }
+    // Entferntes Feld: Marschbefehl (den Weg zeigt die Karte schon beim Überfahren, siehe hoverRoute). Nur bei einer eigenen Stadt zeigt
+    // der erste Klick erst die Stadt in der Seitenleiste, der zweite schickt die Einheit hinein – ansehen und hinschicken sind dort zweierlei.
+    const pv = gotoPreviewFor(u);
+    const path = ownCity && !(pv && pv.x === x && pv.y === y) ? findPath(u, x, y) : null;
+    if (!path || !path.length) { gotoPreview = null; doGoto(u, x, y); return; }   // auch ohne Weg: die Meldung dazu kommt vom Marschbefehl
+    gotoPreview = { id: u.id, ox: u.x, oy: u.y, x, y, path };
+    selCity = city.id;
+    Sfx.play('tick'); refresh();
     return;
   }
   if (own.length) { select(own.find(needsOrders) || own[0]); Sfx.play('select'); }
@@ -1564,7 +1575,51 @@ function onTileClick(x, y, shift) {
   refresh();
 }
 
+// Wegvorschau (nach einem Erstspieler-Test: Er wollte eine Stadt nur ansehen und schickte die gewählte Einheit los).
+// 1. Beim Überfahren (hoverRoute): Mit gewählter Einheit zeigt die Karte zu jedem entfernten Feld schon den Weg und die Dauer – man sieht,
+//    was ein Klick auslöst (Idee des Nutzers). Der Klick schickt die Einheit dann sofort los.
+// 2. Eigene Stadt (gotoPreview): Der erste Klick zeigt die Stadt in der Seitenleiste und hält den Weg fest, erst der zweite schickt los.
+//    Gilt nur, solange dieselbe Einheit gewählt ist und am selben Platz steht; Esc, Rechtsklick, andere Auswahl oder ein Klick
+//    woandershin verwerfen es. Züge aufs Nachbarfeld und Angriffe bleiben beim einfachen Klick.
+let hoverPath = null;   // { key, path } – Wegsuche nur, wenn sich Feld oder Einheit ändern; refresh() verwirft
+function hoverRoute(u) {
+  if (!hover || patrolMode || rallyMode || u.owner !== 0) return null;
+  const [x, y] = hover;
+  if (cheb(u.x, u.y, x, y) <= 1) return null;   // auch ins Unerforschte: Der Klick marschiert dorthin, die Wegsuche verrät nichts
+  const key = u.id + ',' + u.x + ',' + u.y + ',' + x + ',' + y;
+  if (!hoverPath || hoverPath.key !== key) {
+    const c = cityAt(x, y);
+    // Feld mit eigenen Einheiten (außer in eigener Stadt): Der Klick wählt dort aus, statt zu marschieren – keine Linie
+    const sel2 = !(c && c.owner === 0) && topUnitsAt(x, y).some(o => o.owner === 0);
+    hoverPath = { key, path: sel2 ? null : findPath(u, x, y) };
+  }
+  return hoverPath.path && hoverPath.path.length ? { x, y, path: hoverPath.path } : null;
+}
+let gotoPreview = null;
+function gotoPreviewFor(u) {
+  const p = gotoPreview;
+  return p && u && p.id === u.id && p.ox === u.x && p.oy === u.y && sel === u.id ? p : null;
+}
+function gotoTurns(u, len) { return len <= u.moves ? 1 : (u.moves > 0 ? 1 : 0) + Math.ceil((len - Math.max(0, u.moves)) / T(u).move); }
+// pinned: festgehaltener Weg zu einer eigenen Stadt (wartet auf den zweiten Klick), sonst die blassere Vorschau beim Überfahren
+function drawGotoConfirm(u, p, pinned = true) {
+  ctx.save(); if (!pinned) ctx.globalAlpha = 0.7;
+  drawGotoPath(u.x, u.y, p.path, performance.now());
+  ctx.restore();
+  const n = gotoTurns(u, p.path.length), turns = tt(`${n} ${n === 1 ? 'Runde' : 'Runden'}`, `${n} ${n === 1 ? 'turn' : 'turns'}`);
+  const txt = pinned ? turns + tt(' · noch einmal klicken', ' · click again') : turns;
+  ctx.font = `700 ${Math.max(11, Math.round(TS * 0.4))}px system-ui, sans-serif`;
+  const w = ctx.measureText(txt).width + 14, h = Math.max(17, TS * 0.62);
+  const bx = Math.max(2, Math.min(S.W * TS - w - 2, p.x * TS + TS / 2 - w / 2)), by = p.y * TS - h - 4 < 2 ? (p.y + 1) * TS + 4 : p.y * TS - h - 4;
+  roundRectPath(ctx, bx, by, w, h, h / 2);
+  ctx.fillStyle = 'rgba(15,20,28,0.93)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = Math.max(1.5, TS / 18); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(txt, bx + w / 2, by + h / 2 + 0.5);
+}
+
 function endHumanTurn() {
+  gotoPreview = null;
   if (!S || S.over) return;
   setProdView(false);
   rallyMode = null;
@@ -1777,7 +1832,7 @@ function updatePanel() {
   const c = selCity != null ? S.cities[selCity] : null;
   if (c && c.owner === 0) {
     const p = c.prod ? UT[c.prod] : null;
-    h += `<section class="pcard pc-city"><div class="pc-head"><img class="pc-icon" src="${iconUrl('c', c.id % 2)}" alt=""><div><h3>${u ? tt('Stadt · Standort', 'City · location') : tt('Stadt', 'City')}</h3><div class="uname">${esc(c.name)}${c.coastal ? ` <span class="muted" style="font-size:12px">· ${tt('Hafen', 'Port')}</span>` : ''}</div></div></div>`;
+    h += `<section class="pcard pc-city"><div class="pc-head"><img class="pc-icon" src="${iconUrl('c', c.id % 2)}" alt=""><div><h3>${!u ? tt('Stadt', 'City') : u.x === c.x && u.y === c.y ? tt('Stadt · Standort', 'City · location') : tt('Stadt · Ziel', 'City · destination')}</h3><div class="uname">${esc(c.name)}${c.coastal ? ` <span class="muted" style="font-size:12px">· ${tt('Hafen', 'Port')}</span>` : ''}</div></div></div>`;
     h += `<label class="muted" style="display:block;margin-top:6px">${tt('Produktion', 'Production')}</label><select id="prodSel">`;
     for (const k of UNIT_ORDER) {
       const ut = UT[k];
@@ -2755,6 +2810,7 @@ cv.addEventListener('click', e => {
 let drag = null, dragSwallow = false;
 const DRAG_THRESHOLD = 4, DRAG_THRESHOLD_LEFT = 9;   // links großzügiger, damit ein Klick mit leichtem Wackeln ein Klick bleibt
 function rightClickAction(e) {
+  if (gotoPreview) { gotoPreview = null; refresh(); return; }   // Wegvorschau verwerfen
   if (rallyMode) { rallyAbort(); return; }
   if (prodView) { if (e && S) { const [x, y] = tileFromEvent(e); onTileClick(x, y, false); } return; }
   if (patrolMode) { patrolUndo(); return; }

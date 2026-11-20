@@ -193,6 +193,12 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Spoiler-Haken), das Abschlussfenster Spalten je Spieler. Kopfzeile: Punkte je Gegner (`.foes`, blass = ausgeschieden). Startplätze: zwei Spieler wie bisher (gleiche
   Kartennummer = gleiche Karte wie vor der Erweiterung), ab drei `pickStarts` (map.js: weit auseinander, möglichst auf verschiedenen
   Landmassen, ähnlich viele Städte im Umkreis).
+- **Wegvorschau** (ui.js; Grund: Ein Erstspieler wollte eine Stadt nur ansehen und schickte die gewählte Einheit los). Beim Überfahren
+  (`hoverRoute`, Idee des Nutzers): Mit gewählter Einheit zeigt die Karte zu jedem entfernten Feld Weg und Dauer („3 Runden“, `drawGotoConfirm`),
+  der Klick gibt wie immer sofort den Marschbefehl (`doGoto`). Nur bei einer entfernten eigenen Stadt (`gotoPreview` in `onTileClick`) zeigt der erste
+  Klick die Stadt in der Seitenleiste („Stadt · Ziel“) und hält den Weg fest („… · noch einmal klicken“), der zweite schickt los; Esc, Rechtsklick,
+  andere Auswahl oder ein Klick woandershin verwerfen das. Zwei Klicks für jeden Marsch waren kurz gebaut – unnötig, seit die Linie warnt.
+  Wegsuche nur bei Feldwechsel (`hoverPath`, `refresh()` verwirft). Tastentabelle im Handbuch beachten.
 - **Rand um die Karte** (ui.js `pad`, `view`, `applyPad`; `#mapPad` in index.html): Um die Leinwand liegt ein leerer Streifen von einer halben
   Fensterbreite/-höhe, damit jedes Feld in die Bildmitte passt (ein Erstspieler war verwirrt: Start am Kartenrand lag am Bildrand, unten links
   unter der Tastenlegende). `view.x`/`view.y` = Kartenpixel an der linken oberen Ecke des Sichtfensters (auch negativ) – immer darüber rechnen,
