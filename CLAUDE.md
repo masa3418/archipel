@@ -247,7 +247,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Transporter (`tips.sunk`: `updateTips` merkt sich die beladenen eigenen Transporter und sieht nach, ob einer fehlt; gilt zugleich als „erster Verlust“, `also`). Die erste eroberte Stadt deckt der Grundtipp `build` ab („Erste Stadt erobert!“), die erste
   verlorene `citylost` (`tips.cityLost`, eigene Städte ebenso verfolgt), die erste einem Gegner abgenommene `foecity` (`tips.foeTaken`). Befehle kommen in der Lage, in der sie helfen: Heimkehr `home` (Jäger mit
   knappem Treibstoff), Wache `sentry` (ab Runde 8 mit ≥ 4 Wartenden), Marschziel `rally` (ab 4 Städten), Produktionsansicht und Statistik `plan`
-  (ab 6 Städten). Patrouille bleibt bewusst im Handbuch. Mit jedem weiteren Tipp steigt die Gefahr, dass sie nur weggeklickt werden – sparsam bleiben. „Verstanden“ blendet aus, „Tipps ausschalten“ oder Einstellungen → Spielablauf (`tipsChk`) schaltet ab; Einschalten beginnt von vorn.
+  (ab 6 Städten). Patrouille bleibt bewusst im Handbuch. Mit jedem weiteren Tipp steigt die Gefahr, dass sie nur weggeklickt werden – sparsam bleiben. Ein Tipp, der drei Runden unbeachtet stehen bleibt, gilt als erledigt und
+  macht Platz (`tips.shown`) – sonst blockierte er alle folgenden. Kopfzeile ohne Zähler („1 / 7“ zählte nur die Grundtipps und verwirrte).
+  „Verstanden“ blendet aus, „Tipps ausschalten“ oder Einstellungen → Spielablauf (`tipsChk`) schaltet ab; Einschalten beginnt von vorn.
   `archipel-tips-on` / `archipel-tips` (erledigte, über alle Partien). Vorgabe: an nur beim allerersten Besuch. Bewusst wenige und kurze Texte –
   nicht zum Regelwerk ausbauen, dafür ist das Handbuch da. Probelauf (KI spielt, 4 Karten): Tipps kamen in sinnvoller Reihenfolge (R1, 4, 5–22, 22–57 …).
 - **Produktionsansicht** (ui.js): `prodView`, umgeschaltet mit `setProdView(on)` (Schalter in der Seitenleiste, Taste V).

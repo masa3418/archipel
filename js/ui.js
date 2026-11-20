@@ -3330,7 +3330,7 @@ $('routeChk').onchange = e => { showRoute = e.target.checked; try { localStorage
 // sobald seine Bedingung zutrifft. Bewusst wenige und kurze: nur die Schritte, um ins Spiel zu kommen. Abschaltbar (Karte und
 // Einstellungen → Spielablauf); Einschalten beginnt von vorn. Gemerkt in archipel-tips-on / archipel-tips (erledigte Tipps, über alle
 // Partien). Vorgabe: an beim allerersten Besuch, sonst aus (wer das Spiel kennt, bekommt nichts Neues eingeblendet).
-const tips = { on: false, done: new Set(), cur: null, cache: null };
+const tips = { on: false, done: new Set(), cur: null, cache: null, shown: {} };
 try {
   const v = localStorage.getItem('archipel-tips-on');
   if (v === null && !welcomeSeen()) { tips.on = true; localStorage.setItem('archipel-tips-on', '1'); }
@@ -3462,19 +3462,31 @@ function updateTips() {
     for (const id of tips.loaded) if (!ids.has(id)) tips.sunk = true;
     tips.loaded = new Set(S.units.filter(u => u.owner === 0 && u.type === 'trn' && cargoOf(u).length).map(u => u.id));
   }
-  if (tips.on && S && !S.over) { const s = tipState(); tips.cur = TIPS.find(t => !tips.done.has(t.id) && t.when(s)) || null; }
+  if (tips.on && S && !S.over) {
+    // Ein Tipp, der drei Runden unbeachtet stehen blieb, macht Platz (gilt als erledigt) – sonst blockierte er alle folgenden,
+    // und wer nie auf „Verstanden“ klickt, sähe das ganze Spiel über denselben ersten Tipp.
+    const s = tipState();
+    for (let guard = 0; guard < TIPS.length; guard++) {
+      tips.cur = TIPS.find(t => !tips.done.has(t.id) && t.when(s)) || null;
+      if (!tips.cur) break;
+      const k = S.gameId + ':' + tips.cur.id;
+      if (tips.shown[k] == null) tips.shown[k] = S.turn;
+      if (S.turn - tips.shown[k] < 3) break;
+      tips.done.add(tips.cur.id); saveTips();
+    }
+  }
   box.hidden = !tips.cur;
   if (!tips.cur || box.dataset.id === tips.cur.id) return;
   box.dataset.id = tips.cur.id;
   const n = TIPS.indexOf(tips.cur) + 1;
-  const head = tips.cur.head || (tips.cur.unit ? tt('Neue Einheit', 'New unit') + ' · ' + UT[tips.cur.unit].name : `${tt('Tipp', 'Tip')} ${n} / ${TIP_BASE}`);
+  const head = tips.cur.head || (tips.cur.unit ? tt('Neue Einheit', 'New unit') + ' · ' + UT[tips.cur.unit].name : tt('Tipp', 'Tip'));   // ohne „1 / 7“: Die Zahl zählte nur die Grundtipps und verwirrte
   box.innerHTML = `<div class="tip-h">${head}</div><div class="tip-t">${tips.cur.text}</div>`
     + `<div class="tip-b"><button class="primary" data-tip="ok">${tt('Verstanden', 'Got it')}</button><button data-tip="off">${tt('Tipps ausschalten', 'Switch tips off')}</button></div>`;
 }
 function saveTips() { try { localStorage.setItem('archipel-tips-on', tips.on ? '1' : '0'); localStorage.setItem('archipel-tips', JSON.stringify([...tips.done])); } catch (e) {} }
 function setTips(on) {
   tips.on = !!on;
-  if (tips.on) tips.done.clear();   // einschalten = von vorn
+  if (tips.on) { tips.done.clear(); tips.shown = {}; }   // einschalten = von vorn
   $('tipBox').dataset.id = '';
   $('tipsChk').checked = tips.on;
   saveTips(); updateTips();
