@@ -340,15 +340,20 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
    Repo) oder `node tools/serve.js .` → http://localhost:8765
 2. Syntax prüfen: `for f in js/*.js; do node --check $f; done`
    **Tests laufen lassen – vor jedem Commit, der Regeln oder Oberfläche ändert:**
-   - `node tools/test.js` (ca. 3 s, 22 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
+   - `node tools/test.js` (ca. 4 s, 29 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 6 s, 279 Prüfungen) – Ladereihenfolge der Skripte, 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 8 s, 344 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
    Pull Requests (Entscheidung mit dem Nutzer: für eine Person zu viel Zeremonie; neu überlegen, wenn andere beitragen).
+   Dazu Befehle des Spielers (Patrouille, Erkunden, Marschziel, Sturm vom Schiff, Ausladen), Spielstände anlegen/laden/löschen und eine Partie auf Schwer.
+   **Abdeckung** (gemessen nach dem Ausbau): Regeln, KI und Karte 93 % der Zeilen (`NODE_V8_COVERAGE=dir node tools/test.js`, game.js 88 %, ai.js 97 %,
+   map.js 100 %); Oberfläche 80 % der Funktionen (165 von 205 werden im Browsertest aufgerufen – gezählt mit Zähl-Hüllen um alle globalen Funktionen).
+   Nicht abgedeckt: Landungs-Rückfrage, Marschziel per Klick, Touchpad-Erkennung, Kamerafahrten, Klänge der Wiedergabe. Die Zahlen sagen, was
+   läuft, nicht, ob es stimmt – wie die Karte aussieht, prüft kein Test.
    Neue Regel oder behobener Fehler → Test ergänzen. Ändert sich ein Wert absichtlich, den Test und die Zahl in dieser Datei mit anpassen.
    Gegenprobe beim Anlegen: verstellte Regel (`CAPTURE_BASE` 0,6) und abgeschaltete Hinweise (`noGoReason`) fielen auf (1 bzw. 32 Fehler).
    Dabei gefunden, kein Fehler: Lehnt der Generator eine Kartennummer ab (Festland: etwa zwei von drei, sonst selten), nimmt `newGame` die

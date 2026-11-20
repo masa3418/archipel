@@ -225,6 +225,77 @@ window.UiTest = (() => {
     }
   }
 
+  // 6) Durchlauf: jedes Fenster, jede Taste, Kontextmenü, Ansichten und das Zeichnen einmal auslösen. Geprüft wird, dass nichts
+  // abstürzt und das Erwartete da ist – der häufigste Fehler nach einem Umbau ist ein Absturz an einer selten benutzten Stelle.
+  async function walkthrough() {
+    const step = (name, fn) => { try { const r = fn(); check(r !== false, 'Durchlauf: ' + name); } catch (e) { fails.push('Durchlauf: ' + name + ' – Absturz: ' + e.message); } };
+    const shown = id => !$(id).hidden, filled = id => $(id).textContent.trim().length > 20;
+    const key = (k, more = {}) => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...more }));
+    const draw = () => { render(performance.now()); renderMini(); };
+    const slots0 = localStorage.getItem('archipel-slots'), muted0 = Sfx.isMuted ? Sfx.isMuted() : null;
+    deserialize(save); afterLoad(); closeModals(); replay = 'off';
+    cancelAutoEnd(); skipAnim();   // ein laufender Countdown zum Rundenende oder eine Wiedergabe schluckt sonst den ersten Tastendruck (gewollt)
+    const mine = () => S.units.filter(u => u.owner === 0 && u.carrier == null);
+
+    // Fenster
+    for (const [name, open, id] of [['Handbuch', () => openHelp(), 'mHelp'], ['Statistik', openStats, 'mStats'], ['Kräfteverhältnis', openPower, 'mPower'],
+      ['Einstellungen', openSettings, 'mSettings'], ['Klangtest', openSoundTest, 'mSound'], ['Grafiken', openGfx, 'mGfx'], ['Spielstände', openSaves, 'mSaves'],
+      ['Zeitraffer', () => openTimelapse(), 'mTime'], ['Produktion wählen', () => openProdDialog(S.cities.find(c => c.owner === 0)), 'mCapture'],
+      ['Eroberungsfenster', () => openProdDialog(S.cities.find(c => c.owner === 0), true), 'mCapture'], ['Neues Spiel', () => openModal('mNew'), 'mNew'],
+      ['Willkommen', () => openModal('mWelcome'), 'mWelcome']]) {
+      step('Fenster ' + name + ' öffnet sich mit Inhalt', () => { open(); return shown(id) && filled(id); });
+      step('Esc schließt ' + name, () => { key('Escape'); return !shown(id); });
+    }
+    for (const b of $('helpTabs').querySelectorAll('button[data-tab]')) step('Handbuch-Reiter ' + b.dataset.tab, () => { openHelp(b.dataset.tab); const p = document.querySelector(`section[data-pane="${b.dataset.tab}"]`); return !p.hidden && p.textContent.trim().length > 100; });
+    step('Handbuch: Tabelle „Wer schlägt wen“ in beiden Ansichten', () => { openHelp('combat'); const sw = [...$('matrixSw').querySelectorAll('button')], was = sw.find(b => b.classList.contains('on')); let cells = 99; for (const b of sw) { b.click(); cells = Math.min(cells, document.querySelectorAll('.help-matrix td').length); } was.click(); return sw.length === 2 && cells >= 49; });
+    closeModals();
+    for (const t of ['units', 'land', 'marks', 'anim']) step('Grafik-Reiter ' + t, () => { gfx.tab = t; openGfx(); return document.querySelectorAll('#gfxBody .gfx-card').length >= 5; });
+    step('Grafiken: Animation abspielen und SVG-Code zeigen', () => { document.querySelector('[data-gplay="0"]').click(); gfx.tab = 'units'; renderGfx(); document.querySelector('[data-gsvg="tank"]').click(); return $('gfxSvg').querySelector('pre').textContent.startsWith('<svg'); });
+    closeModals(); gfx.tab = 'units'; gfx.svg = null;
+    step('Statistik: Produktion einer Stadt umstellen', () => { openStats(); const selEl = document.querySelector('#statCities select'); const c = S.cities[+selEl.dataset.prod]; selEl.value = c.prod === 'tank' ? 'inf' : 'tank'; selEl.dispatchEvent(new Event('change', { bubbles: true })); return c.prod === selEl.value; });
+    closeModals();
+    step('Menü öffnet und schließt', () => { openMenu(); const o = !$('menu').hidden; closeMenu(); return o && $('menu').hidden; });
+
+    // Ansichten und Zeichnen
+    step('Karte zeichnen', () => { draw(); return true; });
+    step('Produktionsansicht (V) und zurück', () => { key('v'); const on = prodView; draw(); key('v'); return on && !prodView; });
+    step('Wegeansicht (G) und zurück', () => { key('g'); const on = pathView; draw(); key('g'); return on && !pathView; });
+    step('Zoom + und −', () => { const t = TS; key('+'); const up = TS; key('-'); draw(); return up > t && TS === t; });
+    step('Zeichnen mit Auswahl, Mausfeld und Marschziel', () => { const u = mine().find(u => T(u).domain === 'land' && u.moves > 0); select(u); hover = [u.x + 1, u.y]; const c = S.cities.find(c => c.owner === 0); selCity = c.id; c.rally = [c.x + 1, c.y]; draw(); c.rally = null; return true; });
+    step('Zeichnen während einer Wiedergabe (Explosion, Schriftzug)', () => { const u = mine()[0]; replay = 'normal'; animBegin(120); hooks.combat(u, { id: -5, type: 'inf', owner: 1, x: u.x, y: u.y, hp: 1 }, u.x, u.y, true); hooks.salvo(u, u.x, u.y); animEnd(); render(anim.t0 + 100); render(anim.t0 + 400); skipAnim(); replay = 'off'; return true; });
+
+    // Tasten und Befehle
+    const landU = () => mine().find(u => T(u).domain === 'land' && u.moves > 0 && !u.order && !cityAt(u.x, u.y)) || mine().find(u => T(u).domain === 'land' && u.moves > 0 && !u.order);
+    step('F zentriert', () => { select(landU()); key('f'); return true; });
+    step('S stellt auf Wache', () => { const u = landU(); select(u); key('s'); return !!(u.order && u.order.type === 'sentry'); });
+    step('Leertaste überspringt', () => { const u = landU(); select(u); key(' '); return u.skip === true; });
+    step('R schickt auf Erkundung', () => { const u = landU(), at = [u.x, u.y], top = S.log[0]; select(u); key('r'); skipAnim(); return !alive(u) || !!(u.order && u.order.type === 'explore') || u.x !== at[0] || u.y !== at[1] || S.log[0] !== top; });   // erkundet, zieht oder meldet „nichts mehr zu erkunden“
+    step('N wählt die nächste Einheit', () => { key('n'); return !!selUnit(); });
+    step('P: Patrouille anlegen und mit Esc abbrechen', () => { const u = mine().find(u => u.moves > 0 && !u.order); select(u); key('p'); const on = !!patrolMode; patrolAddPoint(u.x + 2, u.y); draw(); key('Escape'); return on && !patrolMode; });
+    step('P: Patrouille starten', () => { const u = mine().find(u => T(u).domain === 'sea' && u.moves > 0 && !u.order && canAttack(u.type)); if (!u) return true; select(u); key('p'); const t = DIRS.map(([dx, dy]) => [u.x + dx * 2, u.y + dy * 2]).find(([x, y]) => inb(x, y) && !S.terrain[idx(x, y)]); if (!t) { key('Escape'); return true; } patrolAddPoint(...t); key('Enter'); skipAnim(); return !patrolMode && (!alive(u) || !u.order || u.order.type === 'patrol'); });
+    step('B schickt einen Jäger heim', () => { const c = S.cities.find(c => c.owner === 0); const f = createUnit('ftr', 0, c.x + 2, c.y); f.fuel = 12; select(f); key('b'); skipAnim(); const r = !alive(f) || !!f.order || isBase(f); if (alive(f)) killUnit(f); return r; });
+    step('L und U am Transporter', () => { const c = S.cities.find(c => c.owner === 0 && c.coastal); const t = createUnit('trn', 0, c.x, c.y); createUnit('inf', 0, c.x, c.y); select(t); key('l'); const loading = !!(t.order && t.order.type === 'load') || cargoOf(t).length > 0; key('u'); skipAnim(); closeModals(); return loading; });
+    step('Rechtsklick öffnet das Befehlsmenü', () => { const u = mine()[0]; const ok = openCtx(u.x, u.y, 200, 200); const o = ok && !$('ctxMenu').hidden && $('ctxMenu').textContent.length > 10; closeCtx(); return o && $('ctxMenu').hidden; });
+    step('Rechtsklick auf eine eigene Stadt', () => { const c = S.cities.find(c => c.owner === 0); const ok = openCtx(c.x, c.y, 200, 200); closeCtx(); return ok; });
+    step('H, I und T öffnen Handbuch, Statistik, Zeitraffer', () => { key('h'); const a = shown('mHelp'); closeModals(); key('i'); const b = shown('mStats'); closeModals(); key('t'); const c = shown('mTime'); closeModals(); return a && b && c; });
+    step('M schaltet den Ton um und zurück', () => { key('m'); key('m'); return true; });
+    step('Hinweiszeile zum Feld unter der Maus', () => { const u = mine()[0]; hover = [u.x, u.y]; updateHover(); return $('hover').textContent.length > 5; });
+    step('Schummeln „Nebel aus“ und wieder an', () => { setCheatFog(true); draw(); const on = CHEAT_FOG; setCheatFog(false); return on && !CHEAT_FOG; });
+    step('Enter beendet die Runde', () => { const t = S.turn; sel = null; key('Enter'); skipAnim(); closeModals(); return S.turn === t + 1 || !!S.over; });
+
+    // Spielstände
+    step('Spielstand anlegen, laden, löschen', () => { const turn = S.turn; if (!trySave('UiTest')) return false; const m = listSlots().find(s => s.name === 'UiTest'); openSaves(); const listed = $('saveList').textContent.includes('UiTest'); const okLoad = loadSlot(m.id); afterSlotLoad('geladen'); deleteSlot(m.id); return listed && okLoad && S.turn === turn && !listSlots().some(s => s.name === 'UiTest'); });
+    step('Strg+S öffnet die Spielstände', () => { closeModals(); key('s', { ctrlKey: true }); const o = shown('mSaves'); closeModals(); return o; });
+    if (slots0 == null) localStorage.removeItem('archipel-slots'); else localStorage.setItem('archipel-slots', slots0);
+
+    // Spielende
+    const won = await (await fetch('docs/spielstaende/beispiel-7-sieg-gegen-drei.json')).text();
+    step('Abschlussfenster einer gewonnenen Partie mit Zeitraffer', () => { deserialize(won); afterSlotLoad('geladen'); const o = shown('mOver') && filled('mOver'); draw(); tlSet(Math.max(1, S.turn - 5)); closeModals(); return o; });
+    step('Sprache anwenden', () => { applyLang(); return document.documentElement.lang === LANG; });
+    if (muted0 != null && Sfx.isMuted && Sfx.isMuted() !== muted0) toggleSound();
+    closeModals(); closeMenu(); closeCtx();
+  }
+
   async function run() {
     fails.length = 0; passed = 0;
     await loadOrder();
@@ -232,7 +303,8 @@ window.UiTest = (() => {
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
     build(); farMatrix(); nearMatrix(); flows(); tipsCheck();
-    replay = keepReplay; skipAnim(); closeModals(); refresh();
+    await walkthrough();
+    replay = keepReplay; skipAnim(); closeModals(); startNew('klein'); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters
     return { bestanden: passed, fehlgeschlagen: fails };
   }
   return { run };

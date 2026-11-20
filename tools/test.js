@@ -5,7 +5,8 @@
 // tools/test-ui.js. Neue Regel oder behobener Fehler → hier einen Test ergänzen. Gehört nicht zum Spiel und nicht in den Release.
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const root = path.resolve(__dirname, '..');
-globalThis.localStorage = { getItem: k => (k === 'archipel-lang' ? 'de' : null), setItem() {}, removeItem() {} };
+const store = new Map([['archipel-lang', 'de']]);   // Attrappe mit Gedächtnis, damit auch Spielstände prüfbar sind
+globalThis.localStorage = { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => { store.set(k, String(v)); }, removeItem: k => { store.delete(k); } };
 globalThis.btoa = s => Buffer.from(s, 'binary').toString('base64');
 globalThis.atob = s => Buffer.from(s, 'base64').toString('binary');
 for (const f of ['data', 'map', 'game', 'ai']) vm.runInThisContext(fs.readFileSync(path.join(root, 'js', f + '.js'), 'utf8'), { filename: f + '.js' });
@@ -256,6 +257,98 @@ test('Jäger: mehrrundiger Marsch hält an, bevor der Rückweg nicht mehr reicht
   }
 });
 
+// ------------------------------------------------------------------ Befehle des Spielers
+test('Befehle: Patrouille läuft im Kreis und endet bei Feindkontakt', () => {
+  board();
+  const [p, q] = openSeaPair();
+  const pts = tiles((x, y) => !land(x, y) && farFromLand(x, y, 1) && cheb(x, y, ...p) === 3).slice(0, 2);
+  ok(pts.length === 2, 'keine Wegpunkte gefunden');
+  const d = createUnit('dst', 0, ...p);
+  d.order = { type: 'patrol', start: [d.x, d.y], pts: [...pts, [d.x, d.y]], i: 0 };
+  const visited = new Set();
+  for (let k = 0; k < 8 && d.order; k++) { runPatrol(d); visited.add(d.x + ',' + d.y); endTurn(0); if (nextRound()) { /* neue Runde */ } }
+  ok(d.order && d.order.type === 'patrol', 'Patrouille bleibt ein Dauerbefehl');
+  ok(pts.every(([x, y]) => visited.has(x + ',' + y)), 'beide Wegpunkte wurden angefahren');
+  const e = nb(d.x, d.y).find(([x, y]) => !land(x, y) && free(x, y));
+  createUnit('crs', 1, ...e); computeVision(0);
+  runPatrol(d);
+  ok(!d.order, 'Feind auf dem Nachbarfeld beendet die Patrouille');
+  ok(S.log.some(l => /Feindkontakt/.test(l.text)), 'Meldung dazu');
+});
+test('Befehle: Erkunden deckt Karte auf und hört auf, wenn nichts mehr zu finden ist', () => {
+  board();
+  const c = myCity();
+  const start = nb(c.x, c.y).find(([x, y]) => land(x, y) && free(x, y));
+  const u = createUnit('inf', 0, ...start); computeVision(0);
+  const seen0 = S.players[0].seen.reduce((a, b) => a + b, 0);
+  u.order = { type: 'explore' };
+  let rounds = 0;
+  while (u.order && alive(u) && rounds++ < 80) { runExplore(u); endTurn(0); if (nextRound()) u.moves = UT.inf.move; }
+  ok(S.players[0].seen.reduce((a, b) => a + b, 0) > seen0, 'es wurde etwas aufgedeckt');
+  ok(!u.order || !alive(u), 'Erkunden endet von selbst (Insel erkundet, Feind oder neue Stadt)');
+});
+test('Befehle: Marschziel einer Stadt', () => {
+  board();
+  const c = myCity();
+  const landGoal = tiles((x, y) => land(x, y) && free(x, y) && cheb(x, y, c.x, c.y) === 2)[0];
+  const seaGoal = tiles((x, y) => !land(x, y) && S.players[0].seen[idx(x, y)] && cheb(x, y, c.x, c.y) <= 2)[0];
+  ok(rallyCheck(c, 'inf', ...landGoal).ok, 'Landfeld ist ein gültiges Ziel für Infanterie');
+  ok(!rallyCheck(c, 'inf', c.x, c.y).ok, 'die Stadt selbst ist kein Ziel');
+  if (seaGoal) ok(!rallyCheck(c, 'inf', ...seaGoal).ok, 'Wasser ist kein Ziel für Infanterie');
+  ok(!rallyCheck(c, 'ftr', ...landGoal).ok, 'Jäger brauchen eine eigene Stadt als Ziel');
+  c.rally = landGoal;
+  const u = createUnit('inf', 0, c.x, c.y); applyRally(c, u);
+  eq(u.order, { type: 'goto', x: landGoal[0], y: landGoal[1] }, 'fertige Einheit bekommt den Marschbefehl');
+  ok(setProduction(c, 'tank'), 'Produktion umgestellt');
+  eq([c.prod, c.progress, c.rally], ['tank', 0, null], 'Umstellen setzt den Fortschritt zurück und löscht das Marschziel');
+  ok(!setProduction(c, 'tank') && !setProduction(c, 'gibtsnicht'), 'gleiche oder unbekannte Produktion wird abgelehnt');
+});
+test('Befehle: Transporter – Sturm vom Schiff und Ausladen', () => {
+  board();
+  const city = S.cities.find(k => k.coastal && k.owner < 0);
+  const sea = nb(city.x, city.y).find(([x, y]) => !land(x, y) && free(x, y));
+  // Sturm: Infanterie greift vom Schiff aus an, bis die Stadt fällt; wer übrig ist, bleibt an Bord
+  let taken = false, tries = 0;
+  while (!taken && tries++ < 12) {
+    city.owner = -1;
+    const trn = createUnit('trn', 0, ...sea);
+    for (let k = 0; k < 6; k++) createUnit('inf', 0, ...sea).carrier = trn.id;
+    computeVision(0);
+    const opt = assaultTarget(trn);
+    ok(opt && opt.kind === 'city' && opt.city === city, 'die Stadt nebenan ist das Ziel');
+    eq(pct(opt.chance), 50, 'angezeigte Chance');
+    assaultFrom(trn, opt);
+    taken = city.owner === 0;
+    if (taken) ok(cargoOf(trn).length < 6, 'mindestens eine Infanterie ging in der Stadt auf');
+    for (const u of S.units.slice()) if (u.owner === 0) killUnit(u);
+  }
+  ok(taken, 'mit 6 Infanterien fällt die Stadt praktisch immer (12 Anläufe)');
+  // Ausladen: an fremder Küste gehen die Truppen an Land, im eigenen Hafen in die Stadt
+  const [l, s] = coastPair();
+  const t2 = createUnit('trn', 0, ...s); const a = createUnit('inf', 0, ...s), b = createUnit('tank', 0, ...s); a.carrier = b.carrier = t2.id;
+  ok(canDisembark(a, t2), 'neben Land kann die Ladung von Bord');
+  ok(unloadAll(t2) >= 1 && a.carrier == null && land(a.x, a.y), 'Ausladen setzt die Truppen an Land');
+  const port = S.cities.find(k => k.owner === 0 && k.coastal);
+  const t3 = createUnit('trn', 0, port.x, port.y); const d = createUnit('inf', 0, port.x, port.y); d.carrier = t3.id;
+  eq(unloadAll(t3), 1, 'im eigenen Hafen wird ausgeladen');
+  ok(d.carrier == null && d.x === port.x && d.y === port.y, 'die Truppe steht in der Stadt');
+});
+test('Kampf: Wirtschaftlichkeit (Bilanz der Tabelle „Wer schlägt wen“)', () => {
+  board();
+  const [p, q] = openSeaPair();
+  const loss = (a, d) => { const A = createUnit(a, 0, ...p), D = createUnit(d, 1, ...q); const r = hpLostToKill(A, D, q[0], q[1]); killUnit(A); killUnit(D); return r; };
+  const same = loss('crs', 'crs');
+  ok(Math.abs(same - UT.crs.hp) < 0.01, `gleiche Typen: um einen Kreuzer zu versenken, geht im Mittel ein Kreuzer verloren (${same.toFixed(2)} Trefferpunkte)`);
+  ok(loss('dst', 'sub') < loss('sub', 'dst'), 'Zerstörer gegen U-Boot ist billiger als umgekehrt');
+});
+test('Kartennummer: Eingabe und Anzeige', () => {
+  eq(parseSeed(''), null, 'leer = zufällig');
+  eq(parseSeed('042 113 907'), 42113907, 'Ziffern mit Leerzeichen');
+  eq(parseSeed('42.113.907'), 42113907, 'Ziffern mit Punkten');
+  ok(parseSeed('Heimat') === parseSeed('heimat') && parseSeed('Heimat') !== parseSeed('Heimat2'), 'Text ergibt eine feste Nummer');
+  eq(fmtSeed(42113907), '042 113 907', 'Dreiergruppen');
+});
+
 // ------------------------------------------------------------------ Rundenwechsel
 test('Rundenwechsel: Daueraufträge laufen in der neuen Runde weiter', () => {
   board();
@@ -355,6 +448,29 @@ test('Spielstand: kaputte Dateien werden abgelehnt', () => {
   ok(S.units.every(u => UT[u.type] && inb(u.x, u.y) && u.owner < nPlayers()), 'unsinnige Einheiten wurden nicht verworfen');
   ok(S.unbekanntesFeld === undefined, 'unbekanntes Feld wurde übernommen');
 });
+test('Spielstand: automatisch und benannt speichern, laden, löschen', () => {
+  for (const k of [...store.keys()]) if (k !== 'archipel-lang') store.delete(k);
+  ok(!hasSave(), 'anfangs kein Spielstand');
+  newGame('klein', 'normal', 'inseln', 31, 1);
+  for (let k = 0; k < 5; k++) simRound();
+  const turn = S.turn, id = S.gameId;
+  saveGame(); ok(hasSave(), 'automatischer Spielstand angelegt');
+  const meta = saveSlot('Probe');
+  eq([meta.name, meta.turn], ['Probe', turn], 'Angaben zum benannten Stand');
+  eq(listSlots().map(m => m.name), ['Probe'], 'Liste der Stände');
+  ok(slotData(meta.id) && slotData('auto'), 'Daten zum Exportieren vorhanden');
+  for (let k = 0; k < 3; k++) simRound();
+  ok(loadSlot(meta.id) && S.turn === turn && S.gameId === id, 'benannter Stand lädt die frühere Runde');
+  for (let k = 0; k < 3; k++) simRound();
+  ok(loadGame() && S.turn === turn, 'automatischer Stand lädt');
+  saveSlot('Probe neu', meta.id);
+  eq(listSlots().map(m => m.name), ['Probe neu'], 'Überschreiben behält einen Eintrag');
+  deleteSlot(meta.id);
+  eq(listSlots().length, 0, 'gelöscht');
+  ok(!loadSlot(meta.id), 'gelöschter Stand lässt sich nicht laden');
+  store.set('archipel-save-v1', '{kaputt');
+  ok(!loadGame(), 'kaputter automatischer Stand wird abgelehnt statt abzustürzen');
+});
 test('Spielstand: alle Beispiel-Spielstände lassen sich laden', () => {
   const dir = path.join(root, 'docs', 'spielstaende');
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
@@ -395,8 +511,9 @@ function invariants(where) {
   for (let p = 0; p < nPlayers(); p++) { const s = strength(p).total; ok(Number.isFinite(s) && s >= 0, `${where}: Stärke von Spieler ${p} ist ${s}`); }
 }
 test('Partie: KI gegen KI läuft auf allen Welten fehlerfrei bis zum Ende', () => {
-  for (const [world, nAi] of [['inseln', 1], ['gemischt', 2], ['kontinente', 1]]) {
-    newGame('klein', 'normal', world, 2024, nAi);
+  // vierte Partie auf Schwer: dort spielt der Gegner umsichtig (Lagebild, Zielverteilung) und kennt die Karte
+  for (const [world, nAi, level] of [['inseln', 1, 'normal'], ['gemischt', 2, 'normal'], ['kontinente', 1, 'normal'], ['inseln', 1, 'schwer']]) {
+    newGame('klein', level, world, 2024, nAi);
     let k = 0;
     for (; k < 350 && !S.over; k++) { simRound(); if (k % 10 === 0) invariants(`${world}, Runde ${S.turn}`); }
     invariants(`${world}, Ende`);
