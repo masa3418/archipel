@@ -875,9 +875,9 @@ function drawSelRing(x, y, pulse) {
   ctx.restore();
 }
 // Marschweg der gewählten Einheit: laufende Striche von (x, y) über path, Kreis am Ziel
-function drawGotoPath(x, y, path, now) {
+function drawGotoPath(x, y, path, now, col = 'rgba(255,255,255,0.75)') {
   ctx.save();
-  ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = Math.max(1.5, TS / 14);
+  ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, TS / 14);
   ctx.setLineDash([TS * 0.16, TS * 0.14]); ctx.lineDashOffset = -now / 40;
   ctx.beginPath(); ctx.moveTo(x * TS + TS / 2, y * TS + TS / 2);
   for (const [px, py] of path) ctx.lineTo(px * TS + TS / 2, py * TS + TS / 2);
@@ -1562,7 +1562,7 @@ function onTileClick(x, y, shift) {
     // Entferntes Feld: Marschbefehl (den Weg zeigt die Karte schon beim Überfahren, siehe hoverRoute). Nur bei einer eigenen Stadt zeigt
     // der erste Klick erst die Stadt in der Seitenleiste, der zweite schickt die Einheit hinein – ansehen und hinschicken sind dort zweierlei.
     const pv = gotoPreviewFor(u);
-    const path = ownCity && !(pv && pv.x === x && pv.y === y) ? findPath(u, x, y) : null;
+    const path = ownCity && !(pv && pv.x === x && pv.y === y) ? findPath(u, x, y, false, true) : null;
     if (!path || !path.length) { gotoPreview = null; doGoto(u, x, y); return; }   // auch ohne Weg: die Meldung dazu kommt vom Marschbefehl
     gotoPreview = { id: u.id, ox: u.x, oy: u.y, x, y, path };
     selCity = city.id;
@@ -1591,9 +1591,22 @@ function hoverRoute(u) {
     const c = cityAt(x, y);
     // Feld mit eigenen Einheiten (außer in eigener Stadt): Der Klick wählt dort aus, statt zu marschieren – keine Linie
     const sel2 = !(c && c.owner === 0) && topUnitsAt(x, y).some(o => o.owner === 0);
-    hoverPath = { key, path: sel2 ? null : findPath(u, x, y) };
+    // Die Wegsuche lässt jedes Zielfeld zu (Angriff, an Bord gehen) – ein erforschtes Feld, das die Einheit nicht betreten kann, ist kein Ziel
+    const blocked = S.players[0].seen[idx(x, y)] && !canEnterTerrain(u, x, y);
+    // Eigene Einheiten zählen nicht als Hindernis: Sie ziehen weiter, und der Marsch wartet oder weicht aus (runGoto) – sonst hieße es vor
+    // einer besetzten Brücke „kein Weg“, und Linie und Dauer sprängen mit jeder eigenen Einheit. Sichtbare Gegner versperren den Weg.
+    const path = sel2 || blocked ? null : findPath(u, x, y, false, true);
+    // kein Weg: sagen, warum (Bodentruppen aufs Wasser, Schiff an Land) – nur für erforschte Felder, sonst verriete es das Gelände
+    let none = null;
+    if (!sel2 && !(path && path.length)) {
+      const known = S.players[0].seen[idx(x, y)], land = S.terrain[idx(x, y)] === 1, d = T(u).domain;
+      none = known && d === 'land' && !land ? tt('Bodentruppen kommen nicht übers Wasser – dafür braucht es einen Transporter', 'Land units cannot cross water – that takes a transport')
+        : known && d === 'sea' && land ? tt('Schiffe fahren nicht an Land', 'Ships cannot go on land')
+        : tt('Kein Weg dorthin', 'No way there');
+    }
+    hoverPath = { key, path, none };
   }
-  return hoverPath.path && hoverPath.path.length ? { x, y, path: hoverPath.path } : null;
+  return hoverPath.path && hoverPath.path.length ? { x, y, path: hoverPath.path } : hoverPath.none ? { x, y, path: [], none: hoverPath.none } : null;
 }
 let gotoPreview = null;
 function gotoPreviewFor(u) {
@@ -1602,19 +1615,45 @@ function gotoPreviewFor(u) {
 }
 function gotoTurns(u, len) { return len <= u.moves ? 1 : (u.moves > 0 ? 1 : 0) + Math.ceil((len - Math.max(0, u.moves)) / T(u).move); }
 // pinned: festgehaltener Weg zu einer eigenen Stadt (wartet auf den zweiten Klick), sonst die blassere Vorschau beim Überfahren
+// Jäger: Reicht der Treibstoff bis zum Ziel – und von dort noch bis zur nächsten Stadt oder zum Träger? (dieselben Regeln wie in doGoto)
+// 'far' = Ziel außer Reichweite (der Marsch wird abgelehnt), 'noreturn' = hin ja, zurück nicht mehr, null = in Ordnung oder kein Jäger
+function fuelState(u, x, y, len) {
+  if (!T(u).fuel) return null;
+  if (len > u.fuel) return 'far';
+  const c = cityAt(x, y);
+  return !(c && c.owner === 0) && u.fuel - len < distHome(0, x, y) ? 'noreturn' : null;
+}
 function drawGotoConfirm(u, p, pinned = true) {
-  ctx.save(); if (!pinned) ctx.globalAlpha = 0.7;
-  drawGotoPath(u.x, u.y, p.path, performance.now());
+  if (p.none) {   // kein Weg: durchgestrichener Kreis auf dem Feld und der Grund
+    const cx = p.x * TS + TS / 2, cy = p.y * TS + TS / 2, r = TS * 0.3;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,107,97,0.95)'; ctx.lineWidth = Math.max(2, TS / 11); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.moveTo(cx - r * 0.7, cy - r * 0.7); ctx.lineTo(cx + r * 0.7, cy + r * 0.7); ctx.stroke();
+    ctx.restore();
+    drawRoutePill(p, p.none, 'rgba(255,107,97,0.9)', '#ffd2cd');
+    return;
+  }
+  const fs = fuelState(u, p.x, p.y, p.path.length);
+  const col = fs === 'far' ? 'rgba(255,107,97,0.9)' : fs === 'noreturn' ? 'rgba(242,184,75,0.95)' : 'rgba(255,255,255,0.75)';
+  ctx.save(); if (!pinned) ctx.globalAlpha = fs ? 0.9 : 0.7;
+  drawGotoPath(u.x, u.y, p.path, performance.now(), col);
   ctx.restore();
   const n = gotoTurns(u, p.path.length), turns = tt(`${n} ${n === 1 ? 'Runde' : 'Runden'}`, `${n} ${n === 1 ? 'turn' : 'turns'}`);
-  const txt = pinned ? turns + tt(' · noch einmal klicken', ' · click again') : turns;
+  const txt = fs === 'far' ? tt(`Treibstoff reicht nicht · ${p.path.length} Felder, Treibstoff für ${u.fuel}`, `Not enough fuel · ${p.path.length} tiles, fuel for ${u.fuel}`)
+    : (pinned ? turns + tt(' · noch einmal klicken', ' · click again') : turns) + (fs ? tt(' · kein Rückweg!', ' · no way back!') : '');
+  drawRoutePill(p, txt, col, fs === 'far' ? '#ffd2cd' : fs ? '#ffe2a8' : '#fff');
+}
+// Schild über dem Zielfeld der Wegvorschau
+function drawRoutePill(p, txt, col, ink) {
   ctx.font = `700 ${Math.max(11, Math.round(TS * 0.4))}px system-ui, sans-serif`;
   const w = ctx.measureText(txt).width + 14, h = Math.max(17, TS * 0.62);
-  const bx = Math.max(2, Math.min(S.W * TS - w - 2, p.x * TS + TS / 2 - w / 2)), by = p.y * TS - h - 4 < 2 ? (p.y + 1) * TS + 4 : p.y * TS - h - 4;
+  // im sichtbaren Ausschnitt halten (ein langer Hinweis am Bildrand wäre sonst abgeschnitten)
+  const lo = Math.max(2, view.x + 4), hi = Math.min(S.W * TS - w - 2, view.x + wrap.clientWidth - w - 4);
+  const bx = Math.max(lo, Math.min(hi, p.x * TS + TS / 2 - w / 2)), by = p.y * TS - h - 4 < Math.max(2, view.y + 2) ? (p.y + 1) * TS + 4 : p.y * TS - h - 4;
   roundRectPath(ctx, bx, by, w, h, h / 2);
   ctx.fillStyle = 'rgba(15,20,28,0.93)'; ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = Math.max(1.5, TS / 18); ctx.stroke();
-  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, TS / 18); ctx.stroke();
+  ctx.fillStyle = ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(txt, bx + w / 2, by + h / 2 + 0.5);
 }
 
