@@ -261,6 +261,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   und warnt, wenn vom Ziel keine Basis erreichbar ist. Testfälle (Brücke, Fluss, Nebel, Stau, Feind) liefen als Node-Skript mit Kleinkarten.
   Schiffe im Nebel: `FOG_COST` (2) je unerforschtem Feld direkt neben bekanntem Land (`fogMask` in `findPath`) – sonst planten sie quer
   durch Inseln, deren Ende im Nebel lag (Umwege in 6 Testfällen 26 → 10 Felder, bei Wasser im Nebel unverändert 0).
+- **Jäger auf dem Marsch** (`runGoto(u, auto)`, game.js; Wunsch des Nutzers): In der Runde des Befehls fliegt der Jäger auch ohne Rückweg los (die
+  Vorschau warnt, der Spieler entscheidet). In Folgerunden (`auto`, Aufruf in `endHumanTurn`) hält er an, bevor nach dem nächsten Schritt der
+  Treibstoff nicht mehr für den Heimweg reichte (+1 Feld Reserve, wie bei der Patrouille) – Meldung, Befehl weg, der Spieler entscheidet. Flüge
+  zu einer eigenen Stadt oder einem eigenen Träger laufen durch. Er steht dann mit Restzügen in der Luft: Unbenutzte Züge kosten am Rundenende Treibstoff.
 - **Patrouille ist ein Dauerbefehl** (`runPatrol`, game.js): endet nur durch den Spieler, Feindkontakt oder einen unerreichbaren Wegpunkt.
   Jäger tanken zwischendurch selbst: Reicht der Treibstoff nach dem nächsten Schritt nicht mehr für den Heimweg (+1 Feld Reserve),
   fliegt er zur nächsten Stadt (`o.refuel`, `refuelBase`) und macht danach beim selben Wegpunkt weiter. Zweimal Umkehren für denselben

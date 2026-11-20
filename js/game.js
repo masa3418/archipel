@@ -973,7 +973,10 @@ function ownBlocks(u, x, y) {
   if (cityAt(x, y)) return false;
   return topUnitsAt(x, y).some(o => o.owner === u.owner && !(T(o).carries === T(u).domain && cargoOf(o).length < T(o).capacity));
 }
-function runGoto(u) {
+// auto: Fortsetzung eines Marschs in einer späteren Runde (nicht die Runde, in der der Spieler den Befehl gab). Nur dann hält ein Jäger
+// an, bevor er außer Reichweite gerät (Wunsch des Nutzers): In der aktiven Runde darf der Spieler ihn bewusst ohne Rückweg losschicken,
+// aber er soll nicht in einer Folgerunde von selbst in den Absturz fliegen.
+function runGoto(u, auto = false) {
   let guard = 50;
   while (alive(u) && u.order && u.order.type === 'goto' && u.moves > 0 && guard-- > 0) {
     const o = u.order;
@@ -1000,6 +1003,16 @@ function runGoto(u) {
     }
     o.wait = 0;
     const [nx, ny] = path[0];
+    if (auto && T(u).fuel) {
+      // wie bei der Patrouille: Nach dem Schritt muss der Treibstoff für den Heimweg reichen, mit einem Feld Reserve. Flüge zu einer
+      // eigenen Stadt oder einem eigenen Träger (das Ziel ist selbst eine Basis) laufen weiter.
+      const dc = cityAt(o.x, o.y), nc = cityAt(nx, ny);
+      const toBase = (dc && dc.owner === u.owner) || S.units.some(b => b.owner === u.owner && b.carrier == null && T(b).carries === 'air' && b.x === o.x && b.y === o.y);
+      if (!toBase && !(nc && nc.owner === u.owner) && u.fuel - 1 < distHome(u.owner, nx, ny) + 1) {
+        if (u.owner === 0) addLog(tt(`${T(u).name}: Marsch angehalten – beim Weiterflug reichte der Treibstoff nicht mehr für den Rückweg.`, `${T(u).name}: march stopped – flying on would leave too little fuel for the way back.`), 'bad', u.x, u.y);
+        u.order = null; break;
+      }
+    }
     const snap = contactSnap(u);
     const r = sailStep(u, nx, ny);   // Transporter nimmt beim Auslaufen die wartenden Truppen mit
     computeVision(u.owner);

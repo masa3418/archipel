@@ -1692,7 +1692,7 @@ function endHumanTurn() {
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'goto')) {
       // Feind ist während des Gegnerzugs herangerückt: Marsch anhalten
       if (u.carrier == null && enemyAdjacent(u)) { u.order = null; addLog(tt(`${T(u).name}: Marsch angehalten – Feindkontakt!`, `${T(u).name}: march stopped – enemy contact!`), 'bad', u.x, u.y); continue; }
-      runGoto(u);
+      runGoto(u, true);   // Folgerunde: Jäger halten an, bevor sie außer Reichweite geraten
     }
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'patrol')) runPatrol(u);
     for (const u of S.units.filter(o => o.owner === 0 && o.order && o.order.type === 'explore')) runExplore(u);
