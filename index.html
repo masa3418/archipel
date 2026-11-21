@@ -449,6 +449,16 @@
   .save-filter { margin: -4px 0 10px; }
   .save-filter input { width: 100%; box-sizing: border-box; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
   .sg { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; background: rgba(255,255,255,.015); }
+  /* Handbuch „Über das Spiel“: Hintergrund und Kleingedrucktes zum Aufklappen (das Nützliche – Speichern, Beispiele – steht offen darüber) */
+  .about-d { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 6px; background: var(--panel2); }
+  .about-d > summary { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; cursor: pointer; list-style: none; }
+  .about-d > summary::-webkit-details-marker { display: none; }
+  .about-d > summary::before { content: '▸'; color: var(--muted); width: 10px; flex-shrink: 0; }
+  .about-d[open] > summary::before { content: '▾'; }
+  .about-d > summary b { white-space: nowrap; }
+  .about-d .about-g { color: var(--muted); font-size: 12.5px; }
+  .about-d > summary:hover b { color: var(--accent); }
+  .about-d > p { margin: 0 12px 10px 32px; }
   .sg > summary { display: flex; align-items: center; gap: 10px; padding: 7px 10px; cursor: pointer; list-style: none; }
   .sg > summary::-webkit-details-marker { display: none; }
   .sg > summary::before { content: '▸'; color: var(--muted); width: 10px; }
@@ -934,17 +944,24 @@
         <p data-lang="en">Seven games to try out and look at – in the middle of play and with the timelapse from the first turn. Loading an example
           replaces your current game; save it first under <b>☰ Menu → Saved games</b> if you want to keep it. Their messages are in German.</p>
         <div class="ex-list" id="helpExamples"></div>
-        <h3 data-en="Language">Sprache</h3>
-        <p data-lang="de">Der Knopf <b>🌐 English</b> oben rechts schaltet auf Englisch um, <b>🌐 Deutsch</b> zurück auf Deutsch. Das laufende Spiel bleibt erhalten.</p>
-        <p data-lang="en">The <b>🌐 Deutsch</b> button at the top right switches to German, <b>🌐 English</b> back to English. The current game is kept.</p>
-        <h3 data-en="Version and offline copy">Version und Offline-Fassung</h3>
+        <h3 data-en="More about Archipel">Mehr über Archipel</h3>
+        <p class="muted" data-en="Background and the small print – click a line to open it.">Hintergrund und Kleingedrucktes – ein Klick auf eine Zeile klappt sie auf.</p>
+        <details class="about-d">
+          <summary><b data-en="Version and offline copy">Version und Offline-Fassung</b><span class="about-g">Version <span class="ver"></span> · </span><span class="about-g" data-en="also runs without the internet, as a single file">läuft auch ohne Internet, als einzelne Datei</span></summary>
         <p data-lang="de">Du spielst <b>Version <span class="ver"></span></b>. Archipel läuft auch ohne Internet: Unter
           <a href="https://github.com/masa3418/archipel/releases/latest" target="_blank" rel="noopener">Releases auf GitHub</a> gibt es das ganze Spiel als einzelne Datei <code>archipel.html</code> –
           herunterladen und doppelklicken genügt. Die Offline-Fassung hat eigene Spielstände; über „Export“ und „Aus Datei laden“ trägst du sie hin und her.</p>
         <p data-lang="en">You are playing <b>version <span class="ver"></span></b>. Archipel also runs without the internet: under
           <a href="https://github.com/masa3418/archipel/releases/latest" target="_blank" rel="noopener">Releases on GitHub</a> you get the whole game as a single file <code>archipel.html</code> –
           just download and double-click it. The offline copy has its own saved games; use “Export” and “Load from file” to move them across.</p>
-        <h3 data-en="Privacy">Datenschutz</h3>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="Language">Sprache</b><span class="about-g" data-en="German and English, switch at any time">Deutsch und Englisch, jederzeit umschaltbar</span></summary>
+        <p data-lang="de">Der Knopf <b>🌐 English</b> oben rechts schaltet auf Englisch um, <b>🌐 Deutsch</b> zurück auf Deutsch. Das laufende Spiel bleibt erhalten.</p>
+        <p data-lang="en">The <b>🌐 Deutsch</b> button at the top right switches to German, <b>🌐 English</b> back to English. The current game is kept.</p>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="Privacy">Datenschutz</b><span class="about-g" data-en="no cookies, no tracking – everything stays in your browser">keine Cookies, kein Tracking – alles bleibt in deinem Browser</span></summary>
         <p data-lang="de">Archipel verwendet <b>keine Cookies</b>, <b>kein Tracking</b> und lädt <b>nichts von anderen Servern</b>
       (auch keine Schriften). Spielstände und Einstellungen werden nur in deinem Browser gespeichert (localStorage) und verlassen
       deinen Rechner nicht – außer du exportierst selbst eine Datei. Löschen kannst du sie über die Spielstände, alles auf einmal
@@ -957,25 +974,9 @@
       via <b>Settings → Reset</b>, or by removing the site data in your browser. The online version is served via GitHub Pages; GitHub processes
       technically necessary data such as the IP address
       (<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub privacy statement</a>).</p>
-        <h3 data-en="Music">Musik</h3>
-        <p data-lang="de">Die Melodie zum Spielstart ist der Anfang der <b>„Morgenstimmung“</b> von <b>Edvard Grieg</b> (1843–1907),
-          aus seiner Musik zu Henrik Ibsens Schauspiel „Peer Gynt“ (1875), bekannt aus der Peer-Gynt-Suite Nr. 1.
-          Das Werk ist gemeinfrei. Archipel spielt nur die Noten nach, mit eigenem, im Programm erzeugtem Klang – so wie alle
-          Klänge und Bilder des Spiels ohne fremde Aufnahmen oder Dateien entstehen. Mit Dank und Respekt vor dem Komponisten.</p>
-        <p data-lang="en">The tune at the start of a game is the opening of <b>“Morning Mood”</b> by <b>Edvard Grieg</b> (1843–1907),
-          from his music to Henrik Ibsen’s play “Peer Gynt” (1875), well known from the Peer Gynt Suite No. 1.
-          The work is in the public domain. Archipel only plays the notes, with its own sound generated by the program – just as all
-          sounds and pictures of the game are made without anyone else’s recordings or files. With thanks and respect to the composer.</p>
-        <h3 data-en="City names">Städtenamen</h3>
-        <p data-lang="de">Die Namen der Städte denkt sich das Spiel selbst aus: Es setzt sie zufällig aus Silben zusammen – einem Anfang,
-          oft einer Mitte und einer Endung, etwa <i>Bar</i> + <i>en</i> + <i>heim</i> = <i>Barenheim</i>. So entstehen einige Tausend
-          verschiedene Namen; echte Orte sind nicht gemeint. Dabei kann zufällig ein Name herauskommen, der in irgendeiner Sprache etwas
-          Unpassendes oder Anstößiges bedeutet. Das ist nicht beabsichtigt – niemand hat diese Namen einzeln ausgesucht.</p>
-        <p data-lang="en">The game makes up the city names itself: it puts them together from random syllables – a beginning,
-          often a middle and an ending, such as <i>Bar</i> + <i>en</i> + <i>heim</i> = <i>Barenheim</i>. This gives several thousand
-          different names; no real places are meant. By chance, a name may come out that means something unsuitable or offensive in
-          some language. This is not intended – nobody picked these names one by one.</p>
-        <h3 data-en="Source code and licence">Quelltext und Lizenz</h3>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="Source code and licence">Quelltext und Lizenz</b><span class="about-g" data-en="MIT licence, source on GitHub, report bugs">MIT-Lizenz, Quelltext auf GitHub, Fehler melden</span></summary>
         <p data-lang="de">Archipel ist freie Software unter der <b>MIT-Lizenz</b> (© 2026 masa3418): Du darfst das Spiel frei nutzen, verändern und weitergeben, solange der Urheber- und Lizenzhinweis erhalten bleibt. Es gibt keine Gewährleistung. Den vollständigen Text findest du in der
           <a href="https://github.com/masa3418/archipel/blob/main/LICENSE" target="_blank" rel="noopener">Lizenzdatei</a>.</p>
         <p data-lang="en">Archipel is free software under the <b>MIT licence</b> (© 2026 masa3418): you may use, modify and share the game freely as long as the copyright and licence notice is kept. It comes without warranty. You can find the full text in the
@@ -984,6 +985,29 @@
           Dort kannst du auch <a href="https://github.com/masa3418/archipel/issues/new/choose" target="_blank" rel="noopener">Fehler melden, Ideen vorschlagen und Rückmeldung zum Balancing geben</a>.</p>
         <p data-lang="en">The source code is on GitHub: <a href="https://github.com/masa3418/archipel" target="_blank" rel="noopener">github.com/masa3418/archipel</a>.
           There you can also <a href="https://github.com/masa3418/archipel/issues/new/choose" target="_blank" rel="noopener">report bugs, suggest ideas and give balance feedback</a>.</p>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="Music">Musik</b><span class="about-g" data-en="Grieg’s “Morning Mood”">Griegs „Morgenstimmung“</span></summary>
+        <p data-lang="de">Die Melodie zum Spielstart ist der Anfang der <b>„Morgenstimmung“</b> von <b>Edvard Grieg</b> (1843–1907),
+          aus seiner Musik zu Henrik Ibsens Schauspiel „Peer Gynt“ (1875), bekannt aus der Peer-Gynt-Suite Nr. 1.
+          Das Werk ist gemeinfrei. Archipel spielt nur die Noten nach, mit eigenem, im Programm erzeugtem Klang – so wie alle
+          Klänge und Bilder des Spiels ohne fremde Aufnahmen oder Dateien entstehen. Mit Dank und Respekt vor dem Komponisten.</p>
+        <p data-lang="en">The tune at the start of a game is the opening of <b>“Morning Mood”</b> by <b>Edvard Grieg</b> (1843–1907),
+          from his music to Henrik Ibsen’s play “Peer Gynt” (1875), well known from the Peer Gynt Suite No. 1.
+          The work is in the public domain. Archipel only plays the notes, with its own sound generated by the program – just as all
+          sounds and pictures of the game are made without anyone else’s recordings or files. With thanks and respect to the composer.</p>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="City names">Städtenamen</b><span class="about-g" data-en="put together from random syllables">zufällig aus Silben zusammengesetzt</span></summary>
+        <p data-lang="de">Die Namen der Städte denkt sich das Spiel selbst aus: Es setzt sie zufällig aus Silben zusammen – einem Anfang,
+          oft einer Mitte und einer Endung, etwa <i>Bar</i> + <i>en</i> + <i>heim</i> = <i>Barenheim</i>. So entstehen einige Tausend
+          verschiedene Namen; echte Orte sind nicht gemeint. Dabei kann zufällig ein Name herauskommen, der in irgendeiner Sprache etwas
+          Unpassendes oder Anstößiges bedeutet. Das ist nicht beabsichtigt – niemand hat diese Namen einzeln ausgesucht.</p>
+        <p data-lang="en">The game makes up the city names itself: it puts them together from random syllables – a beginning,
+          often a middle and an ending, such as <i>Bar</i> + <i>en</i> + <i>heim</i> = <i>Barenheim</i>. This gives several thousand
+          different names; no real places are meant. By chance, a name may come out that means something unsuitable or offensive in
+          some language. This is not intended – nobody picked these names one by one.</p>
+        </details>
       </section>
 
     </div>
