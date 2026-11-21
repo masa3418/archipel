@@ -260,7 +260,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   (`.set-row` + `.set-d`): Lautstärke, Klangtest, Wiedergabe der Züge, Wegvorschau beim Zeigen (`showRoute`), Grafiken (Übersicht, siehe unten), Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Tastenlegende über
   der Karte (`showKeys`, `archipel-keys`; beim ersten Besuch an, sonst aus; `updateKeyLegend` in `refresh()`, blendet ab, was gerade nicht geht – neue Tastenkürzel dort
   und in der Tastentabelle des Handbuchs eintragen), automatisches Rundenende, Schwelle fürs Angebot zum vorzeitigen Ende (`offerPct`, `archipel-offer`,
-  0 = nie, Standard 10 %; `maybeOfferEnd`), Mausrad/Touchpad, Nebel aus. Neue Einstellungen dort einhängen, nicht ins Menü, in die Kopfzeile oder Seitenleiste.
+  0 = nie, Standard 20 %; `maybeOfferEnd`. Bis 1.7.4 waren es 10 % – dem Nutzer zu spät. Messung KI gegen KI, 288 Partien, klein/mittel, Normal/Schwer: Angebot falsch bei 10/15/20/25/30/35 % in 0/0/1/3/7/22 Fällen von ca. 280; es kommt vor dem Ende um 10/18/29/43/63/91 Runden (klein) bzw. 20/30/44/66/86/120 (mittel)), Mausrad/Touchpad, Nebel aus. Neue Einstellungen dort einhängen, nicht ins Menü, in die Kopfzeile oder Seitenleiste.
   Die Hinweiszeile `#hover` (Feld unter der Maus, Siegchance) steht über der Karte (`#infoBar` in `#mapCol`, so breit wie die Karte);
   während die Zeitleiste nach dem Rundenende läuft, liegt dort `#banner` darüber – erst „Gegner zieht …“, ab `anim.ownFrom`
   (eigene Märsche/Patrouillen der neuen Runde) „Deine Einheiten führen ihre Befehle aus …“ (`updateBanner`). Meldungen fürs Spielgeschehen gehören an diese eine Stelle.

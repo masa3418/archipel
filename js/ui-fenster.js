@@ -269,7 +269,7 @@ function closeModals() {
 // Spiel Aufgeben (den Sieg) an. Nach einer Ablehnung wird 10 Runden nicht erneut gefragt.
 // Die Schwelle stellt man im Menü ein (archipel-offer: 0 = nie fragen, sonst Prozent; Standard 10).
 const OFFER_TURNS = 5, OFFER_PAUSE = 10, OFFER_MIN_TURN = 15, OFFER_STEPS = [0, 5, 10, 15, 20, 25, 30];
-let offerPct = 10;
+let offerPct = 20;   // Vorgabe; gemessen (288 Partien KI gegen KI): bis 20 % lag das Angebot in 1 von 282 Fällen falsch, siehe CLAUDE.md
 try { const v = Number(localStorage.getItem('archipel-offer')); if (localStorage.getItem('archipel-offer') !== null && OFFER_STEPS.includes(v)) offerPct = v; } catch (e) {}
 function shareOf(e) { return e.me + e.en > 0 ? e.me / (e.me + e.en) : 0.5; }
 function maybeOfferEnd() {
