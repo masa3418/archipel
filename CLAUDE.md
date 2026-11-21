@@ -433,18 +433,21 @@ im ausgeblendeten Browser-Fenster werden Zeitgeber gedrosselt, lange Läufe brec
 
 ### Stand der Einmessung
 
-Kleine Karte, „Siege“ des einfachen KI-Spielers auf Platz 0, je 96 Partien über alle drei Welten
-(nach Träger, Hafenregel und getarnten U-Booten; Schwer und Brutal nach dem Verlangsamen des Trägers auf 2 Felder –
-mit 3 Feldern waren es 12 bzw. 2 Siege, der schnelle Träger nützte der KI also spürbar):
+Kleine Karte, „Siege“ des einfachen KI-Spielers auf Platz 0, je 96 Partien über die drei alten Welten (Inselreich, Gemischt, Festland).
+Stand **seit dem sicheren Anfang (1.8.1)**; davor: Leicht 96, Normal 56, Schwer 24, Brutal 5 (offen 0 / 3 / 4 / 1) – Schwer und Brutal sind also
+etwas härter geworden, weil die KI dort die Karte kennt und den schnelleren Start besser nutzt. Die älteren Messreihen weiter unten und bei den
+einzelnen Regeln (meist „alt → neu“) stammen aus der Zeit davor und sind untereinander vergleichbar, aber nicht mit dieser Tabelle.
+Die neuen Welten stehen bei ihrer Beschreibung (Binnenmeer, Kontinente). Früher: Mit einem Träger von 3 statt 2 Feldern waren es auf Schwer/Brutal
+12 bzw. 2 Siege, der schnelle Träger nützte der KI spürbar:
 
 | Stufe | Siege | unentschieden nach 350 Runden | Bonus des Gegners |
 |---|---|---|---|
 | Leicht | 96 | 0 | 70 % Bautempo, macht Fehler, du +1 Infanterie |
-| Normal | 56 | 3 | keiner, macht gelegentlich Fehler |
-| Schwer | 24 | 4 | kennt die Karte, spielt umsichtig |
-| Brutal | 5 | 1 | wie Schwer, 115 % Bautempo, zweite Stadt |
+| Normal | 57 | 7 | keiner, macht gelegentlich Fehler |
+| Schwer | 15 | 2 | kennt die Karte, spielt umsichtig |
+| Brutal | 1 | 0 | wie Schwer, 115 % Bautempo, zweite Stadt |
 
-Partiedauer bis zur Entscheidung (Normal) ca. 210 Runden. Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
+Partiedauer bis zur Entscheidung (Normal) ca. 180 Runden auf der kleinen Karte. Ein KI-Zug dauert auf der mittleren Karte ca. 50 ms.
 
 **Mehrere Gegner** (Platz 0 einfach ohne Fehler, je 96 Partien über alle drei Welten, Siege / offen nach 350 Runden; Skript wie `simGame` mit `nAi`):
 

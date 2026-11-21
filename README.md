@@ -104,7 +104,7 @@ on GitHub) and open it via ☰ Menu → Saved games → Load from file.*
 - Handbuch im Spiel mit Einheitenkarten und einer Tabelle „Wer schlägt wen“, die sich aus den Regeln selbst berechnet
 - Animationen, Kamerafahrten bei Gegnerzügen, Kräfteverhältnis, Statistik, Zeitraffer der ganzen Partie
 - Sieben Beispiel-Spielstände zum Ausprobieren, direkt aus dem Handbuch ladbar
-- Bedienung mit Maus, Tastatur und Touchpad
+- Bedienung mit Maus, Tastatur und Touchpad; eine Lupe (Taste O halten) zeigt die Karte unter der Maus scharf vergrößert
 - Offline-Fassung als einzelne Datei, online auch als App installierbar; siehe [Änderungen je Version](CHANGELOG.md)
 - Synthetisierte Soundeffekte und Klangteppiche je Einheitentyp, Klangtest-Fenster
 
