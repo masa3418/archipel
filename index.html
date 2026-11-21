@@ -65,12 +65,8 @@
   /* Verweis ins Internet (Erklärvideos): deutlich als „online“ gekennzeichnet */
   .ext { font-size: 11px; font-weight: 600; color: #9fc4ff; border: 1px solid #3d6aa8; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
   /* Beispiel-Spielstände im Handbuch („Über das Spiel“) */
-  .ex-list { display: grid; gap: 6px; margin: 6px 0 4px; }
-  .ex-row { display: flex; align-items: center; gap: 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
-  .ex-row div { flex: 1; min-width: 0; }
-  .ex-row b { display: block; font-size: 13px; }
-  .ex-row span { font-size: 12px; color: var(--muted); }
-  .ex-row button { flex-shrink: 0; }
+  .ex-list { margin: 6px 0 4px; }
+  .ex-d > p:last-child { margin-bottom: 12px; }
   .ex-off { font-size: 13px; }
   a[data-videos]:not(.mi) { color: #9fc4ff; font-weight: 600; }
   .menu .mi[hidden] { display: none; }
@@ -975,9 +971,9 @@
         <p data-lang="de">Das Spiel speichert automatisch im Browser, nach jedem Zug und beim Schließen der Seite. Lädst du neu oder stürzt der Browser ab, machst du genau dort weiter – ein verlorener Kampf lässt sich so aber auch nicht durch Neuladen wiederholen. Im <b>☰ Menü</b> unter <b>Spielstände</b> legst du beliebig viele benannte Stände an, exportierst sie als Datei und lädst sie wieder.</p>
         <p data-lang="en">The game saves automatically in your browser after every move and when the page is closed. If you reload or the browser crashes, you continue exactly where you were – which also means a lost battle cannot be undone by reloading. In the <b>☰ Menu</b> under <b>Saved games</b> you can keep any number of named saves, export them as files and load them again.</p>
         <h3 id="helpExamplesH" data-en="Example games">Beispiel-Spielstände</h3>
-        <p data-lang="de">Sieben Partien zum Ausprobieren und Anschauen – mitten im Spiel und mit Zeitraffer vom ersten Zug an. Ein Beispiel zu laden
+        <p data-lang="de">Sieben Partien zum Ausprobieren und Anschauen – mitten im Spiel und mit Zeitraffer vom ersten Zug an. Klapp eine auf und lies, was dich erwartet. Ein Beispiel zu laden
           ersetzt deine laufende Partie; speichere sie vorher unter <b>☰ Menü → Spielstände</b>, wenn du sie behalten willst. Die Meldungen darin sind auf Deutsch.</p>
-        <p data-lang="en">Seven games to try out and look at – in the middle of play and with the timelapse from the first turn. Loading an example
+        <p data-lang="en">Seven games to try out and look at – in the middle of play and with the timelapse from the first turn. Open one and read what awaits you. Loading an example
           replaces your current game; save it first under <b>☰ Menu → Saved games</b> if you want to keep it. Their messages are in German.</p>
         <div class="ex-list" id="helpExamples"></div>
         <h3 data-en="More about Archipel">Mehr über Archipel</h3>

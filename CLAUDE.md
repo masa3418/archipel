@@ -28,7 +28,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   `docs/spielstaende/*.json` (im README aufgeführt): erzeugt mit `node tools/beispiele.js` (die KI spielt beide Seiten, gespeichert wird,
   sobald eine gewünschte Lage erreicht ist; Zeitraffer und Kurve ab Runde 1). Nach Regeländerungen oder Änderungen am Spielstand neu
   erzeugen und die Tabelle im README (Runden, Städte) anpassen. Online lädt das Handbuch sie direkt (Reiter „Über das Spiel“,
-  `EXAMPLES` in ui.js – Dateinamen dort und im README gleich halten; Hinweis mit Sprung dorthin in „Erste Schritte“ per `data-helpanchor`);
+  `EXAMPLES` in ui.js – Dateinamen, Runden und Städte dort und im README gleich halten; je Beispiel eine Zeile zum Aufklappen mit Eckdaten, darin eine Schilderung der Lage und erst dann der Laden-Knopf; Hinweis mit Sprung dorthin in „Erste Schritte“ per `data-helpanchor`);
   die Offline-Fassung (`file://`) lädt nichts aus dem Internet und zeigt stattdessen den Link zu GitHub. `tools/pack.js` ist kein Build für den Betrieb,
   sondern verpackt nur den Release; `dist/` gehört nicht ins Repository.
 - **Installierbare App nur online:** `manifest.webmanifest` und `sw.js` (Service Worker, „erst Netz, dann Zwischenspeicher“) liegen im

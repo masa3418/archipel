@@ -608,19 +608,35 @@ for (const a of document.querySelectorAll('a[data-videos]')) {
 // Beispiel-Spielstände (docs/spielstaende/, erzeugt mit tools/beispiele.js; nicht im Release). Online liegen sie auf demselben Server
 // wie das Spiel und lassen sich im Handbuch („Über das Spiel“) direkt laden. Die Offline-Fassung lädt nichts aus dem Internet – dort
 // nur der Link zum Herunterladen (danach „Aus Datei laden“). Neue Beispiele hier und in der Tabelle im README eintragen.
+// Je Beispiel: Datei, Titel, Eckdaten (Zeile zum Aufklappen), Schilderung der Lage (erst aufgeklappt, mit dem Laden-Knopf – Wunsch des
+// Nutzers: Lust auf die Partie machen statt einer Liste von Knöpfen). Runden und Städte stehen auch im README – nach dem Neuerzeugen beides anpassen.
 const EXAMPLES = [
-  ['beispiel-1-inselreich-anfang', tt('Inselreich, Anfang', 'Archipelago, opening'), tt('Die ersten Städte und Transporter, die Inseln noch kaum erkundet.', 'The first cities and transports, the islands still barely explored.')],
-  ['beispiel-2-inselreich-seekrieg', tt('Inselreich, Seekrieg', 'Archipelago, naval war'), tt('Ausgeglichene Lage, Flotten und Transporter auf beiden Seiten.', 'An even match, fleets and transports on both sides.')],
-  ['beispiel-3-festland-front', tt('Festland, Front', 'Mainland, front line'), tt('Landkrieg mit Binnenmeeren, Flüssen und Brücken.', 'Land war with inland seas, rivers and bridges.')],
-  ['beispiel-4-drei-gegner', tt('Drei Gegner', 'Three opponents'), tt('Jeder gegen jeden: Rot, Gelb und Violett sind alle noch im Spiel.', 'Everyone against everyone: Red, Yellow and Purple are all still in the game.')],
-  ['beispiel-5-kurz-vor-dem-sieg', tt('Kurz vor dem Sieg', 'Close to victory'), tt('Der Gegner hält sich nur noch auf seinen letzten Inseln.', 'The enemy is holding out on its last islands.')],
-  ['beispiel-6-schwere-lage', tt('Schwere Lage', 'A tough spot'), tt('Stufe Schwer, du bist klar unterlegen – schaffst du die Wende?', 'Hard level, you are clearly behind – can you turn it around?')],
-  ['beispiel-7-sieg-gegen-drei', tt('Sieg gegen drei', 'Victory over three'), tt('Eine gewonnene Partie: Das Abschlussfenster zeigt den Zeitraffer der ganzen Partie.', 'A won game: the final window shows the timelapse of the whole game.')],
+  ['beispiel-1-inselreich-anfang', tt('Inselreich, Anfang', 'Archipelago, opening'), tt('Runde 43 · mittlere Karte · Normal', 'Turn 43 · medium map · Normal'),
+    tt('Deine Heimatinsel gehört dir, die ersten Transporter sind gebaut – und ringsum liegt fast alles noch im Nebel. Irgendwo dort draußen tut der Gegner gerade dasselbe wie du. Wohin schickst du die ersten Truppen? Der ruhigste Einstieg: Hier ist noch nichts entschieden und nichts verloren.',
+      'Your home island is yours, the first transports are built – and almost everything around you still lies in the fog. Somewhere out there the enemy is doing exactly what you are doing. Where do you send your first troops? The calmest way in: nothing is decided yet, and nothing is lost.')],
+  ['beispiel-2-inselreich-seekrieg', tt('Inselreich, Seekrieg', 'Archipelago, naval war'), tt('Runde 108 · 11 : 11 Städte', 'Turn 108 · 11 : 11 cities'),
+    tt('Elf Städte gegen elf, und zwischen euch nur Wasser. Wer die See beherrscht, bringt seine Truppen hinüber – wer sie verliert, sieht seine Transporter sinken. Jeder Kreuzer zählt, und ein einziges U-Boot vor dem Hafen kann eine ganze Landung kosten. Eine Partie auf Messers Schneide.',
+      'Eleven cities against eleven, and nothing but water between you. Whoever rules the sea gets their troops across – whoever loses it watches their transports go down. Every cruiser counts, and a single submarine off the harbour can cost a whole landing. A game on a knife edge.')],
+  ['beispiel-3-festland-front', tt('Festland, Front', 'Mainland, front line'), tt('Runde 90 · 22 : 17 Städte', 'Turn 90 · 22 : 17 cities'),
+    tt('Kein Meer trennt euch: Die Front zieht sich quer durchs Land, über Flüsse, Brücken und Landengen. Du hast mehr Städte, aber an jeder Brücke kommt nur eine Einheit nach der anderen hinüber. Brichst du mit Masse durch – oder umgehst du die Front über die Binnenmeere und landest in seinem Rücken?',
+      'No sea keeps you apart: the front runs right across the land, over rivers, bridges and narrow necks. You hold more cities, but at every bridge only one unit after another gets across. Do you break through by sheer numbers – or go round the front across the inland seas and land in the enemy’s rear?')],
+  ['beispiel-4-drei-gegner', tt('Drei Gegner', 'Three opponents'), tt('Runde 90 · Gemischt · jeder gegen jeden', 'Turn 90 · Mixed · free-for-all'),
+    tt('Rot, Gelb und Violett – und alle wollen dasselbe wie du. Noch bekämpfen sie sich auch gegenseitig. Stürzt du dich auf den Schwächsten, oder wartest du ab, bis sich zwei von ihnen aufgerieben haben? Wer hier zu früh zu groß wird, hat schnell drei Fronten.',
+      'Red, Yellow and Purple – and they all want the same as you. For now they are also fighting each other. Do you pounce on the weakest, or wait until two of them have worn each other down? Grow too big too early here and you soon have three fronts.')],
+  ['beispiel-5-kurz-vor-dem-sieg', tt('Kurz vor dem Sieg', 'Close to victory'), tt('Runde 179 · kleine Karte · 27 : 4 Städte', 'Turn 179 · small map · 27 : 4 cities'),
+    tt('27 Städte gegen 4: Der Krieg ist gewonnen, aber noch nicht vorbei. Der Gegner hält sich auf seinen letzten Inseln. Zeit für das Finale – Truppen sammeln, übersetzen, die letzte Stadt nehmen. Genau das Richtige, wenn du einmal einen Sieg auskosten willst.',
+      '27 cities against 4: the war is won, but not over. The enemy is holding out on its last islands. Time for the finale – gather your troops, cross over, take the last city. Just the thing if you want to savour a victory for once.')],
+  ['beispiel-6-schwere-lage', tt('Schwere Lage', 'A tough spot'), tt('Runde 60 · Stufe Schwer · 9 : 15 Städte', 'Turn 60 · Hard · 9 : 15 cities'),
+    tt('Neun Städte gegen fünfzehn, und der Gegner kennt jede Insel der Karte. Er spielt umsichtig und macht keine Fehler. Aufgeben würde dir niemand übel nehmen – aber noch ist nichts verloren. Schaffst du die Wende? Für alle, die es wissen wollen.',
+      'Nine cities against fifteen, and the enemy knows every island on the map. It plays carefully and makes no mistakes. Nobody would blame you for giving up – but nothing is lost yet. Can you turn it around? For those who want to find out.')],
+  ['beispiel-7-sieg-gegen-drei', tt('Sieg gegen drei', 'Victory over three'), tt('Runde 209 · gewonnen · zum Zuschauen', 'Turn 209 · won · just watch'),
+    tt('209 Runden, drei Gegner, ein Sieger. Diese Partie ist schon entschieden: Lehn dich zurück und sieh im Zeitraffer zu, wie aus einer einzelnen Stadt ein Reich wird und Rot, Gelb und Violett von der Karte verschwinden. Hier gibt es nichts zu tun – nur zu staunen.',
+      '209 turns, three opponents, one winner. This game is already decided: lean back and watch the timelapse as a single city grows into an empire and Red, Yellow and Purple vanish from the map. Nothing to do here – just to marvel.')],
 ];
 const EXAMPLE_ONLINE = /^https?:$/.test(location.protocol);
 function renderExamples() {
-  const rows = EXAMPLES.map(([f, title, desc]) => `<div class="ex-row"><div><b>${title}</b><span>${desc}</span></div>`
-    + (EXAMPLE_ONLINE ? `<button data-example="${f}">${tt('Laden', 'Load')}</button>` : '') + '</div>').join('');
+  const rows = EXAMPLES.map(([f, title, facts, story]) => `<details class="about-d ex-d"><summary><b>${title}</b><span class="about-g">${facts}</span></summary><p>${story}</p>`
+    + (EXAMPLE_ONLINE ? `<p><button class="primary" data-example="${f}">${tt('Diese Partie laden', 'Load this game')}</button></p>` : '') + '</details>').join('');
   $('helpExamples').innerHTML = rows + (EXAMPLE_ONLINE ? ''
     : `<p class="ex-off muted">${tt('In der Offline-Fassung lassen sie sich hier nicht laden – sie liegen im Internet:', 'In the offline copy they cannot be loaded from here – they are on the internet:')}
       <a href="https://github.com/masa3418/archipel/tree/main/docs/spielstaende" target="_blank" rel="noopener">${tt('Beispiele auf GitHub', 'examples on GitHub')}</a> <span class="ext">online ↗</span>
