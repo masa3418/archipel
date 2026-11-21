@@ -484,6 +484,15 @@ function actExplore() {
   const u = selUnit(); if (!u) return;
   if (u.carrier != null && T(u).domain === 'land') { toast(tt('Erst ausladen, dann erkunden', 'Unload first, then explore')); Sfx.play('error'); return; }
   if (T(u).domain === 'sea' && u.type === 'trn' && cargoOf(u).length) { toast(tt('Transporter mit Ladung erkunden nicht selbstständig', "Loaded transports don't explore on their own")); Sfx.play('error'); return; }
+  // Nichts mehr zu entdecken: gleich sagen und den Befehl gar nicht erst geben – wie „Heimkehr“ in der eigenen Stadt. (Vorher stand das nur
+  // in den Meldungen, und ohne Züge blieb der Befehl bis zur nächsten Runde stehen.) Dieselbe Prüfung wie in runExplore: Weg ins Unbekannte,
+  // notfalls auch einer durch Feindnähe – dann wartet die Einheit ab.
+  const air = T(u).domain === 'air', reach = air ? Math.max(1, Math.floor((u.fuel - T(u).move) / 2)) : 60;
+  const any = p => p && p.length;
+  if (!any(explorePath(u, reach)) && !any(explorePath(u, reach, false))) {
+    toast(air ? tt('Nichts Unbekanntes mehr in Reichweite', 'Nothing unknown left in range') : tt('Hier gibt es nichts mehr zu erkunden', 'Nothing left to explore here'));
+    Sfx.play('error'); return;
+  }
   u.order = { type: 'explore' };
   Sfx.play('select');
   animBegin(120);

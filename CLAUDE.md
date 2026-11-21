@@ -313,6 +313,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Vorschau warnt, der Spieler entscheidet). In Folgerunden (`auto`, Aufruf in `endHumanTurn`) hält er an, bevor nach dem nächsten Schritt der
   Treibstoff nicht mehr für den Heimweg reichte (+1 Feld Reserve, wie bei der Patrouille) – Meldung, Befehl weg, der Spieler entscheidet. Flüge
   zu einer eigenen Stadt oder einem eigenen Träger laufen durch. Er steht dann mit Restzügen in der Luft: Unbenutzte Züge kosten am Rundenende Treibstoff.
+- **Befehl ohne Wirkung → sofort Meldung** (ui.js `actHome`, `actExplore`): „Heimkehr“ in der eigenen Stadt und „Erkunden“, wenn es nichts mehr zu
+  entdecken gibt (`explorePath` findet weder einen sicheren noch einen riskanten Weg), sagen das gleich mit einem Hinweis und Fehlerton und geben
+  keinen Befehl. Vorher stand „Erkundung beendet“ nur in den Meldungen. Neue Befehle genauso behandeln (Wunsch des Nutzers: gleiche Rückmeldung).
 - **Patrouille ist ein Dauerbefehl** (`runPatrol`, game.js): endet nur durch den Spieler, Feindkontakt oder einen unerreichbaren Wegpunkt.
   Jäger tanken zwischendurch selbst: Reicht der Treibstoff nach dem nächsten Schritt nicht mehr für den Heimweg (+1 Feld Reserve),
   fliegt er zur nächsten Stadt (`o.refuel`, `refuelBase`) und macht danach beim selben Wegpunkt weiter. Zweimal Umkehren für denselben
@@ -344,7 +347,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 8 s, 344 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 8 s, 346 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
