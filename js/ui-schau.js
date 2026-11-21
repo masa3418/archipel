@@ -510,9 +510,15 @@ function openGfx() { Sfx.unlock(); gfx.svg = null; renderGfx(); openModal('mGfx'
 $('bGfx').onclick = () => { closeModals(); openGfx(); };   // aus dem Fenster „Einstellungen“
 // Landschaft der laufenden Partie (S.land, LANDSCAPES in gfx.js): nur die Farben der Karte. Wird mit der Partie gespeichert.
 const LAND_NAMES = { gruen: tt('Grüne Inseln', 'Green islands'), wueste: tt('Wüste', 'Desert'), schnee: tt('Schnee', 'Snow'), lava: tt('Lava', 'Lava'), alien: tt('Fremder Planet', 'Alien planet'), zonen: tt('Klimazonen', 'Climate zones') };
+// Die Landschaft ist EINE Einstellung (Wunsch des Nutzers – eine für die laufende und eine für neue Partien war umständlich): Umschalten über
+// „Ansicht“ oder die Einstellungen gilt sofort für die laufende Partie und bleibt für alle neuen eingestellt (archipel-landscape, Vorgabe
+// DEFAULT_LAND). Gespeicherte Partien zeigen beim Laden die Landschaft, mit der sie gespeichert wurden (S.land) – das ändert die Einstellung nicht.
+let landPref = DEFAULT_LAND;
+try { const v = localStorage.getItem('archipel-landscape'); if (LAND_KEYS.includes(v)) landPref = v; } catch (e) {}
 function setLandscape(v) {
-  if (!LANDSCAPES[v]) v = 'gruen';
-  $('landSel').value = v;
+  if (!LANDSCAPES[v]) v = DEFAULT_LAND;
+  landPref = v; $('landSel').value = v;
+  try { localStorage.setItem('archipel-landscape', v); } catch (e) {}
   if (S) { S.land = v; buildTerrainCache(); refresh(); }
 }
 $('landSel').innerHTML = Object.keys(LANDSCAPES).map(k => `<option value="${k}">${esc(LAND_NAMES[k] || k)}</option>`).join('');
@@ -644,7 +650,7 @@ $('setTabs').addEventListener('click', e => { const b = e.target.closest('button
 function openSettings(tab) {
   closeMenu(); closeCtx();
   if (typeof tab !== 'string') { tab = null; try { tab = localStorage.getItem('archipel-settab'); } catch (e) {} }
-  $('landSel').value = (S && S.land) || 'gruen';
+  $('landSel').value = (S && S.land) || landPref;   // zeigt, was die Karte gerade zeigt
   setTab(tab); openModal('mSettings');
 }
 $('bSettings').onclick = openSettings;

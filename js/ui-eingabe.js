@@ -759,7 +759,7 @@ $('bStart').onclick = () => {
     localStorage.setItem('archipel-diff', $('diffSel').value); localStorage.setItem('archipel-size', $('sizeSel').value);
     localStorage.setItem('archipel-world', $('worldSel').value); localStorage.setItem('archipel-ais', $('aiSel').value);
   } catch (e) {}
-  closeModals(); startNew($('sizeSel').value, $('diffSel').value, $('worldSel').value, parseSeed($('seedIn').value), +$('aiSel').value || 1, DEFAULT_LAND);   // Landschaft: immer der Standard (Klimazonen), umschalten über „Ansicht“
+  closeModals(); startNew($('sizeSel').value, $('diffSel').value, $('worldSel').value, parseSeed($('seedIn').value), +$('aiSel').value || 1, landPref);   // Landschaft: die eingestellte (gilt dauerhaft, Vorgabe Klimazonen)
   Sfx.play('start');   // nur hier (Klick des Spielers): Browser spielen Ton erst nach einer Benutzeraktion
 };
 // Zahl der Gegner (1 … MAP_SIZES.maxAi der gewählten Kartengröße); want = gewünschte Zahl, sonst die bisherige Wahl

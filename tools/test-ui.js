@@ -423,7 +423,7 @@ window.UiTest = (() => {
       const keep = S.land, px = () => { render(performance.now()); const c = S.cities.find(c => c.owner === 0); return [...terrainCache.getContext('2d').getImageData((c.x + 1) * TS + 2, (c.y + 1) * TS + 2, 1, 1).data].join(); };
       const seen = new Set(); let ok = true;
       for (const k of Object.keys(LANDSCAPES)) { setLandscape(k); ok = ok && S.land === k && $('landSel').value === k && !!LAND_NAMES[k]; seen.add(landscape().mini.join()); draw(); }
-      setLandscape('gibtsnicht'); ok = ok && S.land === 'gruen' && JSON.stringify(Object.keys(LANDSCAPES)) === JSON.stringify(LAND_KEYS);
+      setLandscape('gibtsnicht'); ok = ok && S.land === DEFAULT_LAND && JSON.stringify(Object.keys(LANDSCAPES)) === JSON.stringify(LAND_KEYS);
       setLandscape(keep); draw();
       return ok && seen.size === Object.keys(LANDSCAPES).length && $('landSel').options.length === seen.size;
     });
@@ -533,12 +533,19 @@ window.UiTest = (() => {
       const ux = r.left + (u.x + 0.5) * TS, uy = r.top + (u.y + 0.5) * TS;
       return TS === START_ZOOM && Math.abs(ux - (w.left + w.width / 2)) < TS * 2 && Math.abs(uy - (w.top + w.height / 2)) < TS * 2;
     });
-    step('Neues Spiel: ohne Landschaftswahl, beginnt immer in den Klimazonen – auch wenn vorher eine andere eingestellt war', () => {
-      setLandscape('lava');
-      $('bNew').click(); let ok = shown('mNew') && !$('newLandSel') && DEFAULT_LAND === 'zonen' && FIRST_LAND === DEFAULT_LAND;
-      $('sizeSel').value = 'klein'; $('bStart').click(); closeModals();
-      ok = ok && S.land === DEFAULT_LAND && S.turn === 1;
-      return ok;
+    step('Landschaft: eine Einstellung – gilt für die laufende und neue Partien, gespeicherte behalten ihre', () => {
+      const keep = landPref, store = localStorage.getItem('archipel-landscape'), save = serialize();
+      setLandscape('schnee');
+      let ok = landPref === 'schnee' && S.land === 'schnee' && localStorage.getItem('archipel-landscape') === 'schnee' && !$('landDefSel') && !$('newLandSel');
+      $('bNew').click(); $('sizeSel').value = 'klein'; $('bStart').click(); closeModals();
+      ok = ok && S.land === 'schnee' && S.turn === 1;                       // neue Partie
+      const o = JSON.parse(save); (o.S || o).land = 'lava'; deserialize(JSON.stringify(o)); afterLoad(); closeModals();
+      ok = ok && S.land === 'lava' && landPref === 'schnee';                 // geladene Partie zeigt ihre gespeicherte Landschaft, die Einstellung bleibt
+      openSettings('view'); ok = ok && $('landSel').value === 'lava'; closeModals();
+      $('bNew').click(); $('sizeSel').value = 'klein'; $('bStart').click(); closeModals(); ok = ok && S.land === 'schnee';
+      setLandscape(keep); if (store === null) localStorage.removeItem('archipel-landscape');
+      deserialize(save); afterLoad(); closeModals(); replay = 'off';
+      return ok && DEFAULT_LAND === 'zonen';
     });
     step('Zurücksetzen: Rückfrage, und was gelöscht würde', () => {
       saveSlot('Probe Zurücksetzen'); askReset();
@@ -565,13 +572,15 @@ window.UiTest = (() => {
 
   async function run() {
     fails.length = 0; passed = 0;
+    const pref0 = landPref, prefStore0 = localStorage.getItem('archipel-landscape');   // die Landschafts-Einstellung des Testbrowsers bleibt erhalten
     await loadOrder();
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
     build(); farMatrix(); nearMatrix(); flows(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
-    replay = keepReplay; skipAnim(); closeModals(); startNew('klein'); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters
+    landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
+    replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters
     return { bestanden: passed, fehlgeschlagen: fails };
   }
   return { run };

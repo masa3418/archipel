@@ -376,9 +376,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Grafik-Caches**: Gelände (`buildTerrainCache`) und Sprites hängen von der Zoomstufe `TS` ab.
 - **Landschaften** (Wunsch des Nutzers; data.js `LAND_KEYS`/`START_LANDS`, gfx.js `LANDSCAPES`/`landscape()`, ui-schau.js `setLandscape`/`LAND_NAMES`,
   Einstellungen → Anzeige): Grüne Inseln, Wüste, Schnee, Lava, Fremder Planet, Klimazonen – dieselbe Karte, nur anders eingefärbt, ohne Einfluss auf Regeln.
-  Die Landschaft gehört zur Partie (`S.land`, in `sanitizeState`, ältere Spielstände und die Beispiele: grün). Jede neue Partie beginnt in der Standard-Landschaft `DEFAULT_LAND` (Klimazonen, seit 1.8.4; Wunsch des Nutzers – die Inseln sehen
-  nicht mehr gleich aus). Eine Auswahl im Fenster „Neues Spiel“ gibt es nicht mehr (bis 1.8.3: `newLandSel`, erst zufällig vorgewählt, dann Klimazonen) – die
-  anderen Landschaften sind ein Gimmick zum Umschalten. Ohne Angabe (Simulationen) folgt sie der Kartennummer (`START_LANDS`). In den Einstellungen sind jederzeit alle wählbar (ändert `S.land` der laufenden Partie),
+  Die Landschaft gehört zur Partie (`S.land`, in `sanitizeState`, ältere Spielstände und die Beispiele: grün). Die Landschaft ist **eine dauerhafte Einstellung** (`landPref`, `setLandscape` in ui-schau.js, `archipel-landscape`, Vorgabe `DEFAULT_LAND` =
+  Klimazonen; Wunsch des Nutzers – getrennte Einstellungen für die laufende und für neue Partien waren umständlich): Umschalten über „Ansicht“ oder
+  Einstellungen → Anzeige gilt sofort für die laufende Partie und bleibt für neue eingestellt (auch den Start ohne Spielstand). Gespeicherte Partien
+  zeigen beim Laden die Landschaft, mit der sie gespeichert wurden (`S.land`, Wunsch des Nutzers) – das ändert die Einstellung nicht; das Auswahlfeld
+  in den Einstellungen zeigt, was die Karte gerade zeigt. „Zurücksetzen“ stellt sie zurück. In den Einstellungen sind jederzeit alle wählbar (ändert `S.land` der laufenden Partie),
   ebenso über „Ansicht“ in der Kopfzeile (siehe „Kopfzeile und Menü“). Je Landschaft ein Farbsatz (Wasser nach Tiefe,
   Strand, Land nach Höhe, Brandung, Berge, Gipfel, Hügel, „Wald“ – in der Lava glühende Tümpel, auf dem Planeten magentafarbene Gewächse –,
   Farben der Übersichtskarte); Formen und Zufallsfolge in `buildTerrain` sind für alle gleich, feste Farben dort immer über `L.…` holen. Der
