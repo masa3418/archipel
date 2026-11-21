@@ -350,6 +350,15 @@ window.UiTest = (() => {
       setLandscape(keep); draw();
       return ok && seen.size === Object.keys(LANDSCAPES).length && $('landSel').options.length === seen.size;
     });
+    step('Kopfzeile: Knopf „Landschaft“ öffnet die Liste, Klick wechselt, Esc schließt', () => {
+      const keep = S.land; $('bLand').click();
+      const items = [...$('landMenu').querySelectorAll('[data-land]')];
+      let ok = !$('landMenu').hidden && items.length === LAND_KEYS.length && $('landMenu').querySelectorAll('.on').length === 1 && $('landMenu').querySelector('.on').dataset.land === (keep || 'gruen');
+      items.find(b => b.dataset.land === 'lava').click(); draw();
+      ok = ok && S.land === 'lava' && $('landMenu').hidden;
+      $('bLand').click(); key('Escape'); ok = ok && $('landMenu').hidden && S.land === 'lava';
+      setLandscape(keep); draw(); return ok;
+    });
     step('Neues Spiel: Landschaft vorgewählt aus den drei Startlandschaften, gewählte gilt', () => {
       let ok = true; const seen = new Set();
       for (let k = 0; k < 40; k++) { $('bNew').click(); ok = ok && shown('mNew') && START_LANDS.includes($('newLandSel').value); seen.add($('newLandSel').value); closeModals(); }

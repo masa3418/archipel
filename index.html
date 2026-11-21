@@ -61,6 +61,12 @@
   .menu .mi { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left;
     background: none; border: 0; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
   .menu .mi:hover { background: var(--panel2); }
+  /* Landschaft wechseln (Knopf bei Zoom und Zentrieren): kleine Liste mit Farbfeld je Landschaft */
+  .land-menu { width: 210px; }
+  .land-menu .mi { justify-content: flex-start; }
+  .land-menu .sw { width: 26px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,.25); flex-shrink: 0; }
+  .land-menu .mi.on { background: var(--panel2); font-weight: 600; }
+  .land-menu .mi.on::after { content: '✓'; margin-left: auto; color: var(--accent); }
   .menu a.mi { color: var(--text); text-decoration: none; }
   /* Verweis ins Internet (Erklärvideos): deutlich als „online“ gekennzeichnet */
   .ext { font-size: 11px; font-weight: 600; color: #9fc4ff; border: 1px solid #3d6aa8; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
@@ -564,11 +570,13 @@
     <button id="bZoomOut" title="Verkleinern (-)" data-en-title="Zoom out (-)">−</button>
     <button id="bZoomIn" title="Vergrößern (+)" data-en-title="Zoom in (+)">+</button>
     <button id="bFocus" title="Karte auf die ausgewählte Einheit zentrieren (F)" data-en-title="Centre the map on the selected unit (F)" data-en-aria-label="Centre on unit" aria-label="Auf Einheit zentrieren"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" style="vertical-align:-3px"><circle cx="8" cy="8" r="4.6"/><circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/><path d="M8 0.8v2.6M8 12.6v2.6M0.8 8h2.6M12.6 8h2.6"/></svg></button>
+    <button id="bLand" title="Landschaft wechseln – nur das Aussehen der Karte" data-en-title="Change the landscape – only the look of the map" data-en-aria-label="Change landscape" aria-label="Landschaft wechseln" aria-haspopup="true" aria-expanded="false"><svg width="16" height="15" viewBox="0 0 16 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 10.5 5.5 4l2.6 4.2L9.9 6l4.6 4.5"/><path d="M1.5 13.2c1.2-1 2.2-1 3.3 0s2.2 1 3.3 0 2.2-1 3.3 0 2.100 1 3.100 0"/></svg></button>
     <button id="bSound" title="Ton (M)" data-en-title="Sound (M)">🔊</button>
     <button id="bHelp" class="hl" title="Handbuch öffnen (H)" data-en-title="Open the handbook (H)"><span class="ico">❔</span><span class="lbl" data-en="Handbook">Handbuch</span></button>
     <button id="bLang" class="hl" title="Sprache wechseln / Change language"><span class="ico">🌐</span><span class="lbl" id="bLangLbl">English</span></button>
   </div>
 </header>
+<div id="landMenu" class="menu land-menu" hidden></div>
 <div id="menu" class="menu" hidden>
   <h4 data-en="Game">Spiel</h4>
   <button id="bNew" class="mi"><span data-en="New game">Neues Spiel</span></button>

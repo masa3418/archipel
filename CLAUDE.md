@@ -339,7 +339,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Die Landschaft gehört zur Partie (`S.land`, in `sanitizeState`, ältere Spielstände und die Beispiele: grün). Gewählt wird sie im Fenster „Neues Spiel“
   (`newLandSel`, `newLandPick`: bei jedem Öffnen zufällig Grün, Wüste oder Schnee vorgewählt, alle fünf wählbar; „Diese Welt noch einmal“ übernimmt
   die der laufenden Partie) → `newGame(…, nAi, land)`. Ohne Angabe (erster Besuch, Simulationen) folgt sie der Kartennummer, je ein Drittel Grün,
-  Wüste, Schnee. In den Einstellungen sind jederzeit alle wählbar (ändert `S.land` der laufenden Partie). Je Landschaft ein Farbsatz (Wasser nach Tiefe,
+  Wüste, Schnee. In den Einstellungen sind jederzeit alle wählbar (ändert `S.land` der laufenden Partie),
+  ebenso über den Knopf `#bLand` in der Kopfzeile bei Zoom und Zentrieren (`openLandMenu`, kleine Liste `#landMenu` mit Farbfeldern; Wunsch des Nutzers:
+  ein Gimmick, das überrascht – bewusste Ausnahme von „keine Einstellungen in die Kopfzeile“, ohne Text). Je Landschaft ein Farbsatz (Wasser nach Tiefe,
   Strand, Land nach Höhe, Brandung, Berge, Gipfel, Hügel, „Wald“ – in der Lava glühende Tümpel, auf dem Planeten magentafarbene Gewächse –,
   Farben der Übersichtskarte); Formen und Zufallsfolge in `buildTerrain` sind für alle gleich, feste Farben dort immer über `L.…` holen. Der
   Zeitraffer bleibt bei seinen eigenen Farben (er färbt das Land ohnehin nach Besitzer). Lava: erst war das Meer heller als das Land – jetzt
@@ -366,7 +368,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 745 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 746 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

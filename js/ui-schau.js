@@ -518,6 +518,25 @@ function setLandscape(v) {
 $('landSel').innerHTML = Object.keys(LANDSCAPES).map(k => `<option value="${k}">${esc(LAND_NAMES[k] || k)}</option>`).join('');
 try { localStorage.removeItem('archipel-land'); } catch (e) {}   // kurze Zwischenfassung: Landschaft als Einstellung
 $('landSel').onchange = e => setLandscape(e.target.value);
+// Knopf in der Kopfzeile (bei Zoom und Zentrieren; Wunsch des Nutzers: ein Gimmick, das überrascht – das Aussehen mitten im Spiel wechseln).
+// Bewusste Ausnahme von „Einstellungen nicht in die Kopfzeile“: gehört zur Kartenansicht, zeigt keinen Text. Farbfeld = Land und Meer der Übersichtskarte.
+const landMenu = $('landMenu');
+function closeLandMenu() { if (landMenu.hidden) return; landMenu.hidden = true; $('bLand').classList.remove('open'); $('bLand').setAttribute('aria-expanded', 'false'); }
+function openLandMenu() {
+  closeMenu(); closeCtx();
+  const cur = (S && S.land) || 'gruen', rgb = c => `rgb(${c.join()})`;
+  landMenu.innerHTML = `<h4>${tt('Landschaft', 'Landscape')}</h4>` + Object.keys(LANDSCAPES).map(k => { const m = LANDSCAPES[k].mini;
+    return `<button class="mi${k === cur ? ' on' : ''}" data-land="${k}"><span class="sw" style="background:linear-gradient(135deg, ${rgb(m[0])} 0 55%, ${rgb(m[1])} 55%)"></span>${esc(LAND_NAMES[k] || k)}</button>`; }).join('');
+  landMenu.hidden = false; $('bLand').classList.add('open'); $('bLand').setAttribute('aria-expanded', 'true');
+  const r = $('bLand').getBoundingClientRect();
+  landMenu.style.top = Math.round(r.bottom + 6) + 'px';
+  landMenu.style.left = Math.round(Math.max(8, Math.min(r.left, innerWidth - landMenu.offsetWidth - 8))) + 'px';
+}
+$('bLand').onclick = () => { if (landMenu.hidden) openLandMenu(); else closeLandMenu(); };
+landMenu.addEventListener('click', e => { const b = e.target.closest('[data-land]'); if (!b) return; setLandscape(b.dataset.land); Sfx.play('tick'); closeLandMenu(); });
+document.addEventListener('mousedown', e => { if (!landMenu.hidden && !e.target.closest('#landMenu, #bLand')) closeLandMenu(); }, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !landMenu.hidden) { closeLandMenu(); e.stopPropagation(); } }, true);
+window.addEventListener('resize', closeLandMenu);
 // Fenster „Neues Spiel“: dieselbe Auswahl. Bei jedem Öffnen ist zufällig Grün, Wüste oder Schnee vorgewählt (START_LANDS) – wählbar sind alle.
 function newLandPick() { $('newLandSel').value = START_LANDS[Math.floor(Math.random() * START_LANDS.length)]; }
 $('newLandSel').innerHTML = $('landSel').innerHTML;
