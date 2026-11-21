@@ -3,6 +3,49 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.7.5
+
+Aufgeräumt: klarere Befehle, übersichtlichere Einstellungen und ein entschlacktes Handbuch.
+
+**Befehle**
+
+- **Befehle, die gerade nichts bewirken, sind grau** – in der Seitenleiste, im Rechtsklick-Menü und in der Tastenlegende. Der
+  Hinweistext nennt den Grund, zum Beispiel „Hier gibt es nichts mehr zu erkunden“ oder „Steht schon in einer eigenen Stadt“.
+  Wer die Taste trotzdem drückt, bekommt dieselbe Meldung.
+- **Erkunden** meldet sofort, wenn es nichts mehr zu entdecken gibt, statt den Befehl anzunehmen und ihn erst später zu beenden.
+
+**Einstellungen**
+
+- Vier **Reiter** statt einer langen Liste: Anzeige, Spielablauf, Ton & Steuerung, Schummeln & Zurücksetzen. Jede Seite passt
+  ohne Scrollen ins Fenster.
+- Neu: **Zurücksetzen** – löscht nach einer Rückfrage alle Einstellungen, die gesehenen Tipps und die laufende Partie; das Spiel
+  beginnt wie beim ersten Besuch. Praktisch, wenn sich mehrere einen Rechner teilen. Gespeicherte Spielstände bleiben, außer man
+  setzt in der Rückfrage den Haken.
+- Schummeln und Zurücksetzen stehen abgesetzt in einem eigenen Kasten: Sie sind keine gewöhnlichen Einstellungen.
+- „Willkommensfenster noch einmal zeigen“ steht jetzt unter **Spielablauf** (vorher im Handbuch).
+- Das **vorzeitige Ende** wird standardmäßig ab 20 % Stärkeanteil angeboten statt ab 10 %. In 288 Testpartien war die Partie bei
+  20 % praktisch immer entschieden (ein Irrtum); das Angebot kommt 30 bis 45 Runden früher. Wer selbst einen Wert gewählt hat, behält ihn.
+
+**Handbuch**
+
+- **Beispiel-Spielstände** zum Aufklappen: Jede Partie zeigt ihre Eckdaten und schildert die Lage, erst dann folgt „Diese Partie laden“.
+- **Über das Spiel**, **Steuerung** und **Gegner & Stufen** sind aufgeräumt: Das Wichtige steht offen, Hintergrund und lange
+  Erläuterungen klappen auf.
+- Berichtigt: der Verweis auf „Nebel aus“ in den Einstellungen, und Umschalt + Klick nennt jetzt auch das An-Bord-Gehen.
+
+**Unter der Haube**
+
+- Automatische Tests für Regeln und Oberfläche; sie laufen bei jeder Änderung und müssen vor einem Release bestehen.
+- Die installierte App räumt nicht mehr benötigte Dateien aus ihrem Zwischenspeicher.
+- Im Lizenzhinweis steht jetzt masa3418, wie das Repository.
+
+*English:* a tidy-up release. Commands that would do nothing right now are greyed out in the side panel, the right-click menu and
+the key legend, with the reason as a tooltip; Explore says at once when nothing is left to discover. The settings have four tabs
+and a new **Reset** that restores the game to its first-visit state (saved games are kept unless you tick the box); cheats and reset
+sit in their own box. The early-end offer now defaults to 20 % instead of 10 %. In the handbook, the example games open up with a
+description before the load button, and long background texts are collapsible. Under the hood: automated tests that must pass
+before every release.
+
 ## 1.7.4
 
 Leichterer Einstieg – nach dem Test mit einem Erstspieler.
