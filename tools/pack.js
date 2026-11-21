@@ -75,7 +75,15 @@ const log = read('CHANGELOG.md');
 const start = log.indexOf(`## ${version}`);
 if (start < 0) throw new Error(`Abschnitt "## ${version}" fehlt in CHANGELOG.md`);
 const next = log.indexOf('\n## ', start + 3);
-const section = log.slice(log.indexOf('\n', start) + 1, next < 0 ? undefined : next).trim();
+const raw = log.slice(log.indexOf('\n', start) + 1, next < 0 ? undefined : next).trim().replace(/\r\n/g, '\n');
+// GitHub zeigt im Release-Text jeden Zeilenumbruch als Umbruch an – im CHANGELOG sind Absätze und Aufzählungspunkte aber nur der
+// Lesbarkeit halber umgebrochen. Deshalb Folgezeilen an die vorige Zeile hängen (nicht: Leerzeile, Aufzählung, Überschrift, Tabelle).
+const section = raw.split('\n').reduce((out, line) => {
+  const prev = out[out.length - 1];
+  if (prev !== undefined && prev.trim() && line.trim() && !/^\s*([-*+] |\d+\. |#|\||```)/.test(line)) out[out.length - 1] = prev + ' ' + line.trim();
+  else out.push(line);
+  return out;
+}, []).join('\n');
 fs.writeFileSync(path.join(dist, 'NOTES.md'), `**Offline spielen:** \`archipel.html\` herunterladen und doppelklicken – das ganze Spiel steckt in dieser einen Datei, ohne Installation und ohne Internet. Wer lieber einzelne Dateien hat, nimmt \`archipel-offline.zip\`, entpackt es und öffnet \`index.html\`. Die Offline-Fassung hat eigene Spielstände; über „Spielstände → Export“ und „Aus Datei laden“ lassen sie sich mit der [Online-Version](https://masa3418.github.io/archipel/) austauschen.
 
 **Play offline:** download \`archipel.html\` and double-click it – the whole game is in this one file, no installation, no internet. If you prefer separate files, take \`archipel-offline.zip\`, unpack it and open \`index.html\`. The language button (🌐) is at the top right.
