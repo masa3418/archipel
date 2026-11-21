@@ -3,6 +3,27 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.8.3
+
+Das Kräfteverhältnis zählt Städte.
+
+- **Nur noch Städte:** Der Balken zeigt, wie viele von allen Städten dir, jedem Gegner und niemandem gehören – die neutralen grau.
+  Am Anfang ist er fast ganz grau; so sieht man auch, wie weit die Partie ist. Bisher wurde eine Stärke aus Einheiten und Städten
+  berechnet. In Testpartien sagt der Städteanteil den Sieger etwa ebenso gut voraus; er zählt aber keine Armeen – eine Flotte auf
+  dem Weg zu dir sieht man erst, wenn Städte fallen.
+- **Einschätzung** („Überlegen“ …), Kurve und das Angebot zum vorzeitigen Ende vergleichen deine Städte mit denen des stärksten
+  Gegners. „Erdrückend überlegen“ und „Aussichtslos“ beginnen genau dort, wo Sieg bzw. Aufgeben angeboten werden – sie folgen also
+  der Schwelle in den Einstellungen.
+- **Kräftefenster** vereinfacht: Städte je Partei und neutral, Anteile, und wie gezählt wird. Der Haken „Zahlen des Gegners
+  aufdecken“ entfällt – seine Städtezahl zeigt der Balken jetzt ohnehin.
+- Der **Zeitraffer** zeigt die Städte aller Parteien übereinander, oben grau die neutralen.
+- **Ältere Spielstände** bekommen ihren Verlauf beim Laden aus dem Zeitraffer nachgerechnet.
+
+*English:* the balance of power now counts cities only. The bar shows how many of all cities you, each enemy and nobody own –
+neutral ones in grey. The assessment, the curve and the early-end offer compare your cities with the strongest enemy's; the
+outer levels (“Overwhelming”, “Hopeless”) follow the early-end threshold in the settings. The balance-of-power window is simpler,
+the time-lapse curve shows everyone's cities, and older saves get their history rebuilt from the time-lapse when loaded.
+
 ## 1.8.2
 
 Kleinigkeiten für den Einstieg.
