@@ -293,6 +293,13 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   die Produktionsansicht nur eine zusätzliche Ebene unter den Einheiten – das Spiel läuft normal weiter, sie bleibt über Runden an.
   `buildPathCache()` sammelt Märsche (weiß, Pfeil), Patrouillen (türkis, Punkte) und Marschziele (gelb, Fähnchen), `drawRoute` zeichnet;
   `refresh()` verwirft den Cache (Wegsuche nie in jedem Bild). Legende mit Anzahl: `updatePathLegend` (`#pathLegend`).
+- **Reichweite der Gegner** (ui-karte.js `threatView`, `setThreatView`, `buildThreatMap`, `drawThreat`; Wunsch des Nutzers nach dem Vorbild Fire Emblem):
+  zuschaltbare Ebene (Liste „Ansicht“, Taste K, gemerkt in `archipel-threat`). Rot getönt mit Umriss = Felder, auf denen eine sichtbare gegnerische
+  Einheit in ihrem nächsten Zug angreifen könnte; nur schraffiert = allein von Jägern erreichbar. Je Einheit volle Bewegung über betretbares Gelände,
+  letzter Schritt = Angriff (Bodentruppen auch auf Wasser am Ufer, Schiffe an Land nur mit `shore`, Transporter nur aufs Land daneben, Träger nichts);
+  ohne andere Einheiten und ohne Treibstoff. **Darf nichts verraten:** nur `canSee(0, e)`, in fremden Städten nur die gezeigte Einheit, keine Ladung,
+  nur erforschte Felder (sonst zeichnete die Ebene Küsten im Nebel nach). Cache `threatMapUi`, von `refresh()` verworfen (0,1 ms je Berechnung).
+  Nicht während der Wiedergabe und nicht nach Spielende. Ändern sich Angriffsregeln (`canStrike`), hier mit anpassen. Noch nicht in der Grafik-Übersicht.
 - **Marschziel einer Stadt**: `c.rally = [x, y]` (nur Städte des Menschen, wird gespeichert). `startTurn` gibt jeder dort fertiggestellten
   Einheit über `applyRally` den Marschbefehl; `rallyCheck(c, typ, x, y)` (game.js) prüft Ziel und Weg (ohne Einheiten: `findPath(…, 'all')` – wer gerade wo steht, zählt nicht) – beim Setzen und bei der
   Fertigstellung (Zielfeld für den Typ betretbar, Weg vorhanden, Jäger nur zu eigener Stadt in Treibstoff-Reichweite).
@@ -372,7 +379,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 748 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 765 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

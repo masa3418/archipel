@@ -340,7 +340,7 @@ function afterAction(u) {
   scheduleAutoEnd();
 }
 
-function refresh() { dirty = true; pathCache = null; rallyCache = null; hoverPath = null; orderCache = null; renderMini(); updatePanel(); updateHeader(); updateKeyLegend(); updateTips(); queueSave(); }
+function refresh() { dirty = true; pathCache = null; rallyCache = null; hoverPath = null; orderCache = null; threatMapUi = null; renderMini(); updatePanel(); updateHeader(); updateKeyLegend(); updateTips(); queueSave(); }
 
 // Automatisch speichern nach jeder Änderung (refresh folgt auf jeden Zug, Angriff, Befehl): gebündelt kurz danach und beim Verlassen
 // der Seite. Ein Spielstand braucht unter 1 ms. So geht beim Neuladen oder Absturz nichts verloren – und ein verlorener Kampf lässt sich

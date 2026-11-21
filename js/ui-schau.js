@@ -528,7 +528,8 @@ const VIEW_SW = [
   ['keys', tt('Tastenkürzel auf der Karte', 'Keyboard shortcuts on the map'), () => showKeys && !keysMin, on => setShowKeys(on)],
   ['route', tt('Weg beim Zeigen auf ein Feld', 'Route when pointing at a tile'), () => showRoute, on => setShowRoute(on)],
   ['power', tt('Kräfteverhältnis', 'Balance of power'), () => showPower, on => setShowPower(on)],
-  ['paths', tt('Wege und Marschziele', 'Routes and rally points'), () => pathView, on => setPathView(on), 'G'],   // gilt für die laufende Partie, wird nicht gemerkt
+  ['paths', tt('Wege und Marschziele', 'Routes and rally points'), () => pathView, on => setPathView(on), 'G'],
+  ['threat', tt('Reichweite der Gegner', 'Enemy reach'), () => threatView, on => setThreatView(on), 'K'],   // gilt für die laufende Partie, wird nicht gemerkt
 ];
 function renderViewMenu() {
   const cur = (S && S.land) || 'gruen', rgb = c => `rgb(${c.join()})`;

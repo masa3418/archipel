@@ -196,6 +196,45 @@ window.UiTest = (() => {
     autoEnd = auto0;
     check(grau > 12 && aktiv > 40, 'Befehle: zu wenige Fälle (' + grau + ' grau, ' + aktiv + ' aktiv)');
   }
+  // Reichweite der Gegner (Taste K): was die Ebene zeigt – und was sie nicht verraten darf
+  function threat() {
+    const z = () => { computeVision(0); return buildThreatMap(); }, v = (m, p) => m[idx(p[0], p[1])];
+    const nbs = p => DIRS.map(([dx, dy]) => [p[0] + dx, p[1] + dy]).filter(([x, y]) => inb(x, y));
+    reset(); check(z().every(x => x === 0), 'Reichweite: ohne sichtbare Gegner ist nichts markiert');
+    // Infanterie neben der eigenen Stadt: alle erforschten Nachbarfelder (Land und Ufer), nicht weiter
+    reset(); createUnit('inf', 1, ...base.l); let m = z();
+    check(nbs(base.l).filter(([x, y]) => seen(x, y)).every(p => v(m, p) === 1), 'Reichweite: Infanterie bedroht alle Nachbarfelder');
+    check(m.every((x, i) => !x || cheb(i % S.W, (i / S.W) | 0, ...base.l) <= 1), 'Reichweite: Infanterie reicht genau ein Feld weit');
+    check(v(m, base.c) === 1, 'Reichweite: die eigene Stadt daneben ist bedroht');
+    // Zerstörer: Wasser ja, Land nein; Kreuzer: auch das Land am Ufer
+    reset(); createUnit('dst', 1, ...base.s); m = z();
+    check(m.every((x, i) => !x || S.terrain[i] === 0), 'Reichweite: Zerstörer bedroht kein Landfeld');
+    check(m.some(x => x === 1), 'Reichweite: Zerstörer bedroht Wasserfelder');
+    reset(); createUnit('crs', 1, ...base.s); m = z();
+    check(nbs(base.s).filter(([x, y]) => seen(x, y) && land(x, y)).every(p => v(m, p) === 1), 'Reichweite: Kreuzer bedroht das Land am Ufer');
+    // Transporter: nur das Land daneben (Sturm vom Schiff), Träger gar nichts
+    reset(); createUnit('trn', 1, ...base.s); m = z();
+    check(m.some(x => x === 1) && m.every((x, i) => !x || S.terrain[i] === 1), 'Reichweite: Transporter bedroht nur Land');
+    reset(); createUnit('car', 1, ...base.s); check(z().every(x => x === 0), 'Reichweite: Träger bedroht nichts');
+    // Jäger: schraffiert (2), sechs Felder weit; Bodentruppen überschreiben mit 1
+    reset(); createUnit('ftr', 1, ...base.l); m = z();
+    check(m.some(x => x === 2) && !m.some(x => x === 1), 'Reichweite: Jäger allein = nur schraffiert');
+    check(m.every((x, i) => !x || cheb(i % S.W, (i / S.W) | 0, ...base.l) <= UT.ftr.move), 'Reichweite: Jäger höchstens ' + UT.ftr.move + ' Felder');
+    // nichts im Unerforschten, nichts von Einheiten, die man nicht sieht, keine Ladung
+    check(m.every((x, i) => !x || S.players[0].seen[i]), 'Reichweite: nichts im Unerforschten');
+    reset(); const far = all((x, y) => land(x, y) && free(x, y) && !S.players[0].vis[idx(x, y)] && seen(x, y))[0];
+    if (far) { createUnit('tank', 1, ...far); check(z().every(x => x === 0), 'Reichweite: Einheit außer Sicht zählt nicht'); }
+    reset(); const t = createUnit('trn', 1, ...base.s); createUnit('tank', 1, ...base.s).carrier = t.id; m = z();
+    check(m.every((x, i) => !x || cheb(i % S.W, (i / S.W) | 0, ...base.s) <= UT.trn.move), 'Reichweite: Ladung an Bord zählt nicht eigens');
+    // Taste K schaltet, Zeichnen läuft
+    const k0 = threatView; setThreatView(false); select(null);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', bubbles: true, cancelable: true }));
+    check(threatView === true, 'Reichweite: Taste K schaltet ein');
+    try { render(performance.now()); check(true, ''); } catch (e) { fails.push('Reichweite: Zeichnen stürzt ab – ' + e.message); }
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', bubbles: true, cancelable: true }));
+    check(threatView === false, 'Reichweite: Taste K schaltet aus');
+    setThreatView(k0);
+  }
   // 4) Einstiegstipps: jeder Auslöser einzeln
   function tipsCheck() {
     const wasOn = tips.on, done0 = [...tips.done];
@@ -367,12 +406,13 @@ window.UiTest = (() => {
     step('Kopfzeile: „Ansicht“ – Schalter und Landschaften, bleibt offen, Esc schließt', () => {
       const keep = S.land, k0 = showKeys, m0 = keysMin, r0 = showRoute, p0 = showPower; $('bView').click();
       const items = () => [...$('viewMenu').querySelectorAll('[data-land]')], sw = k => $('viewMenu').querySelector('[data-view="' + k + '"]');
-      let ok = !$('viewMenu').hidden && items().length === LAND_KEYS.length && items().filter(b => b.classList.contains('on')).length === 1 && $('viewMenu').querySelectorAll('[data-view]').length === 4 && !$('vPaths');
+      let ok = !$('viewMenu').hidden && items().length === LAND_KEYS.length && items().filter(b => b.classList.contains('on')).length === 1 && $('viewMenu').querySelectorAll('[data-view]').length === 5 && !$('vPaths');
       items().find(b => b.dataset.land === 'lava').click(); draw();
       ok = ok && S.land === 'lava' && !$('viewMenu').hidden && items().find(b => b.dataset.land === 'lava').classList.contains('on');   // bleibt offen
       sw('route').click(); ok = ok && showRoute === !r0 && $('routeChk').checked === showRoute && sw('route').classList.contains('on') === showRoute; sw('route').click(); ok = ok && showRoute === r0;
       sw('power').click(); ok = ok && showPower === !p0 && $('powerChk').checked === showPower && ($('power').style.display === 'none') === !showPower; sw('power').click(); ok = ok && showPower === p0;
       setShowKeys(false); renderViewMenu(); sw('keys').click(); ok = ok && showKeys && !keysMin && !$('keyLegend').hidden && $('keysChk').checked; sw('keys').click(); ok = ok && !showKeys && $('keyLegend').hidden;
+      const t0 = threatView; sw('threat').click(); ok = ok && threatView === !t0 && sw('threat').classList.contains('on') === threatView; draw(); sw('threat').click(); ok = ok && threatView === t0;
       sw('paths').click(); ok = ok && pathView && sw('paths').classList.contains('on') && !$('pathLegend').hidden; draw(); sw('paths').click(); ok = ok && !pathView && $('pathLegend').hidden;
       key('Escape'); ok = ok && $('viewMenu').hidden && S.land === 'lava';
       setLandscape(keep); setShowKeys(k0); setKeysMin(m0); draw(); return ok;
@@ -427,7 +467,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); orders(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); orders(); threat(); tipsCheck();
     await walkthrough();
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein'); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters
     return { bestanden: passed, fehlgeschlagen: fails };

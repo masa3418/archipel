@@ -307,6 +307,7 @@ document.addEventListener('keydown', e => {
   }
   if (k === 'v') { setProdView(!prodView); return; }
   if (k === 'g') { setPathView(!pathView); return; }
+  if (k === 'k') { setThreatView(!threatView); Sfx.play('tick'); return; }
   if (prodView) {   // in der Produktionsansicht gibt es keine Einheitenbefehle
     if (k === 'Escape') { setProdView(false); return; }
     if (k === 'n') { setProdView(false); actNext(); return; }   // wie der Knopf „Nächste Einheit“
@@ -453,6 +454,7 @@ function updateKeyLegend() {
     h += grp(tt('Ansicht', 'View'), [
       row(kb('V'), prodView ? tt('zurück zur Karte (auch Esc)', 'back to the map (also Esc)') : tt('Produktionsansicht', 'production view')),
       row(kb('G'), tt('Wege einblenden', 'show routes')),
+      row(kb('K'), tt('Reichweite der Gegner', 'enemy reach')),
     ]);
     h += grp(tt('Spiel', 'Game'), [
       row(enter, tt('Runde beenden', 'end turn'), !S.over),

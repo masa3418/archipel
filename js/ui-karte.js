@@ -471,6 +471,80 @@ function drawProdCity(c, hot) {
 // zusätzliche Ebene – das Spiel läuft normal weiter, und sie bleibt an, bis man sie abschaltet.
 // Die Wege werden nur nach Änderungen neu berechnet (refresh() verwirft pathCache), nicht in jedem Bild.
 let pathView = false, pathCache = null, rallyCache = null;
+
+// ------------------------------------------------------------------ Reichweite der Gegner
+// Zuschaltbare Ebene (Wunsch des Nutzers, wie in Fire Emblem; „Ansicht“ in der Kopfzeile, Taste K, gemerkt in archipel-threat): rot getönt
+// sind alle Felder, auf denen eine sichtbare gegnerische Einheit in ihrem nächsten Zug angreifen könnte; nur schraffiert, was allein Jäger
+// erreichen. Gerechnet wird je Einheit mit ihrer vollen Bewegung über Gelände, das sie betreten kann – ohne andere Einheiten (die ziehen
+// weiter) und ohne Treibstoff. Der letzte Schritt ist der Angriff: Bodentruppen auch auf Schiffe am Ufer (Küstenangriff), Schiffe an Land
+// nur Kreuzer und Schlachtschiff, Transporter aufs Land daneben (Sturm vom Schiff). Die Ebene verrät nichts, was der Spieler nicht weiß:
+// nur Einheiten, die er sieht (canSee), in fremden Städten nur die gezeigte, keine Ladung, und nur über erforschtes Gelände.
+let threatView = false, threatMapUi = null;
+try { threatView = localStorage.getItem('archipel-threat') === '1'; } catch (e) {}
+function setThreatView(on) {
+  threatView = !!on; threatMapUi = null;
+  try { localStorage.setItem('archipel-threat', threatView ? '1' : '0'); } catch (e) {}
+  dirty = true;
+  if (S) refresh();
+}
+function buildThreatMap() {
+  const P = S.players[0], z = new Uint8Array(S.W * S.H), inCity = new Set();   // 0 nichts, 1 zu Land/zur See, 2 nur aus der Luft
+  for (const e of S.units) {
+    if (e.owner === 0 || e.carrier != null || !canSee(0, e)) continue;
+    const t = T(e), i0 = idx(e.x, e.y);
+    if (S.cityGrid[i0] >= 0 && !CHEAT_FOG) { if (inCity.has(i0)) continue; inCity.add(i0); }   // in der Stadt zählt nur die Einheit, die man sieht
+    if (!canAttack(e.type) && e.type !== 'trn') continue;
+    const air = t.domain === 'air', mv = Math.max(1, t.move), seen = new Set([i0]);
+    let front = [[e.x, e.y]];
+    for (let d = 0; d < mv && front.length; d++) {
+      const next = [];
+      for (const [x, y] of front) for (const [dx, dy] of DIRS) {
+        const nx = x + dx, ny = y + dy;
+        if (!inb(nx, ny)) continue;
+        const i = idx(nx, ny);
+        if (!P.seen[i]) continue;
+        const land = S.terrain[i] === 1;
+        const hit = air || t.domain === 'land' || (e.type === 'trn' ? land : (!land || !!t.shore));
+        if (hit) z[i] = air ? (z[i] || 2) : 1;
+        if (d + 1 < mv && !seen.has(i) && canEnterTerrain(e, nx, ny)) { seen.add(i); next.push([nx, ny]); }
+      }
+      front = next;
+    }
+  }
+  return z;
+}
+let threatHatch = null;
+function drawThreat() {
+  if (!threatMapUi) threatMapUi = buildThreatMap();
+  const z = threatMapUi, W = S.W, at = (x, y) => (inb(x, y) ? z[idx(x, y)] : 0);
+  if (!threatHatch || threatHatch.ts !== TS) {   // Schraffur für „nur aus der Luft“
+    const c = document.createElement('canvas'), n = Math.max(6, Math.round(TS / 3)); c.width = c.height = n;
+    const g = c.getContext('2d'); g.strokeStyle = 'rgba(255,70,60,0.5)'; g.lineWidth = Math.max(1, TS / 22);
+    g.beginPath(); g.moveTo(-1, n + 1); g.lineTo(n + 1, -1); g.moveTo(-1, 1); g.lineTo(1, -1); g.moveTo(n - 1, n + 1); g.lineTo(n + 1, n - 1); g.stroke();
+    threatHatch = { ts: TS, pat: c };
+  }
+  ctx.save();
+  const pat = ctx.createPattern(threatHatch.pat, 'repeat');
+  for (let i = 0; i < z.length; i++) {
+    if (!z[i]) continue;
+    const x = i % W, y = (i / W) | 0;
+    ctx.fillStyle = z[i] === 1 ? 'rgba(235,45,40,0.26)' : pat;
+    ctx.fillRect(x * TS, y * TS, TS, TS);
+  }
+  // Umriss der bedrohten Fläche: Kante, wo das Nachbarfeld frei ist
+  ctx.strokeStyle = 'rgba(255,90,80,0.9)'; ctx.lineWidth = Math.max(1.5, TS / 16); ctx.lineCap = 'square';
+  ctx.beginPath();
+  for (let i = 0; i < z.length; i++) {
+    if (!z[i]) continue;
+    const x = i % W, y = (i / W) | 0, X = x * TS, Y = y * TS;
+    if (!at(x, y - 1)) { ctx.moveTo(X, Y); ctx.lineTo(X + TS, Y); }
+    if (!at(x, y + 1)) { ctx.moveTo(X, Y + TS); ctx.lineTo(X + TS, Y + TS); }
+    if (!at(x - 1, y)) { ctx.moveTo(X, Y); ctx.lineTo(X, Y + TS); }
+    if (!at(x + 1, y)) { ctx.moveTo(X + TS, Y); ctx.lineTo(X + TS, Y + TS); }
+  }
+  ctx.stroke();
+  ctx.restore();
+}
 let rallyMode = null;   // { city: id } – der nächste Klick auf die Karte setzt das Marschziel dieser Stadt
 function updateViewSwitch() {
   $('vUnits').classList.toggle('on', !prodView);
@@ -720,6 +794,7 @@ function render(now = performance.now()) {
   const V = viewNow(rel, playing);
   drawFog(V);
   if (prodView) { drawProdView(); return; }   // Produktionsansicht: keine Einheiten, Marker, Effekte
+  if (threatView && !playing && !S.over) drawThreat();   // Reichweite der Gegner (nicht während der Wiedergabe: Sie rechnet mit dem Endstand)
 
   // Feuerunterstützung: Städte neben einem sichtbaren Schlachtschiff markieren.
   // Eckwinkel = unter Feuer (fällt zu 75 %), gestrichelter Ring = Feuerschutz (fällt nur zu 25 %)
