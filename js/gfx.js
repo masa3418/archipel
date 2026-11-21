@@ -136,7 +136,7 @@ function roundRectPath(g, x, y, w, h, r) {
   g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
 }
 
-// Stadt: Platz, Häuser mit Dächern in Besitzerfarbe, Fahne. Auch der Platz und sein kräftiger Rand tragen die Farbe des Besitzers
+// Stadt: Platz, Häuser mit Dächern in Besitzerfarbe, Fahne. Auch der Platz trägt die Farbe des Besitzers
 // (Wunsch des Nutzers: Mit Dächern und Fähnchen allein sahen die Städte aller Parteien fast gleich aus – der beige Platz überwog).
 // Neutrale Städte behalten den beigen Platz mit schmalem Rand und heben sich so von allen Parteien ab.
 function citySprite(owner, size, variant) {
@@ -154,8 +154,7 @@ function citySprite(owner, size, variant) {
   roundRectPath(g, s * 0.08, s * 0.2, s * 0.84, s * 0.68, s * 0.14);
   if (owner >= 0) {
     g.fillStyle = pal.light; g.fill();
-    g.lineWidth = Math.max(2, s * 0.085); g.strokeStyle = pal.dark; g.stroke();     // dunkle Kontur, darin der farbige Rand
-    g.lineWidth = Math.max(1.2, s * 0.05); g.strokeStyle = pal.color; g.stroke();
+    g.lineWidth = Math.max(1, s * 0.035); g.strokeStyle = pal.dark; g.stroke();     // schmaler Rand wie bei neutralen Städten (ein kräftiger farbiger war dem Nutzer zu viel)
   } else {
     g.fillStyle = '#cdbf9c'; g.fill();
     g.lineWidth = Math.max(1, s * 0.035); g.strokeStyle = '#7f7254'; g.stroke();
