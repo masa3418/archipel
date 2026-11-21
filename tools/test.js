@@ -390,6 +390,49 @@ test('Befehle: Transporter – Sturm vom Schiff und Ausladen', () => {
   eq(unloadAll(t3), 1, 'im eigenen Hafen wird ausgeladen');
   ok(d.carrier == null && d.x === port.x && d.y === port.y, 'die Truppe steht in der Stadt');
 });
+test('KI: Transporter – Truppen handeln nach der letzten Fahrt, Zuflucht im eigenen Hafen', () => {
+  // Truppen an Bord: Der Transporter liegt ohne Züge an der Küste neben deiner Infanterie – seine Ladung hat ihre Züge noch und greift an
+  // (vorher blieb sie an Bord, und der Transporter lag eine Runde lang wehrlos neben dem Gegner)
+  for (const on of [false, true]) {
+    board('inseln', 4711, 1, 'schwer');
+    AI_CARGO[1] = on;
+    const [l, s] = coastPair();
+    const mine = createUnit('inf', 0, ...l), trn = createUnit('trn', 1, ...s);
+    for (let k = 0; k < 4; k++) createUnit('inf', 1, ...s).carrier = trn.id;
+    trn.moves = 0; computeVision(1);
+    aiTransport(trn);
+    if (on) ok(cargoOf(trn).length < 4, 'eine Infanterie greift vom Schiff aus an');
+    else eq(cargoOf(trn).length, 4, 'ohne AI_CARGO bleibt die Ladung an Bord');
+    AI_CARGO[1] = true;
+  }
+  // Zuflucht: Leerer Transporter will zu wartenden Truppen in einem fernen Hafen, ein Zerstörer liegt daneben – er fährt stattdessen
+  // in den eigenen Hafen in Reichweite (dort erreichen ihn Zerstörer nicht)
+  for (const on of [false, true]) {
+    board('inseln', 4711, 1, 'schwer');
+    AI_REFUGE[1] = on;
+    const ports = S.cities.filter(k => k.coastal);
+    let A = null, B = null, st = null, dz = null;
+    for (const a of ports) for (const b of ports) {
+      if (A || S.cont[idx(a.x, a.y)] === S.cont[idx(b.x, b.y)] || cheb(a.x, a.y, b.x, b.y) < 12) continue;
+      const t = tiles((x, y) => !land(x, y) && free(x, y) && cheb(x, y, a.x, a.y) === 2 && !nb(x, y).some(([p, q]) => cityAt(p, q)));
+      for (const [x, y] of t) {
+        const z = nb(x, y).find(([p, q]) => !land(p, q) && free(p, q) && cheb(p, q, a.x, a.y) >= 2);
+        if (z) { A = a; B = b; st = [x, y]; dz = z; break; }
+      }
+    }
+    ok(A, 'Testlage gefunden');
+    A.owner = 1;
+    for (const k of S.cities) if (S.cont[idx(k.x, k.y)] === S.cont[idx(B.x, B.y)]) k.owner = 1;   // dort keine Ziele: Truppen warten aufs Abholen
+    createUnit('inf', 1, B.x, B.y); createUnit('inf', 1, B.x, B.y);
+    const trn = createUnit('trn', 1, ...st); createUnit('dst', 0, ...dz);
+    computeVision(1); computeVision(0);
+    aiTransport(trn);
+    const inA = trn.x === A.x && trn.y === A.y;
+    if (on) ok(inA, 'mit Zuflucht: im eigenen Hafen');
+    else ok(!inA, 'ohne Zuflucht: weiter zu den wartenden Truppen');
+    AI_REFUGE[1] = true;
+  }
+});
 test('Kampf: Wirtschaftlichkeit (Bilanz der Tabelle „Wer schlägt wen“)', () => {
   board();
   const [p, q] = openSeaPair();

@@ -435,7 +435,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
    Repo) oder `node tools/serve.js .` → http://localhost:8765
 2. Syntax prüfen: `for f in js/*.js; do node --check $f; done`
    **Tests laufen lassen – vor jedem Commit, der Regeln oder Oberfläche ändert:**
-   - `node tools/test.js` (ca. 6 s, 34 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
+   - `node tools/test.js` (ca. 6 s, 35 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
@@ -478,6 +478,9 @@ im ausgeblendeten Browser-Fenster werden Zeitgeber gedrosselt, lange Läufe brec
 ### Stand der Einmessung
 
 Kleine Karte, „Siege“ des einfachen KI-Spielers auf Platz 0, je 96 Partien über die drei alten Welten (Inselreich, Gemischt, Festland).
+**Neuester Stand (nach 1.8.6, Transporter: Truppen handeln nach der Fahrt, Zuflucht ab Schwer – siehe „KI messen“), in Prozent:** Leicht 100,
+Normal 61 (192 Partien), Schwer 11, Brutal 1; offen 0 / 2 / 1 / 0. Unmittelbar davor im selben Lauf: Leicht 100, Normal 62 (288), Schwer 17, Brutal 3.
+Die Tabelle darunter ist der Stand seit dem sicheren Anfang.
 Stand **seit dem sicheren Anfang (1.8.1)**; davor: Leicht 96, Normal 56, Schwer 24, Brutal 5 (offen 0 / 3 / 4 / 1) – Schwer und Brutal sind also
 etwas härter geworden, weil die KI dort die Karte kennt und den schnelleren Start besser nutzt. Die älteren Messreihen weiter unten und bei den
 einzelnen Regeln (meist „alt → neu“) stammen aus der Zeit davor und sind untereinander vergleichbar, aber nicht mit dieser Tabelle.
@@ -610,6 +613,16 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   Schwer 21 → 22 %, Brutal 5 → 6 %, offen 9 → 9. Partien dauern 5–10 Runden länger. Die Stufen bleiben also gültig.
 - Küstenangriff (je 192 Partien, ohne → dreifacher Schaden → dreifach und 2/3 Treffer): Leicht 98/99/100 %, Normal 65/65/70 %,
   Schwer 21/23/24 %, Brutal 5/4/5 %, offen 7/6/2. Gewählt: dreifacher Schaden bei normaler Trefferquote (verschiebt nichts).
+- **Transporter** (dem Nutzer aufgefallen; ai.js `cargoAct`, Schalter `AI_CARGO` / `AI_REFUGE` je Platz). Fehler: Die Truppen an Bord stiegen nur aus,
+  solange der Transporter selbst noch Züge hatte – erreichte er die Küste mit dem letzten Zug, blieben sie an Bord und er lag eine Runde wehrlos
+  neben dem Gegner. Jetzt handeln sie auch danach (`AI_CARGO`, alle Stufen): erst ein Gegner am Ufer (Landfeld außerhalb einer Stadt, `aiAdjTarget`
+  ≥ 45 %, wie der Sturm vom Schiff des Spielers), sonst an Land wie bisher. Dazu **Zuflucht** (Idee des Nutzers, `AI_REFUGE`, nur Können ≥ 1): Endete
+  der Zug auf einem Feld der `threatMap` und liegt ein unbedrohter eigener Hafen in Reichweite dieses Zugs, fährt er hinein (im Hafen bleibt er);
+  nicht, wenn er in diesem Zug seinen Landeplatz erreicht. Messung direkter Vergleich (Normal ohne Fehler, beide Sitze, je 400 Partien über alle
+  fünf Welten, Siege der Variante unter den entschiedenen): nur Truppen 53 % (offen 11), Truppen + Zuflucht 59 % (offen 12; Inselreich/Gemischt je
+  70 %, Kontinente 59 %, Festland 45 %, Binnenmeer 47 %; verlorene Transporter je Partie 17,6 statt 19,8). Stufen (Platz 0 einfach, alt → beides):
+  Leicht 100 → 100 %, Normal 62 → 52 %, Schwer 17 → 11 %, Brutal 3 → 1 %; nur Truppen auf Normal 61 %. Entscheidung des Nutzers: Zuflucht nur
+  ab Schwer, Normal bleibt so bei etwa 61 % (Tabelle oben). Test: `tools/test.js`, „KI: Transporter …“.
 
 ## Bekannte Eigenheiten
 

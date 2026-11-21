@@ -544,6 +544,40 @@ function waitingLand(p, targets) {
 }
 
 // ------------------------------------------------------------------ Transporter
+// Truppen an Bord handeln: erst einen Gegner am Ufer angreifen (Landfeld außerhalb einer Stadt, Chance wie bei Bodentruppen an Land –
+// so wie der Sturm vom Schiff des Spielers), sonst ausladen, wenn neben (bekanntem) Land mit Zielen – bei einer Landung im Hinterland
+// nur dort (landingOk). Läuft vor jedem Schritt des Transporters und mit AI_CARGO auch nach dem letzten: Vorher blieben die Truppen an
+// Bord, wenn er die Küste mit seinem letzten Zug erreichte – obwohl sie ihre eigenen Züge noch hatten (dem Nutzer aufgefallen: Der
+// Transporter lag dann eine Runde lang wehrlos neben seiner Infanterie). Gibt zurück, ob jemand an Land gegangen ist oder angegriffen hat.
+// AI_CARGO / AI_REFUGE je Platz (für Messungen); Messung siehe CLAUDE.md.
+const AI_CARGO = [true, true, true, true], AI_REFUGE = [true, true, true, true];
+function cargoAct(u, targets) {
+  const p = u.owner, tgts = knownTargets(p);
+  let did = false;
+  for (const o of cargoOf(u)) {
+    if (o.moves <= 0 || !alive(u)) continue;
+    if (AI_CARGO[p] !== false) {
+      const adj = aiAdjTarget(o, 0.45);
+      if (adj && S.terrain[idx(adj[0], adj[1])] === 1 && !cityAt(adj[0], adj[1])) { if (moveStep(o, adj[0], adj[1]).ok) did = true; continue; }
+    }
+    let bestN = null, bestD = 1e9;
+    for (const [dx, dy] of DIRS) {
+      const nx = u.x + dx, ny = u.y + dy;
+      if (!inb(nx, ny)) continue;
+      const ni = idx(nx, ny);
+      if (S.terrain[ni] !== 1 || !seenBy(p, ni) || !landingOk(p, ni, targets)) continue;
+      const cc = cityAt(nx, ny);
+      const occ = topUnitsAt(nx, ny);
+      if (occ.some(x => x.owner === p) && !(cc && cc.owner === p)) continue;
+      let d = 1e9;
+      for (const tc of tgts) d = Math.min(d, cheb(nx, ny, tc.x, tc.y));
+      if (cc && isTarget(p, cc)) d = -1;
+      if (d < bestD) { bestD = d; bestN = [nx, ny]; }
+    }
+    if (bestN) { const r = moveStep(o, bestN[0], bestN[1]); if (r.ok) did = true; }
+  }
+  return did;
+}
 function aiTransport(u) {
   let guard = 12;
   const cap = T(u).capacity, p = u.owner;
@@ -553,32 +587,8 @@ function aiTransport(u) {
     // Einladen: im eigenen Hafen auf einem Kontinent ohne Ziele – oder auf einem, von dem aus im Hinterland gelandet wird
     const homeCont = S.cont[idx(u.x, u.y)];
     if (c && c.owner === p && (!targets.has(homeCont) || hinterInfo(p).conts.has(homeCont))) loadUnits(u);
+    if (cargoOf(u).length && cargoAct(u, targets)) continue;
     let cargo = cargoOf(u);
-    // Ausladen, wenn neben (bekanntem) Land mit Zielen – bei einer Landung im Hinterland nur dort (landingOk)
-    if (cargo.length) {
-      const tgts = knownTargets(p);
-      let did = false;
-      for (const o of cargo) {
-        if (o.moves <= 0) continue;
-        let bestN = null, bestD = 1e9;
-        for (const [dx, dy] of DIRS) {
-          const nx = u.x + dx, ny = u.y + dy;
-          if (!inb(nx, ny)) continue;
-          const ni = idx(nx, ny);
-          if (S.terrain[ni] !== 1 || !seenBy(p, ni) || !landingOk(p, ni, targets)) continue;
-          const cc = cityAt(nx, ny);
-          const occ = topUnitsAt(nx, ny);
-          if (occ.some(x => x.owner === p) && !(cc && cc.owner === p)) continue;
-          let d = 1e9;
-          for (const tc of tgts) d = Math.min(d, cheb(nx, ny, tc.x, tc.y));
-          if (cc && isTarget(p, cc)) d = -1;
-          if (d < bestD) { bestD = d; bestN = [nx, ny]; }
-        }
-        if (bestN) { const r = moveStep(o, bestN[0], bestN[1]); if (r.ok) did = true; }
-      }
-      if (did) continue;
-    }
-    cargo = cargoOf(u);
     const sk = aiSkill(p) >= 1;
     // Landung im Hinterland (meist Festland mit schmalen Wasserstraßen): Weg ohne eigene Einheiten planen – sonst wechselte er jede
     // Runde den Umweg, je nachdem, wo gerade ein eigenes Schiff liegt. Steht eins im Weg, wartet er; nach zwei Runden fährt er außen herum.
@@ -628,6 +638,7 @@ function aiTransport(u) {
         return false;
       }, 25);
     }
+    let stay = false;   // wartet auf Truppen
     if (path) { /* Landung unter Feuerschutz */ } else if (goInvade && targets.size) {
       path = bfs(u.x, u.y, pass, (x, y, i) => {
         if (!pass(x, y, i) || S.terrain[i] !== 0 || !seenBy(p, i)) return false;
@@ -641,20 +652,37 @@ function aiTransport(u) {
       });
     } else if (waiting.length && !(goInvade && !targets.size)) {
       const ws = new Set(waiting.map(o => idx(o.x, o.y)));
-      if (ws.has(idx(u.x, u.y))) { u.wait = (u.wait || 0) + 1; break; }
-      path = bfs(u.x, u.y, pass, (x, y, i) => ws.has(i));
+      if (ws.has(idx(u.x, u.y))) { u.wait = (u.wait || 0) + 1; stay = true; }
+      else path = bfs(u.x, u.y, pass, (x, y, i) => ws.has(i));
     } else if (canPick) {
-      if (atPick) { u.wait = (u.wait || 0) + 1; break; }   // warten, bis die Truppen zugestiegen sind
-      path = pickPath;
+      if (atPick) { u.wait = (u.wait || 0) + 1; stay = true; }   // warten, bis die Truppen zugestiegen sind
+      else path = pickPath;
     } else if (!(c && c.owner === p)) {
       // nichts zu tun (oder noch kein Ziel bekannt): im Hafen warten
       path = bfs(u.x, u.y, pass, (x, y) => { const cc = cityAt(x, y); return !!(cc && cc.owner === p && cc.coastal); });
     }
+    // Zuflucht (Idee des Nutzers): Stünde er am Ende dieses Zugs auf einem Feld, auf dem ihn ein sichtbarer Gegner wahrscheinlich versenkt
+    // (threatMap – Kriegsschiffe, Jäger, Bodentruppen am Ufer), und liegt ein eigener Hafen in Reichweite dieses Zugs, fährt er dorthin;
+    // liegt er schon im Hafen, bleibt er. Ausnahme: Er erreicht in diesem Zug seinen Landeplatz – dann gehen die Truppen an Land (cargoAct).
+    // Nur ab Können 1 (Schwer, Brutal; Entscheidung des Nutzers): Auf allen Stufen machte es den Computer deutlich stärker (Normal 62 → 52 %).
+    if (AI_REFUGE[p] !== false && sk) {
+      const end = stay || !path ? [u.x, u.y] : path[Math.min(u.moves, path.length) - 1];
+      const landing = goInvade && !!path && path.length <= u.moves;
+      const threat = threatMap(u);
+      if (!landing && threat[idx(end[0], end[1])]) {
+        if (c && c.owner === p) break;
+        const port = bfs(u.x, u.y, basePass, (x, y, i) => { const cc = cityAt(x, y); return !!(cc && cc.owner === p && cc.coastal) && !threat[i]; }, u.moves);
+        if (port) { if (!stepAlong(u, port)) break; continue; }
+      }
+    }
+    if (stay) break;
     if (!path) { u.inv = false; break; }
     if (!stepAlong(u, path)) { if (stable) u.blk = (u.blk || 0) + 1; break; }
     u.blk = 0;
     if (!(cityAt(u.x, u.y))) u.wait = 0;
   }
+  // Nach dem letzten Zug des Transporters haben die Truppen an Bord ihre eigenen Züge noch (cargoAct)
+  if (AI_CARGO[p] !== false && alive(u) && cargoOf(u).some(o => o.moves > 0)) cargoAct(u, contTargets(p));
 }
 
 // ------------------------------------------------------------------ Kriegsschiffe
