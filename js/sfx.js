@@ -347,8 +347,12 @@ const Sfx = (() => {
   };
   const KIND = { inf: 'march', tank: 'tank', ftr: 'plane', sub: 'sub', trn: 'ship', dst: 'ship', crs: 'ship', car: 'ship', bat: 'ship' };
   const RATE = { dst: 1.12, crs: 0.96, car: 0.9, bat: 0.84 };
-  const LOOP_LEVEL = { march: 0.22, tank: 0.2, plane: 0.16, ship: 0.24, sub: 0.26 };
-  const MOVE_LEVEL = { march: 0.95, tank: 0.85, plane: 0.75, ship: 0.95, sub: 0.9 };
+  // Pegel je Klangteppich (die Puffer selbst sind auf dieselbe Spitze normiert). Der Jäger klang lauter als die anderen (Hinweis des Nutzers):
+  // Sein Motor mit Fahrtwind liegt im mittleren und hohen Tonbereich, in dem das Ohr am empfindlichsten ist. Gemessen als gehörte Lautheit
+  // (ITU-R BS.1770, LUFS): Schleife vorher −28,1 (Panzer −30,1, Schiffe −29,9, U-Boot −28,0, Marsch −33,1), Zug −14,6 (−17,5 / −18,0 / −17,2 /
+  // −20,4). Mit 0,12 / 0,5 statt 0,16 / 0,75 liegt er bei −30,6 / −18,1 wie Panzer und Schiffe. Neue Klänge ebenso messen, nicht nach der Spitze.
+  const LOOP_LEVEL = { march: 0.22, tank: 0.2, plane: 0.12, ship: 0.24, sub: 0.26 };
+  const MOVE_LEVEL = { march: 0.95, tank: 0.85, plane: 0.5, ship: 0.95, sub: 0.9 };
   const KIND_NAME = { march: tt('Infanterie', 'Infantry'), tank: tt('Panzer', 'Tank'), plane: tt('Jäger', 'Fighter'), ship: tt('Schiffe', 'Ships'), sub: tt('U-Boot', 'Submarine') };
   const bufs = {};
   let levels = { march: 1, tank: 1, plane: 1, ship: 1, sub: 1 };
