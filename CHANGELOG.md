@@ -3,6 +3,39 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.8.0
+
+Zwei neue Welten, eine neue Ebene und eine aufgeräumte Kopfzeile.
+
+**Neue Welten**
+
+- **Kontinente:** Jeder beginnt auf seinem eigenen Kontinent – zwei Spieler links und rechts, drei im Dreieck, vier in den Ecken.
+  Dazwischen liegt das Meer mit kleinen Inseln als Trittsteinen. Die Kontinente sind zerklüftet, mit Buchten und Halbinseln.
+- **Binnenmeer:** Land ringsherum, in der Mitte ein Meer mit einigen kleinen Inseln. Der Landweg führt außen herum, der kurze Weg geht
+  übers Wasser.
+- Beide sind gegen die bisherigen Welten vermessen: Die Schwierigkeitsstufen liegen wie gewohnt, es gibt mehr Seekrieg und weniger
+  festgefahrene Partien als auf dem Festland.
+
+**Reichweite der Gegner**
+
+- Neue zuschaltbare Ebene (Taste **K** oder über „Ansicht“): Rot getönt sind alle Felder, auf denen eine sichtbare gegnerische Einheit
+  in ihrem nächsten Zug angreifen könnte; nur schraffiert ist, was allein Jäger erreichen.
+- Die Ebene verrät nichts, was du nicht siehst: keine Einheiten im Nebel, keine Ladung, in fremden Städten nur die gezeigte Einheit.
+
+**Kopfzeile und Tastenlegende**
+
+- Der neue Knopf **Ansicht** (das Auge neben „Zentrieren“) bündelt alles, was die Anzeige der Karte betrifft: Tastenkürzel, Wegvorschau,
+  Kräfteverhältnis, Wege und Marschziele, Reichweite der Gegner – und die fünf Landschaften. Die Liste bleibt beim Klicken offen.
+- Die **Wege** (Taste G) sind dorthin umgezogen; der Schalter in der Seitenleiste hat nur noch Einheiten | Produktion.
+- Die **Tastenlegende** lässt sich am oberen Rand verschieben und merkt sich ihre Stelle. Das × klappt sie nur noch zu einem
+  Schildchen „Tasten“ unten links ein, statt sie verschwinden zu lassen – ein Klick klappt sie wieder auf.
+
+*English:* two new worlds – **Continents** (everyone starts on a continent of their own: left and right for two players, a triangle
+for three, the corners for four) and **Inland sea** (land all around, a sea with a few small islands in the middle). A new layer,
+**enemy reach** (key K), tints every tile a visible enemy unit could attack on its next turn; it reveals nothing you cannot see.
+The new **View** button in the header gathers the display switches, the routes, the enemy reach and the five landscapes. The key
+legend can be dragged and now collapses to a small “Keys” chip instead of disappearing.
+
 ## 1.7.7
 
 Landschaft auf Knopfdruck.
