@@ -10,7 +10,7 @@ Grafik und Klänge werden im Programm erzeugt, es gibt keine Bild- oder Audiodat
 
 *English:* a turn-based island conquest game in the spirit of the classic 80s strategy games – explore,
 capture cities, build units and ship your troops across the sea against one computer opponent or up to three,
-everyone against everyone. The game
+everyone against everyone, on four kinds of world and in five landscapes. The game
 is available in English: use the language button in the top bar. Play it
 [online](https://masa3418.github.io/archipel/) or download the single-file
 [offline copy](https://github.com/masa3418/archipel/releases/latest) and double-click it.
@@ -34,10 +34,11 @@ the carrier and your battleship sinks the now unprotected cruiser.
   keine Internetverbindung gebraucht. Wer lieber einzelne Dateien hat, nimmt `archipel-offline.zip`.
 - **Aus dem Quelltext:** Repository herunterladen und `index.html` doppelklicken.
 
-Das Spiel speichert nach jeder Runde automatisch im Browser; über **Spielstände** lassen sich beliebig viele
+Das Spiel speichert nach jedem Zug automatisch im Browser; über **Spielstände** lassen sich beliebig viele
 benannte Stände anlegen und als Datei exportieren. Online- und Offline-Fassung haben getrennte Spielstände – per
-Export und „Aus Datei laden“ wandern sie von der einen zur anderen. Das **Handbuch** (Knopf **Hilfe** oder Taste `H`)
-erklärt in sieben Reitern erste Schritte, Einheiten, Transporter, Kampf, Steuerung und die Gegner.
+Export und „Aus Datei laden“ wandern sie von der einen zur anderen. Das **Handbuch** (Knopf **Handbuch** oder Taste `H`)
+erklärt in sieben Reitern erste Schritte, Einheiten, Transporter, Kampf, Steuerung und die Gegner. Beim ersten Besuch führen kurze
+**Tipps** über der Karte durch die ersten Runden.
 
 ## Erklärvideos
 
@@ -81,23 +82,30 @@ on GitHub) and open it via ☰ Menu → Saved games → Load from file.*
 ## Inhalt
 
 - Deutsch und Englisch (Sprachknopf oben in der Leiste)
-- Zufällige Karten in drei Größen und drei Weltarten (Inselreich, Gemischt, Festland mit Binnenmeeren und Flüssen) mit Wäldern und Bergen
+- Zufällige Karten in drei Größen und vier Weltarten: Inselreich, Gemischt, Festland mit Binnenmeeren und Flüssen, und das Binnenmeer –
+  Land ringsherum, in der Mitte ein Meer mit kleinen Inseln. Gleiche Kartennummer ergibt dieselbe Karte
+- Fünf Landschaften für dieselbe Karte – grüne Inseln, Wüste, Schnee, Lava, fremder Planet –, jederzeit umschaltbar, auch mitten im Spiel
 - Nebel des Krieges, Städte erobern (50 % Chance, der Eroberer geht in der Stadt auf) und Produktion wählen
 - Neun Einheiten: Infanterie, Panzer, Jäger (mit Treibstoff), Transporter, Zerstörer,
   U-Boot, Kreuzer, Träger, Schlachtschiff
 - Stärken und Schwächen (Torpedo, Sonar, Wasserbomben, Küstenbatterien, Luftangriffe,
   Feuerunterstützung durch Schlachtschiffe, getarnte U-Boote, Luftdeckung durch Träger),
   die angezeigte Siegchance berücksichtigt sie
-- Befehle: Marsch, Wache, Patrouille, Erkunden, Heimkehr, Ein-/Ausladen – auch über ein Rechtsklick-Menü
+- Befehle: Marsch, Wache, Patrouille, Erkunden, Heimkehr, Ein-/Ausladen – auch über ein Rechtsklick-Menü; was gerade nicht geht, ist
+  grau und nennt den Grund
+- Wegvorschau: Zeigst du mit gewählter Einheit auf ein Feld, erscheinen Weg und Dauer – oder warum sie nicht hinkommt
+- Zuschaltbare Ebenen über „Ansicht“: Reichweite der Gegner (wo sichtbare Feinde im nächsten Zug angreifen können), eigene Wege und
+  Marschziele, Tastenkürzel auf der Karte
 - Computergegner in vier Schwierigkeitsstufen; auf Leicht/Normal muss er die Karte
   wie du erkunden und macht gelegentlich Fehler, auf Schwer/Brutal spielt er umsichtiger
-  (Geleitschutz, lauernde U-Boote, Träger); steckt seine Armee auf dem Festland fest, landet er per Transporter in deinem Hinterland
+  (Geleitschutz, lauernde U-Boote, Träger); steckt seine Armee auf dem Festland oder am Binnenmeer fest, landet er per Transporter in deinem Hinterland
 - Bis zu drei Computergegner (Rot, Gelb, Violett), die sich auch untereinander bekämpfen – jeder gegen jeden;
   auf der kleinen Karte höchstens zwei
 - Handbuch im Spiel mit Einheitenkarten und einer Tabelle „Wer schlägt wen“, die sich aus den Regeln selbst berechnet
-- Animationen, Kamerafahrten bei Gegnerzügen, Kräfteverhältnis, Statistik
+- Animationen, Kamerafahrten bei Gegnerzügen, Kräfteverhältnis, Statistik, Zeitraffer der ganzen Partie
+- Sieben Beispiel-Spielstände zum Ausprobieren, direkt aus dem Handbuch ladbar
 - Bedienung mit Maus, Tastatur und Touchpad
-- Offline-Fassung als einzelne Datei, siehe [Änderungen je Version](CHANGELOG.md)
+- Offline-Fassung als einzelne Datei, online auch als App installierbar; siehe [Änderungen je Version](CHANGELOG.md)
 - Synthetisierte Soundeffekte und Klangteppiche je Einheitentyp, Klangtest-Fenster
 
 ## Aufbau
@@ -111,9 +119,11 @@ on GitHub) and open it via ☰ Menu → Saved games → Load from file.*
 | `js/ai.js` | Computergegner |
 | `js/gfx.js` | Grafik: Gelände, Städte, Einheiten-Symbole |
 | `js/sfx.js` | Klänge (Web Audio) |
-| `js/ui.js` | Darstellung, Animationen, Bedienung, Seitenleiste, Dialoge, Handbuch |
+| `js/ui-*.js` | Oberfläche in sieben Teilen: Karte zeichnen, Züge, Seitenleiste, Fenster und Handbuch, Eingabe, Übersichten, Start |
 | `tools/serve.js` | Kleiner lokaler Webserver nur für die Entwicklung (`node tools/serve.js .`) |
 | `tools/pack.js` | Verpackt die Offline-Fassung für einen Release (läuft automatisch auf GitHub) |
+| `tools/test.js`, `tools/test-ui.js` | Automatische Tests: Regeln ohne Browser (`node tools/test.js`), Oberfläche im Browser |
+| `tools/beispiele.js` | Erzeugt die Beispiel-Spielstände |
 | `tools/video/` | Nimmt die Erklärvideos im Browser Bild für Bild auf (nur Entwicklung, braucht ffmpeg) |
 | `CHANGELOG.md` | Änderungen je Version |
 
