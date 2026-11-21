@@ -3,6 +3,20 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.8.5
+
+Mehr Grün in den Klimazonen, und die Landschaft bleibt eingestellt.
+
+- **Klimazonen mit mehr Grün:** Grün nimmt jetzt rund zwei Drittel des Landes ein (vorher ein Drittel), Wüste und Schnee sind schmalere
+  Gürtel. Kleinere Inseln werden nach ihrer Lage von Nord nach Süd eingeteilt: Die nördlichsten und südlichsten sind Schneeinseln,
+  die mittleren Wüsteninseln – so hat jede Inselkarte ein paar davon, auch wenn am Kartenrand nur Wasser liegt.
+- **Die Landschaft bleibt eingestellt:** Was du über „Ansicht“ oder in den Einstellungen wählst, gilt sofort und auch für alle
+  neuen Partien. Gespeicherte Partien zeigen beim Laden die Landschaft, mit der sie gespeichert wurden.
+
+*English:* more green in the climate zones – about two thirds of the land instead of one third; smaller islands are sorted from north
+to south, so every island map has a few snow and desert islands. The landscape you pick under View or in the settings now stays set
+and applies to new games too; saved games keep the landscape they were saved with.
+
 ## 1.8.4
 
 Klimazonen – jede Insel sieht anders aus.
