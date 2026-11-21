@@ -3,6 +3,33 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.7.6
+
+Neue Landschaften – dieselbe Inselwelt in fünf Gewändern.
+
+**Landschaften**
+
+- Die Karte gibt es jetzt in fünf Landschaften: **Grüne Inseln**, **Wüste**, **Schnee**, **Lava** und **Fremder Planet**. Es ändert sich
+  nur das Aussehen – Karte, Regeln und Kartennummer bleiben gleich.
+- Im Fenster **Neues Spiel** wählst du die Landschaft; vorgewählt ist zufällig Grün, Wüste oder Schnee. „Diese Welt noch einmal“
+  übernimmt auch die Landschaft.
+- Unter **Einstellungen → Anzeige** lässt sie sich jederzeit umschalten, auch mitten in der Partie. Sie wird mit der Partie gespeichert;
+  ältere Spielstände und die Beispiele bleiben grün.
+
+**Städte**
+
+- Städte zeigen die Farbe ihres Besitzers jetzt auf dem ganzen Platz statt nur auf Dächern und Fähnchen. Die Parteien sind damit auch
+  herausgezoomt auf einen Blick zu unterscheiden; neutrale Städte bleiben beige.
+
+**Handbuch**
+
+- Neu unter „Über das Spiel“: **Vorbilder** – woher die Idee stammt (Empire: Wargame of the Century und Carrier Command auf dem Amiga).
+
+*English:* five landscapes for the same island world – green islands, desert, snow, lava and alien planet. Only the look changes; map,
+rules and map number stay the same. You pick the landscape in the New game window (green, desert or snow is preselected at random) and
+can switch it at any time under Settings → Display; it is saved with the game. Cities now show their owner's colour on the whole plaza,
+so the sides are easy to tell apart even when zoomed out. The handbook gains a short note on the games that inspired Archipel.
+
 ## 1.7.5
 
 Aufgeräumt: klarere Befehle, übersichtlichere Einstellungen und ein entschlacktes Handbuch.

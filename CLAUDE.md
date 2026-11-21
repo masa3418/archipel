@@ -14,8 +14,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - Spielerische Änderungen (Balancing, KI) per Simulation absichern und Zahlen nennen.
 - Committen und pushen nur auf Wunsch (Nutzer sagt z. B. „committe und pushe“).
 - **Neue Version nur auf Wunsch** (öffentlicher Release): `VERSION` in `js/data.js` erhöhen, Abschnitt `## X.Y.Z` in
-  `CHANGELOG.md` schreiben (deutsch, kurzer englischer Absatz), `node tools/pack.js` lokal prüfen, committen, dann
-  `git tag vX.Y.Z && git push origin vX.Y.Z`. Den Rest erledigt GitHub; Ergebnis unter Actions und Releases ansehen.
+  `CHANGELOG.md` schreiben (deutsch, kurzer englischer Absatz), `node tools/pack.js` lokal prüfen, committen und pushen. Das Tag setzt der Nutzer selbst
+  in der PowerShell – dort gibt es kein `&&`, deshalb immer als zwei einzelne Befehle nennen: `git tag vX.Y.Z`, danach `git push origin vX.Y.Z`. Den Rest erledigt GitHub; Ergebnis unter Actions und Releases ansehen.
   Commit-Nachrichten auf Deutsch, kurz, mit Co-Authored-By-Zeile.
 
 ## Grundsätze der Technik

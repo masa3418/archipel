@@ -311,7 +311,7 @@ window.UiTest = (() => {
     step('Karte zeichnen', () => { draw(); return true; });
     step('Produktionsansicht (V) und zurück', () => { key('v'); const on = prodView; draw(); key('v'); return on && !prodView; });
     step('Wegeansicht (G) und zurück', () => { key('g'); const on = pathView; draw(); key('g'); return on && !pathView; });
-    step('Zoom + und −', () => { const t = TS; key('+'); const up = TS; key('-'); draw(); return up > t && TS === t; });
+    step('Zoom + und −', () => { const z0 = TS; setZoom(24); const t = TS; key('+'); const up = TS; key('-'); draw(); const ok = up > t && TS === t; setZoom(z0); return ok; });
     step('Zeichnen mit Auswahl, Mausfeld und Marschziel', () => { const u = mine().find(u => T(u).domain === 'land' && u.moves > 0); select(u); hover = [u.x + 1, u.y]; const c = S.cities.find(c => c.owner === 0); selCity = c.id; c.rally = [c.x + 1, c.y]; draw(); c.rally = null; return true; });
     step('Zeichnen während einer Wiedergabe (Explosion, Schriftzug)', () => { const u = mine()[0]; replay = 'normal'; animBegin(120); hooks.combat(u, { id: -5, type: 'inf', owner: 1, x: u.x, y: u.y, hp: 1 }, u.x, u.y, true); hooks.salvo(u, u.x, u.y); animEnd(); render(anim.t0 + 100); render(anim.t0 + 400); skipAnim(); replay = 'off'; return true; });
 
