@@ -103,6 +103,11 @@
   .keylegend .kl-x { position: absolute; top: 3px; right: 4px; pointer-events: auto; background: none; border: 0; color: var(--muted);
     font-size: 15px; line-height: 1; padding: 2px 5px; cursor: pointer; }
   .keylegend .kl-x:hover { color: var(--text); }
+  /* Griff zum Verschieben: der obere Rand der Legende (der Rest lässt Klicks zur Karte durch) */
+  .keylegend .kl-grip { position: absolute; top: 0; left: 0; right: 26px; height: 13px; pointer-events: auto; cursor: move; touch-action: none; }
+  .keylegend .kl-grip::after { content: ''; position: absolute; left: 50%; top: 4px; width: 34px; height: 3px; margin-left: -17px; border-radius: 2px; background: #4a5a70; }
+  .keylegend .kl-grip:hover::after, .keylegend.drag .kl-grip::after { background: var(--accent); }
+  .keylegend.drag { box-shadow: 0 10px 26px rgba(0, 0, 0, .6); }
   .keylegend .kl-g { break-inside: avoid; margin-bottom: 6px; }
   .keylegend h5 { margin: 0 0 3px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
   .keylegend .kl-row { display: flex; align-items: center; gap: 7px; min-height: 19px; }

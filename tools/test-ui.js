@@ -350,6 +350,20 @@ window.UiTest = (() => {
       setLandscape(keep); draw();
       return ok && seen.size === Object.keys(LANDSCAPES).length && $('landSel').options.length === seen.size;
     });
+    step('Tastenlegende: am Griff verschieben, bleibt im Kartenbereich, Doppelklick legt zurück', () => {
+      const keep = showKeys, pos0 = keyPos; setShowKeys(true); setKeyPos(null); refresh();
+      const box = $('keyLegend'), col = $('mapCol'), ev = (el, type, x, y) => el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 }));
+      const r0 = box.getBoundingClientRect(), g = box.querySelector('.kl-grip').getBoundingClientRect();
+      ev(box.querySelector('.kl-grip'), 'pointerdown', g.left + 20, g.top + 5); ev(window, 'pointermove', g.left + 140, g.top - 115); ev(window, 'pointerup', g.left + 140, g.top - 115);
+      const r1 = box.getBoundingClientRect();
+      let ok = Math.abs(r1.left - r0.left - 120) <= 2 && Math.abs(r1.top - r0.top + 120) <= 2 && !!keyPos && !!localStorage.getItem('archipel-keys-pos');
+      refresh(); const r2 = $('keyLegend').getBoundingClientRect(); ok = ok && Math.abs(r2.left - r1.left) <= 1 && Math.abs(r2.top - r1.top) <= 1;   // übersteht das Neuzeichnen
+      setKeyPos({ x: 99999, y: -500 }); const r3 = box.getBoundingClientRect(), c = col.getBoundingClientRect();
+      ok = ok && r3.right <= c.right + 1 && r3.top >= c.top && r3.left >= c.left && r3.bottom <= c.bottom + 1;
+      box.querySelector('.kl-grip').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); const r4 = box.getBoundingClientRect();
+      ok = ok && keyPos === null && Math.abs(r4.left - r0.left) <= 1 && Math.abs(r4.top - r0.top) <= 1 && !localStorage.getItem('archipel-keys-pos');
+      setKeyPos(pos0); setShowKeys(keep); return ok;
+    });
     step('Kopfzeile: Knopf „Landschaft“ öffnet die Liste, Klick wechselt, Esc schließt', () => {
       const keep = S.land; $('bLand').click();
       const items = [...$('landMenu').querySelectorAll('[data-land]')];

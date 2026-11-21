@@ -406,7 +406,8 @@ function updateKeyLegend() {
   const row = (keys, label, ok = true) => `<div class="kl-row${ok ? '' : ' off'}"><span>${keys}</span>${label}</div>`;
   const grp = (title, rows) => `<div class="kl-g"><h5>${title}</h5>${rows.join('')}</div>`;
   const esc_ = kb('Esc'), enter = kb('Enter');
-  let h = `<button class="kl-x" title="${tt('Ausblenden (im Menü wieder einschalten)', 'Hide (switch on again in the menu)')}">×</button>`;
+  let h = `<div class="kl-grip" title="${tt('Ziehen: verschieben · Doppelklick: zurück an den Platz unten links', 'Drag to move · double-click: back to the bottom left')}"></div>`
+    + `<button class="kl-x" title="${tt('Ausblenden (im Menü wieder einschalten)', 'Hide (switch on again in the menu)')}">×</button>`;
   if (patrolMode) {
     h += grp(tt('Patrouille festlegen', 'Setting a patrol'), [
       row(tt('Klick', 'Click'), tt('Wegpunkt setzen', 'add waypoint')),
@@ -454,7 +455,38 @@ function updateKeyLegend() {
     ]);
   }
   box.innerHTML = h;
+  applyKeyPos();
   box.querySelector('.kl-x').onclick = () => { setShowKeys(false); toast(tt('Tastenkürzel ausgeblendet – unter ☰ Menü → Einstellungen wieder einschalten', 'Shortcuts hidden – switch them on again under ☰ Menu → Settings'), 2500); };
+}
+// Legende verschieben (Wunsch des Nutzers): am oberen Rand greifen und ziehen; die Stelle wird gemerkt (archipel-keys-pos, Pixel ab der
+// linken oberen Ecke der Kartenspalte) und bleibt immer ganz im Kartenbereich – auch wenn das Fenster kleiner wird. Doppelklick auf den
+// Griff legt sie zurück nach unten links. Der Inhalt wird bei jedem refresh() neu gebaut, deshalb hängen die Ereignisse an der Legende selbst.
+let keyPos = null;
+try { const p = JSON.parse(localStorage.getItem('archipel-keys-pos') || 'null'); if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) keyPos = { x: p.x, y: p.y }; } catch (e) {}
+function applyKeyPos() {
+  const box = $('keyLegend'), col = $('mapCol');
+  if (!keyPos) { box.style.left = box.style.top = box.style.bottom = ''; return; }
+  const top0 = $('infoBar').offsetHeight;
+  const x = Math.max(0, Math.min(keyPos.x, col.clientWidth - box.offsetWidth)), y = Math.max(top0, Math.min(keyPos.y, col.clientHeight - box.offsetHeight));
+  box.style.left = x + 'px'; box.style.top = y + 'px'; box.style.bottom = 'auto';
+}
+function setKeyPos(p) {
+  keyPos = p;
+  try { if (p) localStorage.setItem('archipel-keys-pos', JSON.stringify(p)); else localStorage.removeItem('archipel-keys-pos'); } catch (e) {}
+  applyKeyPos();
+}
+{
+  const box = $('keyLegend'); let drag = null;
+  box.addEventListener('pointerdown', e => {
+    if (!e.target.closest('.kl-grip') || e.button !== 0) return;
+    const r = box.getBoundingClientRect(), c = $('mapCol').getBoundingClientRect();
+    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, cx: c.left, cy: c.top };
+    box.classList.add('drag'); e.preventDefault();
+  });
+  window.addEventListener('pointermove', e => { if (drag) { keyPos = { x: Math.round(e.clientX - drag.cx - drag.dx), y: Math.round(e.clientY - drag.cy - drag.dy) }; applyKeyPos(); } });
+  window.addEventListener('pointerup', () => { if (!drag) return; drag = null; box.classList.remove('drag'); const b = $('keyLegend'); setKeyPos({ x: b.offsetLeft, y: b.offsetTop }); });
+  box.addEventListener('dblclick', e => { if (e.target.closest('.kl-grip')) setKeyPos(null); });
+  window.addEventListener('resize', () => { if (keyPos) applyKeyPos(); });
 }
 $('keysChk').checked = showKeys;
 $('keysChk').onchange = e => setShowKeys(e.target.checked);
