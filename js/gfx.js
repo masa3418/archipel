@@ -243,7 +243,11 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   const oc = document.createElement('canvas');
   oc.width = W * TS; oc.height = H * TS;
   const g = oc.getContext('2d');
-  const r = mulberry32(4711);
+  // Wellen, Bodenstruktur, Bäume und Berge würfeln je Feld mit eigenem Startwert (aus der Lage des Feldes), nicht mehr der Reihe nach über
+  // die ganze Karte: So sieht ein Ausschnitt (Lupe, st.ox/st.oy = seine Lage auf der Karte) genauso aus wie dieselbe Stelle der ganzen Karte.
+  let r = mulberry32(4711);
+  const ox = st.ox | 0, oy = st.oy | 0;
+  const seedAt = (x, y, k) => { r = mulberry32((Math.imul(x + ox + 1, 73856093) ^ Math.imul(y + oy + 1, 19349663) ^ Math.imul(k, 83492791)) >>> 0); };
   const L = landscape(), WATER_COL = L.water, SAND = L.sand;
   const isW = (x, y) => x < 0 || y < 0 || x >= W || y >= H || !st.terrain[y * W + x];
 
@@ -265,6 +269,7 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   // Wellen
   g.strokeStyle = L.wave; g.lineWidth = Math.max(1, TS / 18); g.lineCap = 'round';
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    seedAt(x, y, 1);
     if (st.terrain[y * W + x] || st.depth[y * W + x] < 2 || r() > 0.22) continue;
     const cx = (x + 0.2 + r() * 0.6) * TS, cy = (y + 0.2 + r() * 0.6) * TS, w = TS * 0.18;
     g.beginPath(); g.moveTo(cx - w, cy); g.quadraticCurveTo(cx - w / 2, cy - w * 0.6, cx, cy); g.quadraticCurveTo(cx + w / 2, cy - w * 0.6, cx + w, cy); g.stroke();
@@ -302,6 +307,7 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   // Bodenstruktur
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (isW(x, y)) continue;
+    seedAt(x, y, 2);
     for (let k = 0; k < 4; k++) {
       g.fillStyle = r() < 0.5 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
       g.beginPath(); g.arc((x + r()) * TS, (y + r()) * TS, TS * (0.04 + r() * 0.05), 0, 7); g.fill();
@@ -313,6 +319,7 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
     if (isW(x, y) || st.cityGrid[i] >= 0) continue;
     const el = st.elev[i];
     const X = x * TS, Y = y * TS;
+    seedAt(x, y, 3);
     if (el > 0.68) {
       const peaks = el > 0.82 ? 2 : 1;
       for (let k = 0; k < peaks; k++) {

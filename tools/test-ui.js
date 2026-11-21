@@ -235,6 +235,34 @@ window.UiTest = (() => {
     check(threatView === false, 'Reichweite: Taste K schaltet aus');
     setThreatView(k0);
   }
+  // Lupe (Taste O halten): erscheint nur über der Karte, verschwindet beim Loslassen – und zeigt dieselbe Landschaft wie die Karte
+  function lupe() {
+    reset(); createUnit('tank', 0, ...base.l); computeVision(0); refresh(); select(null);
+    const key = (type, k) => document.dispatchEvent(new KeyboardEvent(type, { key: k, bubbles: true, cancelable: true }));
+    const r = cv.getBoundingClientRect(), wr = wrap.getBoundingClientRect(), el = $('loupe');
+    focusOn(base.l[0], base.l[1]); camStep(performance.now() + 5000); applyPad && applyPad();
+    const at = (x, y) => { const q = cv.getBoundingClientRect(); return [q.left + (x + 0.5) * TS, q.top + (y + 0.5) * TS]; };
+    loupeXY = at(...base.l);
+    const over = loupeXY[0] > wr.left && loupeXY[0] < wr.right && loupeXY[1] > wr.top && loupeXY[1] < wr.bottom;
+    key('keydown', 'o');
+    check(loupeOn, 'Lupe: Taste O schaltet ein');
+    if (over) {
+      check(!el.hidden && el.width === el.height && el.width >= LOUPE_D, 'Lupe: sichtbar und rund (quadratische Leinwand)');
+      const d = el.getContext('2d').getImageData(0, 0, el.width, el.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 90) n++;
+      check(n > el.width * el.height * 0.3, 'Lupe: zeigt ein Bild (' + n + ' helle Punkte)');
+      check(Math.abs(parseFloat(el.style.left) + LOUPE_D / 2 - loupeXY[0]) <= 1, 'Lupe: sitzt unter der Maus');
+    }
+    loupeXY = [wr.right + 60, wr.top + 60]; drawLoupe(); check(el.hidden, 'Lupe: außerhalb der Karte unsichtbar');
+    loupeXY = at(...base.l); key('keyup', 'o');
+    check(!loupeOn && el.hidden, 'Lupe: Loslassen schließt sie');
+    // Ein Ausschnitt muss genauso aussehen wie dieselbe Stelle der ganzen Karte (Zufall je Feld, nicht der Reihe nach)
+    const ts = 32, full = buildTerrain(ts), [bx, by] = base.l, x0 = Math.max(0, bx - 2), y0 = Math.max(0, by - 2), w = Math.min(S.W - x0, 5), h = Math.min(S.H - y0, 5);
+    const sub = (src, T) => { const a = new T(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) a[y * w + x] = src[idx(x0 + x, y0 + y)]; return a; };
+    const part = buildTerrain(ts, { W: w, H: h, ox: x0, oy: y0, over: false, terrain: sub(S.terrain, Uint8Array), depth: sub(S.depth, Uint8Array), elev: sub(S.elev, Float32Array), cityGrid: sub(S.cityGrid, Int16Array) });
+    const A = full.getContext('2d').getImageData(bx * ts + 4, by * ts + 4, ts - 8, ts - 8).data, B = part.getContext('2d').getImageData((bx - x0) * ts + 4, (by - y0) * ts + 4, ts - 8, ts - 8).data;
+    let diff = 0; for (let i = 0; i < A.length; i++) diff += Math.abs(A[i] - B[i]);
+    check(diff / A.length < 6, 'Lupe: Ausschnitt weicht von der Karte ab (mittlere Abweichung ' + (diff / A.length).toFixed(1) + ' von 255)');
+  }
   // 4) Einstiegstipps: jeder Auslöser einzeln
   function tipsCheck() {
     const wasOn = tips.on, done0 = [...tips.done];
@@ -467,7 +495,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); orders(); threat(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); orders(); threat(); lupe(); tipsCheck();
     await walkthrough();
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein'); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters
     return { bestanden: passed, fehlgeschlagen: fails };

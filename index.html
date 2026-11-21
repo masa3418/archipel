@@ -92,6 +92,9 @@
     column-width: 175px; column-gap: 20px; width: 400px; padding: 8px 12px 6px; background: rgba(13, 17, 23, .88); border: 1px solid #3d4b5e;
     border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, .45); font-size: 12px; color: var(--text); pointer-events: none; }
   .keylegend[hidden] { display: none; }
+  /* Lupe (Taste O halten): runder, vergrößerter Ausschnitt unter der Maus */
+  .loupe { position: fixed; z-index: 15; border-radius: 50%; border: 2px solid #9fc4ff; box-shadow: 0 10px 30px rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.5); pointer-events: none; }
+  .loupe[hidden] { display: none; }
   /* Einstiegstipps: Karte oben links über der Karte (updateTips in ui.js) */
   .tipbox { position: absolute; left: 10px; top: 36px; z-index: 3; width: 340px; max-width: calc(100% - 36px); background: rgba(18,24,33,.96);
     border: 1px solid #3d6aa8; border-left: 4px solid var(--accent); border-radius: 8px; padding: 9px 12px 10px; font-size: 13px; line-height: 1.4;
@@ -609,6 +612,7 @@
     </div>
     <div id="mapWrap"><div id="mapPad"><canvas id="map"></canvas></div></div>
     <div id="keyLegend" class="keylegend" hidden></div>
+    <canvas id="loupe" class="loupe" hidden></canvas>
     <div id="tipBox" class="tipbox" hidden></div>
   </div>
   <aside>
@@ -850,6 +854,7 @@
               <tr><td><kbd>Enter</kbd></td><td data-en="end turn">Runde beenden</td></tr>
               <tr><td><kbd>N</kbd></td><td data-en="next waiting unit">nächste wartende Einheit</td></tr>
               <tr><td><kbd>V</kbd></td><td data-en="production view: shows what each of your cities builds instead of the units; click a city to change it">Produktionsansicht: zeigt statt der Einheiten, was jede eigene Stadt baut; Klick auf eine Stadt ändert es</td></tr>
+              <tr><td><kbd>O</kbd></td><td data-en="magnifier: hold the key – a round, sharply enlarged view of the map under the mouse; release to close">Lupe: Taste gedrückt halten – ein runder, scharf vergrößerter Ausschnitt der Karte unter der Maus; loslassen schließt sie</td></tr>
               <tr><td><kbd>K</kbd></td><td data-en="enemy reach (also under “View”): tints red every tile a visible enemy unit could attack on its next turn; hatched = fighters only. Counts only what you can see – no cargo, no hidden units">Reichweite der Gegner (auch unter „Ansicht“): tönt alle Felder rot, auf denen eine sichtbare gegnerische Einheit in ihrem nächsten Zug angreifen könnte; schraffiert = nur Jäger. Es zählt nur, was du siehst – keine Ladung, keine verborgenen Einheiten</td></tr>
               <tr><td><kbd>G</kbd></td><td data-en="routes (also under “View”, the eye at the top): shows all marches, patrols and the rally points of your cities; the game continues normally">Wege (auch unter „Ansicht“, dem Auge oben): zeigt alle Märsche, Patrouillen und die Marschziele deiner Städte; das Spiel läuft normal weiter</td></tr>
               <tr><td><kbd data-en="Space">Leertaste</kbd></td><td data-en="skip unit this turn">Einheit diese Runde überspringen</td></tr>

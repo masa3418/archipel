@@ -779,6 +779,80 @@ function drawEffect(e, f) {
   }
 }
 
+// Die Marke eines Feldes: welche der Einheiten dort gezeigt wird und mit welchen Zeichen. x, y = Feld, an dem gezeichnet wird (Karte: das Feld
+// selbst; Lupe: seine Lage im Ausschnitt).
+function drawTileToken(list, i, su, x, y) {
+  const show = list.find(u => su && (u === su || u.id === su.carrier)) || list.find(u => u.owner === 0 && u.moves > 0 && !u.order) || list[0];
+  const inCity = S.cityGrid[i] >= 0;
+  // Zahl an der Marke (Einheiten in der Stadt, Ladung) nur bei eigenen Einheiten – wie viel der Gegner an Bord oder
+  // in einer Stadt hat, bleibt bis zum Spielende verborgen
+  const reveal = show.owner === 0 || S.over || CHEAT_FOG;   // Schummeln „Nebel aus“ deckt auch das auf
+  const badge = !reveal ? 0 : inCity ? (list.length > 1 ? list.length : 0) : cargoOf(show).length;
+  const own = show.owner === 0;
+  const opts = {
+    badge,
+    dim: own && (show.moves <= 0 || (show.order && (show.order.type === 'sentry' || show.order.type === 'load'))) && show !== su,
+    sentry: own && show.order && (show.order.type === 'sentry' || show.order.type === 'load'),   // ladender Transporter wartet wie eine Wache
+    goto: own && show.order && show.order.type === 'goto',
+    patrol: own && show.order && show.order.type === 'patrol',
+    explore: own && show.order && show.order.type === 'explore',
+    landing: own && !!show.landing,
+  };
+  if (inCity) drawToken(show, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66, opts);
+  else drawToken(show, x * TS, y * TS, TS, opts);
+}
+
+// ------------------------------------------------------------------ Lupe
+// Taste O gedrückt halten (Wunsch des Nutzers: mehr Zoom ist nur zum Anschauen – dafür eine Lupe statt größerer Zoomstufen): ein runder
+// Ausschnitt unter der Maus, etwa 2,5-fach vergrößert und scharf – Gelände, Städte, Nebel und Einheiten werden für den Ausschnitt in der
+// größeren Stufe neu gezeichnet (buildTerrain mit einem Kartenstück wie in der Grafik-Übersicht, drawOn), nicht hochskaliert. Sie zeigt
+// dasselbe wie die Karte, nicht mehr: Nebel bleibt Nebel. Ohne Marker, Wege und Effekte; während der Wiedergabe der Züge ist sie aus.
+const LOUPE_D = 300;
+let loupeOn = false, loupeXY = null, loupeBg = null;
+window.addEventListener('mousemove', e => { loupeXY = [e.clientX, e.clientY]; });
+function setLoupe(on) { loupeOn = !!on && !!S; if (!loupeOn) $('loupe').hidden = true; else drawLoupe(); }
+function drawLoupe() {
+  const el = $('loupe'), rect = cv.getBoundingClientRect(), now = performance.now();
+  const fx = loupeXY ? (loupeXY[0] - rect.left) / TS : -1, fy = loupeXY ? (loupeXY[1] - rect.top) / TS : -1;
+  const wr = wrap.getBoundingClientRect();
+  const inside = loupeXY && fx >= 0 && fy >= 0 && fx < S.W && fy < S.H && loupeXY[0] >= wr.left && loupeXY[0] <= wr.right && loupeXY[1] >= wr.top && loupeXY[1] <= wr.bottom;
+  if (!loupeOn || !inside || animActive(now) || [...document.querySelectorAll('.modal')].some(m => !m.hidden)) { el.hidden = true; return; }
+  const dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1)), tsl = Math.max(64, Math.min(104, Math.round(TS * 2.5))), ts = Math.round(tsl * dpr);
+  const R = Math.ceil(LOUPE_D / 2 / tsl) + 1, tx = Math.floor(fx), ty = Math.floor(fy);
+  const x0 = Math.max(0, tx - R), y0 = Math.max(0, ty - R), x1 = Math.min(S.W - 1, tx + R), y1 = Math.min(S.H - 1, ty + R), w = x1 - x0 + 1, h = y1 - y0 + 1;
+  const P = S.players[0], sub = (src, T, fill) => { const a = new T(w * h); if (fill != null) a.fill(fill); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) a[y * w + x] = src[idx(x0 + x, y0 + y)]; return a; };
+  const key = [x0, y0, w, h, ts, S.land, S.gameId].join();
+  if (!loupeBg || loupeBg.key !== key) {
+    const st = { W: w, H: h, ox: x0, oy: y0, over: S.over, terrain: sub(S.terrain, Uint8Array), depth: sub(S.depth, Uint8Array), elev: sub(S.elev, Float32Array), cityGrid: sub(S.cityGrid, Int16Array) };
+    loupeBg = { key, st, img: buildTerrain(ts, st) };
+  }
+  const px = Math.round(LOUPE_D * dpr);
+  if (el.width !== px || el.height !== px) { el.width = px; el.height = px; }   // eine neue Leinwand ist 300 × 150 – Breite allein zu prüfen reichte nicht
+  el.style.width = el.style.height = LOUPE_D + 'px';
+  el.style.left = Math.round(loupeXY[0] - LOUPE_D / 2) + 'px'; el.style.top = Math.round(loupeXY[1] - LOUPE_D / 2) + 'px';
+  const g = el.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#080b10'; g.fillRect(0, 0, el.width, el.height);
+  g.translate(Math.round(el.width / 2 - (fx - x0) * ts), Math.round(el.height / 2 - (fy - y0) * ts));
+  g.drawImage(loupeBg.img, 0, 0);
+  drawOn(g, ts, () => {
+    for (const c of S.cities) {
+      if (c.x < x0 || c.x > x1 || c.y < y0 || c.y > y1 || (!P.seen[idx(c.x, c.y)] && !S.over)) continue;
+      ctx.drawImage(citySprite(S.over ? c.owner : shownOwner(c, 0, false), TS, c.id % 2), (c.x - x0) * TS, (c.y - y0) * TS);
+    }
+    drawFog({ seen: sub(P.seen, Uint8Array), vis: sub(P.vis, Uint8Array) }, loupeBg.st);
+    const groups = new Map(), su = S.over ? null : selUnit();
+    for (const u of S.units) {
+      if (u.carrier != null || u.x < x0 || u.x > x1 || u.y < y0 || u.y > y1) continue;
+      const i = idx(u.x, u.y);
+      if (u.owner !== 0 && !S.over && !canSee(0, u)) continue;
+      if (!groups.has(i)) groups.set(i, []);
+      groups.get(i).push(u);
+    }
+    for (const [i, list] of groups) drawTileToken(list, i, su, i % S.W - x0, ((i / S.W) | 0) - y0);
+  });
+  el.hidden = false;
+}
+
 function render(now = performance.now()) {
   if (!S || !terrainCache) return;
   const P = S.players[0];
@@ -860,24 +934,7 @@ function render(now = performance.now()) {
   }
   for (const [i, list] of groups) {
     const x = i % S.W, y = (i / S.W) | 0;
-    const show = list.find(u => su && (u === su || u.id === su.carrier)) || list.find(u => u.owner === 0 && u.moves > 0 && !u.order) || list[0];
-    const inCity = S.cityGrid[i] >= 0;
-    // Zahl an der Marke (Einheiten in der Stadt, Ladung) nur bei eigenen Einheiten – wie viel der Gegner an Bord oder
-    // in einer Stadt hat, bleibt bis zum Spielende verborgen
-    const reveal = show.owner === 0 || S.over || CHEAT_FOG;   // Schummeln „Nebel aus“ deckt auch das auf
-    const badge = !reveal ? 0 : inCity ? (list.length > 1 ? list.length : 0) : cargoOf(show).length;
-    const own = show.owner === 0;
-    const opts = {
-      badge,
-      dim: own && (show.moves <= 0 || (show.order && (show.order.type === 'sentry' || show.order.type === 'load'))) && show !== su,
-      sentry: own && show.order && (show.order.type === 'sentry' || show.order.type === 'load'),   // ladender Transporter wartet wie eine Wache
-      goto: own && show.order && show.order.type === 'goto',
-      patrol: own && show.order && show.order.type === 'patrol',
-      explore: own && show.order && show.order.type === 'explore',
-      landing: own && !!show.landing,
-    };
-    if (inCity) drawToken(show, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66, opts);
-    else drawToken(show, x * TS, y * TS, TS, opts);
+    drawTileToken(list, i, su, x, y);
   }
   for (const [u, [x, y]] of moving) drawToken(u, x * TS, y * TS, TS, { badge: u.owner === 0 || S.over || CHEAT_FOG ? cargoOf(u).length : 0 });
   // Vernichtete und in einer Stadt aufgegangene Einheiten bleiben bis zu ihrem Moment sichtbar

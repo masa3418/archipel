@@ -111,6 +111,7 @@ function loop(now) {
     Sfx.setLoop(su ? su.type : null);
   }
   if (!S) return;
+  if (loupeOn) drawLoupe();
   const busy = animActive(now) || sel != null || selCity != null;
   if (!dirty && !busy) return;
   if (!dirty && now - lastFrame < 33) return;

@@ -134,6 +134,8 @@ document.addEventListener('mousedown', e => {
 }, true);
 window.addEventListener('resize', closeCtx);
 window.addEventListener('blur', closeCtx);
+window.addEventListener('blur', () => setLoupe(false));
+document.addEventListener('keyup', e => { if (e.key === 'o' || e.key === 'O') setLoupe(false); });
 cv.addEventListener('mousedown', e => {
   if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
   dragSwallow = false;
@@ -308,6 +310,7 @@ document.addEventListener('keydown', e => {
   if (k === 'v') { setProdView(!prodView); return; }
   if (k === 'g') { setPathView(!pathView); return; }
   if (k === 'k') { setThreatView(!threatView); Sfx.play('tick'); return; }
+  if (k === 'o') { if (!e.repeat) setLoupe(true); return; }   // Lupe, solange die Taste gehalten wird (keyup unten)
   if (prodView) {   // in der Produktionsansicht gibt es keine Einheitenbefehle
     if (k === 'Escape') { setProdView(false); return; }
     if (k === 'n') { setProdView(false); actNext(); return; }   // wie der Knopf „Nächste Einheit“
@@ -455,6 +458,7 @@ function updateKeyLegend() {
       row(kb('V'), prodView ? tt('zurück zur Karte (auch Esc)', 'back to the map (also Esc)') : tt('Produktionsansicht', 'production view')),
       row(kb('G'), tt('Wege einblenden', 'show routes')),
       row(kb('K'), tt('Reichweite der Gegner', 'enemy reach')),
+      row(kb('O'), tt('Lupe (halten)', 'magnifier (hold)')),
     ]);
     h += grp(tt('Spiel', 'Game'), [
       row(enter, tt('Runde beenden', 'end turn'), !S.over),
