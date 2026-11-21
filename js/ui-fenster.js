@@ -589,6 +589,9 @@ try { const sp = localStorage.getItem('archipel-tlspeed'); if (sp && [...$('tlSp
 $('tlSpeed').onchange = e => { try { localStorage.setItem('archipel-tlspeed', e.target.value); } catch (err) {} };
 $('bTime').onclick = () => openTimelapse();
 
+// Jede neue Partie beginnt nah herangezoomt (Wunsch des Nutzers): Am Anfang kennt man nur die Startstadt, und herausgezoomt füllt der Nebel
+// fast das ganze Bild. Die Stufe gilt wie selbst gewählt (wird gemerkt); herauszoomen kann man jederzeit.
+const START_ZOOM = 44;
 function startNew(size, diffKey, worldKey, seed = null, nAi = 0, land = null) {   // seed: Kartennummer (null = zufällig), nAi: Zahl der Gegner, land: Landschaft (null = aus der Nummer)
   prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
   resetCheatFog();   // jede neue oder geladene Partie beginnt mit Nebel
@@ -598,6 +601,7 @@ function startNew(size, diffKey, worldKey, seed = null, nAi = 0, land = null) { 
   setTimeout(() => { logSeen = S.log[0] || null; updateLogHead(); }, 0);
   newGame(size, diffKey, worldKey, seed, nAi, land);
   sel = null; selCity = null; hover = null; updateHover();
+  TS = START_ZOOM; try { localStorage.setItem('archipel-zoom', String(TS)); } catch (e) {}
   resizeCanvas();
   selectNext();
   const u = selUnit();

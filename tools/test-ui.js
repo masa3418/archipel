@@ -485,6 +485,12 @@ window.UiTest = (() => {
       S.cities.forEach((c, k) => { c.owner = own[k]; }); deserialize(keepS); afterLoad(); closeModals(); offerPct = pct0; replay = 'off';
       return ok;
     });
+    step('Neues Spiel: beginnt nah herangezoomt, die Startstadt in der Bildmitte', () => {
+      setZoom(16); startNew('klein'); closeModals(); camStep(performance.now() + 5000);
+      const u = selUnit(), r = cv.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+      const ux = r.left + (u.x + 0.5) * TS, uy = r.top + (u.y + 0.5) * TS;
+      return TS === START_ZOOM && Math.abs(ux - (w.left + w.width / 2)) < TS * 2 && Math.abs(uy - (w.top + w.height / 2)) < TS * 2;
+    });
     step('Neues Spiel: Landschaft vorgewählt aus den drei Startlandschaften, gewählte gilt', () => {
       let ok = true; const seen = new Set();
       for (let k = 0; k < 80; k++) { $('bNew').click(); ok = ok && shown('mNew') && START_LANDS.includes($('newLandSel').value); seen.add($('newLandSel').value); closeModals(); }
