@@ -3,6 +3,24 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.8.2
+
+Kleinigkeiten für den Einstieg.
+
+- **Tipps fallen mehr auf:** Ein neuer Tipp gleitet herein, leuchtet dreimal gelb auf und gibt einen leisen Ton. Das Kästchen ist
+  gelb statt blau gerahmt und hebt sich so von der übrigen Oberfläche ab.
+- **Neue Partie beginnt nah herangezoomt,** mit der Startstadt in der Bildmitte – am Anfang füllt der Nebel so weniger vom Bild.
+  Herauszoomen geht wie immer mit dem Mausrad oder der Taste −.
+- **Tipps berichtigt:** Der Tipp nach dem ersten Sieg erklärte die Reparatur falsch. Richtig ist: Schiffe werden in einer eigenen
+  Hafenstadt repariert, einen Trefferpunkt je Runde; Panzer lassen sich nicht reparieren. Der Tipp zum ersten Feindkontakt nennt
+  jetzt die Taste K für die Reichweite der Gegner.
+- **Handbuch:** Die Angabe, wie oft der Testspieler auf Schwer gewinnt, passt wieder zu den Regeln (etwa jede sechste Partie).
+
+*English:* small things for getting started. A new tip slides in, glows amber three times and chimes softly; its box is amber
+instead of blue. A new game starts zoomed in close on your first city. The tip after your first win explained repairs wrongly
+(ships are repaired in your own ports, one hit point per turn; tanks cannot be repaired), and the enemy-contact tip now mentions
+key K for the enemy reach.
+
 ## 1.8.1
 
 Ein fairerer Anfang, kein verfrühtes Siegangebot und eine Lupe.
