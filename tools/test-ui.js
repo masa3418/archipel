@@ -531,13 +531,11 @@ window.UiTest = (() => {
       const ux = r.left + (u.x + 0.5) * TS, uy = r.top + (u.y + 0.5) * TS;
       return TS === START_ZOOM && Math.abs(ux - (w.left + w.width / 2)) < TS * 2 && Math.abs(uy - (w.top + w.height / 2)) < TS * 2;
     });
-    step('Neues Spiel: Klimazonen vorgewählt, jede Landschaft wählbar, gewählte gilt', () => {
-      let ok = true;
-      for (let k = 0; k < 5; k++) { $('newLandSel').value = 'lava'; closeModals(); $('bNew').click(); ok = ok && shown('mNew') && $('newLandSel').value === DEFAULT_LAND; closeModals(); }
-      ok = ok && DEFAULT_LAND === 'zonen' && FIRST_LAND === DEFAULT_LAND && $('newLandSel').options.length === LAND_KEYS.length;
-      $('bNew').click(); $('sizeSel').value = 'klein'; $('newLandSel').value = 'alien'; $('bStart').click(); closeModals();
-      ok = ok && S.land === 'alien' && S.turn === 1;
-      $('bNew').click(); $('seedSame').click(); ok = ok && $('newLandSel').value === 'alien'; closeModals();
+    step('Neues Spiel: ohne Landschaftswahl, beginnt immer in den Klimazonen – auch wenn vorher eine andere eingestellt war', () => {
+      setLandscape('lava');
+      $('bNew').click(); let ok = shown('mNew') && !$('newLandSel') && DEFAULT_LAND === 'zonen' && FIRST_LAND === DEFAULT_LAND;
+      $('sizeSel').value = 'klein'; $('bStart').click(); closeModals();
+      ok = ok && S.land === DEFAULT_LAND && S.turn === 1;
       return ok;
     });
     step('Zurücksetzen: Rückfrage, und was gelöscht würde', () => {

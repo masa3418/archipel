@@ -558,10 +558,6 @@ viewMenu.addEventListener('click', e => {
 document.addEventListener('mousedown', e => { if (!viewMenu.hidden && !e.target.closest('#viewMenu, #bView')) closeViewMenu(); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !viewMenu.hidden) { closeViewMenu(); e.stopPropagation(); } }, true);
 window.addEventListener('resize', closeViewMenu);
-// Fenster „Neues Spiel“: dieselbe Auswahl. Bei jedem Öffnen sind die Klimazonen vorgewählt (DEFAULT_LAND) – umstellbar auf jede.
-function newLandPick() { $('newLandSel').value = DEFAULT_LAND; }
-$('newLandSel').innerHTML = $('landSel').innerHTML;
-newLandPick();
 
 // ---------------------------------------------------------------------------
 // Zurücksetzen (Einstellungen; Wunsch des Nutzers: mehrere teilen sich einen Rechner). Das Spiel merkt sich alles im Browser unter

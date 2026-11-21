@@ -376,10 +376,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Grafik-Caches**: Gelände (`buildTerrainCache`) und Sprites hängen von der Zoomstufe `TS` ab.
 - **Landschaften** (Wunsch des Nutzers; data.js `LAND_KEYS`/`START_LANDS`, gfx.js `LANDSCAPES`/`landscape()`, ui-schau.js `setLandscape`/`LAND_NAMES`,
   Einstellungen → Anzeige): Grüne Inseln, Wüste, Schnee, Lava, Fremder Planet, Klimazonen – dieselbe Karte, nur anders eingefärbt, ohne Einfluss auf Regeln.
-  Die Landschaft gehört zur Partie (`S.land`, in `sanitizeState`, ältere Spielstände und die Beispiele: grün). Gewählt wird sie im Fenster „Neues Spiel“
-  (`newLandSel`, `newLandPick`: bei jedem Öffnen sind die Klimazonen vorgewählt (`DEFAULT_LAND` in data.js, seit 1.8.4; Wunsch des Nutzers – die Inseln sehen nicht mehr gleich aus; vorher zufällig unter allen, davor nur Grün, Wüste, Schnee); „Diese Welt noch einmal“ übernimmt
-  die der laufenden Partie) → `newGame(…, nAi, land)`. Die allererste Partie (erster Besuch oder nach „Zurücksetzen“, `FIRST_LAND` in ui-start.js) beginnt ebenfalls in den Klimazonen (bis 1.8.3 grün).
-  Ohne Angabe (Simulationen) folgt sie der Kartennummer. In den Einstellungen sind jederzeit alle wählbar (ändert `S.land` der laufenden Partie),
+  Die Landschaft gehört zur Partie (`S.land`, in `sanitizeState`, ältere Spielstände und die Beispiele: grün). Jede neue Partie beginnt in der Standard-Landschaft `DEFAULT_LAND` (Klimazonen, seit 1.8.4; Wunsch des Nutzers – die Inseln sehen
+  nicht mehr gleich aus). Eine Auswahl im Fenster „Neues Spiel“ gibt es nicht mehr (bis 1.8.3: `newLandSel`, erst zufällig vorgewählt, dann Klimazonen) – die
+  anderen Landschaften sind ein Gimmick zum Umschalten. Ohne Angabe (Simulationen) folgt sie der Kartennummer (`START_LANDS`). In den Einstellungen sind jederzeit alle wählbar (ändert `S.land` der laufenden Partie),
   ebenso über „Ansicht“ in der Kopfzeile (siehe „Kopfzeile und Menü“). Je Landschaft ein Farbsatz (Wasser nach Tiefe,
   Strand, Land nach Höhe, Brandung, Berge, Gipfel, Hügel, „Wald“ – in der Lava glühende Tümpel, auf dem Planeten magentafarbene Gewächse –,
   Farben der Übersichtskarte); Formen und Zufallsfolge in `buildTerrain` sind für alle gleich, feste Farben dort immer über `L.…` holen. Der

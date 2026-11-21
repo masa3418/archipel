@@ -745,7 +745,7 @@ document.addEventListener('keydown', e => {
 }, true);
 window.addEventListener('resize', closeMenu);
 
-$('bNew').onclick = () => { $('seedIn').value = ''; newLandPick(); openModal('mNew'); };
+$('bNew').onclick = () => { $('seedIn').value = ''; openModal('mNew'); };
 // „Diese Welt noch einmal“: Nummer, Größe und Welt der laufenden Partie eintragen (ältere Spielstände kennen ihre Nummer nicht)
 $('seedIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('bStart').click(); } });
 $('seedSame').onclick = () => {
@@ -753,14 +753,13 @@ $('seedSame').onclick = () => {
   // auch die Zahl der Gegner: Sie bestimmt die Startplätze (und kann deshalb eine andere Welt ergeben)
   $('seedIn').value = fmtSeed(S.seed); $('sizeSel').value = S.size; $('worldSel').value = S.world; $('worldSel').onchange();
   fillAiSel(S.players.length - 1);
-  $('newLandSel').value = S.land || 'gruen';   // dieselbe Welt sieht auch gleich aus
 };
 $('bStart').onclick = () => {
   try {
     localStorage.setItem('archipel-diff', $('diffSel').value); localStorage.setItem('archipel-size', $('sizeSel').value);
     localStorage.setItem('archipel-world', $('worldSel').value); localStorage.setItem('archipel-ais', $('aiSel').value);
   } catch (e) {}
-  closeModals(); startNew($('sizeSel').value, $('diffSel').value, $('worldSel').value, parseSeed($('seedIn').value), +$('aiSel').value || 1, $('newLandSel').value);
+  closeModals(); startNew($('sizeSel').value, $('diffSel').value, $('worldSel').value, parseSeed($('seedIn').value), +$('aiSel').value || 1, DEFAULT_LAND);   // Landschaft: immer der Standard (Klimazonen), umschalten über „Ansicht“
   Sfx.play('start');   // nur hier (Klick des Spielers): Browser spielen Ton erst nach einer Benutzeraktion
 };
 // Zahl der Gegner (1 … MAP_SIZES.maxAi der gewählten Kartengröße); want = gewünschte Zahl, sonst die bisherige Wahl
