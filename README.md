@@ -138,7 +138,7 @@ ringsum Nebel – und der Sog, noch eine Runde zu spielen: Das wollte ich wieder
 
 Sehr viel gespielt habe ich auch **Carrier Command** von Realtime Games (1988). Es ist ein ganz anderes Spiel, in Echtzeit und vom
 Flugzeugträger aus, und nur in einigen Punkten vergleichbar: eine Inselwelt, die man Insel für Insel einnimmt, und Inseln, die danach für
-einen produzieren.
+einen produzieren. Ein hübscher Zufall, den ich erst später erfahren habe: Während der Entwicklung trug Carrier Command den Arbeitstitel „Archipelago“ – auf Deutsch Archipel.
 
 Archipel ist ein eigenes Spiel, kein Nachbau: Regeln, Grafik und Programm sind neu, und es steht in keiner Verbindung zu den Rechteinhabern
 der genannten Spiele.
