@@ -199,6 +199,22 @@ window.UiTest = (() => {
     check(!garrisonHidden(cx, cy) && $('hover').textContent.includes(UT.crs.name), 'Besatzung: mit „Nebel aus“ ist alles offen');
     setCheatFog(false); hover = null; threatMapUi = null;
   }
+  // Reihenfolge der Einheiten: „Nächste Einheit“ (N) nimmt die nächstgelegene, die in diesem Durchgang noch nicht dran war, und besucht alle;
+  // fällt die gewählte Einheit, kommt die nächstgelegene zu ihrer letzten Stelle dran (vorher: die älteste wartende, irgendwo auf der Karte)
+  function unitOrder() {
+    reset();
+    const [ax, ay] = base.l, d = (x, y) => cheb(ax, ay, x, y);
+    const spots = all((x, y) => land(x, y) && free(x, y) && !(x === ax && y === ay)).sort((p, q) => d(...p) - d(...q));
+    const near = spots.find(p => d(...p) <= 2), far = spots.find(p => d(...p) >= 6);
+    if (!near || !far) { check(false, 'Reihenfolge: keine passenden Landfelder'); return; }
+    const c = createUnit('inf', 0, ...far), a = createUnit('inf', 0, ax, ay), b = createUnit('inf', 0, ...near);   // c hat die kleinste Nummer
+    computeVision(0); select(a, false); nextCycle = null;
+    actNext(); check(sel === b.id, 'Reihenfolge: N nimmt die nächstgelegene Einheit, nicht die mit der kleinsten Nummer');
+    actNext(); check(sel === c.id, 'Reihenfolge: N nimmt danach die übrige');
+    actNext(); check(sel === b.id || sel === a.id, 'Reihenfolge: nach einem Durchgang beginnt N von vorn');
+    select(b, false); killUnit(b, 1); afterAction(b); skipAnim(); closeModals();
+    check(sel === a.id, 'Reihenfolge: fällt die Einheit, kommt die nächstgelegene zu ihrer letzten Stelle dran');
+  }
   // Luftdeckung in der Wiedergabe: Der Ring folgt dem fahrenden Träger – vorher wartete er schon am Zielort (S.units kennt nur den Endstand)
   function coverRing() {
     reset();
@@ -649,7 +665,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters

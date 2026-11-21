@@ -282,26 +282,41 @@ function needsOrders(u) {
   return true;
 }
 
-// „Nächste Einheit“: der Reihe nach durch alle wartenden Einheiten (feste
-// Reihenfolge), die aktuelle bleibt dabei wartend
+// Reihenfolge der Einheiten (Wunsch des Nutzers: weniger Hin- und Herspringen): immer die nächstgelegene wartende Einheit – gemessen in Zügen
+// (cheb), bei Gleichstand nach Luftlinie, dann nach Nummer. Bezugspunkt ist die gewählte Einheit; gibt es sie nicht mehr (in einer eroberten
+// Stadt aufgegangen, gefallen), die Stelle, an der sie zuletzt stand (from), sonst die Mitte des Bildausschnitts (Rundenbeginn).
+// Vorher ging „Nächste Einheit“ (N) nach Nummer quer über die Karte, und ohne gewählte Einheit kam die älteste wartende dran.
+function viewCenterTile() { return [Math.floor((view.x + wrap.clientWidth / 2) / TS), Math.floor((view.y + wrap.clientHeight / 2) / TS)]; }
+function nearestTo([rx, ry], list) {
+  const d = u => cheb(rx, ry, u.x, u.y) * 1e6 + ((u.x - rx) ** 2 + (u.y - ry) ** 2) * 100 + u.id / 1e6;
+  return list.reduce((b, u) => (d(u) < d(b) ? u : b), list[0]);
+}
+// „Nächste Einheit“ (N): die nächstgelegene wartende Einheit, die in diesem Durchgang noch nicht dran war; sind alle durch, beginnt ein neuer
+// Durchgang. Die aktuelle bleibt dabei wartend.
+let nextCycle = null;   // { game, turn, seen: Set der Einheiten, die in diesem Durchgang schon gewählt waren }
 function actNext() {
-  const list = S.units.filter(needsOrders).sort((a, b) => a.id - b.id);
+  const list = S.units.filter(needsOrders);
   if (!list.length) { toast(tt('Keine Einheit wartet mehr', 'No units waiting')); Sfx.play('error'); refresh(); return; }
   const cur = selUnit();
-  const nxt = list.find(u => cur && u.id > cur.id) || list[0];
+  if (!nextCycle || nextCycle.game !== S || nextCycle.turn !== S.turn) nextCycle = { game: S, turn: S.turn, seen: new Set() };
+  if (cur) nextCycle.seen.add(cur.id);
+  let cand = list.filter(u => !nextCycle.seen.has(u.id));
+  if (!cand.length) {   // alle waren dran: neuer Durchgang, die aktuelle zuletzt
+    nextCycle.seen = new Set(cur ? [cur.id] : []);
+    cand = list.filter(u => u !== cur);
+  }
+  const nxt = cand.length ? nearestTo(cur ? [cur.x, cur.y] : viewCenterTile(), cand) : cur || list[0];
   if (cur && nxt === cur) toast(tt('Das ist die letzte wartende Einheit', 'This is the last waiting unit'));
   select(nxt); centerOn(nxt.x, nxt.y);
   Sfx.play('select');
   refresh();
 }
 
-function selectNext(center = true) {
+function selectNext(center = true, from = null) {
   const cur = selUnit();
   const list = S.units.filter(needsOrders);
   if (!list.length) { sel = null; return false; }
-  const ref = cur || list[0];
-  list.sort((a, b) => cheb(ref.x, ref.y, a.x, a.y) - cheb(ref.x, ref.y, b.x, b.y));
-  select(list[0], center);
+  select(nearestTo(cur ? [cur.x, cur.y] : from || viewCenterTile(), list), center);
   return true;
 }
 
@@ -348,7 +363,8 @@ function afterAction(u) {
     // dann weich zur nächsten Einheit schwenken
     const dramatic = anim.events.some(e => e.type === 'boom' || e.type === 'capture');
     const pause = dramatic ? -400 : 250;   // anim.end enthält schon den Schriftzug
-    if (selectNext(false)) pendingCenter = { id: sel, at: Math.max(performance.now(), anim.end) + pause };
+    // Bezugspunkt: wo die Einheit zuletzt stand – auch wenn sie gefallen oder in einer eroberten Stadt aufgegangen ist
+    if (selectNext(false, u ? [u.x, u.y] : null)) pendingCenter = { id: sel, at: Math.max(performance.now(), anim.end) + pause };
   }
   else { const c = cityAt(u.x, u.y); selCity = c && c.owner === 0 ? c.id : null; centerOn(u.x, u.y); }
   refresh();
@@ -779,7 +795,8 @@ function endHumanTurn() {
   saveGame();
   // Während der Wiedergabe bleibt die Karte, wo sie war (sonst liefen Gegnerzüge im bisherigen Ausschnitt ungesehen ab,
   // weil die Karte sofort zur nächsten eigenen Einheit sprang); danach weich zur eigenen Einheit
-  selectNext(!hasReplay);
+  // Rundenbeginn: die wartende Einheit, die der Mitte des bisherigen Bildausschnitts am nächsten ist (dort hat der Spieler zuletzt gezogen)
+  selectNext(!hasReplay, [Math.floor((startScroll[0] + wrap.clientWidth / 2) / TS), Math.floor((startScroll[1] + wrap.clientHeight / 2) / TS)]);
   const su = selUnit(), home = su || S.cities.find(c => c.owner === 0);
   if (hasReplay) {
     view.x = startScroll[0]; view.y = startScroll[1];
