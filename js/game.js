@@ -263,7 +263,18 @@ function airCover(owner, x, y) {
   return null;
 }
 // Erfolgschance, mit der Spieler `owner` die Stadt c erobert
+// Sicherer Anfang (Wunsch des Nutzers): Wer weniger als START_SURE Städte besitzt, nimmt eine NEUTRALE Stadt sicher – die ersten beiden
+// Eroberungen gelingen also immer, für alle Spieler. Grund: Pech bei den ersten Würfen entschied sonst zu viel. Messung, zwei gleich starke
+// KI, 150 Partien, kleine Karte: wer bis Runde 25 weniger Infanterie verlor, gewann 65 % (Pech: 37 %), in 14 Partien saß eine Seite in
+// Runde 25 noch auf ihrer Startstadt; mit der Regel 49 % / 50 % und 0. Gegnerische Städte bleiben beim Grundwert.
+const START_SURE = 3;
+function safeStart(owner, c) {   // gilt der sichere Anfang für diese Eroberung? (auch für die Anzeige des Grundes)
+  if (c.owner >= 0 || owner < 0) return false;
+  let n = 0; for (const k of S.cities) if (k.owner === owner) n++;
+  return n < START_SURE;
+}
 function captureChance(owner, c) {
+  if (safeStart(owner, c)) return 1;
   let p = CAPTURE_BASE;
   if (fireSupport(owner, c.x, c.y)) p += SUPPORT_CAPTURE;
   if (fireSupport(c.owner, c.x, c.y)) p -= SUPPORT_CAPTURE;

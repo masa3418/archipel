@@ -38,6 +38,8 @@ function board(world = 'inseln', seed = 4711, nAi = 1, level = 'normal') {
   S.log = [];
   computeVision(0);
 }
+// Spieler p über den sicheren Anfang hinausbringen (START_SURE Städte): Danach gelten die gewöhnlichen Eroberungschancen
+function grow(p = 0) { for (const c of S.cities) { if (S.cities.filter(k => k.owner === p).length >= START_SURE) break; if (c.owner < 0 && !c.coastal) c.owner = p; } for (const c of S.cities) { if (S.cities.filter(k => k.owner === p).length >= START_SURE) break; if (c.owner < 0) c.owner = p; } }
 const land = (x, y) => S.terrain[idx(x, y)] === 1;
 const free = (x, y) => !topUnitsAt(x, y).length && !cityAt(x, y);
 const tiles = test => { const o = []; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (test(x, y)) o.push([x, y]); return o; };
@@ -199,8 +201,28 @@ test('Kampf: wer darf wen angreifen (canStrike)', () => {
 });
 
 // ------------------------------------------------------------------ Eroberung
-test('Eroberung: 50 %, mit Feuerunterstützung 75 %, unter Feuerschutz 25 %', () => {
+test('Eroberung: sicherer Anfang – unter drei eigenen Städten fällt eine neutrale Stadt sicher', () => {
   board();
+  const neutral = () => S.cities.find(c => c.owner < 0);
+  eq(S.cities.filter(c => c.owner === 0).length, 1, 'Start mit einer Stadt');
+  eq(pct(captureChance(0, neutral())), 100, 'mit einer Stadt: neutrale Stadt sicher');
+  const foe = S.cities.find(c => c.owner === 1);
+  eq(pct(captureChance(0, foe)), 50, 'Stadt des Gegners bleibt bei 50 %');
+  // die ersten beiden Eroberungen gelingen wirklich, jede beim ersten Versuch
+  for (let k = 0; k < 2; k++) {
+    const c = S.cities.find(c => c.owner < 0 && nb(c.x, c.y).some(([x, y]) => land(x, y) && free(x, y)));
+    const u = createUnit('inf', 0, ...nb(c.x, c.y).find(([x, y]) => land(x, y) && free(x, y)));
+    moveStep(u, c.x, c.y);
+    eq(c.owner, 0, `Eroberung ${k + 1} gelingt sicher`);
+  }
+  eq(S.cities.filter(c => c.owner === 0).length, 3, 'jetzt drei Städte');
+  eq(pct(captureChance(0, neutral())), 50, 'ab der dritten Stadt wieder 50 %');
+  eq(pct(captureChance(1, neutral())), 100, 'gilt für jeden Spieler: der Gegner hat erst eine Stadt');
+  for (const c of S.cities) if (c.owner === 0 && S.cities.filter(k => k.owner === 0).length > 2) c.owner = -1;
+  eq(pct(captureChance(0, neutral())), 100, 'wer wieder unter drei fällt, bekommt die Hilfe erneut');
+});
+test('Eroberung: 50 %, mit Feuerunterstützung 75 %, unter Feuerschutz 25 %', () => {
+  board(); grow();
   const c = S.cities.find(c => c.coastal && c.owner < 0);
   const sea = nb(c.x, c.y).find(([x, y]) => !land(x, y) && free(x, y));
   eq(pct(captureChance(0, c)), 50, 'ohne Schlachtschiff');
@@ -339,7 +361,7 @@ test('Befehle: Marschziel einer Stadt', () => {
   ok(!setProduction(c, 'tank') && !setProduction(c, 'gibtsnicht'), 'gleiche oder unbekannte Produktion wird abgelehnt');
 });
 test('Befehle: Transporter – Sturm vom Schiff und Ausladen', () => {
-  board();
+  board(); grow();
   const city = S.cities.find(k => k.coastal && k.owner < 0);
   const sea = nb(city.x, city.y).find(([x, y]) => !land(x, y) && free(x, y));
   // Sturm: Infanterie greift vom Schiff aus an, bis die Stadt fällt; wer übrig ist, bleibt an Bord

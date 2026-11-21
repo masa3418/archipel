@@ -452,6 +452,7 @@ function updateHover() {
   // Eroberungschance der eigenen Einheit samt Grund (Schlachtschiffe)
   const capInfo = cc => {
     const pc = Math.round(captureChance(0, cc) * 100);
+    if (safeStart(0, cc)) return [pc, tt(' – deine ersten beiden neutralen Städte fallen sicher', ' – your first two neutral cities fall for certain')];
     return [pc, pc > 50 ? tt(' dank Feuerunterstützung durch dein Schlachtschiff', ' thanks to fire support from your battleship')
       : pc < 50 ? tt(' wegen Feuerschutz durch ein feindliches Schlachtschiff', ' because of covering fire from an enemy battleship') : ''];
   };

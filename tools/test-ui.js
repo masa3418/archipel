@@ -263,6 +263,16 @@ window.UiTest = (() => {
     let diff = 0; for (let i = 0; i < A.length; i++) diff += Math.abs(A[i] - B[i]);
     check(diff / A.length < 6, 'Lupe: Ausschnitt weicht von der Karte ab (mittlere Abweichung ' + (diff / A.length).toFixed(1) + ' von 255)');
   }
+  // Sicherer Anfang: Die Zeile über der Karte nennt 100 % und den richtigen Grund (nicht das Schlachtschiff)
+  function safeStartLine() {
+    reset();
+    for (const c of S.cities) if (c.owner === 0 && S.cities.filter(k => k.owner === 0).length > 1) c.owner = -1;   // nur eine eigene Stadt
+    const c = S.cities.filter(k => k.owner < 0).find(k => DIRS.some(([dx, dy]) => inb(k.x + dx, k.y + dy) && land(k.x + dx, k.y + dy) && free(k.x + dx, k.y + dy)));
+    const spot = DIRS.map(([dx, dy]) => [c.x + dx, c.y + dy]).find(([x, y]) => inb(x, y) && land(x, y) && free(x, y));
+    const u = createUnit('inf', 0, ...spot); computeVision(0); select(u, false); hover = [c.x, c.y]; updateHover();
+    const t = $('hover').textContent;
+    check(/100 %/.test(t) && /ersten beiden neutralen Städte/.test(t) && !/Schlachtschiff/.test(t), 'Sicherer Anfang: Hinweiszeile nennt 100 % und den Grund – „' + t + '“');
+  }
   // 4) Einstiegstipps: jeder Auslöser einzeln
   function tipsCheck() {
     const wasOn = tips.on, done0 = [...tips.done];
@@ -513,7 +523,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); orders(); threat(); lupe(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein'); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters
     return { bestanden: passed, fehlgeschlagen: fails };

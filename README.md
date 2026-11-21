@@ -85,7 +85,7 @@ on GitHub) and open it via ☰ Menu → Saved games → Load from file.*
 - Zufällige Karten in drei Größen und fünf Weltarten: Inselreich, Gemischt, Festland mit Binnenmeeren und Flüssen, das Binnenmeer (Land
   ringsherum, in der Mitte ein Meer mit kleinen Inseln) und Kontinente (jeder beginnt auf seinem eigenen). Gleiche Kartennummer ergibt dieselbe Karte
 - Fünf Landschaften für dieselbe Karte – grüne Inseln, Wüste, Schnee, Lava, fremder Planet –, jederzeit umschaltbar, auch mitten im Spiel
-- Nebel des Krieges, Städte erobern (50 % Chance, der Eroberer geht in der Stadt auf) und Produktion wählen
+- Nebel des Krieges, Städte erobern (50 % Chance, die ersten beiden neutralen sicher; der Eroberer geht in der Stadt auf) und Produktion wählen
 - Neun Einheiten: Infanterie, Panzer, Jäger (mit Treibstoff), Transporter, Zerstörer,
   U-Boot, Kreuzer, Träger, Schlachtschiff
 - Stärken und Schwächen (Torpedo, Sonar, Wasserbomben, Küstenbatterien, Luftangriffe,

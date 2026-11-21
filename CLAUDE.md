@@ -107,6 +107,15 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Schlachtschiffe**: `fireSupport(owner, x, y)` und `captureChance(owner, c)` (game.js) – Feuerunterstützung/Feuerschutz auf
   Nachbarfelder (Eroberung 75 % / 25 %, Bodentruppen treffen zu 2/3 bzw. werden zu 1/3 getroffen). Eroberungschancen nie fest
   mit 50 % rechnen, immer `captureChance` nehmen (Grundwert `CAPTURE_BASE`, Zuschlag `SUPPORT_CAPTURE`). Salven meldet `hooks.salvo`; Markierungen zeichnet `drawSupportMark` (ui.js). Luftdeckung im Kampf: `hooks.cover` (in `attack`, Jäger gegen Schiff unter `airCover`) – Abfangjäger, Schutzring, Klang `cover`.
+- **Sicherer Anfang** (`START_SURE` = 3 in `captureChance`, game.js; Wunsch des Nutzers: Pech bei den ersten Städten entschied zu viel): Solange ein
+  Spieler weniger als drei Städte besitzt, fällt eine **neutrale** Stadt sicher – für alle Spieler, auch die KI; gegnerische Städte bleiben beim
+  Grundwert. Greift erneut, wenn jemand wieder unter drei fällt. Messung, zwei gleich starke KI ohne Fehler, kleine Karte, je 150 Partien: wer bis
+  Runde 25 weniger Infanterie verlor, gewann vorher 65 % (mit mehr Verlusten 37 %), in 14 Partien saß eine Seite in Runde 25 noch auf der Startstadt;
+  mit der Regel 49 % / 50 % und 0. Städte je Seite in Runde 25: 3,4 → 4,6; Partiedauer gleich. Varianten „unter 4 sicher“ und „unter 4 mit 75 %“ nicht
+  besser. Stufen danach (Platz 0 einfach, klein, je 96 über die drei alten Welten): Leicht 100 %, Normal 59 %, Schwer 16 %, Brutal 1 %, offen 9 von 384
+  – Schwer und Brutal etwas schwerer als in der Tabelle unten (24 und 5 von 96), nicht nachgestellt. Tests: in `tools/test.js` bringt `grow()` den
+  Spieler über den sicheren Anfang hinaus, bevor Eroberungschancen geprüft werden. Texte: Handbuch (Erste Schritte, Regel „Eroberung“), Einheitentext
+  Infanterie, Tipp „Städte erobern“, README.
 - **Getarnte U-Boote**: `canSee(p, u)` (game.js) entscheidet, ob Spieler p eine Einheit sieht. Für fremde Einheiten immer
   diese Funktion benutzen, nie nur `P.vis` des Feldes. `P.sonar` = Ortungsbereich (jede Einheit/Stadt Umkreis 1, Einheiten mit
   `sonar: true` volle Sichtweite), wird in `computeVision` berechnet und nicht gespeichert. `u.surf` = aufgetaucht nach einem
@@ -382,11 +391,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
    Repo) oder `node tools/serve.js .` → http://localhost:8765
 2. Syntax prüfen: `for f in js/*.js; do node --check $f; done`
    **Tests laufen lassen – vor jedem Commit, der Regeln oder Oberfläche ändert:**
-   - `node tools/test.js` (ca. 6 s, 32 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
+   - `node tools/test.js` (ca. 6 s, 33 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 773 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 774 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
