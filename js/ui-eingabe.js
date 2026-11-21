@@ -665,6 +665,10 @@ function updateTips() {
   box.hidden = !tips.cur;
   if (!tips.cur || box.dataset.id === tips.cur.id) return;
   box.dataset.id = tips.cur.id;
+  // neuer Tipp: auffällig einblenden (Klasse neu setzen startet die Animation erneut) und leise melden
+  box.classList.remove('tip-new'); void box.offsetWidth; box.classList.add('tip-new');
+  clearTimeout(updateTips.t); updateTips.t = setTimeout(() => box.classList.remove('tip-new'), 4500);
+  Sfx.play('select');
   const n = TIPS.indexOf(tips.cur) + 1;
   const head = tips.cur.head || (tips.cur.unit ? tt('Neue Einheit', 'New unit') + ' · ' + UT[tips.cur.unit].name : tt('Tipp', 'Tip'));   // ohne „1 / 7“: Die Zahl zählte nur die Grundtipps und verwirrte
   box.innerHTML = `<div class="tip-h">${head}</div><div class="tip-t">${tips.cur.text}</div>`

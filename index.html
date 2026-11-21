@@ -97,10 +97,17 @@
   .loupe[hidden] { display: none; }
   /* Einstiegstipps: Karte oben links über der Karte (updateTips in ui.js) */
   .tipbox { position: absolute; left: 10px; top: 36px; z-index: 3; width: 340px; max-width: calc(100% - 36px); background: rgba(18,24,33,.96);
-    border: 1px solid #3d6aa8; border-left: 4px solid var(--accent); border-radius: 8px; padding: 9px 12px 10px; font-size: 13px; line-height: 1.4;
+    border: 1px solid #8a6d2a; border-left: 4px solid var(--warn); border-radius: 8px; padding: 9px 12px 10px; font-size: 13px; line-height: 1.4;
     box-shadow: 0 6px 20px rgba(0,0,0,.45); }
   .tipbox[hidden] { display: none; }
-  .tipbox .tip-h { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: #9fc4ff; font-weight: 700; margin-bottom: 3px; }
+  .tipbox .tip-h { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--warn); font-weight: 700; margin-bottom: 3px; }
+  .tipbox .tip-h::before { content: '💡'; margin-right: 5px; font-size: 12px; }
+  /* Ein neuer Tipp macht auf sich aufmerksam (Wunsch des Nutzers: oben links wurde er manchmal übersehen): gleitet herein und leuchtet
+     dreimal auf; dazu ein leiser Ton. Gelb statt Blau, damit er sich von der übrigen Oberfläche abhebt. */
+  @keyframes tipIn { from { transform: translateX(-28px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes tipGlow { 0%, 100% { box-shadow: 0 6px 20px rgba(0,0,0,.45); } 50% { box-shadow: 0 0 0 3px rgba(242,184,75,.85), 0 0 30px rgba(242,184,75,.75); } }
+  .tipbox.tip-new { animation: tipIn .4s ease-out, tipGlow 1.2s ease-in-out .4s 3; }
+  @media (prefers-reduced-motion: reduce) { .tipbox.tip-new { animation: none; box-shadow: 0 0 0 3px rgba(242,184,75,.85); } }
   .tipbox .tip-b { display: flex; gap: 8px; margin-top: 8px; }
   .tipbox .tip-b button { margin: 0; padding: 3px 10px; font-size: 12.5px; }
   .tipbox .tip-b button:not(.primary) { background: none; border-color: transparent; color: var(--muted); }

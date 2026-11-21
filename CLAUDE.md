@@ -289,7 +289,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   verlorene `citylost` (`tips.cityLost`, eigene Städte ebenso verfolgt), die erste einem Gegner abgenommene `foecity` (`tips.foeTaken`). Befehle kommen in der Lage, in der sie helfen: Heimkehr `home` (Jäger mit
   knappem Treibstoff), Wache `sentry` (ab Runde 8 mit ≥ 4 Wartenden), Marschziel `rally` (ab 4 Städten), Produktionsansicht und Statistik `plan`
   (ab 6 Städten). Patrouille bleibt bewusst im Handbuch. Mit jedem weiteren Tipp steigt die Gefahr, dass sie nur weggeklickt werden – sparsam bleiben. Ein Tipp, der drei Runden unbeachtet stehen bleibt, gilt als erledigt und
-  macht Platz (`tips.shown`) – sonst blockierte er alle folgenden. Kopfzeile ohne Zähler („1 / 7“ zählte nur die Grundtipps und verwirrte).
+  macht Platz (`tips.shown`) – sonst blockierte er alle folgenden. Kopfzeile ohne Zähler („1 / 7“ zählte nur die Grundtipps und verwirrte). Ein neuer Tipp gleitet herein, leuchtet dreimal gelb auf (`.tip-new`, bei reduzierter Bewegung nur ein Rahmen) und gibt einen leisen Ton – oben links wurde er sonst übersehen (Wunsch des Nutzers); Gelb statt Blau hebt ihn von der Oberfläche ab.
   „Verstanden“ blendet aus, „Tipps ausschalten“ oder Einstellungen → Spielablauf (`tipsChk`) schaltet ab; Einschalten beginnt von vorn.
   `archipel-tips-on` / `archipel-tips` (erledigte, über alle Partien). Vorgabe: an nur beim allerersten Besuch. Bewusst wenige und kurze Texte –
   nicht zum Regelwerk ausbauen, dafür ist das Handbuch da. Probelauf (KI spielt, 4 Karten): Tipps kamen in sinnvoller Reihenfolge (R1, 4, 5–22, 22–57 …).
