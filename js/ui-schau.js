@@ -509,7 +509,7 @@ function renderGfx() {
 function openGfx() { Sfx.unlock(); gfx.svg = null; renderGfx(); openModal('mGfx'); }
 $('bGfx').onclick = () => { closeModals(); openGfx(); };   // aus dem Fenster „Einstellungen“
 // Landschaft der laufenden Partie (S.land, LANDSCAPES in gfx.js): nur die Farben der Karte. Wird mit der Partie gespeichert.
-const LAND_NAMES = { gruen: tt('Grüne Inseln', 'Green islands'), wueste: tt('Wüste', 'Desert'), schnee: tt('Schnee', 'Snow'), lava: tt('Lava', 'Lava'), alien: tt('Fremder Planet', 'Alien planet') };
+const LAND_NAMES = { gruen: tt('Grüne Inseln', 'Green islands'), wueste: tt('Wüste', 'Desert'), schnee: tt('Schnee', 'Snow'), lava: tt('Lava', 'Lava'), alien: tt('Fremder Planet', 'Alien planet'), zonen: tt('Klimazonen', 'Climate zones') };
 function setLandscape(v) {
   if (!LANDSCAPES[v]) v = 'gruen';
   $('landSel').value = v;
@@ -536,7 +536,8 @@ function renderViewMenu() {
   viewMenu.innerHTML = `<h4>${tt('Anzeigen', 'Show')}</h4>`
     + VIEW_SW.map(([k, label, get, , kbd]) => `<button class="mi${get() ? ' on' : ''}" data-view="${k}" role="menuitemcheckbox" aria-checked="${get()}"><span class="ck">${get() ? '✓' : ''}</span>${label}${kbd ? `<kbd>${kbd}</kbd>` : ''}</button>`).join('')
     + `<h4>${tt('Landschaft', 'Landscape')}</h4>` + Object.keys(LANDSCAPES).map(k => { const m = LANDSCAPES[k].mini;
-      return `<button class="mi${k === cur ? ' on' : ''}" data-land="${k}"><span class="sw" style="background:linear-gradient(135deg, ${rgb(m[0])} 0 55%, ${rgb(m[1])} 55%)"></span>${esc(LAND_NAMES[k] || k)}</button>`; }).join('');
+      const bg = LANDSCAPES[k].zones ? 'linear-gradient(180deg, #eef3f8 0 22%, #6ea84e 22% 40%, #e2c27e 40% 60%, #6ea84e 60% 78%, #eef3f8 78%)' : `linear-gradient(135deg, ${rgb(m[0])} 0 55%, ${rgb(m[1])} 55%)`;
+      return `<button class="mi${k === cur ? ' on' : ''}" data-land="${k}"><span class="sw" style="background:${bg}"></span>${esc(LAND_NAMES[k] || k)}</button>`; }).join('');
 }
 function closeViewMenu() { if (viewMenu.hidden) return; viewMenu.hidden = true; $('bView').classList.remove('open'); $('bView').setAttribute('aria-expanded', 'false'); }
 function openViewMenu() {
@@ -557,8 +558,8 @@ viewMenu.addEventListener('click', e => {
 document.addEventListener('mousedown', e => { if (!viewMenu.hidden && !e.target.closest('#viewMenu, #bView')) closeViewMenu(); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !viewMenu.hidden) { closeViewMenu(); e.stopPropagation(); } }, true);
 window.addEventListener('resize', closeViewMenu);
-// Fenster „Neues Spiel“: dieselbe Auswahl. Bei jedem Öffnen ist zufällig eine der Landschaften vorgewählt (START_LANDS = alle) – umstellbar auf jede.
-function newLandPick() { $('newLandSel').value = START_LANDS[Math.floor(Math.random() * START_LANDS.length)]; }
+// Fenster „Neues Spiel“: dieselbe Auswahl. Bei jedem Öffnen sind die Klimazonen vorgewählt (DEFAULT_LAND) – umstellbar auf jede.
+function newLandPick() { $('newLandSel').value = DEFAULT_LAND; }
 $('newLandSel').innerHTML = $('landSel').innerHTML;
 newLandPick();
 

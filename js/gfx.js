@@ -156,8 +156,10 @@ function citySprite(owner, size, variant) {
     g.fillStyle = pal.light; g.fill();
     g.lineWidth = Math.max(1, s * 0.035); g.strokeStyle = pal.dark; g.stroke();     // schmaler Rand wie bei neutralen Städten (ein kräftiger farbiger war dem Nutzer zu viel)
   } else {
+    // Neutral: heller Platz mit dunklem Rand – auf Wüste und Schnee trägt der Rand, auf Lava der helle Platz (Farbprüfung aller Landschaften:
+    // vorher verschwand die beige Stadt auf Sand und Schnee fast, Farbabstand 10–25)
     g.fillStyle = '#cdbf9c'; g.fill();
-    g.lineWidth = Math.max(1, s * 0.035); g.strokeStyle = '#7f7254'; g.stroke();
+    g.lineWidth = Math.max(1.2, s * 0.045); g.strokeStyle = '#4a4f57'; g.stroke();
   }
   g.fillStyle = 'rgba(255,255,255,0.18)';
   g.fillRect(s * 0.12, s * 0.52, s * 0.76, s * 0.06);
@@ -228,7 +230,65 @@ const LANDSCAPES = {
     mount: ['#7193aa', '#3c5568'], cap: '#ff7ad9', hill: '#62b29e', tree: ['#a81f88', '#ff6fd0'], treeP: 0.4, mini: [[60, 150, 140], [50, 42, 96]],
   },
 };
+LANDSCAPES.zonen = Object.assign({}, LANDSCAPES.gruen, { zones: true, mini: [[150, 170, 120], [34, 92, 146]] });
 function landscape() { return LANDSCAPES[typeof S !== 'undefined' && S && S.land] || LANDSCAPES.gruen; }
+
+// Klimazonen (Landschaft „zonen“, Wunsch des Nutzers): je Feld eine der Landschaften Grün, Wüste, Schnee, Lava – nach der Lage wie auf einer
+// Weltkarte: oben und unten Schnee, in der Mitte Wüste, dazwischen Grün, mit welligen Grenzen; vereinzelt Lava. Kleinere Inseln bekommen
+// einheitlich die Zone ihrer Mitte (sonst wirkten sie gestreift), große Landmassen (Festland, Binnenmeer, Kontinente) wechseln Feld für Feld.
+// Wasser bleibt überall blau; ein Strand nimmt die Farbe des Landes daneben. Nur Aussehen – aus der Kartennummer, gleiche Nummer = gleiches Bild.
+const ZONE_KEYS = ['gruen', 'wueste', 'schnee', 'lava'];
+let zoneCache = null;
+function zoneMap() {
+  const W = S.W, H = S.H, key = [S.gameId, W, H, S.seed].join();
+  if (zoneCache && zoneCache.key === key) return zoneCache.z;
+  const seed = (S.seed || 7) >>> 0;
+  const hash = (a, b, k) => mulberry32((Math.imul(a + 1, 73856093) ^ Math.imul(b + 1, 19349663) ^ Math.imul(k, 83492791) ^ seed) >>> 0)();
+  const noise = (x, y, cell, k) => {   // weiches Rauschen 0…1 auf einem Gitter der Weite cell
+    const fx = x / cell, fy = y / cell, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    const a = hash(ix, iy, k), b = hash(ix + 1, iy, k), c = hash(ix, iy + 1, k), d = hash(ix + 1, iy + 1, k);
+    return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+  };
+  const climate = (x, y) => {
+    const lat = Math.abs((y + 0.5) / H - 0.5) * 2 + (noise(x, y, 7, 1) - 0.5) * 0.32;
+    return lat > 0.62 ? 2 : lat < 0.28 ? 1 : 0;
+  };
+  const z = new Uint8Array(W * H), cont = S.cont, land = i => S.terrain[i] === 1;
+  // Inseln: Größe und Mitte je Landmasse
+  const size = new Map(), sx = new Map(), sy = new Map(); let total = 0;
+  for (let i = 0; i < W * H; i++) if (land(i)) {
+    total++; const k = cont ? cont[i] : -1; if (k < 0) continue;
+    size.set(k, (size.get(k) || 0) + 1); sx.set(k, (sx.get(k) || 0) + (i % W)); sy.set(k, (sy.get(k) || 0) + ((i / W) | 0));
+  }
+  const islandZone = new Map();
+  for (const [k, n] of size) if (n < total * 0.15) {
+    const cx = sx.get(k) / n, cy = sy.get(k) / n; let zz = climate(cx, cy);
+    if (zz !== 2 && hash(k, 0, 9) < 0.12) zz = 3;   // vereinzelt eine Lavainsel
+    islandZone.set(k, zz);
+  }
+  for (let i = 0; i < W * H; i++) {
+    const x = i % W, y = (i / W) | 0, k = cont && land(i) ? cont[i] : -1;
+    if (islandZone.has(k)) { z[i] = islandZone.get(k); continue; }
+    let zz = climate(x, y);
+    if (land(i) && zz !== 2 && noise(x, y, 9, 2) > 0.8) zz = 3;   // auf großen Landmassen: Lavafelder
+    z[i] = zz;
+  }
+  // Wasser am Ufer nimmt die Zone des Landes daneben (Strandfarbe)
+  const out = z.slice();
+  for (let i = 0; i < W * H; i++) {
+    if (land(i)) continue;
+    const x = i % W, y = (i / W) | 0;
+    for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < W && ny < H && land(ny * W + nx)) { out[i] = z[ny * W + nx]; break; } }
+  }
+  zoneCache = { key, z: out };
+  return out;
+}
+// Farbsatz für ein Feld der laufenden Partie (Übersichtskarte)
+function tileLandscape(i) {
+  const L = landscape();
+  return L.zones ? LANDSCAPES[ZONE_KEYS[zoneMap()[i]]] : L;
+}
 
 function landColor(e, stops = landscape().stops) {
   let k = 0;
@@ -249,6 +309,9 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   const ox = st.ox | 0, oy = st.oy | 0;
   const seedAt = (x, y, k) => { r = mulberry32((Math.imul(x + ox + 1, 73856093) ^ Math.imul(y + oy + 1, 19349663) ^ Math.imul(k, 83492791)) >>> 0); };
   const L = landscape(), WATER_COL = L.water, SAND = L.sand;
+  // Klimazonen: Farbsatz je Feld aus der Zonenkarte der Partie (auch für den Ausschnitt der Lupe); Kartenstücke der Grafik-Übersicht: grün
+  const Z = L.zones && (st === S || st.ox != null) && typeof S !== 'undefined' && S ? zoneMap() : null;
+  const pal = (x, y) => (Z ? LANDSCAPES[ZONE_KEYS[Z[(y + oy) * S.W + x + ox]]] : L);
   const isW = (x, y) => x < 0 || y < 0 || x >= W || y >= H || !st.terrain[y * W + x];
 
   // 1) Wasser: weiche Tiefenverläufe
@@ -258,7 +321,7 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   const lg = lc.getContext('2d'), li = lg.createImageData(W, H);
   for (let i = 0; i < W * H; i++) {
     const wcol = st.terrain[i] ? WATER_COL[0] : WATER_COL[Math.min(WATER_COL.length - 1, st.depth[i] - 1)];
-    const lcol = st.terrain[i] ? landColor(st.elev[i], L.stops) : SAND;
+    const P = pal(i % W, (i / W) | 0), lcol = st.terrain[i] ? landColor(st.elev[i], P.stops) : (Z ? P.sand : SAND);
     for (let j = 0; j < 3; j++) { wi.data[i * 4 + j] = wcol[j]; li.data[i * 4 + j] = lcol[j]; }
     wi.data[i * 4 + 3] = 255; li.data[i * 4 + 3] = 255;
   }
@@ -320,6 +383,7 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
     const el = st.elev[i];
     const X = x * TS, Y = y * TS;
     seedAt(x, y, 3);
+    const Q = pal(x, y);
     if (el > 0.68) {
       const peaks = el > 0.82 ? 2 : 1;
       for (let k = 0; k < peaks; k++) {
@@ -327,12 +391,12 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
         const by = Y + TS * (0.8 - k * 0.06), h = TS * (0.5 + r() * 0.15), w = TS * (peaks === 1 ? 0.42 : 0.32);
         g.fillStyle = 'rgba(0,0,0,0.18)';
         g.beginPath(); g.ellipse(cx + w * 0.2, by, w * 1.05, TS * 0.07, 0, 0, 7); g.fill();
-        g.fillStyle = L.mount[0];
+        g.fillStyle = Q.mount[0];
         g.beginPath(); g.moveTo(cx - w, by); g.lineTo(cx, by - h); g.lineTo(cx, by); g.closePath(); g.fill();
-        g.fillStyle = L.mount[1];
+        g.fillStyle = Q.mount[1];
         g.beginPath(); g.moveTo(cx, by - h); g.lineTo(cx + w, by); g.lineTo(cx, by); g.closePath(); g.fill();
-        if (el > 0.8 && L.cap) {
-          g.fillStyle = L.cap;
+        if (el > 0.8 && Q.cap) {
+          g.fillStyle = Q.cap;
           g.beginPath(); g.moveTo(cx - w * 0.32, by - h * 0.68); g.lineTo(cx, by - h); g.lineTo(cx + w * 0.32, by - h * 0.68);
           g.lineTo(cx + w * 0.1, by - h * 0.74); g.lineTo(cx - w * 0.05, by - h * 0.64); g.closePath(); g.fill();
         }
@@ -341,11 +405,11 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
       const cx = X + TS * (0.35 + r() * 0.3), by = Y + TS * (0.62 + r() * 0.15);
       g.fillStyle = 'rgba(0,0,0,0.12)';
       g.beginPath(); g.ellipse(cx + TS * 0.04, by + TS * 0.02, TS * 0.3, TS * 0.08, 0, 0, 7); g.fill();
-      g.fillStyle = L.hill;
+      g.fillStyle = Q.hill;
       g.beginPath(); g.ellipse(cx, by, TS * 0.28, TS * 0.2, 0, Math.PI, 0); g.fill();
       g.fillStyle = 'rgba(255,255,255,0.12)';
       g.beginPath(); g.ellipse(cx - TS * 0.06, by - TS * 0.05, TS * 0.12, TS * 0.07, 0, Math.PI, 0); g.fill();
-    } else if (el > 0.14 && el < 0.56 && r() < L.treeP) {
+    } else if (el > 0.14 && el < 0.56 && r() < Q.treeP) {
       const n = 3 + Math.floor(r() * 3);
       const trees = [];
       for (let k = 0; k < n; k++) trees.push([X + TS * (0.2 + r() * 0.6), Y + TS * (0.25 + r() * 0.55)]);
@@ -354,9 +418,9 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
         const tr = TS * (0.1 + r() * 0.05);
         g.fillStyle = 'rgba(0,0,0,0.2)';
         g.beginPath(); g.ellipse(tx + tr * 0.3, ty + tr * 0.8, tr, tr * 0.45, 0, 0, 7); g.fill();
-        g.fillStyle = L.tree[0];
+        g.fillStyle = Q.tree[0];
         g.beginPath(); g.arc(tx, ty, tr, 0, 7); g.fill();
-        g.fillStyle = L.tree[1];
+        g.fillStyle = Q.tree[1];
         g.beginPath(); g.arc(tx - tr * 0.3, ty - tr * 0.3, tr * 0.5, 0, 7); g.fill();
       }
     }

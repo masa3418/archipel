@@ -10,7 +10,7 @@ Grafik und Klänge werden im Programm erzeugt, es gibt keine Bild- oder Audiodat
 
 *English:* a turn-based island conquest game in the spirit of the classic 80s strategy games – explore,
 capture cities, build units and ship your troops across the sea against one computer opponent or up to three,
-everyone against everyone, on five kinds of world and in five landscapes. The game
+everyone against everyone, on five kinds of world and in six landscapes. The game
 is available in English: use the language button in the top bar. Play it
 [online](https://masa3418.github.io/archipel/) or download the single-file
 [offline copy](https://github.com/masa3418/archipel/releases/latest) and double-click it.
@@ -84,7 +84,8 @@ on GitHub) and open it via ☰ Menu → Saved games → Load from file.*
 - Deutsch und Englisch (Sprachknopf oben in der Leiste)
 - Zufällige Karten in drei Größen und fünf Weltarten: Inselreich, Gemischt, Festland mit Binnenmeeren und Flüssen, das Binnenmeer (Land
   ringsherum, in der Mitte ein Meer mit kleinen Inseln) und Kontinente (jeder beginnt auf seinem eigenen). Gleiche Kartennummer ergibt dieselbe Karte
-- Fünf Landschaften für dieselbe Karte – grüne Inseln, Wüste, Schnee, Lava, fremder Planet –, jederzeit umschaltbar, auch mitten im Spiel
+- Sechs Landschaften für dieselbe Karte – grüne Inseln, Wüste, Schnee, Lava, fremder Planet und Klimazonen (Schnee im Norden und Süden,
+  Wüste in der Mitte, vereinzelt Lava) –, jederzeit umschaltbar, auch mitten im Spiel
 - Nebel des Krieges, Städte erobern (50 % Chance, die ersten beiden neutralen sicher; der Eroberer geht in der Stadt auf) und Produktion wählen
 - Neun Einheiten: Infanterie, Panzer, Jäger (mit Treibstoff), Transporter, Zerstörer,
   U-Boot, Kreuzer, Träger, Schlachtschiff

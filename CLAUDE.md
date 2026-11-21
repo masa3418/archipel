@@ -375,16 +375,27 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   jede neue Partie und wird wie eine eigene Wahl gemerkt; geladene Partien behalten die gemerkte Stufe.
 - **Grafik-Caches**: Gelände (`buildTerrainCache`) und Sprites hängen von der Zoomstufe `TS` ab.
 - **Landschaften** (Wunsch des Nutzers; data.js `LAND_KEYS`/`START_LANDS`, gfx.js `LANDSCAPES`/`landscape()`, ui-schau.js `setLandscape`/`LAND_NAMES`,
-  Einstellungen → Anzeige): Grüne Inseln, Wüste, Schnee, Lava, Fremder Planet – dieselbe Karte, nur anders eingefärbt, ohne Einfluss auf Regeln.
+  Einstellungen → Anzeige): Grüne Inseln, Wüste, Schnee, Lava, Fremder Planet, Klimazonen – dieselbe Karte, nur anders eingefärbt, ohne Einfluss auf Regeln.
   Die Landschaft gehört zur Partie (`S.land`, in `sanitizeState`, ältere Spielstände und die Beispiele: grün). Gewählt wird sie im Fenster „Neues Spiel“
-  (`newLandSel`, `newLandPick`: bei jedem Öffnen zufällig eine der fünf vorgewählt (`START_LANDS`; anfangs nur Grün, Wüste, Schnee – erweitert, seit der Knopf oben das Umschalten leicht macht); „Diese Welt noch einmal“ übernimmt
-  die der laufenden Partie) → `newGame(…, nAi, land)`. Die allererste Partie (erster Besuch oder nach „Zurücksetzen“, `FIRST_LAND` in ui-start.js) ist immer grün – Wunsch des Nutzers.
+  (`newLandSel`, `newLandPick`: bei jedem Öffnen sind die Klimazonen vorgewählt (`DEFAULT_LAND` in data.js, seit 1.8.4; Wunsch des Nutzers – die Inseln sehen nicht mehr gleich aus; vorher zufällig unter allen, davor nur Grün, Wüste, Schnee); „Diese Welt noch einmal“ übernimmt
+  die der laufenden Partie) → `newGame(…, nAi, land)`. Die allererste Partie (erster Besuch oder nach „Zurücksetzen“, `FIRST_LAND` in ui-start.js) beginnt ebenfalls in den Klimazonen (bis 1.8.3 grün).
   Ohne Angabe (Simulationen) folgt sie der Kartennummer. In den Einstellungen sind jederzeit alle wählbar (ändert `S.land` der laufenden Partie),
   ebenso über „Ansicht“ in der Kopfzeile (siehe „Kopfzeile und Menü“). Je Landschaft ein Farbsatz (Wasser nach Tiefe,
   Strand, Land nach Höhe, Brandung, Berge, Gipfel, Hügel, „Wald“ – in der Lava glühende Tümpel, auf dem Planeten magentafarbene Gewächse –,
   Farben der Übersichtskarte); Formen und Zufallsfolge in `buildTerrain` sind für alle gleich, feste Farben dort immer über `L.…` holen. Der
   Zeitraffer bleibt bei seinen eigenen Farben (er färbt das Land ohnehin nach Besitzer). Lava: erst war das Meer heller als das Land – jetzt
   dunkles Meer, helleres warmes Land. Eigene Formen je Landschaft (Palmen, Tannen, Eisschollen) gibt es bewusst noch nicht.
+  **Klimazonen** (`zonen`, Wunsch des Nutzers statt „je Insel zufällig“): je Feld einer der Farbsätze Grün/Wüste/Schnee/Lava nach der Lage
+  (`zoneMap`, `ZONE_KEYS`, `tileLandscape` in gfx.js): Abstand zur Mitte oben/unten mit welligem Rauschen – über 0,62 Schnee, unter 0,28 Wüste,
+  dazwischen Grün; Inseln unter 15 % des Landes einheitlich nach ihrer Mitte (12 % davon Lava, nie im Schnee), große Landmassen Feld für Feld mit
+  Lavafeldern aus einem zweiten Rauschen. Wasser überall grün-blau, Strand in der Farbe des Landes daneben, Brandung einheitlich. Zufall nur aus der
+  Kartennummer (`S.seed`), Cache je Partie. `buildTerrain` holt den Farbsatz je Feld (`pal(x, y)`; Lupe über `st.ox/oy`), Kartenstücke der
+  Grafik-Übersicht bleiben grün; Übersichtskarte über `tileLandscape`. Binnenmeer wirkt sehr verschneit, weil der Landring oben und unten liegt.
+  **Farbprüfung** (alle 4 Parteien + neutral × 5 Farbsätze × Land flach/mittel/hoch, Strand, Wasser flach/tief; Farbabstand ΔE in Lab, < 25 = schwach):
+  Einheiten überall ≥ 31 (am knappsten Gelb auf Wüste 31–37, Blau auf Wasser 33–39, Violett auf violettem Planetenwasser 35 – je mit dunklem Rand
+  gut lesbar). Städte der Parteien: nur Gelb auf Wüste knapp (Platz 20–22, Rand 30+). Neutrale Städte verschwanden fast (beiger Platz auf Sand und
+  Schnee 10–25) → seitdem dunkler Rand `#4a4f57` statt `#7f7254` (citySprite): Auf hellem Grund trägt der Rand, auf Lava der helle Platz.
+  Neue Landschaft oder Parteifarbe → diese Prüfung wiederholen (Musterbogen: `gfxMap` + `buildTerrain` + `citySprite`/`drawToken` je Farbsatz).
 - **Grafik-Übersicht** (Wunsch des Nutzers, wie der Klangtest; Einstellungen → Anzeige → Grafiken, `#mGfx`, ui.js `openGfx`/`renderGfx`): Reiter
   Einheiten (Abzeichen je Farbe, Zeichen an der Marke, SVG-Symbole der Oberfläche), Städte und Gelände, Markierungen, Animationen (▶ mit Ton).
   Alles wird mit den Zeichenfunktionen der Karte gezeichnet, nie nachgebaut: `drawOn(g, ts, fn)` leitet `ctx` und `TS` kurz auf eine kleine
@@ -407,7 +418,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 776 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 777 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

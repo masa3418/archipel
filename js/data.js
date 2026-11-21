@@ -50,10 +50,12 @@ const PLAYERS = [
   { name: tt('Violett', 'Purple'), color: '#8e54c8', light: '#d0a8f5', dark: '#3f1a6a' },
 ];
 // Landschaften: wie die Karte eingefärbt ist (Farbsätze in gfx.js LANDSCAPES – dieselben Schlüssel). Gehört zur Partie (S.land), ändert aber
-// keine Regel. Im Fenster „Neues Spiel“ ist zufällig eine der START_LANDS vorgewählt (seit 1.7.6 alle – vorher nur Grün, Wüste, Schnee); die allererste Partie ist immer grün (FIRST_LAND);
+// keine Regel. Standard ist DEFAULT_LAND (Klimazonen, Wunsch des Nutzers: die Inseln sehen nicht mehr alle gleich aus) – vorgewählt im Fenster
+// „Neues Spiel“ und für die allererste Partie (FIRST_LAND). Bis 1.8.3 war die Vorauswahl zufällig und die erste Partie grün. START_LANDS gilt nur
+// noch, wenn niemand wählt (Simulationen): aus der Kartennummer (FIRST_LAND);
 // in den Einstellungen sind jederzeit alle wählbar.
-const LAND_KEYS = ['gruen', 'wueste', 'schnee', 'lava', 'alien'];
-const START_LANDS = LAND_KEYS, FIRST_LAND = 'gruen';
+const LAND_KEYS = ['gruen', 'wueste', 'schnee', 'lava', 'alien', 'zonen'];
+const START_LANDS = LAND_KEYS, DEFAULT_LAND = 'zonen', FIRST_LAND = DEFAULT_LAND;
 const NEUTRAL = { color: '#9aa0a6', light: '#d7dadd', dark: '#55595e' };
 
 // Schwierigkeitsgrade. Sie wirken nur auf den Computergegner (und den Start):

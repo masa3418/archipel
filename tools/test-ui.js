@@ -501,16 +501,40 @@ window.UiTest = (() => {
       deserialize(keep); afterLoad(); closeModals(); replay = 'off';
       return ok;
     });
+    step('Klimazonen: Schnee oben und unten, Wüste in der Mitte, Inseln einfarbig, Ausschnitt wie die Karte', () => {
+      const keep = serialize(); closeModals();
+      startNew('mittel', 'normal', 'kontinente', 4711, 1, 'zonen'); closeModals();
+      const z = zoneMap(), W = S.W, H = S.H, land = i => S.terrain[i] === 1, n = [0, 0, 0, 0];
+      for (let i = 0; i < z.length; i++) if (land(i)) n[z[i]]++;
+      const rowZone = y => { const c = [0, 0, 0, 0]; for (let x = 0; x < W; x++) if (land(y * W + x)) c[z[y * W + x]]++; return c; };
+      let ok = n.every(v => v > 0) && rowZone(2)[2] > rowZone(2)[1] && rowZone(Math.floor(H / 2))[1] > rowZone(Math.floor(H / 2))[2];
+      // gleiche Kartennummer, gleiches Bild
+      const a = zoneMap().join(); startNew('mittel', 'normal', 'kontinente', 4711, 1, 'zonen'); closeModals(); ok = ok && zoneMap().join() === a;
+      // Inselreich: jede kleine Insel hat nur eine Zone
+      startNew('mittel', 'normal', 'inseln', 4711, 1, 'zonen'); closeModals();
+      const zi = zoneMap(), per = new Map(); let total = 0;
+      for (let i = 0; i < zi.length; i++) if (S.terrain[i]) { total++; const k = S.cont[i]; if (!per.has(k)) per.set(k, { n: 0, z: new Set() }); per.get(k).n++; per.get(k).z.add(zi[i]); }
+      for (const v of per.values()) if (v.n < total * 0.15 && v.z.size !== 1) ok = false;
+      // Ausschnitt (Lupe) zeigt dieselben Farben wie die ganze Karte
+      const ts = 24, full = buildTerrain(ts), c = S.cities.find(k => k.owner === 0), x0 = Math.max(0, c.x - 3), y0 = Math.max(0, c.y - 3), w = Math.min(7, W - x0), h = Math.min(7, H - y0);
+      const sub = (src, T) => { const r = new T(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) r[y * w + x] = src[(y0 + y) * W + x0 + x]; return r; };
+      const part = buildTerrain(ts, { W: w, H: h, ox: x0, oy: y0, over: false, terrain: sub(S.terrain, Uint8Array), depth: sub(S.depth, Uint8Array), elev: sub(S.elev, Float32Array), cityGrid: sub(S.cityGrid, Int16Array) });
+      const A = full.getContext('2d').getImageData((x0 + 3) * ts + 3, (y0 + 3) * ts + 3, ts - 6, ts - 6).data, B = part.getContext('2d').getImageData(3 * ts + 3, 3 * ts + 3, ts - 6, ts - 6).data;
+      let d = 0; for (let i = 0; i < A.length; i++) d += Math.abs(A[i] - B[i]);
+      ok = ok && d / A.length < 6;
+      deserialize(keep); afterLoad(); closeModals(); replay = 'off';
+      return ok;
+    });
     step('Neues Spiel: beginnt nah herangezoomt, die Startstadt in der Bildmitte', () => {
       setZoom(16); startNew('klein'); closeModals(); camStep(performance.now() + 5000);
       const u = selUnit(), r = cv.getBoundingClientRect(), w = wrap.getBoundingClientRect();
       const ux = r.left + (u.x + 0.5) * TS, uy = r.top + (u.y + 0.5) * TS;
       return TS === START_ZOOM && Math.abs(ux - (w.left + w.width / 2)) < TS * 2 && Math.abs(uy - (w.top + w.height / 2)) < TS * 2;
     });
-    step('Neues Spiel: Landschaft vorgewählt aus den drei Startlandschaften, gewählte gilt', () => {
-      let ok = true; const seen = new Set();
-      for (let k = 0; k < 80; k++) { $('bNew').click(); ok = ok && shown('mNew') && START_LANDS.includes($('newLandSel').value); seen.add($('newLandSel').value); closeModals(); }
-      ok = ok && seen.size === START_LANDS.length && $('newLandSel').options.length === LAND_KEYS.length;
+    step('Neues Spiel: Klimazonen vorgewählt, jede Landschaft wählbar, gewählte gilt', () => {
+      let ok = true;
+      for (let k = 0; k < 5; k++) { $('newLandSel').value = 'lava'; closeModals(); $('bNew').click(); ok = ok && shown('mNew') && $('newLandSel').value === DEFAULT_LAND; closeModals(); }
+      ok = ok && DEFAULT_LAND === 'zonen' && FIRST_LAND === DEFAULT_LAND && $('newLandSel').options.length === LAND_KEYS.length;
       $('bNew').click(); $('sizeSel').value = 'klein'; $('newLandSel').value = 'alien'; $('bStart').click(); closeModals();
       ok = ok && S.land === 'alien' && S.turn === 1;
       $('bNew').click(); $('seedSame').click(); ok = ok && $('newLandSel').value === 'alien'; closeModals();

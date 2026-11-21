@@ -134,7 +134,7 @@ function renderMini() {
     const i = idx(x, y);
     let c = [8, 11, 16];
     if (P.seen[i] || S.over) {
-      c = landscape().mini[S.terrain[i] ? 0 : 1];
+      c = S.terrain[i] ? tileLandscape(i).mini[0] : landscape().mini[1];
       if (!P.vis[i] && !S.over) c = c.map(v => v * 0.6);
     }
     put(x, y, c);
