@@ -710,6 +710,7 @@ $('offerSel').value = String(offerPct);
 $('offerSel').onchange = e => {
   offerPct = Number(e.target.value) || 0;
   try { localStorage.setItem('archipel-offer', String(offerPct)); } catch (err) {}
+  if (S) updatePower();   // die äußeren Einstufungen hängen an der Schwelle
 };
 $('autoEndChk').checked = autoEnd;
 $('autoEndChk').onchange = e => {

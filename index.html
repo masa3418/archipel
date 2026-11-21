@@ -215,7 +215,7 @@
     transition: width .6s ease; box-shadow: 2px 0 6px rgba(0,0,0,.4); }
   .power-bar span { position: absolute; top: 0; line-height: 20px; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
   .power-bar .pl { left: 8px; } .power-bar .pr { right: 8px; }
-  /* mehrere Gegner: je Partei ein Abschnitt in ihrer Farbe, Anteil an der Stärke aller */
+  /* Abschnitte: je Partei ihr Anteil an allen Städten in ihrer Farbe, die neutralen grau (immer, auch im Zweikampf) */
   .power-bar .segs { position: absolute; inset: 0; display: none; }
   .power-bar.multi .segs { display: block; }
   .power-bar.multi > i, .power-bar.multi > span { display: none; }
@@ -459,6 +459,8 @@
   .stat-summary div { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
   .stat-summary b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .stat-summary span { color: var(--muted); font-size: 12px; }
+  /* Kräftefenster: die Einschätzung („Erdrückend überlegen“) darf umbrechen, sonst schob sie das Fenster in die Breite (Scrollbalken) */
+  #powerCalc .stat-summary b { white-space: normal; overflow-wrap: anywhere; }
   .stat-table th.num, .stat-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .stat-table td.zero { color: var(--muted); }
   .stat-table select { width: auto; padding: 2px 4px; font-size: 13px; }
@@ -604,7 +606,7 @@
   <button id="bNew" class="mi"><span data-en="New game">Neues Spiel</span></button>
   <button id="bSaves" class="mi" title="Spielstände speichern und laden (Strg+S)" data-en-title="Save and load games (Ctrl+S)"><span data-en="Saved games">Spielstände</span><kbd class="kbd-save" data-en="Ctrl+S">Strg+S</kbd></button>
   <button id="bStats" class="mi"><span data-en="Statistics">Statistik</span><kbd>I</kbd></button>
-  <button id="bPowerMenu" class="mi" title="Wie stark du im Vergleich zum Gegner bist – mit Rechnung und Verlauf" data-en-title="How strong you are compared to the enemy – with the calculation and history"><span data-en="Balance of power">Kräfteverhältnis</span></button>
+  <button id="bPowerMenu" class="mi" title="Wie viele Städte wer besitzt – mit Erklärung" data-en-title="Who owns how many cities – with explanation"><span data-en="Balance of power">Kräfteverhältnis</span></button>
   <button id="bTime" class="mi" title="Die Partie im Zeitraffer: wie sich Karte und Reiche Runde für Runde entwickelt haben" data-en-title="The game as a time-lapse: how the map and the empires developed turn by turn"><span data-en="Time-lapse">Zeitraffer</span><kbd>T</kbd></button>
   <button id="bSettings" class="mi" title="Ton, Anzeige, Spielablauf, Steuerung" data-en-title="Sound, display, game flow, controls"><span data-en="Settings …">Einstellungen …</span></button>
   <h4 data-en="Help">Hilfe</h4>
@@ -967,15 +969,15 @@
           auf der mittleren und großen bis zu drei. Dann gilt <b>jeder gegen jeden</b>: Die Gegner (Rot, Gelb, Violett) bekämpfen sich auch untereinander.
           Die Schwierigkeit gilt für alle gleich. Sie ziehen nacheinander, über der Karte steht, wer gerade dran ist. Ein Gegner, der keine Stadt
           mehr hat, scheidet aus, und alle seine Einheiten verschwinden. Die Punkte neben der Stufe oben zeigen, wer noch im Spiel ist.
-          Du gewinnst, wenn alle Gegner ausgeschieden sind. Der Balken „Kräfteverhältnis“ zeigt den Anteil jeder Partei an der Stärke aller;
+          Du gewinnst, wenn alle Gegner ausgeschieden sind. Der Balken „Kräfteverhältnis“ zeigt den Anteil jeder Partei an allen Städten, die neutralen grau;
           die Einschätzung darüber vergleicht dich mit dem jeweils stärksten Gegner.
           Lass die anderen ruhig erst einmal gegeneinander kämpfen.</p>
         <p data-lang="en"><b>Several opponents:</b> Under <b>New game</b> you choose how many computer opponents you face – up to two on the small map,
           up to three on the medium and large ones. Then it is <b>everyone against everyone</b>: the opponents (Red, Yellow, Purple) also fight each other.
           The difficulty is the same for all of them. They move one after another; the bar above the map shows whose turn it is. An opponent left without
           a city is out, and all of its units disappear. The dots next to the level at the top show who is still in the game.
-          You win once every opponent is out. The “Balance of power” bar shows each party's share of everyone's strength;
-          the assessment above it compares you with the strongest opponent at the time.
+          You win once every opponent is out. The “Balance of power” bar shows each party's share of all cities, the neutral ones in grey;
+          the assessment above it compares your cities with those of the strongest opponent at the time.
           Feel free to let the others wear each other down first.</p>
         </details>
         <details class="about-d">
@@ -1188,7 +1190,7 @@
         </select></label>
       <p class="set-d" data-en="How fast movements and camera pans are shown – during the enemy turn, for marches and patrols and for your own moves. “Off”: no movement, units are at their destination at once. For anyone who does not cope well with fast back-and-forth on the screen.">Wie schnell Bewegungen und Kamerafahrten gezeigt werden – beim Gegnerzug, bei Märschen und Patrouillen und bei eigenen Zügen. „Aus“: keine Bewegung, die Einheiten stehen sofort am Ziel. Für alle, die schnelles Hin und Her auf dem Bildschirm nicht gut vertragen.</p>
       <label class="set-row chk"><input type="checkbox" id="powerChk"><span class="set-l"><span data-en="Show balance of power">Kräfteverhältnis anzeigen</span></span></label>
-      <p class="set-d" data-en="The “You / enemy” bar in the side panel. Switched off, you do not know how strong the enemy is.">Der Balken „Du / Gegner“ in der Seitenleiste. Ausgeschaltet weißt du nicht, wie stark der Gegner ist.</p>
+      <p class="set-d" data-en="The bar in the side panel: how many of all cities you, the enemy and nobody (grey) own.">Der Balken in der Seitenleiste: wie viele von allen Städten dir, dem Gegner und niemandem (grau) gehören.</p>
       <label class="set-row chk"><input type="checkbox" id="keysChk"><span class="set-l"><span data-en="Show keyboard shortcuts on the map">Tastenkürzel auf der Karte einblenden</span></span></label>
       <p class="set-d" data-en="The most important keys at the bottom left of the map; what is not possible right now is dimmed.">Unten links auf der Karte die wichtigsten Tasten; was gerade nicht geht, ist abgeblendet.</p>
       <label class="set-row chk"><input type="checkbox" id="routeChk"><span class="set-l"><span data-en="Show the route when pointing at a tile">Weg beim Zeigen auf ein Feld einblenden</span></span></label>

@@ -410,6 +410,19 @@ test('Landschaft: gehört zur Partie, folgt der Kartennummer, übersteht Speiche
   S.land = 'alien'; const txt = serialize(); S.land = 'gruen'; deserialize(txt); eq(S.land, 'alien', 'gewählte Landschaft wird gespeichert');
   const o = JSON.parse(txt); (o.S || o).land = '<b>x'; deserialize(JSON.stringify(o)); eq(S.land, 'gruen', 'unbekannte Landschaft im Spielstand wird zu Grün');
 });
+test('Kräfteverhältnis: Städteverlauf lässt sich aus dem Zeitraffer exakt nachrechnen', () => {
+  newGame('klein', 'normal', 'inseln', 2468, 2);
+  for (let k = 0; k < 40 && !S.over; k++) simRound();
+  const rebuilt = histFromTimeline(), byT = new Map(rebuilt.map(e => [e.t, e]));
+  ok(S.hist.length > 30, 'Verlauf aufgezeichnet');
+  for (const e of S.hist) { const r = byT.get(e.t); ok(r, `Runde ${e.t} fehlt im nachgerechneten Verlauf`); eq([r.c, r.n], [e.c, e.n], `Runde ${e.t}`); }
+  const s = cityShares({ c: [6, 3, 1], n: 10 });
+  eq([s.mine, s.vs, s.neutral].map(v => Math.round(v * 100)), [60, 67, 50], 'Anteile: an den vergebenen, gegen den Stärksten, neutral');
+  eq(s.of.map(v => Math.round(v * 100)), [30, 15, 5], 'Anteile an allen Städten');
+  // alter Spielstand: Stärkewerte im Verlauf fallen beim Laden weg
+  const o = JSON.parse(serialize()); (o.S || o).hist = [{ t: 1, me: 5, en: 3 }]; deserialize(JSON.stringify(o));
+  eq(S.hist.length, 0, 'alter Verlauf wird verworfen (die Oberfläche rechnet ihn aus dem Zeitraffer nach)');
+});
 test('Kartennummer: Eingabe und Anzeige', () => {
   eq(parseSeed(''), null, 'leer = zufällig');
   eq(parseSeed('042 113 907'), 42113907, 'Ziffern mit Leerzeichen');

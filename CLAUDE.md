@@ -164,12 +164,22 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   legt dann das echte Kartengedächtnis in `P.real` (`seen`, `knownOwner`) ab und füllt `seen`/`vis`/`sonar` mit 1; `serialize` sichert immer
   das echte. Beim Abschalten kehrt der Nebel zurück. Wer `P.seen`/`P.knownOwner` schreibt, muss `P.real` beachten (bisher schreibt nur
   `computeVision`). In Simulationen bleibt der Schalter aus. Anzeige: Schildchen `.cheat` neben der Rundenzahl.
-- **Kräfteverhältnis**: `strength(p)` (game.js) = Wert der Einheiten (Bauzeit × Trefferpunkte-Anteil) + `CITY_VALUE` je Stadt. Ein Klick auf
-  den Balken öffnet `openPower`/`renderPower` (ui.js) mit der Rechnung: eigene Einheiten je Typ. Vom Gegner standardmäßig nur der
-  Prozentwert; erst mit dem Haken „Zahlen des Gegners aufdecken“ (`spoiler`, `archipel-spoiler`) nennt das Fenster
-  seine Städte und den Gesamtwert seiner Einheiten – nie die Typen (das verriete Einheiten im Nebel). Überall sonst (Hinweistext des
-  Balkens, Frage nach dem vorzeitigen Ende, Eroberungsfenster) steht vom Gegner nur der Prozentwert; das ist gewollt, keine Zahlen des
-  Gegners außerhalb dieses Fensters anzeigen. Ändert sich die Formel, das Fenster mit anpassen.
+- **Kräfteverhältnis = Anteil an den Städten** (seit 1.8.3, Wunsch des Nutzers; game.js `cityCounts`, `cityShares`, `recordStrength`, `histFromTimeline`):
+  Balken = je Partei ihr Anteil an **allen** Städten in ihrer Farbe, die neutralen grau gestreift (immer Abschnitte, auch im Zweikampf). Einschätzung
+  („Überlegen“ …), Kapitulationsangebot und Eroberungsfenster rechnen „du gegen den stärksten Gegner“ nur mit vergebenen Städten (`cityShares().vs`),
+  Kurve und Trend mit deinem Anteil an allen vergebenen (`mine`, gestrichelt 50 % bzw. 1/n). Zeitraffer-Kurve gestapelt in Parteifarben, oben grau die
+  neutralen. `strongestEnemy` = meiste Städte (Gleichstand: Einheitenwert). `strength(p)` (Einheitenwert + `CITY_VALUE` je Stadt) bleibt für Werkzeuge,
+  Tests und `tools/beispiele.js`. Das Kräftefenster (`renderPower`) zeigt Städte je Partei und neutral, Anteile und wie gezählt wird – den Spoiler-Haken
+  gibt es nicht mehr: Der Balken verrät die Städtezahl des Gegners ohnehin (dem Nutzer vorher gesagt). Einheiten zählen nicht mehr (eine Flotte auf dem
+  Weg sieht man erst, wenn Städte fallen), der Balken springt je Stadt. Messung (130 Partien, 5 Welten, klein/mittel, Normal): Führender gewinnt nach
+  Stärke / nach Städten – Runde 60: 68/68 % (klein), 80/79 % (mittel); Runde 90: 85/76, 88/91; Runde 120: 92/82, 88/81; Runde 150: 91/91, 98/94 %.
+  Angebot zum vorzeitigen Ende (20 %) in beiden Fällen ohne Fehlgriff, nach Städten ca. 7 Runden später.
+  `S.hist` speichert je Runde `{ t, c: Städte je Spieler, n: neutrale }`. Ältere Spielstände hatten Stärkewerte (`me`, `en`, `all`): `sanitizeState` verwirft
+  sie, `afterLoad` rechnet den Verlauf aus `S.tl.own` nach (ab `S.tl.from` exakt; Test vergleicht Aufzeichnung und Nachrechnung Runde für Runde).
+  Eine ältere Offline-Fassung kann neue Spielstände laden, zeigt dann aber keine Kurve.
+  Einstufung (`verdictOf`, `verdictBands` in ui-leiste.js; Wunsch des Nutzers): „Erdrückend überlegen“ über 100 % − Schwelle, „Aussichtslos“ unter der
+  Schwelle fürs vorzeitige Ende (`offerPct`, mit denselben Vergleichen wie `maybeOfferEnd`; Schwelle „nie“ → 10 %), „Überlegen“/„Ausgeglichen“ fest bei
+  55/45 %, „Klar überlegen“ und „Stark unterlegen“ jeweils in der Mitte dazwischen. Bei 20 %: 80/68/55/45/33/20. Der Erklärtext im Kräftefenster rechnet mit.
 - **Zerstörte Einheiten** (Statistik): `killUnit(u, by)` zählt mit – `by` = Spieler, der zerstört hat (→ `S.kills[by][typ]` und beim Opfer `S.lost[besitzer][typ]`), `-1` = ohne
   Gegner verloren (Absturz, neutrale Stadt → `S.wasted[besitzer][typ]`), ohne Angabe nichts (Eroberer wird Besatzung). Wer eine neue
   Stelle einbaut, an der Einheiten sterben, gibt `by` an. `S.killsFrom` = Runde, ab der gezählt wird (ältere Spielstände: ab dem Laden).
@@ -393,11 +403,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
    Repo) oder `node tools/serve.js .` → http://localhost:8765
 2. Syntax prüfen: `for f in js/*.js; do node --check $f; done`
    **Tests laufen lassen – vor jedem Commit, der Regeln oder Oberfläche ändert:**
-   - `node tools/test.js` (ca. 6 s, 33 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
+   - `node tools/test.js` (ca. 6 s, 34 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 775 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 776 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

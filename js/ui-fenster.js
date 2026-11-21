@@ -61,8 +61,7 @@ function openProdDialog(c, captured = false) {
   const p = c.prod ? UT[c.prod] : null;
   if (captured) {
     const mine = S.cities.filter(o => o.owner === 0).length, total = S.cities.length;
-    const a = strength(0).total, b = strength(strongestEnemy()).total;   // wie der Balken: gegen den stärksten Gegner
-    const pct = Math.round(a / Math.max(1, a + b) * 100);
+    const pct = Math.round(cityShares(cityCounts()).vs * 100);   // wie die Einschätzung am Balken: du gegen den stärksten Gegner
     $('capTitle').textContent = tt(`${c.name} ist erobert!`, `${c.name} is captured!`);
     $('capCheer').textContent = CAPTURE_CHEERS[(S.turn + c.id) % CAPTURE_CHEERS.length];
     $('capFacts').innerHTML = tt(`<span><b>${mine}</b> von ${total} Städten gehören dir</span>`, `<span><b>${mine}</b> of ${total} cities are yours</span>`)
@@ -272,7 +271,7 @@ const OFFER_NEUTRAL = 0.5;   // Angebot erst, wenn höchstens dieser Anteil der 
 const OFFER_TURNS = 5, OFFER_PAUSE = 10, OFFER_MIN_TURN = 15, OFFER_STEPS = [0, 5, 10, 15, 20, 25, 30];
 let offerPct = 20;   // Vorgabe; gemessen (288 Partien KI gegen KI): bis 20 % lag das Angebot in 1 von 282 Fällen falsch, siehe CLAUDE.md
 try { const v = Number(localStorage.getItem('archipel-offer')); if (localStorage.getItem('archipel-offer') !== null && OFFER_STEPS.includes(v)) offerPct = v; } catch (e) {}
-function shareOf(e) { return e.me + e.en > 0 ? e.me / (e.me + e.en) : 0.5; }
+function shareOf(e) { return cityShares(e).vs; }   // du gegen den stärksten Gegner, nach Städten
 function maybeOfferEnd() {
   if (!offerPct || !S || S.over || !S.hist || S.turn < OFFER_MIN_TURN) return;
   if ([...document.querySelectorAll('.modal')].some(m => !m.hidden)) return;
@@ -291,21 +290,21 @@ function maybeOfferEnd() {
   if (high && !S.cities.some(c => known[c.id] >= 1)) return;
   S.offerPause = S.turn + OFFER_PAUSE;      // gilt auch, wenn der Dialog einfach geschlossen wird
   const pct = Math.round(shareOf(last[last.length - 1]) * 100);
-  const a = strength(0), b = strength(1);
+  const a = strength(0);
   const facts = tt(`Du: ${a.cities} ${a.cities === 1 ? 'Stadt' : 'Städte'}, ${a.units} ${a.units === 1 ? 'Einheit' : 'Einheiten'}`, `You: ${a.cities} ${a.cities === 1 ? 'city' : 'cities'}, ${a.units} ${a.units === 1 ? 'unit' : 'units'}`);
   if (low) {
     $('offerTitle').textContent = tt('Die Lage ist aussichtslos', 'The situation is hopeless');
     const vsTop = nPlayers() > 2 ? tt(' im Vergleich zum stärksten Gegner', ' compared with the strongest enemy') : '';
-    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke${vsTop} unter ${offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Willst du aufgeben?`,
-      `For ${OFFER_TURNS} turns your strength${vsTop} has been below ${offerPct} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>Do you want to surrender?`);
+    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt dein Anteil an den Städten${vsTop} unter ${offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Willst du aufgeben?`,
+      `For ${OFFER_TURNS} turns your share of the cities${vsTop} has been below ${offerPct} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>Do you want to surrender?`);
     $('offerYes').textContent = tt('Aufgeben', 'Surrender');
     $('offerNo').textContent = tt('Weiterkämpfen', 'Keep fighting');
     $('offerYes').onclick = () => { closeModals(); S.over = 'lose'; S.overReason = 'surrender'; saveGame(); showGameOver(); };
   } else {
     $('offerTitle').textContent = tt('Der Sieg ist dir sicher', 'Victory is yours');
     const multi = nPlayers() > 2, vsTop = multi ? tt(' selbst im Vergleich zum stärksten Gegner', ' even compared with the strongest enemy') : '';
-    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt deine Stärke${vsTop} über ${100 - offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>${multi ? 'Deine Gegner bieten die Kapitulation an' : 'Der Gegner bietet die Kapitulation an'}. Sieg annehmen?`,
-      `For ${OFFER_TURNS} turns your strength${vsTop} has been above ${100 - offerPct} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>${multi ? 'Your enemies offer to surrender' : 'The enemy offers to surrender'}. Accept victory?`);
+    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt dein Anteil an den Städten${vsTop} über ${100 - offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>${multi ? 'Deine Gegner bieten die Kapitulation an' : 'Der Gegner bietet die Kapitulation an'}. Sieg annehmen?`,
+      `For ${OFFER_TURNS} turns your share of the cities${vsTop} has been above ${100 - offerPct} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>${multi ? 'Your enemies offer to surrender' : 'The enemy offers to surrender'}. Accept victory?`);
     $('offerYes').textContent = tt('Sieg annehmen', 'Accept victory');
     $('offerNo').textContent = tt('Weiterspielen', 'Play on');
     $('offerYes').onclick = () => { closeModals(); S.over = 'win'; S.overReason = 'capitulation'; saveGame(); showGameOver(); };
@@ -531,8 +530,8 @@ function tlDraw() {
     + (tlv.truth ? '' : `<span>${tt('entdeckt', 'explored')}: ${Math.round(seenN / N * 100)} %</span>`);
   tlCurve();
 }
-// Kräfteverhältnis über die Runden: Anteil „Du“ blau von unten, Gegner rot darüber, Strich bei der gezeigten Runde.
-// Mehrere Gegner: alle Parteien gestapelt in ihren Farben (Anteil an der Stärke aller) – sofern die Aufzeichnung sie kennt (S.hist.all)
+// Kräfteverhältnis über die Runden: Städte je Partei gestapelt in ihren Farben (du blau von unten), darüber grau die neutralen, Strich bei der
+// gezeigten Runde. Aus S.hist (Städte je Spieler und Runde).
 function tlCurve() {
   const cv2 = $('tlCurve');
   if (cv2.hidden) return;
@@ -541,38 +540,26 @@ function tlCurve() {
   const ctx = cv2.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  const hist = (S.hist || []).filter(e => e.t >= tlv.from && e.t <= tlv.to);
+  const hist = (S.hist || []).filter(e => e.t >= tlv.from && e.t <= tlv.to && Array.isArray(e.c) && e.c.length === nPlayers());
   const span = Math.max(1, tlv.to - tlv.from);
   const X = t => (t - tlv.from) / span * (w - 2) + 1;
-  const stacked = nPlayers() > 2 && hist.length > 0 && hist.every(e => Array.isArray(e.all) && e.all.length === nPlayers());
-  ctx.fillStyle = '#5a1f1c'; ctx.fillRect(0, 0, w, h);
-  if (stacked) {
-    let lower = hist.map(() => 0);
-    for (let p = 0; p < nPlayers(); p++) {
-      const upper = hist.map((e, i) => lower[i] + e.all[p] / Math.max(1, e.all.reduce((s, v) => s + v, 0)));
-      ctx.beginPath();
-      hist.forEach((e, i) => (i ? ctx.lineTo(X(e.t), h - upper[i] * h) : ctx.moveTo(X(e.t), h - upper[i] * h)));
-      for (let i = hist.length - 1; i >= 0; i--) ctx.lineTo(X(hist[i].t), h - lower[i] * h);
-      ctx.closePath(); ctx.fillStyle = PLAYERS[p].color; ctx.fill();
-      lower = upper;
-    }
-  } else if (hist.length) {
-    ctx.beginPath(); ctx.moveTo(X(hist[0].t), h);
-    for (const e of hist) ctx.lineTo(X(e.t), h - e.me / Math.max(1, e.me + e.en) * h);
-    ctx.lineTo(X(hist[hist.length - 1].t), h); ctx.closePath();
-    ctx.fillStyle = '#2f7de1'; ctx.fill();
-  }
-  if (!stacked) {   // 50-%-Linie nur im Zweikampf
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0, h / 2 + 0.5); ctx.lineTo(w, h / 2 + 0.5); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#4b525c'; ctx.fillRect(0, 0, w, h);   // neutral
+  let lower = hist.map(() => 0);
+  for (let p = 0; p < nPlayers() && hist.length; p++) {
+    const upper = hist.map((e, i) => lower[i] + cityShares(e).of[p]);
+    ctx.beginPath();
+    hist.forEach((e, i) => (i ? ctx.lineTo(X(e.t), h - upper[i] * h) : ctx.moveTo(X(e.t), h - upper[i] * h)));
+    for (let i = hist.length - 1; i >= 0; i--) ctx.lineTo(X(hist[i].t), h - lower[i] * h);
+    ctx.closePath(); ctx.fillStyle = PLAYERS[p].color; ctx.fill();
+    lower = upper;
   }
   const x = X(tlv.t);
   ctx.fillStyle = '#fff'; ctx.fillRect(Math.round(x) - 1, 0, 2, h);
   const e = hist.filter(o => o.t <= tlv.t).pop();
   if (e) {
-    const pct = Math.round((stacked ? allShare(e) : e.me / Math.max(1, e.me + e.en)) * 100);
+    const pct = Math.round(cityShares(e).of[0] * 100);
     ctx.font = '600 12px system-ui, sans-serif'; ctx.textBaseline = 'top';
-    const txt = tt(`Du ${pct} %`, `You ${pct} %`), tw = ctx.measureText(txt).width;
+    const txt = tt(`Du ${e.c[0]} ${e.c[0] === 1 ? 'Stadt' : 'Städte'} · ${pct} %`, `You ${e.c[0]} ${e.c[0] === 1 ? 'city' : 'cities'} · ${pct} %`), tw = ctx.measureText(txt).width;
     const tx = Math.min(Math.max(4, x + 6), w - tw - 4);
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(tx - 3, 3, tw + 6, 16);
     ctx.fillStyle = '#fff'; ctx.fillText(txt, tx, 5);
@@ -618,6 +605,7 @@ function afterLoad() {
   resetCheatFog();   // jede neue oder geladene Partie beginnt mit Nebel
   logSeen = S.log[0] || null;
   if (!S.hist) S.hist = [];
+  if (!S.hist.length) S.hist = histFromTimeline();   // älterer Spielstand (Stärke statt Städte) oder ganz ohne Verlauf: aus dem Zeitraffer nachrechnen
   if (!S.hist.length) recordStrength();
   sel = null; selCity = null; hover = null; updateHover();
   resizeCanvas();

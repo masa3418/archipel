@@ -1282,22 +1282,50 @@ function strength(p) {
   const cities = S.cities.filter(c => c.owner === p).length;
   return { cities, units: n, unitValue: Math.round(units), total: Math.round(units + cities * CITY_VALUE) };
 }
-// Stärkster Gegner (bei einem Gegner: der Gegner) – das Kräfteverhältnis vergleicht dich mit ihm: Bei mehreren Gegnern
-// (jeder gegen jeden) zählt, ob du den Stärksten schlagen kannst, nicht die Summe aller (die kämpfen auch untereinander).
+// Kräfteverhältnis = Anteil an den Städten (Wunsch des Nutzers, seit 1.8.3; vorher Stärke aus Einheitenwert + 20 je Stadt, strength() oben bleibt
+// für Werkzeuge und Tests). Gemessen in 130 Partien: Der Städteanteil sagt den Sieger etwa so gut voraus wie die Stärke (Runde 90: 76–91 % gegen
+// 85–88 %), das Angebot zum vorzeitigen Ende bliebe ohne Fehlgriff und käme ca. 7 Runden später. Er zählt aber keine Armeen, springt je Stadt und
+// verrät die Städtezahl des Gegners (das Kräftefenster hatte sie bis dahin hinter einem Spoiler-Haken).
+function cityCounts() {
+  const c = S.players.map(() => 0); let n = 0;
+  for (const k of S.cities) if (k.owner >= 0 && k.owner < c.length) c[k.owner]++; else n++;
+  return { c, n };
+}
+// Anteile aus einem Stand { c: Städte je Spieler, n: neutrale }: mine = dein Anteil an allen vergebenen Städten (Kurve, Trend), vs = du gegen den
+// stärksten Gegner (Einschätzung, vorzeitiges Ende), of = Anteil jeder Partei und der Neutralen an allen Städten (Balken)
+function cityShares(e) {
+  const owned = e.c.reduce((a, b) => a + b, 0), top = Math.max(0, ...e.c.slice(1)), all = owned + e.n;
+  return { mine: owned ? e.c[0] / owned : 0.5, vs: e.c[0] + top ? e.c[0] / (e.c[0] + top) : 0.5, of: e.c.map(v => (all ? v / all : 0)), neutral: all ? e.n / all : 1 };
+}
+// Stärkster Gegner = der mit den meisten Städten (bei Gleichstand der mit mehr Einheitenwert). Das Kräfteverhältnis vergleicht dich mit ihm:
+// Bei mehreren Gegnern (jeder gegen jeden) zählt, ob du den Stärksten schlagen kannst, nicht die Summe aller (die kämpfen auch untereinander).
 function strongestEnemy() {
+  const { c } = cityCounts();
   let best = 1, bv = -1;
-  for (let p = 1; p < nPlayers(); p++) { const v = strength(p).total; if (v > bv) { bv = v; best = p; } }
+  for (let p = 1; p < nPlayers(); p++) { const v = c[p] * 1e6 + strength(p).unitValue; if (v > bv) { bv = v; best = p; } }
   return best;
 }
-// S.hist: je Runde deine Stärke (me), die des stärksten Gegners (en) und die aller Spieler (all – für die Anzeige aller Parteien
-// bei mehreren Gegnern; ältere Spielstände haben sie nicht)
+// S.hist: je Runde die Städte je Spieler (c) und die neutralen (n). Ältere Spielstände speicherten Stärkewerte (me, en, all) – sie werden beim
+// Laden verworfen und der Verlauf aus dem Zeitraffer nachgerechnet (histFromTimeline).
 function recordStrength() {
   if (!S.hist) S.hist = [];
-  const all = S.players.map((_, p) => strength(p).total);
-  const e = { t: S.turn, me: all[0], en: strength(strongestEnemy()).total, all };
+  const e = { t: S.turn, ...cityCounts() };
   const last = S.hist[S.hist.length - 1];
   if (last && last.t === S.turn) S.hist[S.hist.length - 1] = e; else S.hist.push(e);
   if (S.hist.length > 1000) S.hist.shift();
+}
+// Städteverlauf aus den Besitzwechseln des Zeitraffers (S.tl.own, ab S.tl.from vollständig, Anfangszustand als Einträge der ersten Runde)
+function histFromTimeline() {
+  const tl = S.tl; if (!tl || !Array.isArray(tl.own) || !tl.own.length) return [];
+  const nC = S.cities.length, owner = new Array(nC).fill(-1), out = [];
+  let k = 0;
+  for (let t = tl.from; t <= S.turn; t++) {
+    while (k < tl.own.length && tl.own[k][0] <= t) { const [, id, o] = tl.own[k++]; if (id >= 0 && id < nC) owner[id] = o; }
+    const c = S.players.map(() => 0); let n = 0;
+    for (const o of owner) if (o >= 0 && o < c.length) c[o]++; else n++;
+    out.push({ t, c, n });
+  }
+  return out.slice(-1000);
 }
 
 // Zeitraffer (ui.js: openTimelapse): Verlauf der Partie, je Runde zu Beginn des Zugs des Menschen und beim Spielende festgehalten.
@@ -1588,11 +1616,9 @@ function sanitizeState(o) {
     t: int(l.t, 1, 0, 1e6), text: str(l.text, 300), cls: oneOf(l.cls, ['', 'good', 'bad'], ''),
     x: inMap(l.x, l.y) ? l.x : null, y: inMap(l.x, l.y) ? l.y : null,
   }));
-  s.hist = (Array.isArray(o.hist) ? o.hist.slice(-1000) : []).filter(e => e && isNum(e.t)).map(e => {
-    const r = { t: int(e.t, 1, 0, 1e6), me: num(e.me, 0, 0, 1e9), en: num(e.en, 0, 0, 1e9) };
-    if (Array.isArray(e.all) && e.all.length === nP) r.all = e.all.map(v => num(v, 0, 0, 1e9));
-    return r;
-  });
+  // Städteverlauf (seit 1.8.3); Einträge im alten Format (Stärke: me/en/all) fallen weg – afterLoad rechnet den Verlauf dann aus dem Zeitraffer nach
+  s.hist = (Array.isArray(o.hist) ? o.hist.slice(-1000) : []).filter(e => e && isNum(e.t) && Array.isArray(e.c) && e.c.length === nP)
+    .map(e => ({ t: int(e.t, 1, 0, 1e6), c: e.c.map(v => int(v, 0, 0, 1e5)), n: int(e.n, 0, 0, 1e5) }));
 
   // Statistik der zerstörten Einheiten: je Spieler und Einheitentyp eine Zahl. Ältere Spielstände kennen sie nicht,
   // dort wird erst ab dem Laden gezählt (killsFrom = Runde, ab der die Zahlen gelten).

@@ -470,7 +470,7 @@ window.UiTest = (() => {
     step('Vorzeitiges Ende: kein Angebot, solange die meisten Städte neutral sind oder der Gegner unentdeckt ist', () => {
       const keepS = serialize(), pct0 = offerPct; offerPct = 20; closeModals();
       const P = S.players[0], own = S.cities.map(c => c.owner), known0 = P.knownOwner.slice();
-      const arm = () => { S.turn = Math.max(S.turn, 40); S.offerPause = 0; S.over = null; S.hist = Array.from({ length: 6 }, (_, k) => ({ t: S.turn - 5 + k, me: 900, en: 100 })); closeModals(); };
+      const arm = () => { S.turn = Math.max(S.turn, 40); S.offerPause = 0; S.over = null; S.hist = Array.from({ length: 6 }, (_, k) => ({ t: S.turn - 5 + k, c: S.players.map((_, p) => (p === 0 ? 9 : p === 1 ? 1 : 0)), n: 0 })); closeModals(); };
       const offered = () => { maybeOfferEnd(); const o = shown('mOffer'); closeModals(); return o; };
       // 1) fast alles neutral (wie im Spielstand des Nutzers: Runde 38, 84 %, 47 von 56 Städten neutral)
       S.cities.forEach((c, k) => { c.owner = k < 3 ? 0 : k === 3 ? 1 : -1; }); P.knownOwner.fill(-1); arm();
@@ -480,9 +480,25 @@ window.UiTest = (() => {
       // 3) Gegner bekannt: jetzt kommt das Angebot
       const foe = S.cities.find(c => c.owner === 1); P.knownOwner[foe.id] = 1; arm(); ok = ok && offered();
       // 4) Aufgeben braucht keine Entdeckung, aber dieselbe Grenze bei den neutralen Städten
-      P.knownOwner.fill(-1); arm(); S.hist.forEach(e => { e.me = 100; e.en = 900; }); ok = ok && offered();
-      S.cities.forEach((c, k) => { c.owner = k < 3 ? 1 : k === 3 ? 0 : -1; }); arm(); S.hist.forEach(e => { e.me = 100; e.en = 900; }); ok = ok && !offered();
+      const lose = () => S.hist.forEach(e => { e.c = S.players.map((_, p) => (p === 0 ? 1 : p === 1 ? 9 : 0)); });
+      P.knownOwner.fill(-1); arm(); lose(); ok = ok && offered();
+      S.cities.forEach((c, k) => { c.owner = k < 3 ? 1 : k === 3 ? 0 : -1; }); arm(); lose(); ok = ok && !offered();
       S.cities.forEach((c, k) => { c.owner = own[k]; }); deserialize(keepS); afterLoad(); closeModals(); offerPct = pct0; replay = 'off';
+      return ok;
+    });
+    step('Kräfteverhältnis: Balken nach Städten, neutrale grau, alter Spielstand bekommt seinen Verlauf aus dem Zeitraffer', () => {
+      const keep = serialize(); closeModals();
+      const segs = () => [...$('powerSegs').children].map(i => i.style.width ? parseFloat(i.style.width) : 0);
+      updatePower(); const cc = cityCounts(), w = segs();
+      let ok = w.length >= 2 && Math.abs(w.reduce((a, b) => a + b, 0) - 100) < 0.5 && /repeating-linear-gradient/.test($('powerSegs').lastElementChild.style.background) === (cc.n > 0);
+      ok = ok && Math.abs(w[0] - cc.c[0] / S.cities.length * 100) < 0.5;
+      // alter Spielstand: Verlauf mit Stärkewerten statt Städten → beim Laden aus dem Zeitraffer nachgerechnet
+      const o = JSON.parse(keep), st = o.S || o; st.hist = [{ t: 1, me: 300, en: 100, all: [300, 100] }];
+      deserialize(JSON.stringify(o)); afterLoad(); closeModals();
+      ok = ok && S.hist.length > 1 && S.hist.every(e => Array.isArray(e.c)) && S.hist[S.hist.length - 1].c[0] === cityCounts().c[0];
+      updatePower(); ok = ok && !!$('powerVerdict').textContent;
+      openPower(); ok = ok && /neutral/.test($('powerCalc').textContent) && !$('spoilerChk'); closeModals();
+      deserialize(keep); afterLoad(); closeModals(); replay = 'off';
       return ok;
     });
     step('Neues Spiel: beginnt nah herangezoomt, die Startstadt in der Bildmitte', () => {
