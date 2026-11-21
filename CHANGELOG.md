@@ -3,6 +3,20 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.8.6
+
+Eine Datei zum Offline-Spielen.
+
+- **Neuer Name:** Die Offline-Fassung heißt jetzt `archipel-offline.html` (bisher `archipel.html`). Herunterladen und
+  doppelklicken – wie bisher steckt das ganze Spiel in dieser einen Datei.
+- **Kein eigenes ZIP mehr:** Das ZIP mit den einzelnen Dateien lief genauso wie die Einzeldatei und war nur zum
+  Hineinschauen nützlich. Dafür hängt GitHub jedem Release ohnehin den Quelltext als „Source code“ an.
+- **Release-Texte** auf GitHub brechen nicht mehr mitten im Satz um; die Texte der früheren Releases sind berichtigt.
+
+*English:* the offline version is now called `archipel-offline.html` (formerly `archipel.html`) and is the only download –
+the separate ZIP is gone, as GitHub attaches the individual files to every release as “Source code” anyway. Release notes
+no longer break lines in the middle of sentences.
+
 ## 1.8.5
 
 Mehr Grün in den Klimazonen, und die Landschaft bleibt eingestellt.
