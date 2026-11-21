@@ -213,7 +213,7 @@ $('bLang').onclick = () => {
   }).join('');
   try { const z = +localStorage.getItem('archipel-zoom'); if (z >= 14 && z <= 48) TS = z; } catch (e) {}
   if (loadGame()) { afterLoad(); addLog(tt('Spielstand fortgesetzt.', 'Game resumed.')); refresh(); }
-  else startNew('mittel');
+  else startNew('mittel', null, null, null, 0, FIRST_LAND);   // erster Besuch (oder nach „Zurücksetzen“): immer die grüne Welt – die anderen sind die Überraschung danach
   if (!welcomeSeen()) { welcomeFirst = true; showWelcome(); }
   requestAnimationFrame(loop);
   window.addEventListener('resize', () => renderMini());

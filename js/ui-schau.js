@@ -537,7 +537,7 @@ landMenu.addEventListener('click', e => { const b = e.target.closest('[data-land
 document.addEventListener('mousedown', e => { if (!landMenu.hidden && !e.target.closest('#landMenu, #bLand')) closeLandMenu(); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !landMenu.hidden) { closeLandMenu(); e.stopPropagation(); } }, true);
 window.addEventListener('resize', closeLandMenu);
-// Fenster „Neues Spiel“: dieselbe Auswahl. Bei jedem Öffnen ist zufällig Grün, Wüste oder Schnee vorgewählt (START_LANDS) – wählbar sind alle.
+// Fenster „Neues Spiel“: dieselbe Auswahl. Bei jedem Öffnen ist zufällig eine der Landschaften vorgewählt (START_LANDS = alle) – umstellbar auf jede.
 function newLandPick() { $('newLandSel').value = START_LANDS[Math.floor(Math.random() * START_LANDS.length)]; }
 $('newLandSel').innerHTML = $('landSel').innerHTML;
 newLandPick();

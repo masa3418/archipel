@@ -337,9 +337,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Landschaften** (Wunsch des Nutzers; data.js `LAND_KEYS`/`START_LANDS`, gfx.js `LANDSCAPES`/`landscape()`, ui-schau.js `setLandscape`/`LAND_NAMES`,
   Einstellungen → Anzeige): Grüne Inseln, Wüste, Schnee, Lava, Fremder Planet – dieselbe Karte, nur anders eingefärbt, ohne Einfluss auf Regeln.
   Die Landschaft gehört zur Partie (`S.land`, in `sanitizeState`, ältere Spielstände und die Beispiele: grün). Gewählt wird sie im Fenster „Neues Spiel“
-  (`newLandSel`, `newLandPick`: bei jedem Öffnen zufällig Grün, Wüste oder Schnee vorgewählt, alle fünf wählbar; „Diese Welt noch einmal“ übernimmt
-  die der laufenden Partie) → `newGame(…, nAi, land)`. Ohne Angabe (erster Besuch, Simulationen) folgt sie der Kartennummer, je ein Drittel Grün,
-  Wüste, Schnee. In den Einstellungen sind jederzeit alle wählbar (ändert `S.land` der laufenden Partie),
+  (`newLandSel`, `newLandPick`: bei jedem Öffnen zufällig eine der fünf vorgewählt (`START_LANDS`; anfangs nur Grün, Wüste, Schnee – erweitert, seit der Knopf oben das Umschalten leicht macht); „Diese Welt noch einmal“ übernimmt
+  die der laufenden Partie) → `newGame(…, nAi, land)`. Die allererste Partie (erster Besuch oder nach „Zurücksetzen“, `FIRST_LAND` in ui-start.js) ist immer grün – Wunsch des Nutzers.
+  Ohne Angabe (Simulationen) folgt sie der Kartennummer. In den Einstellungen sind jederzeit alle wählbar (ändert `S.land` der laufenden Partie),
   ebenso über den Knopf `#bLand` in der Kopfzeile bei Zoom und Zentrieren (`openLandMenu`, kleine Liste `#landMenu` mit Farbfeldern; Wunsch des Nutzers:
   ein Gimmick, das überrascht – bewusste Ausnahme von „keine Einstellungen in die Kopfzeile“, ohne Text). Je Landschaft ein Farbsatz (Wasser nach Tiefe,
   Strand, Land nach Höhe, Brandung, Berge, Gipfel, Hügel, „Wald“ – in der Lava glühende Tümpel, auf dem Planeten magentafarbene Gewächse –,
