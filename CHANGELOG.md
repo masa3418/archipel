@@ -3,6 +3,19 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.7.7
+
+Landschaft auf Knopfdruck.
+
+- **Neuer Knopf in der Kopfzeile** (neben „Zentrieren“): Er öffnet eine kleine Liste der fünf Landschaften – ein Klick, und die Karte
+  wechselt mitten im Spiel ihr Aussehen. Die Auswahl in den Einstellungen und im Fenster „Neues Spiel“ bleibt.
+- Im Fenster **Neues Spiel** ist jetzt zufällig eine von **allen fünf** Landschaften vorgewählt, also auch Lava und Fremder Planet.
+- Die **allererste Partie** beginnt immer in der grünen Welt.
+
+*English:* a new button in the header (next to “centre”) opens a small list of the five landscapes – one click changes the look of
+the map in the middle of a game. The New game window now preselects one of all five landscapes at random; your very first game always
+starts in the green world.
+
 ## 1.7.6
 
 Neue Landschaften – dieselbe Inselwelt in fünf Gewändern.
