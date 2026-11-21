@@ -581,7 +581,21 @@ $('mGfx').addEventListener('click', async e => {
 });
 // Fenster „Einstellungen“ (☰ Menü → Einstellungen …): Ton, Anzeige, Spielablauf, Steuerung, Schummeln. Die Bedienelemente behalten
 // ihre Kennungen (vol, replaySel, powerChk …) und werden an ihren bisherigen Stellen verdrahtet; neue Einstellungen gehören hierher.
-function openSettings() { closeMenu(); closeCtx(); openModal('mSettings'); }
+// Reiter der Einstellungen (wie im Handbuch): view, flow, input, special. Der zuletzt geöffnete wird gemerkt – außer „Schummeln & Zurücksetzen“,
+// dort soll niemand versehentlich landen.
+function setTab(name) {
+  const tabs = [...$('setTabs').querySelectorAll('button')];
+  if (!tabs.some(b => b.dataset.settab === name)) name = 'view';
+  for (const b of tabs) b.classList.toggle('on', b.dataset.settab === name);
+  for (const p of $('mSettings').querySelectorAll('[data-setpane]')) p.hidden = p.dataset.setpane !== name;
+  try { localStorage.setItem('archipel-settab', name === 'special' ? 'view' : name); } catch (e) {}
+}
+$('setTabs').addEventListener('click', e => { const b = e.target.closest('button[data-settab]'); if (b) setTab(b.dataset.settab); });
+function openSettings(tab) {
+  closeMenu(); closeCtx();
+  if (typeof tab !== 'string') { tab = null; try { tab = localStorage.getItem('archipel-settab'); } catch (e) {} }
+  setTab(tab); openModal('mSettings');
+}
 $('bSettings').onclick = openSettings;
 $('bHelpMenu').onclick = () => { closeMenu(); openHelp(); };
 // Erklärvideos: eigene Seite im Internet (GitHub Pages), auch aus der Offline-Fassung – deshalb überall als „online ↗“ gekennzeichnet

@@ -251,7 +251,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   leert Esc zuerst. `closeModals` nimmt den Fokus aus dem Fenster, damit die Spieltasten danach wieder greifen.
 - **Kopfzeile und Menü**: Oben stehen nur Runde + Stufe (`updateHeader`), `☰ Menü`, Zoom, Zentrieren (Fadenkreuz/Taste F, `actFocus` → `focusOn`), Ton, Handbuch, Sprache. Seltenes liegt im
   Menü `#menu` (`openMenu`/`closeMenu`, ui.js): Neues Spiel, Spielstände, Statistik, Zeitraffer und „Einstellungen …“. Die Einstellungen stehen im
-  eigenen Fenster `#mSettings` (`openSettings`), nach Abschnitten (Ton, Anzeige, Spielablauf, Steuerung, Schummeln), je Zeile ein erklärender Satz
+  eigenen Fenster `#mSettings` (`openSettings(tab)`, `setTab`), in vier Reitern wie im Handbuch (`data-settab`/`data-setpane`: Anzeige, Spielablauf, Ton & Steuerung,
+  Schummeln & Zurücksetzen – Wunsch des Nutzers: Das Fenster war anderthalbmal so lang wie der Bildschirm; die letzten beiden sind keine gewöhnlichen
+  Einstellungen und stehen im rot gestrichelten Kasten `.set-special`; dieser Reiter wird nicht gemerkt, `archipel-settab`), je Zeile ein erklärender Satz
   (`.set-row` + `.set-d`): Lautstärke, Klangtest, Wiedergabe der Züge, Wegvorschau beim Zeigen (`showRoute`), Grafiken (Übersicht, siehe unten), Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Tastenlegende über
   der Karte (`showKeys`, `archipel-keys`; beim ersten Besuch an, sonst aus; `updateKeyLegend` in `refresh()`, blendet ab, was gerade nicht geht – neue Tastenkürzel dort
   und in der Tastentabelle des Handbuchs eintragen), automatisches Rundenende, Schwelle fürs Angebot zum vorzeitigen Ende (`offerPct`, `archipel-offer`,
@@ -351,7 +353,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 742 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 743 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

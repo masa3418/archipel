@@ -334,6 +334,14 @@ window.UiTest = (() => {
     step('M schaltet den Ton um und zurück', () => { key('m'); key('m'); return true; });
     step('Hinweiszeile zum Feld unter der Maus', () => { const u = mine()[0]; hover = [u.x, u.y]; updateHover(); return $('hover').textContent.length > 5; });
     step('Schummeln „Nebel aus“ und wieder an', () => { setCheatFog(true); draw(); const on = CHEAT_FOG; setCheatFog(false); return on && !CHEAT_FOG; });
+    step('Einstellungen: vier Reiter, je genau einer sichtbar, jede Einstellung in einem Reiter', () => {
+      openSettings('view'); let ok = true;
+      const panes = [...$('mSettings').querySelectorAll('[data-setpane]')];
+      for (const b of $('setTabs').querySelectorAll('button')) { b.click(); const vis = panes.filter(p => !p.hidden); ok = ok && vis.length === 1 && vis[0].dataset.setpane === b.dataset.settab && b.classList.contains('on'); }
+      ok = ok && panes.length === 4 && [...$('mSettings').querySelectorAll('.set-row')].every(r => r.closest('[data-setpane]'));
+      openSettings(); ok = ok && !panes.find(p => p.dataset.setpane === 'special').hidden === false;   // „Schummeln & Zurücksetzen“ wird nicht gemerkt
+      closeModals(); return ok;
+    });
     step('Zurücksetzen: Rückfrage, und was gelöscht würde', () => {
       saveSlot('Probe Zurücksetzen'); askReset();
       const ask = shown('mOffer') && !!$('resetSaves') && !$('resetSaves').checked; closeModals();
