@@ -30,7 +30,7 @@ function parseSeed(v) {
 const fmtSeed = n => String(n).padStart(9, '0').replace(/(\d{3})(?=\d)/g, '$1 ');   // 042 113 907
 
 // nAi: Zahl der Computergegner (1 … MAP_SIZES[size].maxAi), jeder gegen jeden. Spieler 0 ist der Mensch, 1 … nAi die Gegner.
-function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln', seedIn = null, nAi = 1) {
+function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln', seedIn = null, nAi = 1, land = null) {   // land: Landschaft (sonst aus der Kartennummer)
   const sz = MAP_SIZES[sizeKey] || MAP_SIZES.mittel;
   if (!WORLDS[worldKey]) worldKey = 'inseln';
   nAi = Math.max(1, Math.min(sz.maxAi || 1, PLAYERS.length - 1, Math.round(nAi) || 1));
@@ -41,7 +41,7 @@ function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln', seedIn = null
   S = {
     W: m.W, H: m.H, size: sizeKey, terrain: m.terrain, elev: m.elev, depth: m.depth, cont: m.cont,
     cities: m.cities, units: [], nextId: 1, turn: 1, cur: 0, log: [], over: null, difficulty: DIFFICULTY[diffKey] ? diffKey : 'normal', world: worldKey, seed: seed0,
-    land: START_LANDS[Math.floor(mulberry32((seed0 ^ 0x5bd1e995) >>> 0)() * START_LANDS.length)],   // Landschaft (nur Aussehen)
+    land: LAND_KEYS.includes(land) ? land : START_LANDS[Math.floor(mulberry32((seed0 ^ 0x5bd1e995) >>> 0)() * START_LANDS.length)],   // Landschaft (nur Aussehen)
     gameId: 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),   // Kennung der Partie (Spielstände gruppieren)
     players: Array.from({ length: nP }, () => mkPlayer(m.W, m.H, m.cities.length)),
     kills: per(), wasted: per(), lost: per(), killsFrom: 1,   // Statistik: zerstört (je Täter), verloren (je Opfer), siehe killUnit

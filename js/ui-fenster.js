@@ -581,14 +581,14 @@ try { const sp = localStorage.getItem('archipel-tlspeed'); if (sp && [...$('tlSp
 $('tlSpeed').onchange = e => { try { localStorage.setItem('archipel-tlspeed', e.target.value); } catch (err) {} };
 $('bTime').onclick = () => openTimelapse();
 
-function startNew(size, diffKey, worldKey, seed = null, nAi = 0) {   // seed: Kartennummer (null = zufällig), nAi: Zahl der Gegner
+function startNew(size, diffKey, worldKey, seed = null, nAi = 0, land = null) {   // seed: Kartennummer (null = zufällig), nAi: Zahl der Gegner, land: Landschaft (null = aus der Nummer)
   prodView = false; pathView = false; rallyMode = null; updateViewSwitch();
   resetCheatFog();   // jede neue oder geladene Partie beginnt mit Nebel
   if (!diffKey) { try { diffKey = localStorage.getItem('archipel-diff') || 'normal'; } catch (e) { diffKey = 'normal'; } }
   if (!worldKey) { try { worldKey = localStorage.getItem('archipel-world') || 'inseln'; } catch (e) { worldKey = 'inseln'; } }
   if (!nAi) { try { nAi = +localStorage.getItem('archipel-ais') || 1; } catch (e) { nAi = 1; } }
   setTimeout(() => { logSeen = S.log[0] || null; updateLogHead(); }, 0);
-  newGame(size, diffKey, worldKey, seed, nAi);
+  newGame(size, diffKey, worldKey, seed, nAi, land);
   sel = null; selCity = null; hover = null; updateHover();
   resizeCanvas();
   selectNext();

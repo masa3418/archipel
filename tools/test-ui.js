@@ -350,6 +350,15 @@ window.UiTest = (() => {
       setLandscape(keep); draw();
       return ok && seen.size === Object.keys(LANDSCAPES).length && $('landSel').options.length === seen.size;
     });
+    step('Neues Spiel: Landschaft vorgewählt aus den drei Startlandschaften, gewählte gilt', () => {
+      let ok = true; const seen = new Set();
+      for (let k = 0; k < 40; k++) { $('bNew').click(); ok = ok && shown('mNew') && START_LANDS.includes($('newLandSel').value); seen.add($('newLandSel').value); closeModals(); }
+      ok = ok && seen.size === START_LANDS.length && $('newLandSel').options.length === LAND_KEYS.length;
+      $('bNew').click(); $('sizeSel').value = 'klein'; $('newLandSel').value = 'alien'; $('bStart').click(); closeModals();
+      ok = ok && S.land === 'alien' && S.turn === 1;
+      $('bNew').click(); $('seedSame').click(); ok = ok && $('newLandSel').value === 'alien'; closeModals();
+      return ok;
+    });
     step('Zurücksetzen: Rückfrage, und was gelöscht würde', () => {
       saveSlot('Probe Zurücksetzen'); askReset();
       const ask = shown('mOffer') && !!$('resetSaves') && !$('resetSaves').checked; closeModals();

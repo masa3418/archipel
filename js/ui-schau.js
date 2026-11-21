@@ -518,6 +518,10 @@ function setLandscape(v) {
 $('landSel').innerHTML = Object.keys(LANDSCAPES).map(k => `<option value="${k}">${esc(LAND_NAMES[k] || k)}</option>`).join('');
 try { localStorage.removeItem('archipel-land'); } catch (e) {}   // kurze Zwischenfassung: Landschaft als Einstellung
 $('landSel').onchange = e => setLandscape(e.target.value);
+// Fenster „Neues Spiel“: dieselbe Auswahl. Bei jedem Öffnen ist zufällig Grün, Wüste oder Schnee vorgewählt (START_LANDS) – wählbar sind alle.
+function newLandPick() { $('newLandSel').value = START_LANDS[Math.floor(Math.random() * START_LANDS.length)]; }
+$('newLandSel').innerHTML = $('landSel').innerHTML;
+newLandPick();
 
 // ---------------------------------------------------------------------------
 // Zurücksetzen (Einstellungen; Wunsch des Nutzers: mehrere teilen sich einen Rechner). Das Spiel merkt sich alles im Browser unter

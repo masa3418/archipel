@@ -347,6 +347,8 @@ test('Landschaft: gehört zur Partie, folgt der Kartennummer, übersteht Speiche
   eq(seen.size, START_LANDS.length, 'alle drei Startlandschaften kommen vor');
   newGame('klein', 'normal', 'inseln', 4242, 1); const a = S.land;
   newGame('klein', 'normal', 'inseln', 4242, 1); eq(S.land, a, 'gleiche Kartennummer, gleiche Landschaft');
+  newGame('klein', 'normal', 'inseln', 4242, 1, 'lava'); eq(S.land, 'lava', 'gewählte Landschaft gilt');
+  newGame('klein', 'normal', 'inseln', 4242, 1, 'gibtsnicht'); eq(S.land, a, 'unbekannte Wahl: wie ohne Wahl');
   S.land = 'alien'; const txt = serialize(); S.land = 'gruen'; deserialize(txt); eq(S.land, 'alien', 'gewählte Landschaft wird gespeichert');
   const o = JSON.parse(txt); (o.S || o).land = '<b>x'; deserialize(JSON.stringify(o)); eq(S.land, 'gruen', 'unbekannte Landschaft im Spielstand wird zu Grün');
 });
