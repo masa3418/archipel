@@ -90,8 +90,8 @@ stehen in [CLAUDE.md](CLAUDE.md).
 ### Releases
 
 Eine neue Version entsteht so: `VERSION` in `js/data.js` erhöhen, in `CHANGELOG.md` einen Abschnitt `## X.Y.Z`
-ergänzen, committen und das Tag `vX.Y.Z` pushen. GitHub baut daraus die Offline-Fassung (`archipel.html` und
-`archipel-offline.zip`) und legt den Release an. Lokal testen: `node tools/pack.js`, dann `dist/archipel.html` öffnen.
+ergänzen, committen und das Tag `vX.Y.Z` pushen. GitHub baut daraus die Offline-Fassung (`archipel-offline.html`)
+und legt den Release an. Lokal testen: `node tools/pack.js`, dann `dist/archipel-offline.html` öffnen.
 
 ## Lizenz
 

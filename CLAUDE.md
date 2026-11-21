@@ -32,7 +32,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   die Offline-Fassung (`file://`) lädt nichts aus dem Internet und zeigt stattdessen den Link zu GitHub. `tools/pack.js` ist kein Build für den Betrieb,
   sondern verpackt nur den Release; `dist/` gehört nicht ins Repository.
 - **Installierbare App nur online:** `manifest.webmanifest` und `sw.js` (Service Worker, „erst Netz, dann Zwischenspeicher“) liegen im
-  Repository für GitHub Pages, gehören aber **nicht** in den Release: `pack.js` entfernt den Manifest-Verweis aus Einzeldatei und ZIP-Ordner,
+  Repository für GitHub Pages, gehören aber **nicht** in den Release: `pack.js` entfernt den Manifest-Verweis aus der Einzeldatei,
   ui.js meldet `sw.js` nur bei https/localhost an (nicht über file://). Als App-Symbol dient `favicon.svg` – keine weiteren Bilddateien.
   Kommt eine neue Skriptdatei hinzu, auch in `CORE` von `sw.js` eintragen. Beim Aktivieren wirft der Service Worker zwischengespeicherte
   `js/*.js` hinaus, die nicht mehr in `CORE` stehen (nach dem Aufteilen blieb sonst `js/ui.js` liegen).
@@ -79,7 +79,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `js/ui-start.js` | Oberfläche 7: Spielstände, Sprache (`applyLang`), Willkommensfenster, Start des Spiels – muss als Letztes geladen werden |
 | `index.html` | Layout, CSS, Dialoge (Handbuch, Statistik, Spielstände, Klangtest …) |
 | `tools/serve.js` | Mini-Webserver für die Entwicklung |
-| `tools/pack.js` | Verpackt die Offline-Fassung nach `dist/` (Einzeldatei `archipel.html`, Ordner fürs ZIP, Release-Text; ohne Manifest-Verweis) |
+| `tools/pack.js` | Verpackt die Offline-Fassung nach `dist/` (Einzeldatei `archipel-offline.html`, Release-Text; ohne Manifest-Verweis). Seit 1.8.6 kein eigenes ZIP mehr (Wunsch des Nutzers): Die einzelnen Dateien liefert GitHub als „Source code“ zu jedem Release; bis 1.8.5 hieß die Datei `archipel.html` |
 | `tools/beispiele.js` | Erzeugt die Beispiel-Spielstände `docs/spielstaende/*.json` (nicht im Release) |
 | `tools/test.js` | Automatische Regeltests ohne Browser: `node tools/test.js` (nicht im Release) |
 | `tools/test-ui.js` | Oberflächentest im Browser: Wegvorschau gegen Klick, Klick-Abläufe, Einstiegstipps (nicht im Release) |
@@ -408,7 +408,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   `ctx`/`TS` schreiben und neue Grafiken oder Effekte in der Übersicht ergänzen. Animationen = kleine Zeitleisten (`gfxAnimSpecs`) mit denselben
   Ereignissen wie `anim.events`, Zeiten wie in den `hooks`. SVG-Code: `unitSvg(type, owner, badge)` aus `ICON_SRC` – Abzeichen wie `unitSprite`
   (Bildvergleich: im Mittel ≤ 1 von 255 Farbstufen Abweichung) oder nur Symbol (Maske, `currentColor`); App-Symbol aus dem `<link rel=icon>`
-  (Einzeldatei: data-Adresse, sonst `fetch`; im Offline-Ordner über file:// nicht lesbar → Hinweis), „Zentrieren“ aus `index.html`. Städte, Gelände
+  (Einzeldatei: data-Adresse, sonst `fetch`; einzelne Dateien über file:// nicht lesbar → Hinweis), „Zentrieren“ aus `index.html`. Städte, Gelände
   und Effekte entstehen aus Zeichenbefehlen und haben keinen SVG-Code. Kopieren braucht einen echten Klick (Zwischenablage); per Skript lehnt der Browser ab.
 
 ## Entwickeln und testen

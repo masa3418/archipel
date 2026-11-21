@@ -25,15 +25,12 @@ jobs:
       - name: Offline-Fassung bauen
         run: node tools/pack.js
 
-      - name: ZIP packen
-        run: cd dist && zip -r archipel-offline.zip archipel-offline
-
       - name: Release anlegen
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release create "$GITHUB_REF_NAME"
-          dist/archipel.html dist/archipel-offline.zip
+          dist/archipel-offline.html
           --title "Archipel ${GITHUB_REF_NAME#v}"
           --notes-file dist/NOTES.md
           --verify-tag

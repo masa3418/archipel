@@ -284,8 +284,8 @@ function gfxSvgCode() {
   if (s.id === 'focus') return { title: tt('Zentrieren', 'Centre'), file: 'archipel-zentrieren.svg', code: gfxFocusSvg() };
   gfxLoadAppSvg();
   return { title: tt('App-Symbol', 'App icon'), file: 'favicon.svg', code: gfx.appSvg || '',
-    note: gfx.appSvg === false ? tt('Der Code lässt sich hier nicht lesen (Offline-Ordner) – es ist die Datei favicon.svg neben index.html.',
-      'The code cannot be read here (offline folder) – it is the file favicon.svg next to index.html.') : !gfx.appSvg ? tt('Lädt …', 'Loading …') : '' };
+    note: gfx.appSvg === false ? tt('Der Code lässt sich hier nicht lesen (Spiel aus einzelnen Dateien ohne Server gestartet) – es ist die Datei favicon.svg neben index.html.',
+      'The code cannot be read here (game started from separate files without a server) – it is the file favicon.svg next to index.html.') : !gfx.appSvg ? tt('Lädt …', 'Loading …') : '' };
 }
 function gfxSvgPanel() {
   const { title, code, note } = gfxSvgCode();

@@ -29,9 +29,9 @@ the carrier and your battleship sinks the now unprotected cruiser.
 ## Spielen
 
 - **Online:** https://masa3418.github.io/archipel/
-- **Offline:** Unter [Releases](https://github.com/masa3418/archipel/releases/latest) die Datei `archipel.html`
+- **Offline:** Unter [Releases](https://github.com/masa3418/archipel/releases/latest) die Datei `archipel-offline.html`
   herunterladen und doppelklicken. Das ganze Spiel steckt in dieser einen Datei; es wird nichts installiert und
-  keine Internetverbindung gebraucht. Wer lieber einzelne Dateien hat, nimmt `archipel-offline.zip`.
+  keine Internetverbindung gebraucht.
 - **Aus dem Quelltext:** Repository herunterladen und `index.html` doppelklicken.
 
 Das Spiel speichert nach jedem Zug automatisch im Browser; über **Spielstände** lassen sich beliebig viele
