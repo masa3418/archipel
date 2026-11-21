@@ -501,6 +501,19 @@ test('Rundenwechsel: Daueraufträge laufen in der neuen Runde weiter', () => {
   const realLoad = runLoad; runLoad = u => { seq.push('laden'); return realLoad(u); };
   runStandingOrders(0, () => seq.push('einschub')); runLoad = realLoad;
   eq(seq, ['einschub', 'laden'], 'Reihenfolge am Ende der Daueraufträge');
+  // Märsche, Patrouillen, Erkunden räumlich geordnet (die Kamera der Wiedergabe springt weniger): erst die nächste zum Startpunkt,
+  // dann jeweils die nächste zur zuletzt bewegten – nicht nach Nummer
+  board();
+  const spots = tiles((x, y) => land(x, y) && free(x, y)), o = spots[0], dist = (p, q) => cheb(p[0], p[1], q[0], q[1]);
+  const pB = spots.find(p => dist(p, o) === 1), pC = spots.find(p => dist(p, pB) === 2 && dist(p, o) === 3), pA = spots.find(p => dist(p, o) >= 10);
+  ok(pB && pC && pA, 'Felder für die Reihenfolge');
+  const A = createUnit('inf', 0, ...pA), C = createUnit('inf', 0, ...pC), B = createUnit('inf', 0, ...pB);   // A hat die kleinste Nummer
+  A.order = { type: 'goto', x: pA[0], y: pA[1] }; C.order = { type: 'explore' }; B.order = { type: 'goto', x: pB[0], y: pB[1] };
+  const ran = [], g = runGoto, e = runExplore;
+  runGoto = u => { ran.push(u === A ? 'A' : u === B ? 'B' : 'C'); u.order = null; };
+  runExplore = u => { ran.push(u === C ? 'C' : '?'); u.order = null; };
+  try { runStandingOrders(0, null, o); } finally { runGoto = g; runExplore = e; }
+  eq(ran, ['B', 'C', 'A'], 'Reihenfolge der Daueraufträge vom Startpunkt aus');
 });
 test('Rundenwechsel: nextRound lässt alle lebenden Gegner ziehen und zählt die Runde weiter', () => {
   newGame('klein', 'normal', 'inseln', 4711, 2);

@@ -779,7 +779,9 @@ function endHumanTurn() {
   if (nextRound(p => anim.phases.push({ at: anim.cursor, p }))) {
     // Ab hier folgen in der Zeitleiste die eigenen Einheiten mit ihren Befehlen – der Hinweis über der Karte wechselt dann
     const ownMark = anim.cursor, ownCount = anim.events.length;
-    runStandingOrders(0, landingUpdate);   // landingUpdate: „Ausladen, wenn möglich“ weckt Truppen an der Küste, damit sie als wartend zählen
+    // landingUpdate: „Ausladen, wenn möglich“ weckt Truppen an der Küste, damit sie als wartend zählen; die Daueraufträge beginnen dort,
+    // wo die Kamera der Wiedergabe nach den Gegnerzügen steht (anim.vcx/vcy), und laufen von dort räumlich geordnet weiter
+    runStandingOrders(0, landingUpdate, [anim.vcx - 0.5, anim.vcy - 0.5]);
     if (anim.events.length > ownCount) anim.ownFrom = ownMark;
     computeVision(0);
   }

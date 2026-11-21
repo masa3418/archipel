@@ -1432,10 +1432,13 @@ function nextRound(onPhase) {
   startTurn(0);
   return true;
 }
-// Daueraufträge der Einheiten von Spieler p zu Beginn seiner Runde, in fester Reihenfolge: Wachen wecken, Märsche, Patrouillen, Erkunden,
-// zuletzt „Laden bis voll“ (damit auch gerade angekommene Einheiten an Bord gehen). beforeLoad: Einschub der Oberfläche vor dem Laden
+// Daueraufträge der Einheiten von Spieler p zu Beginn seiner Runde: Wachen wecken, dann Märsche, Patrouillen und Erkunden, zuletzt
+// „Laden bis voll“ (damit auch gerade angekommene Einheiten an Bord gehen). beforeLoad: Einschub der Oberfläche vor dem Laden
 // („Ausladen, wenn möglich“ weckt Truppen an der Küste).
-function runStandingOrders(p = 0, beforeLoad = null) {
+// Märsche, Patrouillen und Erkunden laufen räumlich geordnet (Wunsch des Nutzers: Die Kamera der Wiedergabe sprang hin und her): immer die
+// Einheit, die der zuletzt bewegten am nächsten steht; die erste die nächste zu from (Oberfläche: wo die Kamera nach den Gegnerzügen steht).
+// Vorher erst alle Märsche, dann Patrouillen, dann Erkunden, je nach Nummer – in „Festland-Front“ 158 Kamerafahrten über 2454 Felder in 4 Runden.
+function runStandingOrders(p = 0, beforeLoad = null, from = null) {
   const mine = type => S.units.filter(o => o.owner === p && o.order && o.order.type === type);
   for (const u of S.units) {   // Wachen (und ladende Transporter) wecken, wenn ein Feind daneben auftaucht
     if (u.owner !== p || !u.order || (u.order.type !== 'sentry' && u.order.type !== 'load') || u.carrier != null) continue;
@@ -1443,13 +1446,22 @@ function runStandingOrders(p = 0, beforeLoad = null) {
     for (const [dx, dy] of DIRS) if (inb(u.x + dx, u.y + dy) && visibleEnemyAt(p, u.x + dx, u.y + dy)) enemy = true;
     if (enemy) { u.order = null; if (p === 0) addLog(tt(`${T(u).name} meldet Feindkontakt!`, `${T(u).name} reports enemy contact!`), 'bad', u.x, u.y); }
   }
-  for (const u of mine('goto')) {
-    // Feind ist während des Gegnerzugs herangerückt: Marsch anhalten
-    if (u.carrier == null && enemyAdjacent(u)) { u.order = null; if (p === 0) addLog(tt(`${T(u).name}: Marsch angehalten – Feindkontakt!`, `${T(u).name}: march stopped – enemy contact!`), 'bad', u.x, u.y); continue; }
-    runGoto(u, true);   // Folgerunde: Jäger halten an, bevor sie außer Reichweite geraten
+  const MOVING = ['goto', 'patrol', 'explore'];
+  const todo = S.units.filter(o => o.owner === p && o.order && MOVING.includes(o.order.type));
+  let ref = from || (todo.length ? [todo[0].x, todo[0].y] : null);
+  while (todo.length) {
+    let bi = 0, bd = Infinity;
+    for (let k = 0; k < todo.length; k++) { const d = (todo[k].x - ref[0]) ** 2 + (todo[k].y - ref[1]) ** 2; if (d < bd) { bd = d; bi = k; } }
+    const u = todo.splice(bi, 1)[0];
+    if (!alive(u) || !u.order) continue;   // inzwischen gefallen oder Befehl beendet
+    if (u.order.type === 'goto') {
+      // Feind ist während des Gegnerzugs herangerückt: Marsch anhalten
+      if (u.carrier == null && enemyAdjacent(u)) { u.order = null; if (p === 0) addLog(tt(`${T(u).name}: Marsch angehalten – Feindkontakt!`, `${T(u).name}: march stopped – enemy contact!`), 'bad', u.x, u.y); continue; }
+      runGoto(u, true);   // Folgerunde: Jäger halten an, bevor sie außer Reichweite geraten
+    } else if (u.order.type === 'patrol') runPatrol(u);
+    else if (u.order.type === 'explore') runExplore(u);
+    ref = [u.x, u.y];
   }
-  for (const u of mine('patrol')) runPatrol(u);
-  for (const u of mine('explore')) runExplore(u);
   if (beforeLoad) beforeLoad();
   for (const u of mine('load')) runLoad(u);
 }

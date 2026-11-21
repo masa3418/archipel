@@ -224,8 +224,12 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   `S.units` kennt während der Wiedergabe nur den Endstand: Was an einer Einheit hängt (Feuerschutz, Luftdeckung), richtet sich nach ihrer gezeigten Lage
   (`shownAt` in `render`: Startfeld bis zu ihrem Zug, unterwegs ausgeblendet bzw. beim Ring der Luftdeckung mitfahrend) – dem Nutzer fiel der Ring am Zielort auf.
 - **Rundenwechsel** (game.js): `nextRound(onPhase)` nach `endTurn(0)` – alle lebenden Gegner ziehen (`enemyTurns`), dann `S.turn++` und
-  `startTurn(0)`; `runStandingOrders(p, beforeLoad)` führt die Daueraufträge in fester Reihenfolge aus (Wachen wecken, Marsch, Patrouille,
-  Erkunden, Einschub der Oberfläche, Laden). `endHumanTurn` (ui.js), `simGame`, `tools/beispiele.js` und `tools/test.js` rufen dieselben
+  `startTurn(0)`; `runStandingOrders(p, beforeLoad, from)` führt die Daueraufträge aus: Wachen wecken, dann Marsch, Patrouille und Erkunden
+  **räumlich geordnet** (Wunsch des Nutzers: immer die Einheit, die der zuletzt bewegten am nächsten steht, die erste die nächste zu `from` – im Spiel
+  die Kamera der Wiedergabe nach den Gegnerzügen, `anim.vcx/vcy`), zuletzt Einschub der Oberfläche und Laden. Vorher je Art nach Nummer: Kamera der
+  Wiedergabe in „Festland-Front“ (Märsche für alle Bodentruppen, 4 Runden) 158 Fahrten / 2454 Felder → 45 / 424, „Kurz vor dem Sieg“ 316 → 138 Felder.
+  Die Gegnerzüge (ai.js, je Gebiet nach Nummer) blieben, wie sie sind: Dort sieht man wenig (13 Fahrten / 140 Felder im selben Lauf), und eine andere
+  Reihenfolge der KI müsste per Simulation gemessen werden. `endHumanTurn` (ui.js), `simGame`, `tools/beispiele.js` und `tools/test.js` rufen dieselben
   Funktionen auf – den Ablauf nie wieder nachbauen (vorher lag er in ui.js, mit drei Kopien der Gegnerschleife).
 - **„Wartende“ Einheiten**: `needsOrders(u)` in ui.js steuert „Nächste Einheit“, die Zahl am
   Rundenknopf und das automatische Rundenende. **Reihenfolge** (ui-zug.js `nearestTo`, `selectNext(center, from)`, `actNext`; Wunsch des Nutzers: weniger
