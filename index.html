@@ -458,7 +458,9 @@
   .about-d > summary b { white-space: nowrap; }
   .about-d .about-g { color: var(--muted); font-size: 12.5px; }
   .about-d > summary:hover b { color: var(--accent); }
-  .about-d > p { margin: 0 12px 10px 32px; }
+  .about-d > p, .about-d > .help-tip, .about-d > .help-setting { margin: 0 12px 10px 32px; }
+  .about-d > .help-tip { border: 0; background: none; padding: 0; }
+  .about-d > p.muted { color: var(--text); }
   .sg > summary { display: flex; align-items: center; gap: 10px; padding: 7px 10px; cursor: pointer; list-style: none; }
   .sg > summary::-webkit-details-marker { display: none; }
   .sg > summary::before { content: '▸'; color: var(--muted); width: 10px; }
@@ -815,7 +817,7 @@
               <tr><td data-en="Click your own city">Klick auf eine eigene Stadt</td><td data-en="with a unit selected: send it there; without: choose production">mit gewählter Einheit: dorthin schicken; ohne: Produktion wählen</td></tr>
               <tr><td data-en="Right-click your unit or city">Rechtsklick auf eigene Einheit oder Stadt</td><td data-en="menu with all commands">Menü mit allen Befehlen</td></tr>
               <tr><td data-en="Right-click elsewhere">Rechtsklick woanders</td><td data-en="clear selection">Auswahl aufheben</td></tr>
-              <tr><td data-en="Shift + click">Umschalt + Klick</td><td data-en="march order even onto tiles with your own units">Marschbefehl auch auf Felder mit eigenen Einheiten</td></tr>
+              <tr><td data-en="Shift + click">Umschalt + Klick</td><td data-en="march order even onto tiles with your own units – boards a distant transport or carrier, goes to one of your cities without the second click">Marschbefehl auch auf Felder mit eigenen Einheiten – an Bord eines entfernten Transporters oder Trägers gehen, zur eigenen Stadt ohne zweiten Klick</td></tr>
               <tr><td data-en="Hold a mouse button and drag">Maustaste halten und ziehen</td><td data-en="pan the map (any button; a short left click still selects and moves)">Karte verschieben (jede Taste; ein kurzer Linksklick wählt und zieht weiterhin)</td></tr>
               <tr><td data-en="Mouse wheel">Mausrad</td><td data-en="zoom">zoomen</td></tr>
               <tr><td data-en="Touchpad: two-finger swipe">Touchpad: mit zwei Fingern wischen</td><td data-en="pan the map">Karte verschieben</td></tr>
@@ -848,14 +850,27 @@
             <p class="muted" data-en="Tip: under ☰ Menu → Settings you can show the most important keys directly on the map (“Show keyboard shortcuts on the map”).">Tipp: Unter ☰ Menü → Einstellungen kannst du die wichtigsten Tasten direkt auf der Karte einblenden („Tastenkürzel auf der Karte einblenden“).</p>
           </div>
         </div>
+        <h3 data-en="Good to know">Gut zu wissen</h3>
+        <details class="about-d">
+          <summary><b data-en="Orders stop by themselves">Befehle halten von selbst an</b><span class="about-g" data-en="on enemy contact, new cities and low fuel">bei Feindkontakt, neuen Städten und knappem Treibstoff</span></summary>
+        <div class="help-tip" data-lang="de"><b>Befehle halten von selbst an:</b> Marsch, Patrouille und Erkunden stoppen, sobald die Einheit eine unbekannte Stadt entdeckt, eine feindliche Stadt oder Einheit sichtet, ein U-Boot ortet (Sonarkontakt) oder einem Feind direkt gegenübersteht. Dann bist du gefragt. Eine <b>Patrouille</b> läuft sonst endlos weiter. Ein Jäger fliegt dabei rechtzeitig zum Tanken in die nächste eigene Stadt und macht danach beim selben Wegpunkt weiter; liegt ein Wegpunkt außer Reichweite (mehr als 8 Felder von der nächsten Stadt), bricht er ab und fliegt heim. Auf einem <b>Marsch</b> über mehrere Runden hält ein Jäger an, bevor der Treibstoff für den Rückweg nicht mehr reichte – in der Runde, in der du den Befehl gibst, fliegt er dagegen auch ohne Rückweg los.</div>
+        <div class="help-tip" data-lang="en"><b>Orders stop by themselves:</b> march, patrol and explore stop as soon as the unit discovers an unknown city, sights an enemy city or unit, locates a submarine (sonar contact) or stands right next to an enemy. Then it is your call. Otherwise a <b>patrol</b> goes on forever. A fighter flies to your nearest city in time to refuel and then carries on at the same waypoint; if a waypoint is out of range (more than 8 tiles from the nearest city), it gives up and flies home. On a <b>march</b> over several turns a fighter stops before it would have too little fuel for the way back – in the turn you give the order, however, it sets off even without a way back.</div>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="Keeping track">Überblick behalten</b><span class="about-g" data-en="production and route view, rally points of cities">Produktions- und Wegeansicht, Marschziele der Städte</span></summary>
+        <div class="help-tip" data-lang="de"><b>Überblick behalten:</b> <kbd>V</kbd> zeigt statt der Einheiten, was jede Stadt baut, <kbd>G</kbd> blendet alle Märsche, Patrouillen und Marschziele ein. Über <b>„Marschziel setzen“</b> in der Stadtkarte gibst du einer Stadt ein Ziel vor: Jede Einheit, die dort fertig wird, marschiert sofort dorthin. Stellst du die Produktion um, wird das Marschziel gelöscht. Wie du damit Nachschub für Transporter sammelst, steht auf der Seite <button class="helplink" data-helptab="transport">Transporter</button>.</div>
+        <div class="help-tip" data-lang="en"><b>Keeping track:</b> <kbd>V</kbd> shows what each city builds instead of the units, <kbd>G</kbd> shows all marches, patrols and rally points. With <b>“Set rally point”</b> in the city card you give a city a destination: every unit completed there marches off to it at once. Changing the production clears the rally point. How to gather supplies for transports this way is on the <button class="helplink" data-helptab="transport">Transports</button> page.</div>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="Replay of moves">Wiedergabe der Züge</b><span class="about-g" data-en="set the speed of movements or switch them off">Tempo der Bewegungen einstellen oder ganz abschalten</span></summary>
         <p class="help-setting"><span data-en="<b>Replay of moves:</b> under <b>☰ Menu → Settings</b> you choose how fast movements and camera pans are shown – slow, normal, fast or off. “Off” shows no movement at all: units are at their destination at once and the map only moves when it has to. Helpful if fast back-and-forth on the screen bothers you; if your system is set to reduce motion, the game starts with “off”."><b>Wiedergabe der Züge:</b> Unter <b>☰ Menü → Einstellungen</b> legst du fest, wie schnell Bewegungen und Kamerafahrten gezeigt werden – langsam, normal, schnell oder aus. „Aus“ zeigt gar keine Bewegung: Die Einheiten stehen sofort am Ziel, die Karte bewegt sich nur, wenn sie muss. Hilfreich, wenn dir schnelles Hin und Her auf dem Bildschirm nicht bekommt; ist in deinem System „Bewegung reduzieren“ eingestellt, beginnt das Spiel mit „aus“.</span></p>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="Mouse wheel and touchpad">Mausrad und Touchpad</b><span class="about-g" data-en="if the map zooms when you swipe or pans when you turn the wheel">falls die Karte beim Wischen zoomt oder beim Drehen wandert</span></summary>
         <p class="help-setting"><span data-en="<b>Mouse wheel and two-finger swipe:</b> normally the game detects by itself whether you turn a wheel (zooms) or swipe (pans). You can choose it yourself under <b>☰ Menu → Settings</b>."><b>Mausrad und Zwei-Finger-Wischen:</b> Normalerweise erkennt das Spiel selbst, ob du am Rad drehst (zoomt) oder wischst (verschiebt). Unter <b>☰ Menü → Einstellungen</b> kannst du das festlegen.</span>
           <span class="muted" data-en="Change this if the map zooms when you swipe, or pans when you turn the wheel. Some touchpads send exactly the same signal as a mouse wheel – then only “always pan” helps; zooming still works by pinching, with Ctrl + wheel or with + and −.">Stell das um, falls die Karte beim Wischen zoomt oder beim Drehen am Rad wandert. Manche Touchpads senden genau dasselbe Signal wie ein Mausrad – dann hilft nur „immer verschieben“; zoomen geht weiterhin mit Spreizen, Strg + Rad oder + und −.</span><br>
           <span class="muted" id="wheelInfo"></span></p>
-        <div class="help-tip" data-lang="de"><b>Überblick behalten:</b> <kbd>V</kbd> zeigt statt der Einheiten, was jede Stadt baut, <kbd>G</kbd> blendet alle Märsche, Patrouillen und Marschziele ein. Über <b>„Marschziel setzen“</b> in der Stadtkarte gibst du einer Stadt ein Ziel vor: Jede Einheit, die dort fertig wird, marschiert sofort dorthin. Stellst du die Produktion um, wird das Marschziel gelöscht. Wie du damit Nachschub für Transporter sammelst, steht auf der Seite <button class="helplink" data-helptab="transport">Transporter</button>.</div>
-        <div class="help-tip" data-lang="en"><b>Keeping track:</b> <kbd>V</kbd> shows what each city builds instead of the units, <kbd>G</kbd> shows all marches, patrols and rally points. With <b>“Set rally point”</b> in the city card you give a city a destination: every unit completed there marches off to it at once. Changing the production clears the rally point. How to gather supplies for transports this way is on the <button class="helplink" data-helptab="transport">Transports</button> page.</div>
-        <div class="help-tip" data-lang="de"><b>Befehle halten von selbst an:</b> Marsch, Patrouille und Erkunden stoppen, sobald die Einheit eine unbekannte Stadt entdeckt, eine feindliche Stadt oder Einheit sichtet, ein U-Boot ortet (Sonarkontakt) oder einem Feind direkt gegenübersteht. Dann bist du gefragt. Eine <b>Patrouille</b> läuft sonst endlos weiter. Ein Jäger fliegt dabei rechtzeitig zum Tanken in die nächste eigene Stadt und macht danach beim selben Wegpunkt weiter; liegt ein Wegpunkt außer Reichweite (mehr als 8 Felder von der nächsten Stadt), bricht er ab und fliegt heim. Auf einem <b>Marsch</b> über mehrere Runden hält ein Jäger an, bevor der Treibstoff für den Rückweg nicht mehr reichte – in der Runde, in der du den Befehl gibst, fliegt er dagegen auch ohne Rückweg los.</div>
-        <div class="help-tip" data-lang="en"><b>Orders stop by themselves:</b> march, patrol and explore stop as soon as the unit discovers an unknown city, sights an enemy city or unit, locates a submarine (sonar contact) or stands right next to an enemy. Then it is your call. Otherwise a <b>patrol</b> goes on forever. A fighter flies to your nearest city in time to refuel and then carries on at the same waypoint; if a waypoint is out of range (more than 8 tiles from the nearest city), it gives up and flies home. On a <b>march</b> over several turns a fighter stops before it would have too little fuel for the way back – in the turn you give the order, however, it sets off even without a way back.</div>
+        </details>
       </section>
 
       <section data-pane="ai" hidden>
@@ -867,6 +882,9 @@
           <thead><tr><th data-en="Level">Stufe</th><th data-en="Play style">Spielweise</th><th data-en="Knows map">Kennt Karte</th><th data-en="Mistakes">Fehler</th><th data-en="Build speed">Bautempo</th><th data-en="Lands with">Landet ab</th><th>Start</th></tr></thead>
           <tbody id="diffTable"></tbody>
         </table>
+        <h3 data-en="The columns explained, and more">Die Spalten erklärt – und mehr</h3>
+        <details class="about-d">
+          <summary><b data-en="Knows map">Kennt Karte</b><span class="about-g" data-en="whether the enemy has to explore">ob der Gegner erkunden muss</span></summary>
         <p data-lang="de"><b>Kennt Karte:</b> Auf Leicht und Normal kennt der Gegner nur, was seine Einheiten und Städte gesehen haben,
           genau wie du. Er muss erkunden: Bodentruppen laufen zum Rand des Nebels, Zerstörer und Jäger dienen als Späher.
           Auf Schwer und Brutal kennt er alle Inseln und Städte von Anfang an. Deine Einheiten sieht er auf allen Stufen
@@ -875,6 +893,9 @@
           just like you. It has to explore: ground troops head for the edge of the fog, destroyers and fighters serve as scouts.
           On Hard and Brutal it knows all islands and cities from the start. On every level it only sees your units
           within its vision range.</p>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="Play style">Spielweise</b><span class="about-g" data-en="simple or careful – what that means">einfach oder umsichtig – was das heißt</span></summary>
         <p data-lang="de"><b>Spielweise:</b> Auf Leicht und Normal spielt der Gegner <b>einfach</b>: Alle Truppen laufen zur nächstgelegenen Stadt.
           Auf Schwer und Brutal spielt er <b>umsichtig</b>: Seine Truppen verteilen sich auf mehrere Städte zugleich, gelandete Einheiten
           von dir werden gejagt, und eine bedrohte Stadt baut sofort Infanterie. Beladene Transporter weichen deinen Kriegsschiffen aus,
@@ -883,6 +904,9 @@
           On Hard and Brutal it plays <b>shrewdly</b>: its troops spread out over several cities at once, units you land
           are hunted down, and a threatened city builds infantry right away. Loaded transports steer clear of your warships,
           and fighters go after your transports. Every transport gets a destroyer as an escort that locates submarines. It builds tanks only against your cities; infantry is enough for neutral ones.</p>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="Mistakes, build speed, landing">Fehler, Bautempo, Landung</b><span class="about-g" data-en="the remaining columns of the table">die übrigen Spalten der Tabelle</span></summary>
         <p data-lang="de"><b>Fehler:</b> Anteil „menschlicher“ Fehlentscheidungen. Der Gegner vergisst dann eine Einheit für eine Runde,
           schätzt einen Angriff falsch ein (zu wagemutig oder zu zaghaft) oder baut etwas Unpassendes.</p>
         <p data-lang="en"><b>Mistakes:</b> share of “human” bad decisions. The enemy then forgets a unit for a turn,
@@ -891,6 +915,9 @@
           <b>Landet ab:</b> mit wie vielen Truppen an Bord ein Transporter eine Landung wagt.</p>
         <p data-lang="en"><b>Build speed:</b> how fast enemy cities complete units compared with yours.
           <b>Lands with:</b> how many troops a transport needs on board before it dares a landing.</p>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="How the enemy thinks">Wie der Gegner denkt</b><span class="about-g" data-en="fixed rules, no strategy – and where it is vulnerable">feste Regeln, keine Strategie – und wo er verwundbar ist</span></summary>
         <p data-lang="de"><b>Wie der Gegner denkt:</b> Er folgt festen Regeln je Einheit (eine Art Entscheidungsbaum) und denkt nicht voraus.
           Vor jedem Angriff berechnet er die Siegchance und greift nur an, wenn sie hoch genug ist. Auf Leicht ist er dabei
           vorsichtiger. Seine Städte bauen zuerst Bodentruppen, solange es auf dem eigenen Kontinent noch etwas zu erobern
@@ -903,6 +930,9 @@
           continent, then transports, reinforcements and a fleet. It has no overall strategy and does not coordinate large attacks. If you concentrate your forces,
           you will outmatch it. It leaves its cities ungarrisoned: it relies entirely on attack. On the mainland: if it has more troops than it
           needs – say in front of a narrow pass – it picks them up with transports and lands in your hinterland, near cities far behind the front. It builds about one submarine per five cities: they lurk submerged off your ports and attack only transports and big ships. Destroyers as escorts are the remedy.</p>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="Several opponents">Mehrere Gegner</b><span class="about-g" data-en="free-for-all, up to three">jeder gegen jeden, bis zu drei</span></summary>
         <p data-lang="de"><b>Mehrere Gegner:</b> Unter <b>Neues Spiel</b> wählst du, gegen wie viele Computergegner du antrittst – auf der kleinen Karte bis zu zwei,
           auf der mittleren und großen bis zu drei. Dann gilt <b>jeder gegen jeden</b>: Die Gegner (Rot, Gelb, Violett) bekämpfen sich auch untereinander.
           Die Schwierigkeit gilt für alle gleich. Sie ziehen nacheinander, über der Karte steht, wer gerade dran ist. Ein Gegner, der keine Stadt
@@ -917,6 +947,9 @@
           You win once every opponent is out. The “Balance of power” bar shows each party's share of everyone's strength;
           the assessment above it compares you with the strongest opponent at the time.
           Feel free to let the others wear each other down first.</p>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="How hard is it really?">Wie schwer ist das wirklich?</b><span class="about-g" data-en="results from test games">Ergebnisse aus Testpartien</span></summary>
         <p data-lang="de" class="muted">In Testpartien gegen einen Computerspieler, der selbst erkunden muss und keine Fehler macht, gewann
           dieser auf Leicht praktisch immer, auf Normal die Hälfte bis zwei Drittel, auf Schwer etwa jede vierte bis fünfte Partie und auf Brutal fast nie.
           Wie schwer es für dich ist, hängt natürlich von deiner Spielweise ab.
@@ -929,8 +962,12 @@
           Several opponents make it harder: against two (small map) the same computer player won 40 % of games on Normal and 17 % on Hard,
           against three (medium map) a third on Normal and 7 % on Hard. Easy stays easy (95 %), Brutal becomes practically hopeless.
           You do have one edge over it, though: it does not take advantage of the opponents weakening each other.</p>
-        <div class="help-tip" data-lang="de"><b>Dem Gegner zusehen:</b> Unter <b>☰ Menü → Einstellungen</b> im Abschnitt „Schummeln“ lässt sich der Nebel des Krieges abschalten. Dann siehst du die ganze Karte, alle seine Einheiten und Züge. Das Spiel fragt vorher nach, denn was du einmal gesehen hast, weißt du. Schaltest du wieder zurück, kehrt der Nebel zurück – dein Kartenstand ist derselbe wie vorher, ergänzt um das, was deine Einheiten inzwischen wirklich gesehen haben. Der Haken gilt nur für die laufende Partie.</div>
-        <div class="help-tip" data-lang="en"><b>Watching the enemy:</b> under <b>☰ Menu → Settings</b> in the “Cheats” section you can switch off the fog of war. You then see the whole map and all his units and moves. The game asks first, because what you have seen once, you know. Switch it back and the fog returns – your map is the same as before, plus what your units have really seen in the meantime. The checkbox only applies to the current game.</div>
+        </details>
+        <details class="about-d">
+          <summary><b data-en="Watching the enemy">Dem Gegner zusehen</b><span class="about-g" data-en="switch off the fog of war">Nebel des Krieges abschalten</span></summary>
+        <div class="help-tip" data-lang="de"><b>Dem Gegner zusehen:</b> Unter <b>☰ Menü → Einstellungen</b> im Reiter „Schummeln &amp; Zurücksetzen“ lässt sich der Nebel des Krieges abschalten. Dann siehst du die ganze Karte, alle seine Einheiten und Züge. Das Spiel fragt vorher nach, denn was du einmal gesehen hast, weißt du. Schaltest du wieder zurück, kehrt der Nebel zurück – dein Kartenstand ist derselbe wie vorher, ergänzt um das, was deine Einheiten inzwischen wirklich gesehen haben. Der Haken gilt nur für die laufende Partie.</div>
+        <div class="help-tip" data-lang="en"><b>Watching the enemy:</b> under <b>☰ Menu → Settings</b> on the “Cheats &amp; reset” tab you can switch off the fog of war. You then see the whole map and all his units and moves. The game asks first, because what you have seen once, you know. Switch it back and the fog returns – your map is the same as before, plus what your units have really seen in the meantime. The checkbox only applies to the current game.</div>
+        </details>
       </section>
 
       <section data-pane="about" hidden>
