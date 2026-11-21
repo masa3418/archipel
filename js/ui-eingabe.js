@@ -570,8 +570,8 @@ const TIPS = [
     text: tt('<b>Die Welt erkunden:</b> Bau auch einen <b>Zerstörer</b> und schick ihn mit <kbd>R</kbd> auf Erkundung. Er findet neue Inseln und den Gegner – und schützt später deine Transporter.',
       '<b>Exploring the world:</b> build a <b>destroyer</b> too and send it exploring with <kbd>R</kbd>. It finds new islands and the enemy – and later protects your transports.') },
   { id: 'enemy', when: s => s.foe || S.units.some(u => u.owner !== 0 && u.carrier == null && canSee(0, u)),
-    text: tt('<b>Feindkontakt:</b> Wähl eine Einheit und zeig auf den Gegner – über dem Feld steht deine Siegchance. Wer wen schlägt und alles Weitere steht im <b>Handbuch</b> (<kbd>H</kbd>). Viel Erfolg!',
-      '<b>Enemy contact:</b> select a unit and point at the enemy – your odds of winning appear above the tile. Who beats whom and everything else is in the <b>handbook</b> (<kbd>H</kbd>). Good luck!') },
+    text: tt('<b>Feindkontakt:</b> Wähl eine Einheit und zeig auf den Gegner – über dem Feld steht deine Siegchance. <kbd>K</kbd> färbt rot, wo er in seinem nächsten Zug angreifen kann. Wer wen schlägt und alles Weitere steht im <b>Handbuch</b> (<kbd>H</kbd>). Viel Erfolg!',
+      '<b>Enemy contact:</b> select a unit and point at the enemy – your odds of winning appear above the tile. <kbd>K</kbd> tints red where it can attack on its next turn. Who beats whom and everything else is in the <b>handbook</b> (<kbd>H</kbd>). Good luck!') },
 ];
 
 // Dazu je ein Tipp zur ersten eigenen Einheit jeder Art (Wunsch des Nutzers) – was sie kann und worauf man achten muss, in zwei, drei
@@ -600,8 +600,8 @@ for (const k of UNIT_ORDER) if (UNIT_TIPS[k]) TIPS.push({ id: 'u-' + k, unit: k,
 // … und je einer zum ersten Kampfergebnis (Wunsch des Nutzers): nach dem ersten Sieg und nach dem ersten Verlust
 const tipSum = (o, keys) => !o ? 0 : (keys || Object.keys(o)).reduce((n, k) => n + (o[k] || 0), 0);
 TIPS.push({ id: 'won', head: tt('Erster Sieg', 'First victory'), when: () => tipSum(S.kills && S.kills[0]) > 0,
-  text: tt('Im Kampf trifft in jeder Runde eine Seite zufällig, bis eine keine Trefferpunkte mehr hat. Auch der Sieger kann dabei Schaden nehmen – der Balken unter der Marke zeigt ihn. In einer eigenen Stadt wird repariert: Schiffe einen Trefferpunkt je Runde, alle anderen sofort.',
-    'In combat one side hits at random each round until one has no hit points left. The winner can take damage too – the bar under the badge shows it. Units are repaired in one of your cities: ships one hit point per turn, all others at once.') });
+  text: tt('Im Kampf trifft in jeder Runde eine Seite zufällig, bis eine keine Trefferpunkte mehr hat. Auch der Sieger kann dabei Schaden nehmen – der Balken unter der Marke zeigt ihn. Schiffe werden in einer eigenen Hafenstadt repariert, einen Trefferpunkt je Runde; Panzer lassen sich nicht reparieren.',
+    'In combat one side hits at random each round until one has no hit points left. The winner can take damage too – the bar under the badge shows it. Ships are repaired in one of your ports, one hit point per turn; tanks cannot be repaired.') });
 // Beladener Transporter versenkt (Wunsch des Nutzers). Das Spiel zählt nicht mit, ob ein Transporter beladen unterging – updateTips merkt
 // sich deshalb die eigenen beladenen Transporter und sieht nach, ob einer fehlt (tips.sunk). Der Tipp deckt den „ersten Verlust“ mit ab.
 TIPS.push({ id: 'sunk', head: tt('Transporter versenkt', 'Transport sunk'), also: ['lost'], when: () => tips.sunk,
