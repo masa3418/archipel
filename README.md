@@ -129,6 +129,24 @@ on GitHub) and open it via ☰ Menu → Saved games → Load from file.*
   notwendige Daten wie die IP-Adresse, siehe
   [Datenschutzerklärung von GitHub](https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement).
 
+## Vorbilder
+
+Archipel ist aus meiner Begeisterung für die Strategiespiele der 1980er entstanden, die ich auf dem Amiga gespielt habe. Die eigentliche
+Vorlage ist **Empire: Wargame of the Century**. Walter Bright schrieb Empire 1977 für einen Großrechner am Caltech; ich habe es erst in der
+Fassung kennengelernt, die 1987 bei Interstel für Heimcomputer erschien, gemeinsam mit Mark Baldwin neu gestaltet. Eine Stadt, eine Armee,
+ringsum Nebel – und der Sog, noch eine Runde zu spielen: Das wollte ich wiederfinden.
+
+Sehr viel gespielt habe ich auch **Carrier Command** von Realtime Games (1988). Es ist ein ganz anderes Spiel, in Echtzeit und vom
+Flugzeugträger aus, und nur in einigen Punkten vergleichbar: eine Inselwelt, die man Insel für Insel einnimmt, und Inseln, die danach für
+einen produzieren.
+
+Archipel ist ein eigenes Spiel, kein Nachbau: Regeln, Grafik und Programm sind neu, und es steht in keiner Verbindung zu den Rechteinhabern
+der genannten Spiele.
+
+*English:* Archipel grew out of my enthusiasm for the strategy games of the 1980s, which I played on the Amiga – above all
+**Empire: Wargame of the Century** (Walter Bright, 1977; published by Interstel in 1987, redesigned with Mark Baldwin), and in a few respects
+**Carrier Command** (Realtime Games, 1988). It is a game of its own, not a remake, and not connected with the rights holders of those games.
+
 ## Mitmachen
 
 Fehler, Ideen und Balancing-Rückmeldungen sind willkommen – siehe

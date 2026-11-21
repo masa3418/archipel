@@ -149,7 +149,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Tabelle `.help-rules` (Reiter „Kampf“) ergänzen, den Einheitentext in `UNIT_INFO`.
   Reiter „Über das Spiel“ (aufgeräumt auf Wunsch des Nutzers): offen stehen nur Speichern und die Beispiel-Spielstände; Hintergrund und
   Kleingedrucktes (Version/Offline, Sprache, Datenschutz, Quelltext und Lizenz, Musik, Städtenamen) sind Zeilen zum Aufklappen
-  (`details.about-d`, Titel + Stichwort in `.about-g`). Neues dieser Art dort als weitere Zeile anhängen, nicht als offenen Abschnitt. Ebenso die langen Erläuterungen in „Steuerung“ („Gut zu wissen“) und „Gegner & Stufen“ (Tabelle offen, Spalten und Hintergrund zum Aufklappen).
+  (`details.about-d`, Titel + Stichwort in `.about-g`). Neues dieser Art dort als weitere Zeile anhängen, nicht als offenen Abschnitt. Die Zeile „Vorbilder“ (auch im README) ist ein persönlicher Text des Nutzers (Amiga, Empire: Wargame of the Century als Vorlage, Carrier Command viel gespielt) – Angaben recherchiert (Bright 1977 Caltech, Interstel 1987 mit Mark Baldwin, Realtime Games 1988); nicht umformulieren oder um weitere Spiele ergänzen, ohne ihn zu fragen. Ebenso die langen Erläuterungen in „Steuerung“ („Gut zu wissen“) und „Gegner & Stufen“ (Tabelle offen, Spalten und Hintergrund zum Aufklappen).
 - **Schummeln „Nebel aus“**: `CHEAT_FOG` (game.js), geschaltet mit `setCheatFog` (ui.js, Haken im Menü mit Rückfrage `askCheatFog`; wird nicht gemerkt,
   `resetCheatFog` in `startNew`/`afterLoad` – jede neue oder geladene Partie beginnt mit Nebel). `computeVision(0)`
   legt dann das echte Kartengedächtnis in `P.real` (`seen`, `knownOwner`) ab und füllt `seen`/`vis`/`sonar` mit 1; `serialize` sichert immer
