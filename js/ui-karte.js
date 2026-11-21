@@ -465,16 +465,16 @@ function drawProdCity(c, hot) {
 }
 
 // ------------------------------------------------------------------ Wegeansicht und Marschziele
-// Wegeansicht (Schalter in der Seitenleiste, Taste G): zeichnet unter den Einheiten alle laufenden Märsche (weiß),
+// Wegeansicht (Schalter „Wege und Marschziele“ unter „Ansicht“ in der Kopfzeile, Taste G – bis 1.7.7 dritter Knopf des Schalters in der
+// Seitenleiste; dort stehen jetzt nur die beiden Arbeitsmodi Einheiten | Produktion): zeichnet unter den Einheiten alle laufenden Märsche (weiß),
 // Patrouillen (türkis) und die Marschziele der Städte (gelb). Anders als die Produktionsansicht ist sie nur eine
 // zusätzliche Ebene – das Spiel läuft normal weiter, und sie bleibt an, bis man sie abschaltet.
 // Die Wege werden nur nach Änderungen neu berechnet (refresh() verwirft pathCache), nicht in jedem Bild.
 let pathView = false, pathCache = null, rallyCache = null;
 let rallyMode = null;   // { city: id } – der nächste Klick auf die Karte setzt das Marschziel dieser Stadt
 function updateViewSwitch() {
-  $('vUnits').classList.toggle('on', !prodView && !pathView);
+  $('vUnits').classList.toggle('on', !prodView);
   $('vProd').classList.toggle('on', prodView);
-  $('vPaths').classList.toggle('on', pathView);
   document.querySelector('aside').classList.toggle('prodmode', prodView);
 }
 function setPathView(on) {

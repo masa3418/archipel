@@ -346,8 +346,7 @@ document.addEventListener('keydown', e => {
 
 $('endTurn').onclick = endHumanTurn;
 $('nextUnit').onclick = () => { setProdView(false); actNext(); };
-$('vUnits').onclick = () => { setProdView(false); setPathView(false); };
-$('vPaths').onclick = () => setPathView(!pathView);
+$('vUnits').onclick = () => setProdView(false);
 $('vProd').onclick = () => setProdView(true);
 // ------------------------------------------------------------------ Schummeln: Nebel aus
 // Haken im Menü. Regeln: CHEAT_FOG/computeVision in game.js. Solange er gesetzt ist, steht neben der Rundenzahl ein Schildchen
@@ -392,8 +391,11 @@ try {
   if (v === null && !welcomeSeen()) { showKeys = true; localStorage.setItem('archipel-keys', '1'); }
   else showKeys = v === '1';
 } catch (e) {}
+let keysMin = false;   // eingeklappt zum Schildchen „Tasten“ (× an der Legende); showKeys = ganz aus (Einstellungen, Ansicht-Liste)
+try { keysMin = localStorage.getItem('archipel-keys-min') === '1'; } catch (e) {}
+function setKeysMin(on) { keysMin = !!on; try { localStorage.setItem('archipel-keys-min', keysMin ? '1' : '0'); } catch (e) {} updateKeyLegend(); }
 function setShowKeys(on) {
-  showKeys = !!on;
+  showKeys = !!on; if (showKeys) keysMin = false;   // Einschalten zeigt sie immer aufgeklappt
   try { localStorage.setItem('archipel-keys', showKeys ? '1' : '0'); } catch (e) {}
   $('keysChk').checked = showKeys;
   updateKeyLegend();
@@ -402,12 +404,19 @@ function updateKeyLegend() {
   const box = $('keyLegend');
   box.hidden = !showKeys || !S;
   if (box.hidden) return;
+  box.classList.toggle('min', keysMin);
+  if (keysMin) {   // ein Erstspieler hatte die Legende geschlossen und fand sie nicht wieder: Sie verschwindet nicht mehr, sondern klappt ein
+    box.innerHTML = `<button class="kl-open" title="${tt('Tastenkürzel wieder aufklappen', 'Show the shortcuts again')}"><span aria-hidden="true">⌨</span>${tt('Tasten', 'Keys')}</button>`;
+    applyKeyPos();
+    box.querySelector('.kl-open').onclick = () => { Sfx.play('tick'); setKeysMin(false); };
+    return;
+  }
   const kb = k => `<kbd>${k}</kbd>`;
   const row = (keys, label, ok = true) => `<div class="kl-row${ok ? '' : ' off'}"><span>${keys}</span>${label}</div>`;
   const grp = (title, rows) => `<div class="kl-g"><h5>${title}</h5>${rows.join('')}</div>`;
   const esc_ = kb('Esc'), enter = kb('Enter');
   let h = `<div class="kl-grip" title="${tt('Ziehen: verschieben · Doppelklick: zurück an den Platz unten links', 'Drag to move · double-click: back to the bottom left')}"></div>`
-    + `<button class="kl-x" title="${tt('Ausblenden (im Menü wieder einschalten)', 'Hide (switch on again in the menu)')}">×</button>`;
+    + `<button class="kl-x" title="${tt('Einklappen – ein Klick auf „Tasten“ klappt wieder auf', 'Collapse – click “Keys” to open again')}">×</button>`;
   if (patrolMode) {
     h += grp(tt('Patrouille festlegen', 'Setting a patrol'), [
       row(tt('Klick', 'Click'), tt('Wegpunkt setzen', 'add waypoint')),
@@ -443,7 +452,7 @@ function updateKeyLegend() {
     ]);
     h += grp(tt('Ansicht', 'View'), [
       row(kb('V'), prodView ? tt('zurück zur Karte (auch Esc)', 'back to the map (also Esc)') : tt('Produktionsansicht', 'production view')),
-      row(kb('G'), tt('Wegeansicht', 'route view')),
+      row(kb('G'), tt('Wege einblenden', 'show routes')),
     ]);
     h += grp(tt('Spiel', 'Game'), [
       row(enter, tt('Runde beenden', 'end turn'), !S.over),
@@ -456,7 +465,7 @@ function updateKeyLegend() {
   }
   box.innerHTML = h;
   applyKeyPos();
-  box.querySelector('.kl-x').onclick = () => { setShowKeys(false); toast(tt('Tastenkürzel ausgeblendet – unter ☰ Menü → Einstellungen wieder einschalten', 'Shortcuts hidden – switch them on again under ☰ Menu → Settings'), 2500); };
+  box.querySelector('.kl-x').onclick = () => setKeysMin(true);
 }
 // Legende verschieben (Wunsch des Nutzers): am oberen Rand greifen und ziehen; die Stelle wird gemerkt (archipel-keys-pos, Pixel ab der
 // linken oberen Ecke der Kartenspalte) und bleibt immer ganz im Kartenbereich – auch wenn das Fenster kleiner wird. Doppelklick auf den
@@ -465,7 +474,9 @@ let keyPos = null;
 try { const p = JSON.parse(localStorage.getItem('archipel-keys-pos') || 'null'); if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) keyPos = { x: p.x, y: p.y }; } catch (e) {}
 function applyKeyPos() {
   const box = $('keyLegend'), col = $('mapCol');
-  if (!keyPos) { box.style.left = box.style.top = box.style.bottom = ''; return; }
+  // Eingeklappt liegt das Schildchen immer unten links (Wunsch des Nutzers: Es hat keinen Griff, und dort sucht man es); aufgeklappt
+  // kehrt die Legende an ihre gemerkte Stelle zurück.
+  if (!keyPos || keysMin) { box.style.left = box.style.top = box.style.bottom = ''; return; }
   const top0 = $('infoBar').offsetHeight;
   const x = Math.max(0, Math.min(keyPos.x, col.clientWidth - box.offsetWidth)), y = Math.max(top0, Math.min(keyPos.y, col.clientHeight - box.offsetHeight));
   box.style.left = x + 'px'; box.style.top = y + 'px'; box.style.bottom = 'auto';
@@ -491,7 +502,8 @@ function setKeyPos(p) {
 $('keysChk').checked = showKeys;
 $('keysChk').onchange = e => setShowKeys(e.target.checked);
 $('routeChk').checked = showRoute;
-$('routeChk').onchange = e => { showRoute = e.target.checked; try { localStorage.setItem('archipel-route', showRoute ? '1' : '0'); } catch (err) {} dirty = true; };
+function setShowRoute(on) { showRoute = !!on; $('routeChk').checked = showRoute; try { localStorage.setItem('archipel-route', showRoute ? '1' : '0'); } catch (err) {} dirty = true; }
+$('routeChk').onchange = e => setShowRoute(e.target.checked);
 
 // ------------------------------------------------------------------ Einstiegstipps
 // Kleine Hinweise für die ersten Runden (Wunsch des Nutzers: Ein Erstspieler wusste am Anfang nicht, was zu tun ist). Je Tipp eine
@@ -671,11 +683,12 @@ $('tipsChk').checked = tips.on;
 $('tipsChk').onchange = e => setTips(e.target.checked);
 
 $('powerChk').checked = showPower;
-$('powerChk').onchange = e => {
-  showPower = e.target.checked;
+function setShowPower(on) {
+  showPower = !!on; $('powerChk').checked = showPower;
   try { localStorage.setItem('archipel-power', showPower ? '1' : '0'); } catch (err) {}
   applyPower(); if (S) updatePower();
-};
+}
+$('powerChk').onchange = e => setShowPower(e.target.checked);
 applyPower();
 $('replaySel').value = replay;
 $('replaySel').onchange = e => {

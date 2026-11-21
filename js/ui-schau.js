@@ -518,25 +518,44 @@ function setLandscape(v) {
 $('landSel').innerHTML = Object.keys(LANDSCAPES).map(k => `<option value="${k}">${esc(LAND_NAMES[k] || k)}</option>`).join('');
 try { localStorage.removeItem('archipel-land'); } catch (e) {}   // kurze Zwischenfassung: Landschaft als Einstellung
 $('landSel').onchange = e => setLandscape(e.target.value);
-// Knopf in der Kopfzeile (bei Zoom und Zentrieren; Wunsch des Nutzers: ein Gimmick, das überrascht – das Aussehen mitten im Spiel wechseln).
-// Bewusste Ausnahme von „Einstellungen nicht in die Kopfzeile“: gehört zur Kartenansicht, zeigt keinen Text. Farbfeld = Land und Meer der Übersichtskarte.
-const landMenu = $('landMenu');
-function closeLandMenu() { if (landMenu.hidden) return; landMenu.hidden = true; $('bLand').classList.remove('open'); $('bLand').setAttribute('aria-expanded', 'false'); }
-function openLandMenu() {
-  closeMenu(); closeCtx();
+// Knopf „Ansicht“ in der Kopfzeile (bei Zoom und Zentrieren): EIN Symbol für alles, was die Anzeige der Karte betrifft – drei Schalter
+// (Tastenkürzel, Wegvorschau, Kräfteverhältnis – dieselben wie in den Einstellungen –, dazu „Wege und Marschziele“ = Wegeansicht) und darunter die fünf Landschaften mit Farbfeld
+// (Land und Meer der Übersichtskarte). Wunsch des Nutzers: Landschaft mitten im Spiel wechseln als Gimmick, das überrascht; und statt je
+// eines Symbols je Schalter ein Konzept für die Leiste – Menü | Karte (Zoom, Zentrieren, Ansicht) | Ton | Hilfe. Neue Anzeige-Optionen
+// kommen in diese Liste, nicht als weiteres Symbol in die Leiste. Die Liste bleibt beim Klicken offen (ausprobieren), Esc oder ein Klick daneben schließt.
+const viewMenu = $('viewMenu');
+const VIEW_SW = [
+  ['keys', tt('Tastenkürzel auf der Karte', 'Keyboard shortcuts on the map'), () => showKeys && !keysMin, on => setShowKeys(on)],
+  ['route', tt('Weg beim Zeigen auf ein Feld', 'Route when pointing at a tile'), () => showRoute, on => setShowRoute(on)],
+  ['power', tt('Kräfteverhältnis', 'Balance of power'), () => showPower, on => setShowPower(on)],
+  ['paths', tt('Wege und Marschziele', 'Routes and rally points'), () => pathView, on => setPathView(on), 'G'],   // gilt für die laufende Partie, wird nicht gemerkt
+];
+function renderViewMenu() {
   const cur = (S && S.land) || 'gruen', rgb = c => `rgb(${c.join()})`;
-  landMenu.innerHTML = `<h4>${tt('Landschaft', 'Landscape')}</h4>` + Object.keys(LANDSCAPES).map(k => { const m = LANDSCAPES[k].mini;
-    return `<button class="mi${k === cur ? ' on' : ''}" data-land="${k}"><span class="sw" style="background:linear-gradient(135deg, ${rgb(m[0])} 0 55%, ${rgb(m[1])} 55%)"></span>${esc(LAND_NAMES[k] || k)}</button>`; }).join('');
-  landMenu.hidden = false; $('bLand').classList.add('open'); $('bLand').setAttribute('aria-expanded', 'true');
-  const r = $('bLand').getBoundingClientRect();
-  landMenu.style.top = Math.round(r.bottom + 6) + 'px';
-  landMenu.style.left = Math.round(Math.max(8, Math.min(r.left, innerWidth - landMenu.offsetWidth - 8))) + 'px';
+  viewMenu.innerHTML = `<h4>${tt('Anzeigen', 'Show')}</h4>`
+    + VIEW_SW.map(([k, label, get, , kbd]) => `<button class="mi${get() ? ' on' : ''}" data-view="${k}" role="menuitemcheckbox" aria-checked="${get()}"><span class="ck">${get() ? '✓' : ''}</span>${label}${kbd ? `<kbd>${kbd}</kbd>` : ''}</button>`).join('')
+    + `<h4>${tt('Landschaft', 'Landscape')}</h4>` + Object.keys(LANDSCAPES).map(k => { const m = LANDSCAPES[k].mini;
+      return `<button class="mi${k === cur ? ' on' : ''}" data-land="${k}"><span class="sw" style="background:linear-gradient(135deg, ${rgb(m[0])} 0 55%, ${rgb(m[1])} 55%)"></span>${esc(LAND_NAMES[k] || k)}</button>`; }).join('');
 }
-$('bLand').onclick = () => { if (landMenu.hidden) openLandMenu(); else closeLandMenu(); };
-landMenu.addEventListener('click', e => { const b = e.target.closest('[data-land]'); if (!b) return; setLandscape(b.dataset.land); Sfx.play('tick'); closeLandMenu(); });
-document.addEventListener('mousedown', e => { if (!landMenu.hidden && !e.target.closest('#landMenu, #bLand')) closeLandMenu(); }, true);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !landMenu.hidden) { closeLandMenu(); e.stopPropagation(); } }, true);
-window.addEventListener('resize', closeLandMenu);
+function closeViewMenu() { if (viewMenu.hidden) return; viewMenu.hidden = true; $('bView').classList.remove('open'); $('bView').setAttribute('aria-expanded', 'false'); }
+function openViewMenu() {
+  closeMenu(); closeCtx(); renderViewMenu();
+  viewMenu.hidden = false; $('bView').classList.add('open'); $('bView').setAttribute('aria-expanded', 'true');
+  const r = $('bView').getBoundingClientRect();
+  viewMenu.style.top = Math.round(r.bottom + 6) + 'px';
+  viewMenu.style.left = Math.round(Math.max(8, Math.min(r.left, innerWidth - viewMenu.offsetWidth - 8))) + 'px';
+}
+$('bView').onclick = () => { if (viewMenu.hidden) openViewMenu(); else closeViewMenu(); };
+viewMenu.addEventListener('click', e => {
+  const l = e.target.closest('[data-land]'), v = e.target.closest('[data-view]');
+  if (l) setLandscape(l.dataset.land);
+  else if (v) { const sw = VIEW_SW.find(s => s[0] === v.dataset.view); sw[3](!sw[2]()); }
+  else return;
+  Sfx.play('tick'); renderViewMenu();
+});
+document.addEventListener('mousedown', e => { if (!viewMenu.hidden && !e.target.closest('#viewMenu, #bView')) closeViewMenu(); }, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !viewMenu.hidden) { closeViewMenu(); e.stopPropagation(); } }, true);
+window.addEventListener('resize', closeViewMenu);
 // Fenster „Neues Spiel“: dieselbe Auswahl. Bei jedem Öffnen ist zufällig eine der Landschaften vorgewählt (START_LANDS = alle) – umstellbar auf jede.
 function newLandPick() { $('newLandSel').value = START_LANDS[Math.floor(Math.random() * START_LANDS.length)]; }
 $('newLandSel').innerHTML = $('landSel').innerHTML;

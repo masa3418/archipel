@@ -364,14 +364,30 @@ window.UiTest = (() => {
       ok = ok && keyPos === null && Math.abs(r4.left - r0.left) <= 1 && Math.abs(r4.top - r0.top) <= 1 && !localStorage.getItem('archipel-keys-pos');
       setKeyPos(pos0); setShowKeys(keep); return ok;
     });
-    step('Kopfzeile: Knopf „Landschaft“ öffnet die Liste, Klick wechselt, Esc schließt', () => {
-      const keep = S.land; $('bLand').click();
-      const items = [...$('landMenu').querySelectorAll('[data-land]')];
-      let ok = !$('landMenu').hidden && items.length === LAND_KEYS.length && $('landMenu').querySelectorAll('.on').length === 1 && $('landMenu').querySelector('.on').dataset.land === (keep || 'gruen');
-      items.find(b => b.dataset.land === 'lava').click(); draw();
-      ok = ok && S.land === 'lava' && $('landMenu').hidden;
-      $('bLand').click(); key('Escape'); ok = ok && $('landMenu').hidden && S.land === 'lava';
-      setLandscape(keep); draw(); return ok;
+    step('Kopfzeile: „Ansicht“ – Schalter und Landschaften, bleibt offen, Esc schließt', () => {
+      const keep = S.land, k0 = showKeys, m0 = keysMin, r0 = showRoute, p0 = showPower; $('bView').click();
+      const items = () => [...$('viewMenu').querySelectorAll('[data-land]')], sw = k => $('viewMenu').querySelector('[data-view="' + k + '"]');
+      let ok = !$('viewMenu').hidden && items().length === LAND_KEYS.length && items().filter(b => b.classList.contains('on')).length === 1 && $('viewMenu').querySelectorAll('[data-view]').length === 4 && !$('vPaths');
+      items().find(b => b.dataset.land === 'lava').click(); draw();
+      ok = ok && S.land === 'lava' && !$('viewMenu').hidden && items().find(b => b.dataset.land === 'lava').classList.contains('on');   // bleibt offen
+      sw('route').click(); ok = ok && showRoute === !r0 && $('routeChk').checked === showRoute && sw('route').classList.contains('on') === showRoute; sw('route').click(); ok = ok && showRoute === r0;
+      sw('power').click(); ok = ok && showPower === !p0 && $('powerChk').checked === showPower && ($('power').style.display === 'none') === !showPower; sw('power').click(); ok = ok && showPower === p0;
+      setShowKeys(false); renderViewMenu(); sw('keys').click(); ok = ok && showKeys && !keysMin && !$('keyLegend').hidden && $('keysChk').checked; sw('keys').click(); ok = ok && !showKeys && $('keyLegend').hidden;
+      sw('paths').click(); ok = ok && pathView && sw('paths').classList.contains('on') && !$('pathLegend').hidden; draw(); sw('paths').click(); ok = ok && !pathView && $('pathLegend').hidden;
+      key('Escape'); ok = ok && $('viewMenu').hidden && S.land === 'lava';
+      setLandscape(keep); setShowKeys(k0); setKeysMin(m0); draw(); return ok;
+    });
+    step('Tastenlegende: × klappt zum Schildchen ein, Klick klappt auf', () => {
+      const k0 = showKeys, m0 = keysMin; setShowKeys(true); refresh();
+      const box = $('keyLegend'); let ok = !box.hidden && !box.classList.contains('min') && !!box.querySelector('.kl-row');
+      box.querySelector('.kl-x').click(); ok = ok && keysMin && showKeys && !box.hidden && box.classList.contains('min') && !!box.querySelector('.kl-open') && !box.querySelector('.kl-row');
+      refresh(); ok = ok && !!$('keyLegend').querySelector('.kl-open');   // übersteht das Neuzeichnen
+      const pos0 = keyPos, home = $('keyLegend').getBoundingClientRect(); setKeysMin(false); setKeyPos({ x: 300, y: 200 }); const moved = $('keyLegend').getBoundingClientRect();
+      setKeysMin(true); const chip = $('keyLegend').getBoundingClientRect(); ok = ok && Math.abs(chip.left - home.left) <= 1 && Math.abs(chip.bottom - home.bottom) <= 1;   // Schildchen immer unten links
+      setKeysMin(false); const back = $('keyLegend').getBoundingClientRect(); ok = ok && Math.abs(back.left - moved.left) <= 1 && Math.abs(back.top - moved.top) <= 1;   // aufgeklappt wieder an der gemerkten Stelle
+      setKeyPos(pos0); setKeysMin(true);
+      $('keyLegend').querySelector('.kl-open').click(); ok = ok && !keysMin && !!$('keyLegend').querySelector('.kl-row');
+      setShowKeys(k0); setKeysMin(m0); return ok;
     });
     step('Neues Spiel: Landschaft vorgewählt aus den drei Startlandschaften, gewählte gilt', () => {
       let ok = true; const seen = new Set();

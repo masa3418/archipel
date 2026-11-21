@@ -252,13 +252,18 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Tastatur und Fenster** (ui.js, `keydown`): Tasten in Eingabefeldern, Häkchen, Reglern und Auswahllisten gehören dem Feld – außer Esc bei
   offenem Fenster: Das schließt es immer (vorher blieb z. B. „Spielstände“ offen, weil das Namensfeld den Fokus hat); nur ein Suchfeld mit Text
   leert Esc zuerst. `closeModals` nimmt den Fokus aus dem Fenster, damit die Spieltasten danach wieder greifen.
-- **Kopfzeile und Menü**: Oben stehen nur Runde + Stufe (`updateHeader`), `☰ Menü`, Zoom, Zentrieren (Fadenkreuz/Taste F, `actFocus` → `focusOn`), Ton, Handbuch, Sprache. Seltenes liegt im
+- **Kopfzeile und Menü**: Oben stehen nur Runde + Stufe (`updateHeader`), `☰ Menü`, Zoom, Zentrieren (Fadenkreuz/Taste F, `actFocus` → `focusOn`), Ansicht, Ton, Handbuch, Sprache.
+  Ordnung der Leiste (Konzept mit dem Nutzer): Menü (Spiel, Seltenes) | Karte (Zoom, Zentrieren, Ansicht) | Ton | Hilfe (Handbuch, Sprache). **Ansicht** (`#bView`, Auge;
+  `openViewMenu`/`renderViewMenu`/`VIEW_SW` in ui-schau.js, Liste `#viewMenu`): ein Symbol für alles, was die Anzeige der Karte betrifft – Schalter Tastenkürzel,
+  Wegvorschau, Kräfteverhältnis (dieselben wie in den Einstellungen: `setShowKeys`, `setShowRoute`, `setShowPower`), Wege und Marschziele (`setPathView`) und darunter die fünf Landschaften mit Farbfeld
+  (Wunsch des Nutzers: Landschaft mitten im Spiel wechseln als Gimmick). Die Liste bleibt beim Klicken offen. Neue Anzeige-Optionen kommen dorthin, nie als
+  weiteres Symbol in die Leiste. Seltenes liegt im
   Menü `#menu` (`openMenu`/`closeMenu`, ui.js): Neues Spiel, Spielstände, Statistik, Zeitraffer und „Einstellungen …“. Die Einstellungen stehen im
   eigenen Fenster `#mSettings` (`openSettings(tab)`, `setTab`), in vier Reitern wie im Handbuch (`data-settab`/`data-setpane`: Anzeige, Spielablauf, Ton & Steuerung,
   Schummeln & Zurücksetzen – Wunsch des Nutzers: Das Fenster war anderthalbmal so lang wie der Bildschirm; die letzten beiden sind keine gewöhnlichen
   Einstellungen und stehen im rot gestrichelten Kasten `.set-special`; dieser Reiter wird nicht gemerkt, `archipel-settab`), je Zeile ein erklärender Satz
   (`.set-row` + `.set-d`): Lautstärke, Klangtest, Wiedergabe der Züge, Wegvorschau beim Zeigen (`showRoute`), Grafiken (Übersicht, siehe unten), Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Tastenlegende über
-  der Karte (`showKeys`, `archipel-keys`; beim ersten Besuch an, sonst aus; verschiebbar am Griff `.kl-grip` oben – Wunsch des Nutzers –, Stelle in `keyPos`/`archipel-keys-pos`, Doppelklick legt sie zurück; `updateKeyLegend` in `refresh()`, blendet ab, was gerade nicht geht – neue Tastenkürzel dort
+  der Karte (`showKeys`, `archipel-keys`; beim ersten Besuch an, sonst aus; das × klappt sie nur zum Schildchen „⌨ Tasten“ ein (`keysMin`, `archipel-keys-min` – ein Erstspieler hatte sie geschlossen und fand sie nicht wieder; ganz aus nur über Einstellungen oder Ansicht; das Schildchen liegt immer unten links, aufgeklappt kehrt die Legende an ihre gemerkte Stelle zurück); verschiebbar am Griff `.kl-grip` oben – Wunsch des Nutzers –, Stelle in `keyPos`/`archipel-keys-pos`, Doppelklick legt sie zurück; `updateKeyLegend` in `refresh()`, blendet ab, was gerade nicht geht – neue Tastenkürzel dort
   und in der Tastentabelle des Handbuchs eintragen), automatisches Rundenende, Schwelle fürs Angebot zum vorzeitigen Ende (`offerPct`, `archipel-offer`,
   0 = nie, Standard 20 %; `maybeOfferEnd`. Bis 1.7.4 waren es 10 % – dem Nutzer zu spät. Messung KI gegen KI, 288 Partien, klein/mittel, Normal/Schwer: Angebot falsch bei 10/15/20/25/30/35 % in 0/0/1/3/7/22 Fällen von ca. 280; es kommt vor dem Ende um 10/18/29/43/63/91 Runden (klein) bzw. 20/30/44/66/86/120 (mittel)), Mausrad/Touchpad, Nebel aus. Neue Einstellungen dort einhängen, nicht ins Menü, in die Kopfzeile oder Seitenleiste.
   Die Hinweiszeile `#hover` (Feld unter der Maus, Siegchance) steht über der Karte (`#infoBar` in `#mapCol`, so breit wie die Karte);
@@ -284,7 +289,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   bricht ab; Klicks öffnen `openProdDialog`, Einheitentasten sind gesperrt. Direkt unter dem Schalter steht die Tabelle `#prodStats`
   (`updateProdStats`: je Typ im Bau, nächste fertig in, vorhanden). Rundenende, „Nächste Einheit“, neues Spiel und
   Laden schalten zurück. Der Zustand wird nicht gespeichert.
-- **Wegeansicht** (ui.js): `pathView`, umgeschaltet mit `setPathView(on)` (dritter Knopf des Ansichtsschalters, Taste G). Anders als
+- **Wegeansicht** (ui.js): `pathView`, umgeschaltet mit `setPathView(on)` (Schalter „Wege und Marschziele“ in der Liste „Ansicht“ der Kopfzeile, Taste G; bis 1.7.7 dritter Knopf des Schalters in der Seitenleiste – dort stehen nur noch die Arbeitsmodi Einheiten | Produktion, die Produktionsansicht bleibt bewusst dort). Anders als
   die Produktionsansicht nur eine zusätzliche Ebene unter den Einheiten – das Spiel läuft normal weiter, sie bleibt über Runden an.
   `buildPathCache()` sammelt Märsche (weiß, Pfeil), Patrouillen (türkis, Punkte) und Marschziele (gelb, Fähnchen), `drawRoute` zeichnet;
   `refresh()` verwirft den Cache (Wegsuche nie in jedem Bild). Legende mit Anzahl: `updatePathLegend` (`#pathLegend`).
@@ -340,8 +345,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   (`newLandSel`, `newLandPick`: bei jedem Öffnen zufällig eine der fünf vorgewählt (`START_LANDS`; anfangs nur Grün, Wüste, Schnee – erweitert, seit der Knopf oben das Umschalten leicht macht); „Diese Welt noch einmal“ übernimmt
   die der laufenden Partie) → `newGame(…, nAi, land)`. Die allererste Partie (erster Besuch oder nach „Zurücksetzen“, `FIRST_LAND` in ui-start.js) ist immer grün – Wunsch des Nutzers.
   Ohne Angabe (Simulationen) folgt sie der Kartennummer. In den Einstellungen sind jederzeit alle wählbar (ändert `S.land` der laufenden Partie),
-  ebenso über den Knopf `#bLand` in der Kopfzeile bei Zoom und Zentrieren (`openLandMenu`, kleine Liste `#landMenu` mit Farbfeldern; Wunsch des Nutzers:
-  ein Gimmick, das überrascht – bewusste Ausnahme von „keine Einstellungen in die Kopfzeile“, ohne Text). Je Landschaft ein Farbsatz (Wasser nach Tiefe,
+  ebenso über „Ansicht“ in der Kopfzeile (siehe „Kopfzeile und Menü“). Je Landschaft ein Farbsatz (Wasser nach Tiefe,
   Strand, Land nach Höhe, Brandung, Berge, Gipfel, Hügel, „Wald“ – in der Lava glühende Tümpel, auf dem Planeten magentafarbene Gewächse –,
   Farben der Übersichtskarte); Formen und Zufallsfolge in `buildTerrain` sind für alle gleich, feste Farben dort immer über `L.…` holen. Der
   Zeitraffer bleibt bei seinen eigenen Farben (er färbt das Land ohnehin nach Besitzer). Lava: erst war das Meer heller als das Land – jetzt
@@ -368,7 +372,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 747 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 748 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
