@@ -181,10 +181,11 @@ hooks.move = (u, fx, fy, tx, ty) => {
     vr: u.owner === 0 ? T(u).vision : 0 });
   anim.cursor += anim.speed;
 };
-function recGone(u, until) {
+// from: Verteidiger einer fremden Stadt mit verborgener Besatzung – bis dahin nur als Zeichen „besetzt“ (render)
+function recGone(u, until, from = null) {
   if (u.carrier != null) return;   // an Bord: wird ohnehin nicht einzeln gezeichnet
   anim.gone.push({ u: { id: u.id, type: u.type, owner: u.owner, hp: Math.max(1, u.hp), x: u.x, y: u.y,
-    air: u.type === 'car' && S.units.some(f => f.carrier === u.id && f.type === 'ftr') }, until });   // air: Träger gab Luftdeckung
+    air: u.type === 'car' && S.units.some(f => f.carrier === u.id && f.type === 'ftr') }, until, from });   // air: Träger gab Luftdeckung
 }
 // Gegner scheidet aus (keine Stadt mehr): seine Einheiten verschwinden in der Wiedergabe erst in diesem Moment – nur die, die du siehst
 hooks.out = (p, units) => {
@@ -218,14 +219,17 @@ hooks.combat = (a, d, x, y, won, storm = null) => {
   if (!anim.rec) return;
   if (a.owner !== 0 && !(d && d.owner === 0) && !seenByHuman(x, y)) return;
   recCam(x, y);
+  // Verteidiger einer fremden Stadt (Besatzung sonst verborgen, garrisonHidden): Er zeigt sich erst jetzt – hält er stand, über rv
+  // für die Dauer von Explosion und Schriftzug, fällt er, als Verlierer ab kurz vor der Explosion
+  const city = cityAt(x, y), hiddenDef = !!(d && city && d.owner !== 0 && city.owner !== 0 && city.x === d.x && city.y === d.y);
   anim.events.push({ type: 'boom', x, y, t0: anim.cursor, dur: 650, win: won ? 'att' : 'def',
-    hl: (a.owner === 0 && !won) || (d && d.owner === 0 && won) });
+    hl: (a.owner === 0 && !won) || (d && d.owner === 0 && won),
+    rv: hiddenDef && !won ? { id: d.id, type: d.type, owner: d.owner, hp: Math.max(1, d.hp) } : null });
   const loser = won ? d : a;
-  if (loser) recGone(loser, anim.cursor + 280);   // der Verlierer verschwindet in der Explosion
+  if (loser) recGone(loser, anim.cursor + 280, hiddenDef && won ? anim.cursor - 120 : null);   // der Verlierer verschwindet in der Explosion
   // Ergebnis aus deiner Sicht als Schriftzug über dem Feld
   let label = null;
   // d === null: Eroberungsversuch einer unbesetzten Stadt ist gescheitert
-  const city = cityAt(x, y);
   if (storm) label = null;   // Stadt fällt: der Schriftzug der Eroberung folgt
   else if (a.owner === 0) label = won ? (storm === false ? [tt('Sieg – Stadt hält', 'Won – city holds'), 'good'] : [tt('Sieg!', 'Victory!'), 'good']) : d ? [tt('Verloren', 'Lost'), 'bad'] : [tt('Gescheitert', 'Failed'), 'bad'];
   else if (d && d.owner === 0) label = won ? (storm === false ? [tt('Verloren – Stadt hält', 'Lost – city holds'), 'bad'] : [tt('Verloren', 'Lost'), 'bad']) : [tt('Abgewehrt!', 'Repelled!'), 'good'];
@@ -478,7 +482,8 @@ let pathView = false, pathCache = null, rallyCache = null;
 // erreichen. Gerechnet wird je Einheit mit ihrer vollen Bewegung über Gelände, das sie betreten kann – ohne andere Einheiten (die ziehen
 // weiter) und ohne Treibstoff. Der letzte Schritt ist der Angriff: Bodentruppen auch auf Schiffe am Ufer (Küstenangriff), Schiffe an Land
 // nur Kreuzer und Schlachtschiff, Transporter aufs Land daneben (Sturm vom Schiff). Die Ebene verrät nichts, was der Spieler nicht weiß:
-// nur Einheiten, die er sieht (canSee), in fremden Städten nur die gezeigte, keine Ladung, und nur über erforschtes Gelände.
+// nur Einheiten, die er sieht (canSee), um besetzte fremde Städte nur die Felder rundum (Besatzung verborgen), keine Ladung, und nur über
+// erforschtes Gelände.
 let threatView = false, threatMapUi = null;
 try { threatView = localStorage.getItem('archipel-threat') === '1'; } catch (e) {}
 function setThreatView(on) {
@@ -492,7 +497,12 @@ function buildThreatMap() {
   for (const e of S.units) {
     if (e.owner === 0 || e.carrier != null || !canSee(0, e)) continue;
     const t = T(e), i0 = idx(e.x, e.y);
-    if (S.cityGrid[i0] >= 0 && !CHEAT_FOG) { if (inCity.has(i0)) continue; inCity.add(i0); }   // in der Stadt zählt nur die Einheit, die man sieht
+    if (S.cityGrid[i0] >= 0 && !CHEAT_FOG) {
+      // Besatzung verborgen (garrisonHidden): Was auch immer drinsteht, erreicht zumindest die Felder rundum – mehr verrät die Ebene nicht
+      if (!inCity.has(i0)) for (const [dx, dy] of DIRS) { const nx = e.x + dx, ny = e.y + dy; if (inb(nx, ny) && P.seen[idx(nx, ny)]) z[idx(nx, ny)] = 1; }
+      inCity.add(i0);
+      continue;
+    }
     if (!canAttack(e.type) && e.type !== 'trn') continue;
     const air = t.domain === 'air', mv = Math.max(1, t.move), seen = new Set([i0]);
     let front = [[e.x, e.y]];
@@ -779,11 +789,34 @@ function drawEffect(e, f) {
   }
 }
 
+// Verborgene Besatzung (Wunsch des Nutzers): Steht in einer fremden Stadt etwas, zeigt die Karte nur das Zeichen „besetzt“ (Schild mit
+// Fragezeichen in der Farbe des Besitzers) – welche Einheit verteidigt, zeigt sich erst im Kampf (rv im boom-Ereignis, hooks.combat).
+// Vorher stand dort die zuerst gebaute Einheit, die Hinweiszeile nannte aber die stärkste – das passte oft nicht zusammen. Deshalb auch:
+// keine Siegchance gegen die Stadt (Hinweiszeile, Karte, Sturm vom Schiff „⚔ ?“), kein Feuerschutz und keine Luftdeckung aus der Stadt,
+// die Reichweite der Gegner zählt die Felder rundum. Nach Spielende und mit „Nebel aus“ ist alles offen. Die KI kennt die Besatzung
+// deiner Städte weiterhin (Entscheidung des Nutzers: Stufen bleiben gültig). Neue Anzeigen über fremde Städte hier nachfragen.
+function garrisonHidden(x, y) {
+  return veiledCity(cityAt(x, y)) && topUnitsAt(x, y).some(o => o.owner !== 0 && canSee(0, o));
+}
+function veiledCity(c) { return !!c && c.owner !== 0 && !S.over && !CHEAT_FOG; }   // Besatzung dieser Stadt wäre verborgen
+// Eroberungschance, wie du sie kennen kannst: Ein Schlachtschiff in einer Stadt mit verborgener Besatzung zählt nicht mit – sein
+// Feuerschutz zeigt sich erst beim Angriff (die Regel selbst rechnet mit captureChance).
+function knownCapture(c) {
+  if (safeStart(0, c)) return 1;
+  const bat = o => S.units.some(u => u.type === 'bat' && u.owner === o && u.carrier == null && u.hp > 0 && cheb(u.x, u.y, c.x, c.y) <= 1 && !(o !== 0 && garrisonHidden(u.x, u.y)));
+  return CAPTURE_BASE + (bat(0) ? SUPPORT_CAPTURE : 0) - (c.owner >= 0 && bat(c.owner) ? SUPPORT_CAPTURE : 0);
+}
 // Die Marke eines Feldes: welche der Einheiten dort gezeigt wird und mit welchen Zeichen. x, y = Feld, an dem gezeichnet wird (Karte: das Feld
-// selbst; Lupe: seine Lage im Ausschnitt).
-function drawTileToken(list, i, su, x, y) {
-  const show = list.find(u => su && (u === su || u.id === su.carrier)) || list.find(u => u.owner === 0 && u.moves > 0 && !u.order) || list[0];
+// selbst; Lupe: seine Lage im Ausschnitt). rv = Verteidiger, der sich gerade im Kampf zeigt (sonst bei verborgener Besatzung das Zeichen).
+function drawTileToken(list, i, su, x, y, rv = null) {
   const inCity = S.cityGrid[i] >= 0;
+  // list enthält schon nur, was du siehst (während der Wiedergabe mit dem Sichtstand von damals) – deshalb hier nicht garrisonHidden
+  if (inCity && list[0].owner !== 0 && veiledCity(S.cities[S.cityGrid[i]])) {
+    if (rv) drawToken(rv, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66);
+    else drawGarrison(list[0].owner, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66);
+    return;
+  }
+  const show = list.find(u => su && (u === su || u.id === su.carrier)) || list.find(u => u.owner === 0 && u.moves > 0 && !u.order) || list[0];
   // Zahl an der Marke (Einheiten in der Stadt, Ladung) nur bei eigenen Einheiten – wie viel der Gegner an Bord oder
   // in einer Stadt hat, bleibt bis zum Spielende verborgen
   const reveal = show.owner === 0 || S.over || CHEAT_FOG;   // Schummeln „Nebel aus“ deckt auch das auf
@@ -800,6 +833,10 @@ function drawTileToken(list, i, su, x, y) {
   };
   if (inCity) drawToken(show, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66, opts);
   else drawToken(show, x * TS, y * TS, TS, opts);
+}
+function drawGarrison(owner, px, py, size) {
+  const spr = unitSprite('garrison', owner, size);
+  ctx.drawImage(spr, px - spr.pad, py - spr.pad);
 }
 
 // ------------------------------------------------------------------ Lupe
@@ -874,7 +911,7 @@ function render(now = performance.now()) {
   // Eckwinkel = unter Feuer (fällt zu 75 %), gestrichelter Ring = Feuerschutz (fällt nur zu 25 %)
   for (const b of S.units) {
     if (b.type !== 'bat' || b.carrier != null) continue;
-    if (b.owner !== 0 && !V.vis[idx(b.x, b.y)] && !S.over) continue;
+    if (b.owner !== 0 && ((!V.vis[idx(b.x, b.y)] && !S.over) || veiledCity(cityAt(b.x, b.y)))) continue;   // in einer fremden Stadt: verborgen
     for (const [dx, dy] of [[0, 0], ...DIRS]) {
       const x = b.x + dx, y = b.y + dy;
       if (!inb(x, y)) continue;
@@ -889,7 +926,8 @@ function render(now = performance.now()) {
   const covered = new Set();
   const goneNow = playing ? anim.gone.filter(g => rel < g.until).map(g => g.u) : [];
   const shipsNow = S.units.filter(s => s.carrier == null && T(s).domain === 'sea' && (S.over || canSee(0, s))).concat(goneNow.filter(s => T(s).domain === 'sea'));
-  const carriersNow = S.units.filter(c => c.type === 'car' && c.carrier == null && (S.over || canSee(0, c)) && S.units.some(f => f.carrier === c.id && f.type === 'ftr'))
+  const carriersNow = S.units.filter(c => c.type === 'car' && c.carrier == null && (S.over || canSee(0, c)) && S.units.some(f => f.carrier === c.id && f.type === 'ftr')
+    && !(c.owner !== 0 && veiledCity(cityAt(c.x, c.y))))   // Träger in einer fremden Stadt: verborgen
     .concat(goneNow.filter(c => c.air));
   for (const c of carriersNow) {
     for (const s of shipsNow) {
@@ -932,9 +970,13 @@ function render(now = performance.now()) {
     if (!groups.has(i)) groups.set(i, []);
     groups.get(i).push(u);
   }
+  // Kampf um eine fremde Stadt mit verborgener Besatzung: Der Verteidiger, der standhält, zeigt sich, solange Explosion und Schriftzug
+  // zu sehen sind (rv, hooks.combat); einer, der fällt, über anim.gone (ab g.from, vorher als Zeichen „besetzt“)
+  const reveal = new Map();
+  if (playing) for (const e of anim.events) if (e.rv && rel >= e.t0 - 120 && rel < e.t0 + 250 + LABEL_MS) reveal.set(idx(e.x, e.y), e.rv);
   for (const [i, list] of groups) {
     const x = i % S.W, y = (i / S.W) | 0;
-    drawTileToken(list, i, su, x, y);
+    drawTileToken(list, i, su, x, y, reveal.get(i));
   }
   for (const [u, [x, y]] of moving) drawToken(u, x * TS, y * TS, TS, { badge: u.owner === 0 || S.over || CHEAT_FOG ? cargoOf(u).length : 0 });
   // Vernichtete und in einer Stadt aufgegangene Einheiten bleiben bis zu ihrem Moment sichtbar
@@ -942,7 +984,10 @@ function render(now = performance.now()) {
     if (rel >= g.until) continue;
     const [x, y] = animPos(g.u, rel) || [g.u.x, g.u.y];
     const still = Number.isInteger(x) && Number.isInteger(y);
-    if (still && S.cityGrid[idx(x, y)] >= 0) drawToken(g.u, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66);
+    if (still && S.cityGrid[idx(x, y)] >= 0) {
+      if (g.from != null && rel < g.from) drawGarrison(g.u.owner, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66);
+      else drawToken(g.u, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66);
+    }
     else drawToken(g.u, x * TS, y * TS, TS);
   }
 
@@ -974,7 +1019,7 @@ function render(now = performance.now()) {
     if (gp) drawGotoConfirm(su, gp);
     // Sturm vom Schiff: Über jeder Stadt, die die Truppen des gewählten Transporters angreifen können, steht die Chance –
     // dauerhaft und pulsierend, damit man auf der Karte sieht, was jetzt möglich ist (Klick auf die Stadt oder Taste U)
-    if (T(su).carries === 'land' && su.owner === 0) for (const o of assaultOptions(su)) drawAssaultChance(o.x, o.y, o.chance, pulse);
+    if (T(su).carries === 'land' && su.owner === 0) for (const o of assaultOptions(su)) drawAssaultChance(o.x, o.y, garrisonHidden(o.x, o.y) ? null : o.chance, pulse);
   } else if (selCity != null && !su) {
     const c = S.cities[selCity];
     if (c) drawSelRing(c.x, c.y, pulse, now); else selCity = null;
@@ -985,8 +1030,11 @@ function render(now = performance.now()) {
     // kein Land für Zerstörer & Co., keine Schiffe im Hafen, wenn Bodentruppen die Stadt angreifen
     const seen = su && S.players[0].vis[idx(hx, hy)] ? topUnitsAt(hx, hy).filter(o => o.owner !== 0 && canSee(0, o)) : [];
     const en = seen.length ? cityDefenders(su, cityAt(hx, hy), seen).filter(o => canStrike(su, o)) : [];
-    drawHoverFrame(hx, hy, en.length > 0);
-    if (en.length && canAttack(su.type) && cheb(su.x, su.y, hx, hy) <= 1) drawOdds(hx, hy, attackOdds(su, pickDefender(en), hx, hy));
+    // fremde Stadt mit verborgener Besatzung: rot für jede Einheit, die dort angreifen oder erobern kann (ob nur Schiffe im Hafen liegen,
+    // bleibt offen), aber keine Siegchance
+    const hid = seen.length > 0 && garrisonHidden(hx, hy);
+    drawHoverFrame(hx, hy, en.length > 0 || (hid && !!T(su).capture));
+    if (!hid && en.length && canAttack(su.type) && cheb(su.x, su.y, hx, hy) <= 1) drawOdds(hx, hy, attackOdds(su, pickDefender(en), hx, hy));
   }
 }
 
@@ -1063,15 +1111,16 @@ function drawGotoPath(x, y, path, now, col = 'rgba(255,255,255,0.75)') {
   ctx.restore();
 }
 // Chance eines Sturms vom Schiff über der Stadt (hx, hy), pulsierend
+// chance = null: Besatzung verborgen (garrisonHidden) – „⚔ ?“
 function drawAssaultChance(hx, hy, chance, pulse) {
-  const txt = '⚔ ' + Math.round(chance * 100) + ' %';
+  const txt = chance == null ? '⚔ ?' : '⚔ ' + Math.round(chance * 100) + ' %';
   ctx.font = `700 ${Math.max(11, Math.round(TS * 0.42))}px system-ui, sans-serif`;
   const w = ctx.measureText(txt).width + 12, h = Math.max(16, TS * 0.6);
   const bx = hx * TS + TS / 2 - w / 2, by = hy * TS - h - 3 - pulse * TS * 0.08;
   roundRectPath(ctx, bx, by, w, h, h / 2);
   ctx.fillStyle = 'rgba(15,20,28,0.92)'; ctx.fill();
   ctx.strokeStyle = `rgba(255,95,85,${0.55 + 0.4 * pulse})`; ctx.lineWidth = Math.max(1.5, TS / 18); ctx.stroke();
-  ctx.fillStyle = chance >= 0.5 ? '#7ee2ae' : '#ff8a80';
+  ctx.fillStyle = chance == null ? '#f2d38a' : chance >= 0.5 ? '#7ee2ae' : '#ff8a80';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(txt, hx * TS + TS / 2, by + h / 2 + 0.5);
 }

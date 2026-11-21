@@ -217,8 +217,8 @@ function gfxUnits(body) {
   if (gfx.svg && gfx.svg.kind === 'unit') body.append(gfxSvgPanel());
 
   const st = gfxSection(body, tt('Zeichen an der Marke', 'Marks on the badge'),
-    tt('So zeigt die Karte, was mit einer Einheit los ist. Die Zahl steht nur an eigenen Einheiten – wie viel der Gegner an Bord oder in einer Stadt hat, bleibt verborgen.',
-      'How the map shows what is going on with a unit. The number only appears on your own units – how much the enemy has on board or in a city stays hidden.'), 124);
+    tt('So zeigt die Karte, was mit einer Einheit los ist. Die Zahl steht nur an eigenen Einheiten – wie viel der Gegner an Bord hat, bleibt verborgen; in seinen Städten sogar, welche Einheit dort steht.',
+      'How the map shows what is going on with a unit. The number only appears on your own units – how much the enemy has on board stays hidden; in his cities even which unit is there.'), 124);
   const LAND = ['...', '...', '...'], SEA = ['~~~', '~~~', '~~~'], CITY = ['...', '.C.', '...'];
   const marks = [
     [LAND, gu('tank'), {}, tt('Bereit', 'Ready'), tt('hat noch Züge', 'has moves left')],
@@ -243,6 +243,8 @@ function gfxUnits(body) {
     }, { crop: [1, 1, 1, 1], cities: [0] });
     st.append(gfxCard(pic, title, note));
   }
+  st.append(gfxCard(gfxPic(CITY, 58, () => drawGarrison(1, TS + TS * 0.36, TS + TS * 0.36, TS * 0.66), { crop: [1, 1, 1, 1], cities: [1] }),
+    tt('Feindliche Stadt besetzt', 'Enemy city garrisoned'), tt('welche Einheit sie verteidigt, zeigt sich erst im Kampf', 'which unit defends it only shows in battle')));
 
   const ui = gfxSection(body, tt('Symbole der Oberfläche', 'Interface symbols'), tt('Ebenfalls SVG: das Symbol der App und der Knopf „Zentrieren“ oben in der Leiste.',
     'Also SVG: the app icon and the “Centre” button in the top bar.'));
@@ -392,6 +394,10 @@ function gfxMarks(body) {
   mouse.append(gfxCard(gfxPic(['~~..', '~C..', '~~..'], 40, now => {
     drawToken(gu('trn'), 0, TS, TS, { badge: 3 }); drawSelRing(0, 1, gfxPulse(now), now); drawAssaultChance(1, 1, CAPTURE_BASE + SUPPORT_CAPTURE, gfxPulse(now));
   }, { live: true, cities: [1] }), tt('Sturm vom Schiff', 'Assault from the ship'), tt('Chance, die Stadt mit den Truppen an Bord zu nehmen', 'chance to take the city with the troops on board')));
+  mouse.append(gfxCard(gfxPic(['~~..', '~C..', '~~..'], 40, now => {
+    drawToken(gu('trn'), 0, TS, TS, { badge: 3 }); drawGarrison(1, TS + TS * 0.36, TS + TS * 0.36, TS * 0.66);
+    drawSelRing(0, 1, gfxPulse(now), now); drawAssaultChance(1, 1, null, gfxPulse(now));
+  }, { live: true, cities: [1] }), tt('Sturm auf besetzte Stadt', 'Assault on a garrisoned city'), tt('wer verteidigt, ist unbekannt: „?“ statt einer Chance', 'the defender is unknown: “?” instead of a chance')));
 
   const sup = gfxSection(body, tt('Unterstützung', 'Support'), tt('In der Farbe des Schiffs, das unterstützt.', 'In the colour of the supporting ship.'));
   sup.append(gfxCard(gfxPic(['~~.', '~C.', '~..'], 44, () => { drawToken(gu('bat'), 0, TS, TS); drawSupportMark(1, 1, false, P0); }, { cities: [1] }),

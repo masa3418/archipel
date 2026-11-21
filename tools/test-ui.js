@@ -173,6 +173,32 @@ window.UiTest = (() => {
     }
     centerOn(b.x, b.y, true);
   }
+  // Verborgene Besatzung: In einer fremden Stadt zeigt die Karte nur das Zeichen „besetzt“, die Hinweiszeile nennt weder Einheit noch
+  // Siegchance, die Reichweite der Gegner färbt die Felder rundum; mit „Nebel aus“ ist alles offen.
+  function garrison() {
+    reset();
+    const xy = scene['Stadt des Gegners'][0];
+    if (!xy) { check(false, 'Besatzung: keine bekannte Stadt des Gegners im Spielstand'); return; }
+    const [cx, cy] = xy, c = cityAt(cx, cy);
+    const n = DIRS.map(([dx, dy]) => [cx + dx, cy + dy]).find(([x, y]) => inb(x, y) && free(x, y));
+    const me = createUnit(land(...n) ? 'inf' : 'dst', 0, ...n);
+    createUnit('crs', c.owner, cx, cy); createUnit('inf', c.owner, cx, cy);
+    computeVision(0); select(me, false); hover = [cx, cy]; refresh(); updateHover();
+    const txt = $('hover').textContent;
+    check(garrisonHidden(cx, cy), 'Besatzung: fremde Stadt mit Einheiten gilt als verborgen');
+    check(!txt.includes(UT.crs.name) && !txt.includes(UT.inf.name) && !txt.includes(tt('Siegchance', 'Win chance')), 'Besatzung: Hinweiszeile nennt weder Einheit noch Siegchance – ' + txt);
+    check(txt.includes(tt('besetzt', 'garrisoned')), 'Besatzung: Hinweiszeile sagt „besetzt“');
+    const dg = drawGarrison, dt = drawToken; let mark = 0, unit = 0;
+    drawGarrison = function (o, px, py, s) { if (Math.floor(px / TS) === cx && Math.floor(py / TS) === cy) mark++; return dg(o, px, py, s); };
+    drawToken = function (u, px, py, s, o) { if (Math.floor(px / TS) === cx && Math.floor(py / TS) === cy) unit++; return dt(u, px, py, s, o); };
+    try { dirty = true; render(performance.now()); } finally { drawGarrison = dg; drawToken = dt; }
+    check(mark === 1 && unit === 0, 'Besatzung: Karte zeigt nur das Zeichen „besetzt“');
+    threatMapUi = null; const z = buildThreatMap();
+    check(DIRS.every(([dx, dy]) => !inb(cx + dx, cy + dy) || !S.players[0].seen[idx(cx + dx, cy + dy)] || z[idx(cx + dx, cy + dy)] === 1), 'Besatzung: Reichweite der Gegner färbt die Felder rund um die Stadt');
+    setCheatFog(true); updateHover();
+    check(!garrisonHidden(cx, cy) && $('hover').textContent.includes(UT.crs.name), 'Besatzung: mit „Nebel aus“ ist alles offen');
+    setCheatFog(false); hover = null; threatMapUi = null;
+  }
   // Befehle: Knopf der Seitenleiste, Rechtsklick-Menü, Tastenlegende und Taste müssen sich einig sein (orderCheck).
   // Grauer Knopf = die Taste meldet denselben Grund und ändert nichts; aktiver Knopf = die Taste bewirkt etwas.
   function orders() {
@@ -605,7 +631,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); locator(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters

@@ -58,6 +58,14 @@ for (const [k, v] of Object.entries(ICON_SRC)) {
   ICONS[k] = { fill: v.fill.map(p => new Path2D(p)), cut: (v.cut || []).map(p => new Path2D(p)) };
 }
 
+// Zeichen „besetzt“ für fremde Städte: Schild mit Fragezeichen (unitSprite('garrison', besitzer, größe); wer die Stadt verteidigt,
+// zeigt sich erst im Kampf – garrisonHidden in ui-karte.js). Keine Einheit, deshalb nicht in ICON_SRC (dort stehen nur die Einheitentypen).
+ICONS.garrison = {
+  fill: [new Path2D('M50 9 L85 21 L85 47 C85 70 70 85 50 94 C30 85 15 70 15 47 L15 21 Z')],
+  cut: [new Path2D('M36.5 40 C36.5 28.5 43 23 51 23 C59.5 23 65 29 65 36.5 C65 44.5 59.5 47.5 56 51 C54 53 54 55.5 54 60 L46.5 60 C46.5 53.5 47.5 50.5 51 47 C55 43 57.5 41 57.5 37 C57.5 32.5 55 30 51 30 C46.5 30 44 33.5 44 40 Z'),
+    new Path2D('M46.5 65.5 h7.5 v7.5 h-7.5 Z')],
+};
+
 const spriteCache = new Map();
 function clearSprites() { spriteCache.clear(); }
 

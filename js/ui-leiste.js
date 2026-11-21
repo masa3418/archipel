@@ -381,22 +381,30 @@ function updateHover() {
   }
   // Eroberungschance der eigenen Einheit samt Grund (Schlachtschiffe)
   const capInfo = cc => {
-    const pc = Math.round(captureChance(0, cc) * 100);
+    const pc = Math.round(knownCapture(cc) * 100);   // ein Schlachtschiff in einer Stadt mit verborgener Besatzung zählt nicht (knownCapture)
     if (safeStart(0, cc)) return [pc, tt(' – deine ersten beiden neutralen Städte fallen sicher', ' – your first two neutral cities fall for certain')];
     return [pc, pc > 50 ? tt(' dank Feuerunterstützung durch dein Schlachtschiff', ' thanks to fire support from your battleship')
       : pc < 50 ? tt(' wegen Feuerschutz durch ein feindliches Schlachtschiff', ' because of covering fire from an enemy battleship') : ''];
   };
   if (P.vis[i]) {
     const us = topUnitsAt(x, y).filter(o => canSee(0, o));
-    // Vom Gegner nur die Einheit nennen, die das Feld verteidigt – wie viele es sind, bleibt verborgen
-    const named = S.over || CHEAT_FOG || !us.some(o => o.owner !== 0) ? us : us.filter(o => o.owner === 0).concat([pickDefender(us.filter(o => o.owner !== 0))]);
+    // Vom Gegner nur die Einheit nennen, die das Feld verteidigt – wie viele es sind, bleibt verborgen. In einer fremden Stadt nicht einmal
+    // das (garrisonHidden): Wer sie verteidigt, zeigt sich erst im Kampf – deshalb dort auch keine Siegchance.
+    const hid = garrisonHidden(x, y);
+    const named = S.over || CHEAT_FOG || !us.some(o => o.owner !== 0) ? us : hid ? [] : us.filter(o => o.owner === 0).concat([pickDefender(us.filter(o => o.owner !== 0))]);
     if (named.length) s += ' · ' + named.map(o => `${o.owner === 0 ? '' : tt('Feind: ', 'Enemy: ')}${T(o).name} ${o.hp}/${T(o).hp}${T(o).stealth ? (o.surf ? tt(' (aufgetaucht)', ' (surfaced)') : tt(' (getaucht)', ' (submerged)')) : ''}`).join(', ');
+    if (hid) s += tt(' · besetzt – wer die Stadt verteidigt, zeigt sich erst im Kampf', ' · garrisoned – who defends the city only shows in battle');
     const su = selUnit();
     const en = us.filter(o => o.owner !== 0);
     const foes = su ? cityDefenders(su, c, en).filter(o => canStrike(su, o)) : en;   // Schiffe im Hafen verteidigen nicht gegen Bodentruppen; Schiffe ohne Beschuss greifen kein Land an
     const ships = en.length - foes.length;
     const sinkTxt = ships ? tt(' · Schiffe im Hafen gehen mit der Stadt unter', ' · ships in port are lost with the city') : '';   // ohne Anzahl (bleibt verborgen)
-    if (su && foes.length && canAttack(su.type)) {
+    if (hid) {
+      if (su && T(su).capture) {
+        const [pc, why] = capInfo(c);
+        s += tt(` · siegt deine Einheit, fällt die Stadt zu ${pc} %${why}`, ` · if your unit wins, the city falls ${pc} % of the time${why}`);
+      }
+    } else if (su && foes.length && canAttack(su.type)) {
       const d = pickDefender(foes);
       s += ` · ${tt('Siegchance', 'Win chance')}: ${Math.round(attackOdds(su, d, x, y) * 100)} %`;
       const cs = combatSpec(su, d, x, y);
@@ -414,7 +422,8 @@ function updateHover() {
   const hs = selUnit();
   if (hs && hs.owner === 0 && T(hs).carries === 'land') {
     const op = assaultOptions(hs).find(o => o.x === x && o.y === y);
-    if (op) s += op.kind === 'city' ? tt(` · Klick oder U: Die Truppen stürmen vom Schiff aus – ${Math.round(op.chance * 100)} %`, ` · Click or U: the troops storm the city from the ship – ${Math.round(op.chance * 100)} %`)
+    if (op) s += op.kind === 'city' && garrisonHidden(x, y) ? tt(' · Klick oder U: Die Truppen stürmen vom Schiff aus', ' · Click or U: the troops storm the city from the ship')
+      : op.kind === 'city' ? tt(` · Klick oder U: Die Truppen stürmen vom Schiff aus – ${Math.round(op.chance * 100)} %`, ` · Click or U: the troops storm the city from the ship – ${Math.round(op.chance * 100)} %`)
       : tt(` · Klick: Die Truppen greifen vom Schiff aus an – ${Math.round(op.chance * 100)} %`, ` · Click: the troops attack from the ship – ${Math.round(op.chance * 100)} %`);
   }
   $('hover').textContent = s;

@@ -141,9 +141,19 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   „Wehrlos“ daher nie über `T(d).str === 0` prüfen, sondern über `combatSpec(...).ds` (so in `aiAdjTarget`). KI: `aiCarrier` (bleibt beim Schlachtschiff bzw. beladenen Transporter),
   ab Können 1 und 8 Städten ein Träger. Produktionsregeln der KI zählen mit `planned(t)` auch Einheiten, die andere Städte
   gerade bauen – sonst beginnen mehrere Städte gleichzeitig dasselbe.
-- **Verborgene Stärke:** Ladung fremder Transporter/Träger und die Zahl der Einheiten in fremden Städten zeigt die Karte nicht (Marke ohne
-  Zahl, Hinweiszeile nennt nur den Verteidiger, erst nach Spielende oder mit `CHEAT_FOG` alles); die KI schätzt fremde Ladung mit `cargoSeen` (Transporter halb voll).
-  Neue Anzeigen über fremde Einheiten dürfen keine Anzahl verraten. Handbuch: Zeile „Verborgene Stärke“ im Reiter „Kampf“.
+- **Verborgene Stärke:** Ladung fremder Transporter/Träger zeigt die Karte nicht (Marke ohne Zahl, erst nach Spielende oder mit `CHEAT_FOG` alles);
+  die KI schätzt fremde Ladung mit `cargoSeen` (Transporter halb voll). Neue Anzeigen über fremde Einheiten dürfen keine Anzahl verraten.
+  **Besatzung fremder Städte** (Idee des Nutzers; ui-karte.js `garrisonHidden(x, y)`, `veiledCity(c)`, `knownCapture(c)`): Die Karte zeigt nur das Zeichen
+  „besetzt“ (`drawGarrison`, Schild mit Fragezeichen in der Farbe des Besitzers, `ICONS.garrison` in gfx.js) – welche Einheit verteidigt, zeigt sich erst im
+  Kampf: Hält der Verteidiger stand, trägt das boom-Ereignis `rv` (Marke für Explosion und Schriftzug), fällt er, zeigt ihn `anim.gone` ab `from`. Vorher stand
+  dort die zuerst gebaute Einheit, die Hinweiszeile nannte aber die stärkste – das passte oft nicht zusammen. Deshalb gibt es gegen eine besetzte fremde
+  Stadt keine Siegchance (Hinweiszeile: „besetzt – wer die Stadt verteidigt, zeigt sich erst im Kampf“ und nur die Eroberungschance; Karte ohne `drawOdds`;
+  Sturm vom Schiff „⚔ ?“, Rückfragefenster ohne Chance), Schiffe im Hafen werden nicht erwähnt, ein Schlachtschiff oder Träger in der Stadt zeichnet weder
+  Feuerschutz noch Luftdeckung und zählt in der angezeigten Eroberungschance nicht (`knownCapture` – die Regel selbst rechnet mit `captureChance`), und die
+  Reichweite der Gegner färbt die Felder rund um die Stadt. In `drawTileToken` zählt `veiledCity`, nicht `garrisonHidden`: Die Liste enthält dort schon nur
+  Sichtbares, während der Wiedergabe mit dem Sichtstand von damals (sonst blitzte nach dem Tod der letzten Einheit neben der Stadt der Kreuzer auf). Die KI
+  kennt die Besatzung deiner Städte weiterhin (Entscheidung des Nutzers: Stufen bleiben gültig). Neue Anzeigen über fremde Städte dort nachfragen.
+  Handbuch: Zeile „Verborgene Stärke“ im Reiter „Kampf“.
   Messung (je 192 Partien, alt → gedeckter Transporter + KI-Korrektur → zusätzlich verborgene Ladung): Leicht 98/98/97 %,
   Normal 59/65/62 %, Schwer 17/20/22 %, Brutal 2/2/3 %, offen 20/12/13 – im Rahmen, Stufen nicht nachgestellt.
 - **Handbuch** (Hilfe): sieben Reiter in `index.html` (alles zum Laden, Landen und Angriff vom Schiff steht gesammelt unter
@@ -324,7 +334,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   zuschaltbare Ebene (Liste „Ansicht“, Taste K, gemerkt in `archipel-threat`). Rot getönt mit Umriss = Felder, auf denen eine sichtbare gegnerische
   Einheit in ihrem nächsten Zug angreifen könnte; nur schraffiert = allein von Jägern erreichbar. Je Einheit volle Bewegung über betretbares Gelände,
   letzter Schritt = Angriff (Bodentruppen auch auf Wasser am Ufer, Schiffe an Land nur mit `shore`, Transporter nur aufs Land daneben, Träger nichts);
-  ohne andere Einheiten und ohne Treibstoff. **Darf nichts verraten:** nur `canSee(0, e)`, in fremden Städten nur die gezeigte Einheit, keine Ladung,
+  ohne andere Einheiten und ohne Treibstoff. **Darf nichts verraten:** nur `canSee(0, e)`, um besetzte fremde Städte nur die Felder rundum (Besatzung verborgen), keine Ladung,
   nur erforschte Felder (sonst zeichnete die Ebene Küsten im Nebel nach). Cache `threatMapUi`, von `refresh()` verworfen (0,1 ms je Berechnung).
   Nicht während der Wiedergabe und nicht nach Spielende. Ändern sich Angriffsregeln (`canStrike`), hier mit anpassen. Noch nicht in der Grafik-Übersicht.
 - **Lupe** (ui-karte.js `setLoupe`, `drawLoupe`, `LOUPE_D`; Wunsch des Nutzers statt größerer Zoomstufen – die wären nur zum Anschauen, und die Karte
@@ -429,8 +439,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 783 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
-     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 789 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
    Pull Requests (Entscheidung mit dem Nutzer: für eine Person zu viel Zeremonie; neu überlegen, wenn andere beitragen).

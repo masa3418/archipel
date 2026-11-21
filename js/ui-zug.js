@@ -68,8 +68,13 @@ function openLandingDialog(u) {
   if (tg.kind === 'city') {
     const neutral = tg.city.owner === -1;
     $('landTitle').textContent = tt(`Vor ${tg.name}: angreifen?`, `Off ${tg.name}: attack?`);
-    $('landText').innerHTML = tt(`Dein Transporter liegt vor der ${neutral ? 'neutralen' : 'feindlichen'} Stadt <b>${name}</b>. An Bord: ${list}.<br><br>Die Truppen können sofort vom Schiff aus angreifen – erst Infanterie, dann Panzer, bis die Stadt fällt. Chance des ersten Angriffs: <b>${pct} %</b>.`,
-      `Your transport lies off the ${neutral ? 'neutral' : 'enemy'} city of <b>${name}</b>. On board: ${list}.<br><br>The troops can attack straight from the ship – infantry first, then tanks, until the city falls. Chance of the first attack: <b>${pct} %</b>.`);
+    // besetzte fremde Stadt: Wer verteidigt, zeigt sich erst im Kampf (garrisonHidden) – keine Chance des ersten Angriffs
+    const cap = Math.round(knownCapture(tg.city) * 100);
+    const odds = garrisonHidden(tg.x, tg.y)
+      ? tt(`Die Stadt ist besetzt – wer sie verteidigt, zeigt sich erst im Kampf. Siegt ein Angreifer, fällt sie zu <b>${cap} %</b>.`, `The city is garrisoned – who defends it only shows in battle. If an attacker wins, it falls <b>${cap} %</b> of the time.`)
+      : tt(`Chance des ersten Angriffs: <b>${pct} %</b>.`, `Chance of the first attack: <b>${pct} %</b>.`);
+    $('landText').innerHTML = tt(`Dein Transporter liegt vor der ${neutral ? 'neutralen' : 'feindlichen'} Stadt <b>${name}</b>. An Bord: ${list}.<br><br>Die Truppen können sofort vom Schiff aus angreifen – erst Infanterie, dann Panzer, bis die Stadt fällt. `,
+      `Your transport lies off the ${neutral ? 'neutral' : 'enemy'} city of <b>${name}</b>. On board: ${list}.<br><br>The troops can attack straight from the ship – infantry first, then tanks, until the city falls. `) + odds;
   } else {
     const d = tg.target;
     $('landTitle').textContent = tt(`Feind am Ufer: angreifen?`, `Enemy on the shore: attack?`);
