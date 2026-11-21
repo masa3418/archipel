@@ -385,8 +385,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Zeitraffer bleibt bei seinen eigenen Farben (er färbt das Land ohnehin nach Besitzer). Lava: erst war das Meer heller als das Land – jetzt
   dunkles Meer, helleres warmes Land. Eigene Formen je Landschaft (Palmen, Tannen, Eisschollen) gibt es bewusst noch nicht.
   **Klimazonen** (`zonen`, Wunsch des Nutzers statt „je Insel zufällig“): je Feld einer der Farbsätze Grün/Wüste/Schnee/Lava nach der Lage
-  (`zoneMap`, `ZONE_KEYS`, `tileLandscape` in gfx.js): Abstand zur Mitte oben/unten mit welligem Rauschen – über 0,62 Schnee, unter 0,28 Wüste,
-  dazwischen Grün; Inseln unter 15 % des Landes einheitlich nach ihrer Mitte (12 % davon Lava, nie im Schnee), große Landmassen Feld für Feld mit
+  (`zoneMap`, `ZONE_KEYS`, `tileLandscape` in gfx.js): Abstand zur Mitte oben/unten mit welligem Rauschen – über `ZONE_SNOW` (0,78) Schnee, unter `ZONE_DESERT` (0,17) Wüste (Grün übergewichtet, Wunsch des Nutzers: Land mittel über alle Welten Grün/Wüste/Schnee/Lava 63/17/15/6 %, vorher mit 0,62/0,28 34/27/36/4 %),
+  dazwischen Grün; Inseln unter 15 % des Landes einheitlich nach der **Rangfolge** ihrer Mitte von Nord nach Süd (`ISL_SNOW` je 10 % im Norden und Süden Schnee, `ISL_DESERT` die
+  mittleren 15 % Wüste, 12 % Lava, nie im Schnee – Wunsch des Nutzers; nach der absoluten Lage gab es mit dem schmalen Schneegürtel im Inselreich oft keine
+  Schneeinsel; jetzt in 30 Karten aller Welten keine ohne Schnee oder Wüste; Land mittel: Inselreich 64/19/10/7 %, Binnenmeer 53/7/34/5 %), große Landmassen Feld für Feld mit
   Lavafeldern aus einem zweiten Rauschen. Wasser überall grün-blau, Strand in der Farbe des Landes daneben, Brandung einheitlich. Zufall nur aus der
   Kartennummer (`S.seed`), Cache je Partie. `buildTerrain` holt den Farbsatz je Feld (`pal(x, y)`; Lupe über `st.ox/oy`), Kartenstücke der
   Grafik-Übersicht bleiben grün; Übersichtskarte über `tileLandscape`. Binnenmeer wirkt sehr verschneit, weil der Landring oben und unten liegt.

@@ -238,6 +238,10 @@ function landscape() { return LANDSCAPES[typeof S !== 'undefined' && S && S.land
 // einheitlich die Zone ihrer Mitte (sonst wirkten sie gestreift), große Landmassen (Festland, Binnenmeer, Kontinente) wechseln Feld für Feld.
 // Wasser bleibt überall blau; ein Strand nimmt die Farbe des Landes daneben. Nur Aussehen – aus der Kartennummer, gleiche Nummer = gleiches Bild.
 const ZONE_KEYS = ['gruen', 'wueste', 'schnee', 'lava'];
+// Grenzen der Zonen (Abstand zur Mitte 0…1, mit Rauschen): darüber Schnee, darunter Wüste. Grün übergewichtet (Wunsch des Nutzers):
+// vorher 0,62 / 0,28 – Grün 34 %, Wüste 27 %, Schnee 36 % des Landes (mittel, alle Welten)
+let ZONE_SNOW = 0.78, ZONE_DESERT = 0.17;
+const ISL_SNOW = 0.1, ISL_DESERT = 0.15;   // Inseln: je 10 % im Norden und Süden Schnee, die mittleren 15 % Wüste
 let zoneCache = null;
 function zoneMap() {
   const W = S.W, H = S.H, key = [S.gameId, W, H, S.seed].join();
@@ -252,7 +256,7 @@ function zoneMap() {
   };
   const climate = (x, y) => {
     const lat = Math.abs((y + 0.5) / H - 0.5) * 2 + (noise(x, y, 7, 1) - 0.5) * 0.32;
-    return lat > 0.62 ? 2 : lat < 0.28 ? 1 : 0;
+    return lat > ZONE_SNOW ? 2 : lat < ZONE_DESERT ? 1 : 0;
   };
   const z = new Uint8Array(W * H), cont = S.cont, land = i => S.terrain[i] === 1;
   // Inseln: Größe und Mitte je Landmasse
@@ -261,12 +265,18 @@ function zoneMap() {
     total++; const k = cont ? cont[i] : -1; if (k < 0) continue;
     size.set(k, (size.get(k) || 0) + 1); sx.set(k, (sx.get(k) || 0) + (i % W)); sy.set(k, (sy.get(k) || 0) + ((i / W) | 0));
   }
+  // Kleinere Inseln nach ihrer Rangfolge von Nord nach Süd (Wunsch des Nutzers): die nördlichsten und südlichsten je ISL_SNOW werden Schnee-,
+  // die mittleren ISL_DESERT Wüsteninseln, der Rest grün, vereinzelt Lava. So hat jede Inselkarte ein paar Schnee- und Wüsteninseln, auch wenn
+  // am Kartenrand nur Wasser liegt – nach der absoluten Lage gab es mit dem schmalen Schneegürtel im Inselreich oft keine einzige.
   const islandZone = new Map();
-  for (const [k, n] of size) if (n < total * 0.15) {
-    const cx = sx.get(k) / n, cy = sy.get(k) / n; let zz = climate(cx, cy);
-    if (zz !== 2 && hash(k, 0, 9) < 0.12) zz = 3;   // vereinzelt eine Lavainsel
-    islandZone.set(k, zz);
-  }
+  const isl = [...size].filter(([, n]) => n < total * 0.15).map(([k, n]) => ({ k, cx: sx.get(k) / n, cy: sy.get(k) / n }))
+    .sort((p, q) => p.cy - q.cy || p.cx - q.cx);
+  isl.forEach((o, j) => {
+    const d = isl.length > 1 ? Math.abs(j / (isl.length - 1) - 0.5) * 2 : 0;   // 0 = Mitte der Rangfolge, 1 = nördlichste/südlichste
+    let zz = d > 1 - 2 * ISL_SNOW ? 2 : d < ISL_DESERT ? 1 : 0;
+    if (zz !== 2 && hash(o.k, 0, 9) < 0.12) zz = 3;   // vereinzelt eine Lavainsel
+    islandZone.set(o.k, zz);
+  });
   for (let i = 0; i < W * H; i++) {
     const x = i % W, y = (i / W) | 0, k = cont && land(i) ? cont[i] : -1;
     if (islandZone.has(k)) { z[i] = islandZone.get(k); continue; }

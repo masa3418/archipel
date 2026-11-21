@@ -515,6 +515,8 @@ window.UiTest = (() => {
       const zi = zoneMap(), per = new Map(); let total = 0;
       for (let i = 0; i < zi.length; i++) if (S.terrain[i]) { total++; const k = S.cont[i]; if (!per.has(k)) per.set(k, { n: 0, z: new Set() }); per.get(k).n++; per.get(k).z.add(zi[i]); }
       for (const v of per.values()) if (v.n < total * 0.15 && v.z.size !== 1) ok = false;
+      const islZ = new Set([...per.values()].filter(v => v.n < total * 0.15).map(v => [...v.z][0]));
+      ok = ok && islZ.has(2) && islZ.has(1) && islZ.has(0);   // Rangfolge: jede Inselkarte hat Schnee-, Wüsten- und grüne Inseln
       // Ausschnitt (Lupe) zeigt dieselben Farben wie die ganze Karte
       const ts = 24, full = buildTerrain(ts), c = S.cities.find(k => k.owner === 0), x0 = Math.max(0, c.x - 3), y0 = Math.max(0, c.y - 3), w = Math.min(7, W - x0), h = Math.min(7, H - y0);
       const sub = (src, T) => { const r = new T(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) r[y * w + x] = src[(y0 + y) * W + x0 + x]; return r; };
