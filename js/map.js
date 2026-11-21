@@ -229,7 +229,9 @@ function generateMap(W, H, seed, worldKey = 'inseln', nPlayers = 2) {
     const A = W * H;
     // Gemischt (massLen): mehrere gleich große, mittelgroße Landmassen – ihre Zahl wächst mit der Kartengröße (eine je massLen Felder
     // Kantenlänge, mindestens minBig), zusammen tragen sie massShare des Landes; der Rest sind kleine Inseln
-    const nBig = world.massLen ? Math.max(world.minBig, Math.round(Math.sqrt(A) / world.massLen)) : Math.max(2, Math.round(A / world.perBig));
+    const nBig = world.kont ? nPlayers : world.massLen ? Math.max(world.minBig, Math.round(Math.sqrt(A) / world.massLen)) : Math.max(2, Math.round(A / world.perBig));
+    // Kontinente: feste Plätze je Spielerzahl (Anteile der Kartenbreite/-höhe) – zwei links und rechts (hochkant), drei im Dreieck, vier in den Ecken
+    const SPOTS = { 2: [[0.22, 0.5], [0.78, 0.5]], 3: [[0.2, 0.34], [0.8, 0.34], [0.5, 0.72]], 4: [[0.23, 0.27], [0.77, 0.27], [0.23, 0.73], [0.77, 0.73]] }[nBig];
     const Rb = world.massLen ? Math.sqrt(world.massShare * landFrac * A / (nBig * Math.PI)) : Math.sqrt(A) * world.rBig;
     massCount = world.massLen ? nBig : 0;
     const plan = [];
@@ -241,7 +243,19 @@ function generateMap(W, H, seed, worldKey = 'inseln', nPlayers = 2) {
       plan.push(q); est += Math.PI * q * q;
     }
     const isl = [];
-    for (const R of plan) {
+    // Jeder Kontinent besteht aus vier sich überlappenden Teilen (Wunsch des Nutzers: weniger kompakt) – das gibt Buchten und Halbinseln,
+    // also mehr Küste, Häfen und Landeplätze. Die Teile tragen dieselbe Kennung g, damit die Trennung der Inseln (split) sie nicht zerschneidet.
+    if (world.kont) for (let k = 0; k < nBig; k++) {
+      const R = plan[k], cx = SPOTS[k][0] * W + (r() - 0.5) * 2, cy = SPOTS[k][1] * H + (r() - 0.5) * 2, a0 = r() * Math.PI * 2;
+      for (let j = 0; j < 4; j++) {
+        // zwei Spieler: Teile übereinander (hochkant), sonst im Kreis um die Mitte
+        const dx = nBig === 2 ? (r() - 0.5) * R * 1.5 : Math.cos(a0 + j * 1.57) * R * (0.7 + r() * 0.35);
+        const dy = nBig === 2 ? (j - 1.5) * R * (0.75 + r() * 0.15) : Math.sin(a0 + j * 1.57) * R * (0.7 + r() * 0.35);
+        const Rl = R * (0.46 + r() * 0.14), st = 0.7 + r() * 0.6, ang = r() * Math.PI;
+        isl.push({ x: cx + dx, y: cy + dy, R: Rl, st, ext: Rl * Math.max(st, 1 / st), c: Math.cos(ang), s: Math.sin(ang), g: k });
+      }
+    }
+    for (const R of world.kont ? plan.slice(nBig) : plan) {
       // Landmassen (Gemischt) rundlicher und näher am Rand, damit auch auf der kleinen Karte drei mit Abstand Platz finden
       const mass = world.massLen && R >= Rb * 0.9;
       const st = mass ? 0.85 + r() * 0.3 : 0.75 + r() * 0.55, ext = R * Math.max(st, 1 / st);
@@ -256,7 +270,7 @@ function generateMap(W, H, seed, worldKey = 'inseln', nPlayers = 2) {
       }
     }
     // Gemischt: Die Landmassen müssen alle Platz gefunden haben, sonst neuer Versuch
-    if (world.massLen && isl.filter(o => o.R >= Rb * 0.9).length < nBig) return null;
+    if (world.massLen && !world.kont && isl.filter(o => o.R >= Rb * 0.9).length < nBig) return null;
     const n1 = layer(Math.max(3, Rb / 1.5)), n2 = layer(Math.max(2, Rb / 3.5)), n3 = layer(Math.max(1.5, Rb / 7));
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       let v = -1, best = -Infinity;
@@ -265,11 +279,11 @@ function generateMap(W, H, seed, worldKey = 'inseln', nPlayers = 2) {
         const dx = x - o.x, dy = y - o.y;
         const u = dx * o.c + dy * o.s, w = -dx * o.s + dy * o.c;
         const sc = 1 - Math.hypot(u / o.st, w * o.st) / o.R;
-        if (sc > best) { best = sc; own[y * W + x] = k; }
+        if (sc > best) { best = sc; own[y * W + x] = o.g != null ? o.g : k; }
         if (Math.abs(dx) > o.ext * 1.6 + 2 || Math.abs(dy) > o.ext * 1.6 + 2) continue;
         v = Math.max(v, sc);
       }
-      v += (n1(x, y) - 0.5) * 0.8 + (n2(x, y) - 0.5) * 0.5 + (n3(x, y) - 0.5) * 0.2;
+      v += ((n1(x, y) - 0.5) * 0.8 + (n2(x, y) - 0.5) * 0.5 + (n3(x, y) - 0.5) * 0.2) * (world.kont ? 1.4 : 1);   // Kontinente: zerklüftetere Küsten
       const e = Math.min(x, W - 1 - x, y, H - 1 - y);
       v -= (1 - Math.min(1, e / 3)) * 0.5;
       raw[y * W + x] = v;
@@ -412,12 +426,15 @@ function generateMap(W, H, seed, worldKey = 'inseln', nPlayers = 2) {
   if (eligible.length < nPlayers) return null;
   if (nPlayers > 2) {
     const start = pickStarts(eligible, nPlayers, c => land.lab[c.y * W + c.x], k => perCont.get(k), Math.min(W, H));
+    // Kontinente: jeder auf seinem eigenen – sonst nächste Karte
+    if (start && world.kont && new Set(start.map(id => land.lab[cities[id].y * W + cities[id].x])).size < nPlayers) return null;
     return start ? { W, H, terrain, elev, depth, cont: land.lab, cities, start } : null;
   }
   let best = null, bestScore = -1;
   for (let a = 0; a < eligible.length; a++) for (let b = a + 1; b < eligible.length; b++) {
     const A = eligible[a], B = eligible[b];
     const ka = land.lab[A.y * W + A.x], kb = land.lab[B.y * W + B.x];
+    if (world.kont && ka === kb) continue;   // Kontinente: nie zwei Spieler auf demselben (sonst gewann bei ungleich großen Kontinenten die Fairness-Regel)
     // weit auseinander, möglichst auf verschiedenen Inseln, und fair: ähnlich viele Städte auf beiden Startinseln
     let s = cheb(A.x, A.y, B.x, B.y) + (ka !== kb ? 20 : 0) - 3 * Math.abs(perCont.get(ka) - perCont.get(kb));
     if (s > bestScore) { bestScore = s; best = [A.id, B.id]; }

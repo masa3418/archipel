@@ -116,6 +116,21 @@ test('Karte: Binnenmeer – Landring, ein Meer in der Mitte, Häfen nur dort', (
     eq(S.cont ? S.cont[idx(a.x, a.y)] === S.cont[idx(b.x, b.y)] : true, true, `${size}/${seed}: beide Startstädte auf dem Landring`);
   }
 });
+test('Karte: Kontinente – jeder Spieler auf seinem eigenen, zwei Spieler links und rechts', () => {
+  for (const [size, sz] of Object.entries(MAP_SIZES)) for (let nAi = 1; nAi <= sz.maxAi; nAi++) for (const seed of [5, 66, 777]) {
+    newGame(size, 'normal', 'erdteile', seed, nAi);
+    const home = Array.from({ length: nAi + 1 }, (_, p) => { const c = S.cities.find(c => c.owner === p); return S.cont[idx(c.x, c.y)]; });
+    eq(new Set(home).size, nAi + 1, `${size}/${nAi}/${seed}: jeder Spieler auf einem eigenen Kontinent`);
+    const per = p => S.cities.filter(c => S.cont[idx(c.x, c.y)] === home[p]).length;
+    for (let p = 0; p <= nAi; p++) ok(per(p) >= 4, `${size}/${nAi}/${seed}: Kontinent von Spieler ${p} hat nur ${per(p)} Städte`);
+    if (nAi === 1) {
+      const a = S.cities.find(c => c.owner === 0), b = S.cities.find(c => c.owner === 1);
+      ok((a.x < S.W / 2) !== (b.x < S.W / 2), `${size}/${seed}: die beiden Startstädte liegen in verschiedenen Kartenhälften`);
+      // zwischen den Kontinenten liegt Meer: kein Landweg von der einen Stadt zur anderen
+      ok(S.cont[idx(a.x, a.y)] !== S.cont[idx(b.x, b.y)], `${size}/${seed}: kein Landweg zwischen den Startstädten`);
+    }
+  }
+});
 test('Karte: jeder Spieler startet mit Stadt und Infanterie, Städte liegen an Land', () => {
   for (const world of Object.keys(WORLDS)) for (const [size, m] of Object.entries(MAP_SIZES)) for (let nAi = 1; nAi <= m.maxAi; nAi++) {
     newGame(size, 'normal', world, 777, nAi);

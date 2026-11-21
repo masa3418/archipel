@@ -375,7 +375,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
    Repo) oder `node tools/serve.js .` → http://localhost:8765
 2. Syntax prüfen: `for f in js/*.js; do node --check $f; done`
    **Tests laufen lassen – vor jedem Commit, der Regeln oder Oberfläche ändert:**
-   - `node tools/test.js` (ca. 5 s, 31 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
+   - `node tools/test.js` (ca. 6 s, 32 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
@@ -462,6 +462,20 @@ Messung (Platz 0 einfach, je 96 Partien, kleine Karte, ursprünglicher Generator
 Schwer 13/17 %, Brutal 5/1 %, offen 0–1; Festland (alt: Kontinente) Leicht 100/100 %, Normal 61/67 %, Schwer 21/23 %, Brutal 2/1 %,
 offen auf Normal 2 → 6, Partien ca. 5 Runden länger. (Festland mit kleinen Seen hatte Schwer 15 % – große Seen geben dem Angreifer
 über Wasser wieder Möglichkeiten.)
+Kontinente (innerer Name `erdteile` – `kontinente` ist das Festland; `kont: true`, nutzt den Weg der Landmassen von „Gemischt“; Wunsch des Nutzers):
+je Spieler ein eigener Kontinent an festem Platz (`SPOTS` in map.js: zwei links und rechts, hochkant; drei im Dreieck; vier in den Ecken), dazwischen
+Meer mit kleinen Inseln. Die Karte hängt deshalb von der Zahl der Gegner ab. Nie zwei Spieler auf demselben Kontinent (sonst nächste Nummer).
+`massShare` 0,45 = Anteil der Kontinente am Land: Mit 0,6 (Kontinente mit über 20 Städten auf der mittleren Karte) blieben 9 von 32 Partien offen und
+es standen bis zu 903 Einheiten – beide rüsten endlos, keiner bekommt genug übers Meer; mit 0,45 offen 2 von 24, mit 0,32 ebenfalls 2 von 24 (dann aber
+kaum noch Kontinente). Städte je Startkontinent (2 Spieler): klein 12, mittel 16, groß 27; daneben 4 / 11 / 17 Inseln mit Stadt. Messung mit 0,45
+(Platz 0 einfach, klein, je 40): Leicht 100 %, Normal 38 %, Schwer 20 %, Brutal 0 %, offen 2 von 160; Normal Ø 210 Runden, ca. 80 Transporter und
+60 Kriegsschiffe je Partie – die transportlastigste Welt. Mittel, Normal (24): 46 %, offen 2, Ø 247 Runden. Groß und mehrere Gegner mit 0,45 nicht gemessen
+(mit 0,6: mittel, drei Gegner 13 % Siege, 6 von 24 offen).
+Form der Kontinente (Wunsch des Nutzers: weniger kompakt): Jeder besteht aus vier sich überlappenden Teilen mit gemeinsamer Kennung `g` (damit
+`split` sie nicht zerschneidet), dazu 1,4-faches Küstenrauschen – Buchten, Halbinseln, Einschnitte, mehr Häfen und Landeplätze. Das half vor allem den
+großen Kontinenten: mittel, Normal, `massShare` 0,6 offen 9 von 32 (rund) → 3 von 24 (zerklüftet), meiste Einheiten 903 → 346. Mit 0,45 zerklüftet:
+mittel 58 %, offen 3 von 24; klein Normal 59 %, Schwer 19 %, offen 1 von 64 (mit 0,6: 53 % / 19 %, offen 5 von 64). Es bleibt bei 0,45. Die Zahlen im
+Absatz davor (38 % auf Normal usw.) stammen noch von den runden Kontinenten. Die Startkontinente sind etwas ungleicher (Ø Unterschied 2,6 Städte).
 Binnenmeer (`binnenmeer`, `binnen: true`, `ring`, `islArea`; Wunsch des Nutzers, als Versuch eingebaut): Landring bis an den Kartenrand, in der Mitte
 ein Meer (abgerundetes Rechteck, unregelmäßiges Ufer) mit kleinen Inseln – eine je `islArea` Felder Meer (klein Ø 2,4 / mittel 4,9 / groß 10,9 Inseln,
 zusammen 4 / 9 / 21 Städte). Land ca. 60 %, Städte 35 / 61 / 121, davon 24 / 36 / 61 Häfen. Anders als in allen anderen Welten ist der Kartenrand hier Land (ein Feld Wasser

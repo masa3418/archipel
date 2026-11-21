@@ -111,6 +111,11 @@ const WORLDS = {
   kontinente: { label: tt('Festland', 'Mainland'),
     desc: tt('Die ganze Welt ist eine Landmasse mit Binnenmeeren und Flüssen. Über die Flüsse führen Brücken, Schiffe fahren auf Seen und Flüssen.', 'The whole world is one land mass with inland seas and rivers. Bridges cross the rivers, ships sail on lakes and rivers.'),
     festland: true, lakeR: 4, lakeArea: 650, lakeGap: 4 },   // Seeradius ab lakeR, ein See je lakeArea Felder, Landenge lakeGap
+  // Kontinente (innerer Name „erdteile“ – „kontinente“ ist das Festland): je Spieler ein eigener Kontinent, dazwischen Meer mit kleinen Inseln.
+  // Zwei Spieler: links und rechts; drei: Dreieck; vier: in den Ecken (Wunsch des Nutzers). Die Karte hängt deshalb von der Zahl der Gegner ab.
+  erdteile: { label: tt('Kontinente', 'Continents'),
+    desc: tt('Jeder beginnt auf seinem eigenen Kontinent, dazwischen liegt das Meer mit kleinen Inseln als Trittsteinen. Erst das eigene Land sichern – dann entscheidet die Überfahrt.', 'Everyone starts on a continent of their own, with the sea and small stepping-stone islands in between. Secure your own land first – then the crossing decides.'),
+    kont: true, massLen: 1, massShare: 0.45, minBig: 2, mid: 0, small: 0.4, gap: 3.5, land: 0.34, split: true },
   // Binnenmeer (Versuch, Wunsch des Nutzers): Land ringsherum, in der Mitte ein Meer mit wenigen kleinen Inseln (je größer die Karte, desto mehr)
   binnenmeer: { label: tt('Binnenmeer', 'Inland sea'),
     desc: tt('Land ringsherum, in der Mitte ein Meer mit einigen kleinen Inseln. Der Landweg führt außen herum – der kurze Weg geht übers Wasser.', 'Land all around, a sea with a few small islands in the middle. The land route runs around the outside – the short way is across the water.'),
