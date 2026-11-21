@@ -85,7 +85,7 @@ test('Dateien: index.html, App-Zwischenspeicher und js/ nennen dieselben Skripte
 
 // ------------------------------------------------------------------ Karte
 test('Karte: gleiche Kartennummer = gleiche Karte, Städte und Startplätze', () => {
-  for (const size of Object.keys(MAP_SIZES)) for (const world of ['inseln', 'gemischt', 'kontinente']) {
+  for (const size of Object.keys(MAP_SIZES)) for (const world of Object.keys(WORLDS)) {
     const snap = () => JSON.stringify([Array.from(S.terrain), S.cities.map(c => [c.x, c.y, c.owner, c.name])]);
     newGame(size, 'normal', world, 12345, 1); const a = snap();
     newGame(size, 'normal', world, 12345, 1); const b = snap();
@@ -96,8 +96,28 @@ test('Karte: gleiche Kartennummer = gleiche Karte, Städte und Startplätze', ()
     ok(snap() !== a, `${size}/${world}: ganz andere Nummer ergibt dieselbe Karte`);
   }
 });
+test('Karte: Binnenmeer – Landring, ein Meer in der Mitte, Häfen nur dort', () => {
+  for (const [size, sz] of Object.entries(MAP_SIZES)) for (const seed of [11, 222, 3333]) {
+    newGame(size, 'normal', 'binnenmeer', seed, 1);
+    const W = S.W, H = S.H, water = (x, y) => S.terrain[idx(x, y)] === 0;
+    // Das Land reicht bis an den Kartenrand; das einzige Gewässer ist das Meer in der Mitte
+    const lab = new Int8Array(W * H), fill = (sx, sy, v) => { const q = [[sx, sy]]; lab[idx(sx, sy)] = v; let n = 0;
+      while (q.length) { const [x, y] = q.pop(); n++; for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy; if (inb(nx, ny) && water(nx, ny) && !lab[idx(nx, ny)]) { lab[idx(nx, ny)] = v; q.push([nx, ny]); } } } return n; };
+    ok(tiles((x, y) => x === 0 || y === 0 || x === W - 1 || y === H - 1).every(([x, y]) => !water(x, y)), `${size}/${seed}: am Kartenrand liegt Land`);
+    ok(S.cities.every(c => c.x > 0 && c.y > 0 && c.x < W - 1 && c.y < H - 1), `${size}/${seed}: keine Stadt auf dem Kartenrand`);
+    const mid = tiles((x, y) => water(x, y));
+    ok(mid.length > W * H * 0.15, `${size}/${seed}: in der Mitte liegt ein Meer`);
+    const sea = fill(mid[0][0], mid[0][1], 2);
+    eq(sea, mid.length, `${size}/${seed}: das Meer ist ein zusammenhängendes Gewässer`);
+    for (const c of S.cities) if (c.coastal) ok(nb(c.x, c.y).some(([x, y]) => lab[idx(x, y)] === 2), `${size}/${seed}: Hafen ${c.name} liegt nicht am Meer`);
+    ok(S.cities.filter(c => c.coastal).length >= S.cities.length * 0.4, `${size}/${seed}: genug Häfen`);
+    // Landring: von jeder Startstadt führt ein Landweg zur anderen
+    const a = S.cities.find(c => c.owner === 0), b = S.cities.find(c => c.owner === 1);
+    eq(S.cont ? S.cont[idx(a.x, a.y)] === S.cont[idx(b.x, b.y)] : true, true, `${size}/${seed}: beide Startstädte auf dem Landring`);
+  }
+});
 test('Karte: jeder Spieler startet mit Stadt und Infanterie, Städte liegen an Land', () => {
-  for (const world of ['inseln', 'gemischt', 'kontinente']) for (const [size, m] of Object.entries(MAP_SIZES)) for (let nAi = 1; nAi <= m.maxAi; nAi++) {
+  for (const world of Object.keys(WORLDS)) for (const [size, m] of Object.entries(MAP_SIZES)) for (let nAi = 1; nAi <= m.maxAi; nAi++) {
     newGame(size, 'normal', world, 777, nAi);
     eq(nPlayers(), nAi + 1, `${size}/${world}/${nAi}: Spielerzahl`);
     for (let p = 0; p <= nAi; p++) {

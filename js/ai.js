@@ -465,7 +465,7 @@ function hinterInfo(p) {
   const tg = knownTargets(p), tgtOn = new Map(), conts = new Set(), hint = [];
   for (const c of tg) { const X = S.cont[idx(c.x, c.y)]; tgtOn.set(X, (tgtOn.get(X) || 0) + 1); }
   // nur auf dem Festland: In den Inselwelten fahren die Transporter ohnehin, dort gab es mit dieser Regel mehr offene Partien
-  const festland = !!(WORLDS[S.world] && WORLDS[S.world].festland);
+  const festland = !!(WORLDS[S.world] && (WORLDS[S.world].festland || WORLDS[S.world].binnen));   // Binnenmeer: ein Landring – auch dort übers Meer ins Hinterland
   if (AI_AMPHIB[p] !== false && festland) for (const c of tg) {
     const ci = idx(c.x, c.y), X = S.cont[ci];
     if ((landOn.get(X) || 0) < tgtOn.get(X) * 3 + 4) continue;   // keine Übermacht: die Truppen an Land genügen

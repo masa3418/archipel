@@ -111,6 +111,10 @@ const WORLDS = {
   kontinente: { label: tt('Festland', 'Mainland'),
     desc: tt('Die ganze Welt ist eine Landmasse mit Binnenmeeren und Flüssen. Über die Flüsse führen Brücken, Schiffe fahren auf Seen und Flüssen.', 'The whole world is one land mass with inland seas and rivers. Bridges cross the rivers, ships sail on lakes and rivers.'),
     festland: true, lakeR: 4, lakeArea: 650, lakeGap: 4 },   // Seeradius ab lakeR, ein See je lakeArea Felder, Landenge lakeGap
+  // Binnenmeer (Versuch, Wunsch des Nutzers): Land ringsherum, in der Mitte ein Meer mit wenigen kleinen Inseln (je größer die Karte, desto mehr)
+  binnenmeer: { label: tt('Binnenmeer', 'Inland sea'),
+    desc: tt('Land ringsherum, in der Mitte ein Meer mit einigen kleinen Inseln. Der Landweg führt außen herum – der kurze Weg geht übers Wasser.', 'Land all around, a sea with a few small islands in the middle. The land route runs around the outside – the short way is across the water.'),
+    binnen: true, ring: 0.22, islArea: 150 },   // Breite des Landrings (Anteil der kürzeren Kante), eine Insel je islArea Felder Meer
 };
 
 function mulberry32(a) {

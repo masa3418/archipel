@@ -42,13 +42,35 @@ function generateMap(W, H, seed, worldKey = 'inseln', nPlayers = 2) {
   const raw = new Float32Array(N);
   const own = new Int16Array(N).fill(-1);   // Inselwelten: geplante Insel, zu der das Feld gehört (höchster Wert 1 - d/R)
   let landFrac = 0.37, fixedElev = null, massCount = 0;
-  if (world.festland) {
+  if (world.festland || world.binnen) {
     // Festland: Die ganze Karte ist eine Landmasse – schmaler Küstensaum am Rand, Binnenmeere und Flüsse.
     // Flüsse sind ein Feld breit; in Abständen macht ein Fluss einen Schritt über Eck. Dort berühren sich die Ufer an einer Ecke:
     // Bodentruppen kommen diagonal hinüber (Brücke, gezeichnet als Steg in gfx.js), Schiffe fahren darunter durch.
     const water = new Uint8Array(N);
     const inMap = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
     const nCoast = layer(5), nLake = layer(2.5);
+    if (world.binnen) {
+      // Binnenmeer: ein Meer in der Mitte (abgerundetes Rechteck mit unregelmäßigem Ufer), ringsum ein Landring gleicher Breite bis an den
+      // Kartenrand; im Meer kleine Inseln mit Abstand zueinander und zum Ufer, damit das Meer überall befahrbar bleibt.
+      const ring = Math.max(6, Math.round(Math.min(W, H) * (world.ring || 0.22)));
+      const cx = (W - 1) / 2, cy = (H - 1) / 2, a = W / 2 - ring, b = H / 2 - ring;
+      const sup = (x, y, da = 0) => Math.pow(Math.abs(x - cx) / Math.max(1, a - da), 3) + Math.pow(Math.abs(y - cy) / Math.max(1, b - da), 3);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (sup(x, y) < 0.75 + nCoast(x, y) * 0.5) water[y * W + x] = 1;
+      const isles = [], nIsl = Math.max(2, Math.round(a * b * 3.5 / (world.islArea || 150)));
+      for (let k = 0; k < nIsl; k++) {
+        const R = 1.4 + r() * 1.6, st = 0.7 + r() * 0.6, ang = r() * Math.PI;
+        for (let t = 0; t < 80; t++) {
+          const x = cx + (r() * 2 - 1) * a, y = cy + (r() * 2 - 1) * b;
+          if (sup(x, y, R + 3) > 0.7 || isles.some(o => Math.hypot(o.x - x, o.y - y) < o.R + R + 3)) continue;
+          isles.push({ x, y, R, st, c: Math.cos(ang), s: Math.sin(ang) });
+          break;
+        }
+      }
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) for (const o of isles) {
+        const dx = x - o.x, dy = y - o.y, u = dx * o.c + dy * o.s, w = -dx * o.s + dy * o.c;
+        if (Math.hypot(u / o.st, w * o.st) < o.R * (0.75 + nLake(x, y) * 0.5)) water[y * W + x] = 0;
+      }
+    } else {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const e = Math.min(x, W - 1 - x, y, H - 1 - y);
       if (e < 1 + nCoast(x, y) * 2.4) water[y * W + x] = 1;
@@ -165,6 +187,7 @@ function generateMap(W, H, seed, worldKey = 'inseln', nPlayers = 2) {
       }
       if (best < total * 0.8) return null;
     }
+    }   // Ende Festland (Seen, Flüsse, Zusammenhang)
     // Höhen: Rauschen, zum Wasser hin flacher; über die Rangfolge auf 0…1 verteilt (wenige Berge, viel Wald und Wiese)
     const base = Math.max(8, Math.round(Math.min(W, H) / 3.5));
     const hl = [[layer(base), 0.55], [layer(base / 2), 0.3], [layer(base / 4), 0.15]];
@@ -261,7 +284,9 @@ function generateMap(W, H, seed, worldKey = 'inseln', nPlayers = 2) {
   for (let i = 0; i < N; i++) {
     const x = i % W, y = (i / W) | 0;
     const border = x === 0 || y === 0 || x === W - 1 || y === H - 1;
-    terrain[i] = !border && raw[i] > thr ? 1 : 0;
+    // Der Kartenrand ist sonst immer Wasser; beim Binnenmeer reicht das Land bis an den Rand (ein Feld Wasser außen herum wäre ein
+    // Graben ohne Verbindung zum Meer, an dem scheinbar Küstenstädte lägen – dem Nutzer aufgefallen)
+    terrain[i] = (!border || world.binnen) && raw[i] > thr ? 1 : 0;
     elev[i] = raw[i] - thr;
     if (elev[i] > maxE) maxE = elev[i];
   }
@@ -355,6 +380,8 @@ function generateMap(W, H, seed, worldKey = 'inseln', nPlayers = 2) {
     const x = i % W, y = (i / W) | 0;
     return { i, x, y, coastal: isOceanAdj(x, y), s: r() };
   });
+  // Binnenmeer: keine Stadt direkt auf dem Kartenrand (dort ist sonst nie Land)
+  if (world.binnen) cand.forEach(c => { if (c.x === 0 || c.y === 0 || c.x === W - 1 || c.y === H - 1) c.s = -1; });
   // Städte bevorzugt an der Küste – auf dem Festland nicht (dort läge sonst jede Stadt an einem See und wäre ein Hafen)
   if (!world.festland) cand.forEach(c => { if (c.coastal) c.s += 0.45; });
   cand.sort((p, q) => q.s - p.s);
