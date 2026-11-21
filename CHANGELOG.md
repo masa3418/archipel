@@ -3,6 +3,34 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.8.1
+
+Ein fairerer Anfang, kein verfrühtes Siegangebot und eine Lupe.
+
+**Sicherer Anfang**
+
+- Solange ein Spieler weniger als drei Städte besitzt, fällt eine **neutrale Stadt sicher** – die ersten beiden Eroberungen gelingen
+  also immer. Das gilt für alle, auch für den Computergegner; Städte eines Gegners bleiben bei 50 %.
+- Grund: Pech bei den ersten Würfen entschied bisher zu viel. In Testpartien zweier gleich starker Gegner gewann, wer am Anfang
+  weniger Infanterie verlor, 65 % der Partien (mit Pech 37 %); mit der neuen Regel ist das ausgeglichen. Auf Schwer und Brutal
+  startet auch der Gegner schneller – diese Stufen sind dadurch etwas härter.
+
+**Vorzeitiges Ende**
+
+- Das Spiel bietet Sieg oder Aufgeben erst an, wenn höchstens die **Hälfte der Städte noch neutral** ist – und den Sieg nur, wenn du
+  den Gegner **gefunden** hast. Vorher konnte „Der Sieg ist dir sicher“ schon nach wenigen Runden kommen, wenn der Gegner schwach
+  gestartet war.
+
+**Lupe**
+
+- Taste **O** gedrückt halten: ein runder, scharf vergrößerter Ausschnitt der Karte unter der Maus. Loslassen schließt ihn.
+- Bäume, Hügel und Wellen stehen auf allen Karten etwas anders als bisher (nur die Verzierung, nicht die Karte selbst).
+
+*English:* a fairer start – as long as a player owns fewer than three cities, a neutral city falls for certain, so the first two
+captures always succeed (for everyone, the computer too; enemy cities stay at 50 %). The early-end offer no longer comes too soon:
+only once at most half of the cities are still neutral, and victory only after you have found the enemy. New magnifier: hold **O**
+for a round, sharply enlarged view of the map under the mouse.
+
 ## 1.8.0
 
 Zwei neue Welten, eine neue Ebene und eine aufgeräumte Kopfzeile.
