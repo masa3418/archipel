@@ -101,16 +101,16 @@ function updatePanel() {
     if (u.carrier != null) h += `<span>${tt('Ort', 'Location')}</span><b>${tt('an Bord', 'on board')}</b>`;
     h += `<span>${tt('Befehl', 'Order')}</span><b>${orderTxt}</b></div>`;
     if (cargo.length) h += `<div>${cargo.map(unitChip).join('')}</div>`;
-    h += `<div class="row">
-      <button data-act="skip" title="${tt('Leertaste', 'Space')}">${tt('Überspringen', 'Skip')}</button>
-      <button data-act="sentry" title="S">${tt('Wache', 'Sentry')}</button>
-      <button data-act="patrol" title="P">${tt('Patrouille', 'Patrol')}</button>
-      <button data-act="explore" title="R">${tt('Erkunden', 'Explore')}</button>
-      <button data-act="home" title="${t.domain === 'sea' ? tt('B – zur nächsten eigenen Hafenstadt', 'B – to your nearest port') : tt('B – zur nächsten eigenen Stadt', 'B – to your nearest city')}">${tt('Heimkehr', 'Return home')}</button>`;
+    // Befehle, die gerade nichts bewirken, sind grau; der Hinweistext nennt dann den Grund statt der Taste (orderCheck in ui-zug.js)
+    const chk = orderCheck(u);
+    const ab = (act, label, tip) => `<button data-act="${act}" ${chk[act] ? 'disabled' : ''} title="${esc(chk[act] || tip)}">${label}</button>`;
+    h += `<div class="row">` + ab('skip', tt('Überspringen', 'Skip'), tt('Leertaste', 'Space')) + ab('sentry', tt('Wache', 'Sentry'), 'S')
+      + ab('patrol', tt('Patrouille', 'Patrol'), 'P') + ab('explore', tt('Erkunden', 'Explore'), 'R')
+      + ab('home', tt('Heimkehr', 'Return home'), t.domain === 'sea' ? tt('B – zur nächsten eigenen Hafenstadt', 'B – to your nearest port') : tt('B – zur nächsten eigenen Stadt', 'B – to your nearest city'));
     if (u.order) h += `<button data-act="cancel">${tt('Befehl löschen', 'Clear order')}</button>`;
     const c = cityAt(u.x, u.y);
     // Transporter: „Laden bis voll“ geht überall (Stadt und Nachbarfelder); Träger laden wie bisher nur in der eigenen Stadt
-    if (t.carries === 'land') h += `<button data-act="load" title="${tt('L – bleibt liegen, bis er voll ist, und nimmt wartende Bodentruppen aus seiner Stadt und von den Nachbarfeldern an Bord. Ohne diesen Befehl nimmt er beim Verlassen einer eigenen Stadt mit, was dort wartet.', 'L – stays put until full, taking waiting land units on board from its city and the adjacent tiles. Without this order it takes along whatever is waiting when it leaves one of your cities.')}" ${(u.order && u.order.type === 'load') || cargo.length >= t.capacity ? 'disabled' : ''}>${tt('Laden bis voll', 'Load until full')}</button>`;
+    if (t.carries === 'land') h += `<button data-act="load" ${chk.load ? 'disabled' : ''} title="${chk.load ? esc(chk.load) : tt('L – bleibt liegen, bis er voll ist, und nimmt wartende Bodentruppen aus seiner Stadt und von den Nachbarfeldern an Bord. Ohne diesen Befehl nimmt er beim Verlassen einer eigenen Stadt mit, was dort wartet.', 'L – stays put until full, taking waiting land units on board from its city and the adjacent tiles. Without this order it takes along whatever is waiting when it leaves one of your cities.')}">${tt('Laden bis voll', 'Load until full')}</button>`;
     else if (t.carries && c && c.owner === 0) h += `<button data-act="load" title="L">${tt('Einladen', 'Load')}</button>`;
     if (t.carries === 'land') h += `<button data-act="landing" class="${u.landing ? 'on' : ''}" ${!u.landing && !cargo.length ? 'disabled' : ''} title="${tt('Landemanöver: Sobald der Transporter Land berührt, werden die Truppen an Bord von selbst zum Aussteigen angeboten, bis kein Feld mehr frei ist. So endet die Runde nicht, während ein voller Transporter an der Küste liegt. Schaltet sich ab, wenn er leer ist.', 'Landing manoeuvre: as soon as the transport touches land, the troops on board are offered for disembarking by themselves until no tile is free. This way the turn does not end while a full transport lies at the coast. Switches off when it is empty.')}">${u.landing ? '☑' : '☐'} ${tt('Ausladen, wenn möglich', 'Unload when possible')}</button>`;
     let landTgt = null;

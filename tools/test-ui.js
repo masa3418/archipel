@@ -145,6 +145,57 @@ window.UiTest = (() => {
     check(hoverRoute(u) != null, 'Vorschau abgeschaltet: die Wegsuche für den Klick läuft weiter');
     showRoute = wasOn;
   }
+  // Befehle: Knopf der Seitenleiste, Rechtsklick-Menü, Tastenlegende und Taste müssen sich einig sein (orderCheck).
+  // Grauer Knopf = die Taste meldet denselben Grund und ändert nichts; aktiver Knopf = die Taste bewirkt etwas.
+  function orders() {
+    const KEYS = { skip: ' ', sentry: 's', patrol: 'p', explore: 'r', home: 'b', load: 'l' };
+    const key = k => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+    const port = () => S.cities.find(c => c.owner === 0 && c.coastal);
+    const lagen = { 'in der eigenen Stadt': t => createUnit(t, 0, ...base.c) };
+    for (const t of UNIT_ORDER) lagen['frei: ' + t] = (tt => () => createUnit(tt, 0, ...startOf(tt)))(t);
+    Object.assign(lagen, {
+      'Infanterie in der Stadt': () => createUnit('inf', 0, ...base.c),
+      'Zerstörer im Hafen': () => { const c = port(); return createUnit('dst', 0, c.x, c.y); },
+      'Infanterie an Bord': () => { const t = createUnit('trn', 0, ...base.s), u = createUnit('inf', 0, ...base.s); u.carrier = t.id; return u; },
+      'Transporter mit Ladung': () => { const t = createUnit('trn', 0, ...base.s); createUnit('inf', 0, ...base.s).carrier = t.id; return t; },
+      'Transporter voll': () => { const t = createUnit('trn', 0, ...base.s); for (let k = 0; k < UT.trn.capacity; k++) createUnit('inf', 0, ...base.s).carrier = t.id; return t; },
+      'Transporter lädt': () => { const t = createUnit('trn', 0, ...base.s); t.order = { type: 'load' }; return t; },
+      'ohne Züge': () => { const u = createUnit('tank', 0, ...base.l); u.moves = 0; return u; },
+      'auf Wache': () => { const u = createUnit('inf', 0, ...base.l); u.order = { type: 'sentry' }; return u; },
+      'alles erkundet': () => { S.players[0].real = null; const u = createUnit('dst', 0, ...base.s); return u; },
+      'Jäger fast leer, fern': () => { const u = createUnit('ftr', 0, ...scene['unerforscht'][0]); u.fuel = 2; return u; },
+    });
+    delete lagen['in der eigenen Stadt'];
+    let grau = 0, aktiv = 0;
+    const auto0 = autoEnd; autoEnd = false;   // sonst beendet der letzte Befehl die Runde, und die nächste Taste bricht nur den Countdown ab
+    for (const [name, make] of Object.entries(lagen)) {
+      for (const act of Object.keys(KEYS)) {
+        reset();
+        const u = make(); computeVision(0);
+        if (name === 'alles erkundet') S.players[0].seen.fill(1);
+        if (act === 'load' && UT[u.type].carries !== 'land') continue;
+        select(u, false); refresh();
+        const why = orderCheck(u)[act], b = document.querySelector('#panel [data-act="' + act + '"]'), tag = 'Befehle: ' + name + ' / ' + act;
+        check(!!b, tag + ' – Knopf fehlt');
+        if (!b) continue;
+        check(b.disabled === !!why, tag + ' – Knopf ' + (b.disabled ? 'grau' : 'aktiv') + ', Prüfung sagt: ' + (why || 'möglich'));
+        if (why) check(b.title === why, tag + ' – Hinweistext nennt nicht den Grund');
+        if (u.carrier == null && !cityAt(u.x, u.y) && openCtx(u.x, u.y, 200, 200)) {
+          const m = document.querySelector('#ctxMenu [data-cact="' + act + '"]');
+          check(!!m && m.disabled === !!why, tag + ' – Rechtsklick-Menü weicht ab');
+          closeCtx();
+        }
+        const before = JSON.stringify([u.x, u.y, u.order, u.skip, !!patrolMode]);
+        $('toast').textContent = ''; autoEndAt = 0; key(KEYS[act]); skipAnim(); closeModals();
+        const after = alive(u) ? JSON.stringify([u.x, u.y, u.order, u.skip, !!patrolMode]) : 'weg';
+        if (why) { grau++; check(after === before && (act === 'skip' || $('toast').textContent === why), tag + ' – Taste: erwartet Meldung „' + why + '“, kam „' + $('toast').textContent + '“' + (after === before ? '' : ', und es hat sich etwas geändert')); }
+        else { aktiv++; check(after !== before, tag + ' – Knopf aktiv, aber die Taste bewirkt nichts (Meldung: „' + $('toast').textContent + '“)'); }
+        patrolMode = null;
+      }
+    }
+    autoEnd = auto0;
+    check(grau > 12 && aktiv > 40, 'Befehle: zu wenige Fälle (' + grau + ' grau, ' + aktiv + ' aktiv)');
+  }
   // 4) Einstiegstipps: jeder Auslöser einzeln
   function tipsCheck() {
     const wasOn = tips.on, done0 = [...tips.done];
@@ -304,7 +355,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); orders(); tipsCheck();
     await walkthrough();
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein'); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters
     return { bestanden: passed, fehlgeschlagen: fails };

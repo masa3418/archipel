@@ -340,7 +340,7 @@ function afterAction(u) {
   scheduleAutoEnd();
 }
 
-function refresh() { dirty = true; pathCache = null; rallyCache = null; hoverPath = null; renderMini(); updatePanel(); updateHeader(); updateKeyLegend(); updateTips(); queueSave(); }
+function refresh() { dirty = true; pathCache = null; rallyCache = null; hoverPath = null; orderCache = null; renderMini(); updatePanel(); updateHeader(); updateKeyLegend(); updateTips(); queueSave(); }
 
 // Automatisch speichern nach jeder Änderung (refresh folgt auf jeden Zug, Angriff, Befehl): gebündelt kurz danach und beim Verlassen
 // der Seite. Ein Spielstand braucht unter 1 ms. So geht beim Neuladen oder Absturz nichts verloren – und ein verlorener Kampf lässt sich
@@ -418,7 +418,53 @@ function doGoto(u, x, y) {
   afterAction(u);
 }
 
-function actSkip() { const u = selUnit(); if (!u) return; Sfx.play('tick'); u.skip = true; if (!selectNext()) sel = null; refresh(); scheduleAutoEnd(); }
+// Welche Befehle sind für die Einheit gerade möglich? Je Befehl null (geht) oder der Grund, warum nicht. EINE Stelle für alle, die das
+// wissen müssen: Knöpfe der Seitenleiste (grau, Grund als Hinweistext), Rechtsklick-Menü, Tastenlegende und die Befehle selbst (Meldung
+// beim Tastendruck). Vorher entschied jede Stelle für sich – das Menü blendete ab, die Seitenleiste nicht. Neue Befehle hier eintragen.
+// „Erkunden“ und „Heimkehr“ brauchen je eine Wegsuche; das Ergebnis gilt, bis sich an der Einheit etwas ändert (orderCache, refresh() verwirft).
+let orderCache = null;
+function orderCheck(u) {
+  const t = T(u), cargo = cargoOf(u).length, aboard = u.carrier != null;
+  const key = [u.id, u.x, u.y, u.moves, u.fuel, u.order ? u.order.type : '', cargo, u.carrier, S.turn].join();
+  if (orderCache && orderCache.key === key) return orderCache;
+  const r = { key, skip: null, sentry: null, patrol: null, explore: null, home: null, load: null, homeAt: null };
+  if (u.moves <= 0 && !landingPending(u)) r.skip = tt('Keine Züge mehr in dieser Runde', 'No moves left this turn');
+  if (u.order && u.order.type === 'sentry') r.sentry = tt('Hält schon Wache', 'Already on sentry');
+  if (aboard) r.patrol = tt('Erst ausladen, dann Patrouille festlegen', 'Unload first, then set a patrol');
+  // Erkunden
+  if (aboard && t.domain === 'land') r.explore = tt('Erst ausladen, dann erkunden', 'Unload first, then explore');
+  else if (u.type === 'trn' && cargo) r.explore = tt('Transporter mit Ladung erkunden nicht selbstständig', "Loaded transports don't explore on their own");
+  else {
+    const air = t.domain === 'air', reach = air ? Math.max(1, Math.floor((u.fuel - t.move) / 2)) : 60, any = p => p && p.length;
+    if (!any(explorePath(u, reach)) && !any(explorePath(u, reach, false)))
+      r.explore = air ? tt('Nichts Unbekanntes mehr in Reichweite', 'Nothing unknown left in range') : tt('Hier gibt es nichts mehr zu erkunden', 'Nothing left to explore here');
+  }
+  // Heimkehr: nächste erreichbare eigene Stadt (Schiffe: Hafenstadt)
+  const homeOk = c => c && c.owner === 0 && (t.domain !== 'sea' || c.coastal);
+  if (!aboard && homeOk(cityAt(u.x, u.y))) r.home = t.domain === 'sea' ? tt('Liegt schon im Hafen', 'Already in port') : tt('Steht schon in einer eigenen Stadt', 'Already in one of your cities');
+  else {
+    const path = bfs(u.x, u.y, makePassable(u, false, true), (x, y) => homeOk(cityAt(x, y)));
+    if (!path) r.home = t.domain === 'sea' ? tt('Kein eigener Hafen erreichbar', 'No port of yours in reach') : tt('Keine eigene Stadt erreichbar', 'None of your cities in reach');
+    else {
+      const [x, y] = path[path.length - 1];
+      // Nicht losschicken, wenn der Treibstoff nicht reicht: Der Rest bleibt dem Spieler (z. B. zum Erkunden)
+      if (t.fuel && path.length > u.fuel) r.home = tt(`Treibstoff reicht nicht: ${cityAt(x, y).name} ist ${path.length} Felder entfernt, Treibstoff für ${u.fuel}`,
+        `Not enough fuel: ${cityAt(x, y).name} is ${path.length} tiles away, fuel for ${u.fuel}`);
+      else r.homeAt = [x, y];
+    }
+  }
+  // Laden (Transporter: Dauerbefehl „Laden bis voll“)
+  if (t.carries === 'land') {
+    if (cargo >= t.capacity) r.load = tt('Der Transporter ist schon voll', 'The transport is already full');
+    else if (u.order && u.order.type === 'load') r.load = tt('Lädt bereits, bis er voll ist', 'Already loading until full');
+  }
+  return (orderCache = r);
+}
+// Befehl nicht möglich: Grund melden (Tastendruck auf einen Befehl, den der graue Knopf schon ausschließt)
+function orderDenied(why) { if (!why) return false; toast(why, 2600); Sfx.play('error'); return true; }
+
+// Ohne Züge gibt es nichts zu überspringen: Die Leertaste geht dann nur still zur nächsten Einheit weiter (keine Fehlermeldung – man drückt sie oft)
+function actSkip() { const u = selUnit(); if (!u) return; Sfx.play('tick'); if (!orderCheck(u).skip) u.skip = true; if (!selectNext()) sel = null; refresh(); scheduleAutoEnd(); }
 function actSentry() { const u = selUnit(); if (!u) return; Sfx.play('tick'); u.order = { type: 'sentry' }; selectNext(); refresh(); scheduleAutoEnd(); }
 function actLoad() {
   const u = selUnit(); if (!u || !T(u).carries) return;
@@ -431,7 +477,7 @@ function actLoad() {
   }
   // Transporter: Dauerbefehl – bleibt liegen, bis er voll ist (Regeln: runLoad in game.js)
   const cap = T(u).capacity;
-  if (cargoOf(u).length >= cap) { toast(tt('Der Transporter ist schon voll', 'The transport is already full')); Sfx.play('error'); return; }
+  if (orderDenied(orderCheck(u).load)) return;
   u.order = { type: 'load' };
   delete u.dropped;
   animBegin(120);
@@ -461,38 +507,19 @@ function actUnload(landOnly = false) {
 // Heimkehr: Marsch zur nächsten erreichbaren eigenen Stadt (Schiffe: Hafenstadt)
 function actHome() {
   const u = selUnit(); if (!u) return;
-  const t = T(u);
-  const ok = c => c && c.owner === 0 && (t.domain !== 'sea' || c.coastal);
-  const here = cityAt(u.x, u.y);
-  if (u.carrier == null && ok(here)) { toast(t.domain === 'sea' ? tt('Liegt schon im Hafen', 'Already in port') : tt('Steht schon in einer eigenen Stadt', 'Already in one of your cities')); Sfx.play('error'); return; }
-  const path = bfs(u.x, u.y, makePassable(u, false, true), (x, y) => ok(cityAt(x, y)));
-  if (!path) { toast(t.domain === 'sea' ? tt('Kein eigener Hafen erreichbar', 'No port of yours in reach') : tt('Keine eigene Stadt erreichbar', 'None of your cities in reach')); Sfx.play('error'); return; }
-  const [x, y] = path[path.length - 1];
-  if (t.fuel && path.length > u.fuel) {
-    // Nicht losschicken: der Resttreibstoff bleibt dem Spieler (z. B. zum Erkunden)
-    toast(tt(`Treibstoff reicht nicht: ${cityAt(x, y).name} ist ${path.length} Felder entfernt, Treibstoff für ${u.fuel}`,
-      `Not enough fuel: ${cityAt(x, y).name} is ${path.length} tiles away, fuel for ${u.fuel}`));
-    Sfx.play('error'); return;
-  }
+  const chk = orderCheck(u);
+  if (orderDenied(chk.home)) return;
   Sfx.play('select');
-  doGoto(u, x, y);
+  doGoto(u, chk.homeAt[0], chk.homeAt[1]);
 }
 function actCancel() { const u = selUnit(); if (u) { u.order = null; refresh(); } }
 
 // ------------------------------------------------------------------ Patrouille
 function actExplore() {
   const u = selUnit(); if (!u) return;
-  if (u.carrier != null && T(u).domain === 'land') { toast(tt('Erst ausladen, dann erkunden', 'Unload first, then explore')); Sfx.play('error'); return; }
-  if (T(u).domain === 'sea' && u.type === 'trn' && cargoOf(u).length) { toast(tt('Transporter mit Ladung erkunden nicht selbstständig', "Loaded transports don't explore on their own")); Sfx.play('error'); return; }
-  // Nichts mehr zu entdecken: gleich sagen und den Befehl gar nicht erst geben – wie „Heimkehr“ in der eigenen Stadt. (Vorher stand das nur
-  // in den Meldungen, und ohne Züge blieb der Befehl bis zur nächsten Runde stehen.) Dieselbe Prüfung wie in runExplore: Weg ins Unbekannte,
-  // notfalls auch einer durch Feindnähe – dann wartet die Einheit ab.
-  const air = T(u).domain === 'air', reach = air ? Math.max(1, Math.floor((u.fuel - T(u).move) / 2)) : 60;
-  const any = p => p && p.length;
-  if (!any(explorePath(u, reach)) && !any(explorePath(u, reach, false))) {
-    toast(air ? tt('Nichts Unbekanntes mehr in Reichweite', 'Nothing unknown left in range') : tt('Hier gibt es nichts mehr zu erkunden', 'Nothing left to explore here'));
-    Sfx.play('error'); return;
-  }
+  // Nichts mehr zu entdecken, an Bord, beladener Transporter: gleich sagen und den Befehl gar nicht erst geben (orderCheck) – wie
+  // „Heimkehr“ in der eigenen Stadt. Vorher stand „Erkundung beendet“ nur in den Meldungen.
+  if (orderDenied(orderCheck(u).explore)) return;
   u.order = { type: 'explore' };
   Sfx.play('select');
   animBegin(120);
@@ -503,7 +530,7 @@ function actExplore() {
 
 function actPatrol() {
   const u = selUnit(); if (!u) return;
-  if (u.carrier != null) { toast(tt('Erst ausladen, dann Patrouille festlegen', 'Unload first, then set a patrol')); Sfx.play('error'); return; }
+  if (orderDenied(orderCheck(u).patrol)) return;
   patrolMode = { id: u.id, pts: [] };
   Sfx.play('tick');
   toast(tt('Wegpunkte auf der Karte anklicken, Enter startet', 'Click waypoints on the map, Enter starts'));

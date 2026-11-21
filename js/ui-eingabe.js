@@ -76,16 +76,16 @@ function renderCtx() {
   }
   if (u) {
     const t = T(u), aboard = u.carrier != null, here = cityAt(u.x, u.y);
-    const homeOk = c => c && c.owner === 0 && (t.domain !== 'sea' || c.coastal);
+    const chk = orderCheck(u);   // dieselbe Prüfung wie für die Knöpfe der Seitenleiste
     if (units.length <= 1) h += `<div class="cmenu-head"><b>${esc(t.name)}</b> · ${u.moves}/${t.move} ${tt('Bewegung', 'moves')}${t.fuel ? ` · ${tt('Treibstoff', 'fuel')} ${u.fuel}` : ''}</div>`;
-    const btn = (act, label, key, dis = false) => `<button data-cact="${act}" ${dis ? 'disabled' : ''}>${label}${key ? `<kbd>${key}</kbd>` : ''}</button>`;
-    h += btn('skip', tt('Überspringen', 'Skip'), tt('Leertaste', 'Space'), u.moves <= 0 && !landingPending(u));
-    h += btn('sentry', tt('Wache', 'Sentry'), 'S', !!(u.order && u.order.type === 'sentry'));
-    h += btn('explore', tt('Erkunden', 'Explore'), 'R', (aboard && t.domain === 'land') || (u.type === 'trn' && cargoOf(u).length > 0));
-    h += btn('patrol', tt('Patrouille', 'Patrol'), 'P', aboard);
-    h += btn('home', t.domain === 'sea' ? tt('Heimkehr (Hafen)', 'Return home (port)') : tt('Heimkehr', 'Return home'), 'B', !aboard && homeOk(here));
+    const btn = (act, label, key, dis = false) => `<button data-cact="${act}" ${dis ? 'disabled' : ''}${typeof dis === 'string' ? ` title="${esc(dis)}"` : ''}>${label}${key ? `<kbd>${key}</kbd>` : ''}</button>`;
+    h += btn('skip', tt('Überspringen', 'Skip'), tt('Leertaste', 'Space'), chk.skip);
+    h += btn('sentry', tt('Wache', 'Sentry'), 'S', chk.sentry);
+    h += btn('explore', tt('Erkunden', 'Explore'), 'R', chk.explore);
+    h += btn('patrol', tt('Patrouille', 'Patrol'), 'P', chk.patrol);
+    h += btn('home', t.domain === 'sea' ? tt('Heimkehr (Hafen)', 'Return home (port)') : tt('Heimkehr', 'Return home'), 'B', chk.home);
     if (t.carries === 'land') h += btn('landing', `${u.landing ? '☑' : '☐'} ${tt('Ausladen, wenn möglich', 'Unload when possible')}`, '', !u.landing && !cargoOf(u).length);
-    if (t.carries === 'land') h += btn('load', tt('Laden bis voll', 'Load until full'), 'L', !!(u.order && u.order.type === 'load') || cargoOf(u).length >= t.capacity);
+    if (t.carries === 'land') h += btn('load', tt('Laden bis voll', 'Load until full'), 'L', chk.load);
     else if (t.carries && here && here.owner === 0) h += btn('load', tt('Einladen', 'Load'), 'L');
     if (t.carries && cargoOf(u).length) {
       const opts = t.carries === 'land' ? assaultOptions(u) : [], tgt = opts.find(o => o.kind === 'city'), foe = opts.find(o => o.kind === 'unit');
@@ -423,6 +423,7 @@ function updateKeyLegend() {
     const u = !S.over && !prodView ? selUnit() : null;
     const own = !!u && u.owner === 0;
     const car = own && T(u).carries;
+    const chk = own ? orderCheck(u) : {};   // abblenden, was gerade nicht geht – dieselbe Prüfung wie Knöpfe und Menü
     const pad = `<span class="kl-pad">${['Q', 'W', 'E', 'A', '', 'D', EN ? 'Z' : 'Y', 'X', 'C'].map(k => k ? kb(k) : '<i></i>').join('')}</span>`;
     h += grp(tt('Bewegen', 'Move'), [
       row(pad, tt('ziehen (auch Pfeile, Ziffernblock)', 'move (also arrows, numpad)'), own),
@@ -432,11 +433,11 @@ function updateKeyLegend() {
     ]);
     h += grp(tt('Einheit', 'Unit'), [
       row(kb('N'), tt('nächste Einheit', 'next unit'), !prodView),
-      row(kb(tt('Leer', 'Space')), tt('überspringen', 'skip'), own),
-      row(kb('S'), tt('Wache', 'sentry'), own),
-      row(kb('R'), tt('erkunden', 'explore'), own),
-      row(kb('P'), tt('Patrouille', 'patrol'), own),
-      row(kb('B'), tt('Heimkehr', 'return home'), own),
+      row(kb(tt('Leer', 'Space')), tt('überspringen', 'skip'), own && !chk.skip),
+      row(kb('S'), tt('Wache', 'sentry'), own && !chk.sentry),
+      row(kb('R'), tt('erkunden', 'explore'), own && !chk.explore),
+      row(kb('P'), tt('Patrouille', 'patrol'), own && !chk.patrol),
+      row(kb('B'), tt('Heimkehr', 'return home'), own && !chk.home),
       row(kb('L') + kb('U'), car === 'air' ? tt('Jäger laden / ausladen', 'load / unload fighters') : tt('laden / ausladen, Angriff', 'load / unload, attack'), !!car),
     ]);
     h += grp(tt('Ansicht', 'View'), [
