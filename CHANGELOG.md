@@ -3,6 +3,22 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.8.4
+
+Klimazonen – jede Insel sieht anders aus.
+
+- **Neue Landschaft „Klimazonen“**, jetzt der Standard: Schnee im Norden und Süden, Wüste in der Mitte, Grün dazwischen und
+  vereinzelt Lava. Kleine Inseln sind einfarbig, große Landmassen gehen von Zone zu Zone über. Gleiche Kartennummer, gleiches Bild.
+- Jede neue Partie beginnt in den Klimazonen; die Auswahl im Fenster „Neues Spiel“ entfällt. Grüne Inseln, Wüste, Schnee, Lava und
+  fremder Planet lassen sich weiterhin jederzeit über **Ansicht** (das Auge oben) einschalten.
+- **Neutrale Städte** haben einen dunklen Rand. Eine Prüfung aller Parteifarben auf allen Landschaften ergab, dass sie auf Sand und
+  Schnee fast verschwanden; die Einheiten aller Parteien waren überall gut zu erkennen.
+
+*English:* a new landscape, **climate zones**, is now the default: snow in the north and south, desert in the middle, green in
+between and the odd lava field; small islands have a single zone. Every new game starts in climate zones – the choice in the New
+game window is gone, the other landscapes remain available under View. Neutral cities now have a dark rim, as they almost vanished
+on sand and snow.
+
 ## 1.8.3
 
 Das Kräfteverhältnis zählt Städte.
