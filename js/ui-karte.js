@@ -907,13 +907,24 @@ function render(now = performance.now()) {
   if (prodView) { drawProdView(); return; }   // Produktionsansicht: keine Einheiten, Marker, Effekte
   if (threatView && !playing && !S.over) drawThreat();   // Reichweite der Gegner (nicht während der Wiedergabe: Sie rechnet mit dem Endstand)
 
+  // Wo eine Einheit gerade zu sehen ist: Während der Wiedergabe steht sie bis zu ihrem Zug am Startfeld und ist danach unterwegs (null) –
+  // S.units kennt nur den Endstand. Feuerschutz und Luftdeckung richten sich danach (dem Nutzer aufgefallen: Der Ring der Luftdeckung
+  // wartete schon am Zielort, während der Träger noch fuhr).
+  // glide: auch unterwegs, mit Bruchteilen (der Ring der Luftdeckung fährt mit)
+  const shownAt = (u, glide = false) => {
+    const p = playing ? animPos(u, rel) : null;
+    if (!p) return [u.x, u.y];
+    return glide || (Number.isInteger(p[0]) && Number.isInteger(p[1])) ? p : null;
+  };
   // Feuerunterstützung: Städte neben einem sichtbaren Schlachtschiff markieren.
   // Eckwinkel = unter Feuer (fällt zu 75 %), gestrichelter Ring = Feuerschutz (fällt nur zu 25 %)
   for (const b of S.units) {
     if (b.type !== 'bat' || b.carrier != null) continue;
-    if (b.owner !== 0 && ((!V.vis[idx(b.x, b.y)] && !S.over) || veiledCity(cityAt(b.x, b.y)))) continue;   // in einer fremden Stadt: verborgen
+    const bp = shownAt(b);
+    if (!bp) continue;
+    if (b.owner !== 0 && ((!V.vis[idx(bp[0], bp[1])] && !S.over) || veiledCity(cityAt(bp[0], bp[1])))) continue;   // in einer fremden Stadt: verborgen
     for (const [dx, dy] of [[0, 0], ...DIRS]) {
-      const x = b.x + dx, y = b.y + dy;
+      const x = bp[0] + dx, y = bp[1] + dy;
       if (!inb(x, y)) continue;
       const c = cityAt(x, y);
       if (!c || !P.seen[idx(x, y)]) continue;
@@ -925,17 +936,19 @@ function render(now = performance.now()) {
   // verlören sie den Ring schon, bevor der Angriff auf sie gezeigt wird.
   const covered = new Set();
   const goneNow = playing ? anim.gone.filter(g => rel < g.until).map(g => g.u) : [];
-  const shipsNow = S.units.filter(s => s.carrier == null && T(s).domain === 'sea' && (S.over || canSee(0, s))).concat(goneNow.filter(s => T(s).domain === 'sea'));
-  const carriersNow = S.units.filter(c => c.type === 'car' && c.carrier == null && (S.over || canSee(0, c)) && S.units.some(f => f.carrier === c.id && f.type === 'ftr')
-    && !(c.owner !== 0 && veiledCity(cityAt(c.x, c.y))))   // Träger in einer fremden Stadt: verborgen
-    .concat(goneNow.filter(c => c.air));
-  for (const c of carriersNow) {
-    for (const s of shipsNow) {
-      if (s.owner !== c.owner || cheb(s.x, s.y, c.x, c.y) > 1) continue;
-      const i = idx(s.x, s.y);
+  // [Einheit, gezeigte Lage (auch unterwegs), nächstes Feld]
+  const placed = list => list.map(u => { const p = shownAt(u, true); return [u, p, [Math.round(p[0]), Math.round(p[1])]]; });
+  const shipsNow = placed(S.units.filter(s => s.carrier == null && T(s).domain === 'sea' && (S.over || canSee(0, s))).concat(goneNow.filter(s => T(s).domain === 'sea')));
+  const carriersNow = placed(S.units.filter(c => c.type === 'car' && c.carrier == null && (S.over || canSee(0, c)) && S.units.some(f => f.carrier === c.id && f.type === 'ftr'))
+    .concat(goneNow.filter(c => c.air)))
+    .filter(([c, , t]) => !(c.owner !== 0 && veiledCity(cityAt(t[0], t[1]))));   // Träger in einer fremden Stadt: verborgen
+  for (const [c, , ct] of carriersNow) {
+    for (const [s, sp, st] of shipsNow) {
+      if (s.owner !== c.owner || cheb(st[0], st[1], ct[0], ct[1]) > 1) continue;
+      const i = idx(st[0], st[1]);
       if (covered.has(i) || S.cityGrid[i] >= 0) continue;
       covered.add(i);
-      drawSupportMark(s.x, s.y, true, PLAYERS[c.owner].light);
+      drawSupportMark(sp[0], sp[1], true, PLAYERS[c.owner].light);
     }
   }
 

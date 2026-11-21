@@ -221,6 +221,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   prefers-reduced-motion) skaliert `animBegin`-Tempo, Kamerafahrten (`anim.camMs`) und die Obergrenze in `animEnd`; „off“ setzt die Zeitleiste
   sofort auf den Endstand. Kamerabewegungen außerhalb der Zeitleiste immer über `pan()` (bei „off“ ohne Schwenk), nicht direkt `camTo`.
   Während der Wiedergabe nach dem Rundenende bleibt die Karte stehen; erst danach geht es zur nächsten eigenen Einheit.
+  `S.units` kennt während der Wiedergabe nur den Endstand: Was an einer Einheit hängt (Feuerschutz, Luftdeckung), richtet sich nach ihrer gezeigten Lage
+  (`shownAt` in `render`: Startfeld bis zu ihrem Zug, unterwegs ausgeblendet bzw. beim Ring der Luftdeckung mitfahrend) – dem Nutzer fiel der Ring am Zielort auf.
 - **Rundenwechsel** (game.js): `nextRound(onPhase)` nach `endTurn(0)` – alle lebenden Gegner ziehen (`enemyTurns`), dann `S.turn++` und
   `startTurn(0)`; `runStandingOrders(p, beforeLoad)` führt die Daueraufträge in fester Reihenfolge aus (Wachen wecken, Marsch, Patrouille,
   Erkunden, Einschub der Oberfläche, Laden). `endHumanTurn` (ui.js), `simGame`, `tools/beispiele.js` und `tools/test.js` rufen dieselben
@@ -439,8 +441,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 789 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
-     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 792 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung in der Wiedergabe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
    Pull Requests (Entscheidung mit dem Nutzer: für eine Person zu viel Zeremonie; neu überlegen, wenn andere beitragen).

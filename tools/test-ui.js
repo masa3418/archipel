@@ -199,6 +199,24 @@ window.UiTest = (() => {
     check(!garrisonHidden(cx, cy) && $('hover').textContent.includes(UT.crs.name), 'Besatzung: mit „Nebel aus“ ist alles offen');
     setCheatFog(false); hover = null; threatMapUi = null;
   }
+  // Luftdeckung in der Wiedergabe: Der Ring folgt dem fahrenden Träger – vorher wartete er schon am Zielort (S.units kennt nur den Endstand)
+  function coverRing() {
+    reset();
+    const water = (x, y) => inb(x, y) && !land(x, y) && free(x, y) && DIRS.every(([dx, dy]) => inb(x + dx, y + dy) && !land(x + dx, y + dy));
+    const a = all((x, y) => water(x, y) && water(x + 1, y))[0];
+    if (!a) { check(false, 'Luftdeckung: kein offenes Meer im Spielstand'); return; }
+    const car = createUnit('car', 0, ...a); createUnit('ftr', 0, ...a).carrier = car.id;
+    computeVision(0); select(car, false);
+    replay = 'normal'; doMove(car, a[0] + 1, a[1]);
+    const mv = anim.events.find(e => e.type === 'move'), o = drawSupportMark, at = [];
+    drawSupportMark = function (x, y, ...r) { at.push([x, y]); return o(x, y, ...r); };
+    const ringAt = t => { at.length = 0; render(anim.t0 + t); return at.map(p => p.join(',')).join(' '); };
+    try {
+      check(ringAt(mv.t0 - 5) === a.join(','), 'Luftdeckung: vor der Fahrt am Startfeld');
+      check(ringAt(mv.t0 + mv.dur / 2) === (a[0] + 0.5) + ',' + a[1], 'Luftdeckung: unterwegs mit dem Träger');
+      check(ringAt(mv.t0 + mv.dur + 5) === (a[0] + 1) + ',' + a[1], 'Luftdeckung: am Ziel');
+    } finally { drawSupportMark = o; skipAnim(); replay = 'off'; }
+  }
   // Befehle: Knopf der Seitenleiste, Rechtsklick-Menü, Tastenlegende und Taste müssen sich einig sein (orderCheck).
   // Grauer Knopf = die Taste meldet denselben Grund und ändert nichts; aktiver Knopf = die Taste bewirkt etwas.
   function orders() {
@@ -631,7 +649,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters
