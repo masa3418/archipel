@@ -190,11 +190,47 @@ function citySprite(owner, size, variant) {
 // ---------------------------------------------------------------------------
 // Gelände
 // ---------------------------------------------------------------------------
-const WATER_COL = [[96, 186, 208], [64, 150, 194], [46, 122, 174], [36, 100, 152], [28, 82, 132], [24, 70, 116]];
-const SAND = [218, 204, 152];
+// Landschaften (Wunsch des Nutzers): dieselbe Karte, anders eingefärbt. Die Landschaft gehört zur Partie (S.land, Schlüssel LAND_KEYS in data.js;
+// neue Partie: zufällig Grün, Wüste oder Schnee), ist in den Einstellungen jederzeit umschaltbar und ändert keine Regel. Je Landschaft ein Farbsatz:
+//  water (flach → tief), sand (Strand), stops (Landfarbe nach Höhe), surf/glow (Brandung), wave, mount (Berg hell/dunkel), cap (Gipfel, null = keiner),
+//  hill, tree (dunkel/hell – in der Lava glühende Tümpel), treeP (Anteil der Felder mit „Wald“), mini (Land, Wasser auf Übersichtskarte und Zeitraffer).
+// Neue Landschaft: hier und in LAND_KEYS eintragen, in LAND_NAMES (ui-schau.js) benennen und auf allen Zoomstufen ansehen – Farben der Parteien müssen sich abheben.
+const LANDSCAPES = {
+  gruen: {
+    water: [[96, 186, 208], [64, 150, 194], [46, 122, 174], [36, 100, 152], [28, 82, 132], [24, 70, 116]], sand: [218, 204, 152],
+    stops: [[0, [190, 196, 120]], [0.1, [118, 168, 82]], [0.42, [82, 138, 64]], [0.7, [104, 116, 76]], [1, [138, 128, 108]]],
+    surf: 'rgb(150,205,220)', glow: 'rgba(215,240,250,0.85)', wave: 'rgba(255,255,255,0.13)',
+    mount: ['#a39780', '#756a57'], cap: '#f4f6f8', hill: '#7d8c55', tree: ['#2c6230', '#4a8c42'], treeP: 0.42, mini: [[86, 140, 70], [34, 92, 146]],
+  },
+  wueste: {
+    water: [[122, 214, 206], [74, 182, 194], [46, 150, 180], [34, 122, 160], [26, 100, 140], [20, 82, 122]], sand: [240, 222, 170],
+    stops: [[0, [236, 212, 152]], [0.1, [226, 194, 126]], [0.42, [210, 170, 102]], [0.7, [190, 144, 92]], [1, [164, 122, 88]]],
+    surf: 'rgb(170,226,220)', glow: 'rgba(225,250,245,0.85)', wave: 'rgba(255,255,255,0.15)',
+    mount: ['#c99c6c', '#8c6746'], cap: null, hill: '#cba268', tree: ['#3a7436', '#6aa64e'], treeP: 0.1, mini: [[214, 178, 110], [40, 140, 170]],
+  },
+  schnee: {
+    water: [[112, 152, 178], [72, 114, 148], [50, 90, 126], [38, 72, 108], [30, 58, 92], [24, 48, 78]], sand: [196, 206, 214],
+    stops: [[0, [214, 224, 232]], [0.1, [238, 243, 248]], [0.42, [228, 235, 242]], [0.7, [206, 214, 224]], [1, [178, 186, 198]]],
+    surf: 'rgb(196,224,238)', glow: 'rgba(235,246,252,0.9)', wave: 'rgba(255,255,255,0.16)',
+    mount: ['#b8c1cb', '#7a8592'], cap: '#ffffff', hill: '#d2dae4', tree: ['#1f4a3a', '#3f7862'], treeP: 0.36, mini: [[226, 232, 240], [40, 74, 110]],
+  },
+  lava: {
+    water: [[58, 80, 96], [42, 62, 78], [32, 50, 66], [26, 40, 54], [20, 32, 44], [16, 26, 36]], sand: [150, 128, 110],
+    stops: [[0, [138, 116, 102]], [0.1, [118, 100, 92]], [0.42, [100, 84, 80]], [0.7, [86, 70, 68]], [1, [70, 56, 56]]],
+    surf: 'rgb(150,112,92)', glow: 'rgba(255,150,70,0.6)', wave: 'rgba(255,255,255,0.07)',
+    mount: ['#6a544c', '#3a2c2a'], cap: '#ff7a2a', hill: '#7a655c', tree: ['#a82c0c', '#ff8c2a'], treeP: 0.24, mini: [[124, 100, 90], [30, 46, 60]],
+  },
+  // Fremder Planet: türkises Land, dunkelviolettes Meer, rosa leuchtende Küste, magentafarbene Gewächse, Kristallgipfel
+  alien: {
+    water: [[98, 86, 152], [72, 62, 126], [54, 46, 102], [42, 36, 82], [32, 28, 64], [24, 22, 50]], sand: [156, 218, 198],
+    stops: [[0, [124, 204, 184]], [0.1, [72, 164, 152]], [0.42, [48, 134, 132]], [0.7, [46, 106, 114]], [1, [54, 86, 102]]],
+    surf: 'rgb(192,152,222)', glow: 'rgba(240,170,255,0.8)', wave: 'rgba(255,255,255,0.1)',
+    mount: ['#7193aa', '#3c5568'], cap: '#ff7ad9', hill: '#62b29e', tree: ['#a81f88', '#ff6fd0'], treeP: 0.4, mini: [[60, 150, 140], [50, 42, 96]],
+  },
+};
+function landscape() { return LANDSCAPES[typeof S !== 'undefined' && S && S.land] || LANDSCAPES.gruen; }
 
-function landColor(e) {
-  const stops = [[0, [190, 196, 120]], [0.1, [118, 168, 82]], [0.42, [82, 138, 64]], [0.7, [104, 116, 76]], [1, [138, 128, 108]]];
+function landColor(e, stops = landscape().stops) {
   let k = 0;
   while (k < stops.length - 2 && e > stops[k + 1][0]) k++;
   const [e0, c0] = stops[k], [e1, c1] = stops[k + 1];
@@ -208,6 +244,7 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   oc.width = W * TS; oc.height = H * TS;
   const g = oc.getContext('2d');
   const r = mulberry32(4711);
+  const L = landscape(), WATER_COL = L.water, SAND = L.sand;
   const isW = (x, y) => x < 0 || y < 0 || x >= W || y >= H || !st.terrain[y * W + x];
 
   // 1) Wasser: weiche Tiefenverläufe
@@ -217,7 +254,7 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   const lg = lc.getContext('2d'), li = lg.createImageData(W, H);
   for (let i = 0; i < W * H; i++) {
     const wcol = st.terrain[i] ? WATER_COL[0] : WATER_COL[Math.min(WATER_COL.length - 1, st.depth[i] - 1)];
-    const lcol = st.terrain[i] ? landColor(st.elev[i]) : SAND;
+    const lcol = st.terrain[i] ? landColor(st.elev[i], L.stops) : SAND;
     for (let j = 0; j < 3; j++) { wi.data[i * 4 + j] = wcol[j]; li.data[i * 4 + j] = lcol[j]; }
     wi.data[i * 4 + 3] = 255; li.data[i * 4 + 3] = 255;
   }
@@ -226,7 +263,7 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   g.drawImage(wc, 0, 0, W * TS, H * TS);
 
   // Wellen
-  g.strokeStyle = 'rgba(255,255,255,0.13)'; g.lineWidth = Math.max(1, TS / 18); g.lineCap = 'round';
+  g.strokeStyle = L.wave; g.lineWidth = Math.max(1, TS / 18); g.lineCap = 'round';
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (st.terrain[y * W + x] || st.depth[y * W + x] < 2 || r() > 0.22) continue;
     const cx = (x + 0.2 + r() * 0.6) * TS, cy = (y + 0.2 + r() * 0.6) * TS, w = TS * 0.18;
@@ -254,8 +291,8 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   }
   // Brandung / Flachwasser-Schimmer
   g.save();
-  g.shadowColor = 'rgba(215,240,250,0.85)'; g.shadowBlur = TS * 0.45;
-  g.fillStyle = 'rgb(150,205,220)';
+  g.shadowColor = L.glow; g.shadowBlur = TS * 0.45;
+  g.fillStyle = L.surf;
   g.fill(land); g.fill(land);
   g.restore();
   g.save();
@@ -283,12 +320,12 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
         const by = Y + TS * (0.8 - k * 0.06), h = TS * (0.5 + r() * 0.15), w = TS * (peaks === 1 ? 0.42 : 0.32);
         g.fillStyle = 'rgba(0,0,0,0.18)';
         g.beginPath(); g.ellipse(cx + w * 0.2, by, w * 1.05, TS * 0.07, 0, 0, 7); g.fill();
-        g.fillStyle = '#a39780';
+        g.fillStyle = L.mount[0];
         g.beginPath(); g.moveTo(cx - w, by); g.lineTo(cx, by - h); g.lineTo(cx, by); g.closePath(); g.fill();
-        g.fillStyle = '#756a57';
+        g.fillStyle = L.mount[1];
         g.beginPath(); g.moveTo(cx, by - h); g.lineTo(cx + w, by); g.lineTo(cx, by); g.closePath(); g.fill();
-        if (el > 0.8) {
-          g.fillStyle = '#f4f6f8';
+        if (el > 0.8 && L.cap) {
+          g.fillStyle = L.cap;
           g.beginPath(); g.moveTo(cx - w * 0.32, by - h * 0.68); g.lineTo(cx, by - h); g.lineTo(cx + w * 0.32, by - h * 0.68);
           g.lineTo(cx + w * 0.1, by - h * 0.74); g.lineTo(cx - w * 0.05, by - h * 0.64); g.closePath(); g.fill();
         }
@@ -297,11 +334,11 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
       const cx = X + TS * (0.35 + r() * 0.3), by = Y + TS * (0.62 + r() * 0.15);
       g.fillStyle = 'rgba(0,0,0,0.12)';
       g.beginPath(); g.ellipse(cx + TS * 0.04, by + TS * 0.02, TS * 0.3, TS * 0.08, 0, 0, 7); g.fill();
-      g.fillStyle = '#7d8c55';
+      g.fillStyle = L.hill;
       g.beginPath(); g.ellipse(cx, by, TS * 0.28, TS * 0.2, 0, Math.PI, 0); g.fill();
       g.fillStyle = 'rgba(255,255,255,0.12)';
       g.beginPath(); g.ellipse(cx - TS * 0.06, by - TS * 0.05, TS * 0.12, TS * 0.07, 0, Math.PI, 0); g.fill();
-    } else if (el > 0.14 && el < 0.56 && r() < 0.42) {
+    } else if (el > 0.14 && el < 0.56 && r() < L.treeP) {
       const n = 3 + Math.floor(r() * 3);
       const trees = [];
       for (let k = 0; k < n; k++) trees.push([X + TS * (0.2 + r() * 0.6), Y + TS * (0.25 + r() * 0.55)]);
@@ -310,9 +347,9 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
         const tr = TS * (0.1 + r() * 0.05);
         g.fillStyle = 'rgba(0,0,0,0.2)';
         g.beginPath(); g.ellipse(tx + tr * 0.3, ty + tr * 0.8, tr, tr * 0.45, 0, 0, 7); g.fill();
-        g.fillStyle = '#2c6230';
+        g.fillStyle = L.tree[0];
         g.beginPath(); g.arc(tx, ty, tr, 0, 7); g.fill();
-        g.fillStyle = '#4a8c42';
+        g.fillStyle = L.tree[1];
         g.beginPath(); g.arc(tx - tr * 0.3, ty - tr * 0.3, tr * 0.5, 0, 7); g.fill();
       }
     }

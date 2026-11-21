@@ -133,7 +133,7 @@ function renderMini() {
     const i = idx(x, y);
     let c = [8, 11, 16];
     if (P.seen[i] || S.over) {
-      c = S.terrain[i] ? [86, 140, 70] : [34, 92, 146];
+      c = landscape().mini[S.terrain[i] ? 0 : 1];
       if (!P.vis[i] && !S.over) c = c.map(v => v * 0.6);
     }
     put(x, y, c);

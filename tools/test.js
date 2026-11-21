@@ -341,6 +341,15 @@ test('Kampf: Wirtschaftlichkeit (Bilanz der Tabelle „Wer schlägt wen“)', ()
   ok(Math.abs(same - UT.crs.hp) < 0.01, `gleiche Typen: um einen Kreuzer zu versenken, geht im Mittel ein Kreuzer verloren (${same.toFixed(2)} Trefferpunkte)`);
   ok(loss('dst', 'sub') < loss('sub', 'dst'), 'Zerstörer gegen U-Boot ist billiger als umgekehrt');
 });
+test('Landschaft: gehört zur Partie, folgt der Kartennummer, übersteht Speichern', () => {
+  const seen = new Set();
+  for (let n = 1; n <= 40; n++) { newGame('klein', 'normal', 'inseln', n * 7919, 1); ok(START_LANDS.includes(S.land), 'Startlandschaft ist Grün, Wüste oder Schnee'); seen.add(S.land); }
+  eq(seen.size, START_LANDS.length, 'alle drei Startlandschaften kommen vor');
+  newGame('klein', 'normal', 'inseln', 4242, 1); const a = S.land;
+  newGame('klein', 'normal', 'inseln', 4242, 1); eq(S.land, a, 'gleiche Kartennummer, gleiche Landschaft');
+  S.land = 'alien'; const txt = serialize(); S.land = 'gruen'; deserialize(txt); eq(S.land, 'alien', 'gewählte Landschaft wird gespeichert');
+  const o = JSON.parse(txt); (o.S || o).land = '<b>x'; deserialize(JSON.stringify(o)); eq(S.land, 'gruen', 'unbekannte Landschaft im Spielstand wird zu Grün');
+});
 test('Kartennummer: Eingabe und Anzeige', () => {
   eq(parseSeed(''), null, 'leer = zufällig');
   eq(parseSeed('042 113 907'), 42113907, 'Ziffern mit Leerzeichen');

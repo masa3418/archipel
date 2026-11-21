@@ -41,6 +41,7 @@ function newGame(sizeKey, diffKey = 'normal', worldKey = 'inseln', seedIn = null
   S = {
     W: m.W, H: m.H, size: sizeKey, terrain: m.terrain, elev: m.elev, depth: m.depth, cont: m.cont,
     cities: m.cities, units: [], nextId: 1, turn: 1, cur: 0, log: [], over: null, difficulty: DIFFICULTY[diffKey] ? diffKey : 'normal', world: worldKey, seed: seed0,
+    land: START_LANDS[Math.floor(mulberry32((seed0 ^ 0x5bd1e995) >>> 0)() * START_LANDS.length)],   // Landschaft (nur Aussehen)
     gameId: 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),   // Kennung der Partie (Spielstände gruppieren)
     players: Array.from({ length: nP }, () => mkPlayer(m.W, m.H, m.cities.length)),
     kills: per(), wasted: per(), lost: per(), killsFrom: 1,   // Statistik: zerstört (je Täter), verloren (je Opfer), siehe killUnit
@@ -1514,6 +1515,7 @@ function sanitizeState(o) {
     size: oneOf(o.size, Object.keys(MAP_SIZES), 'mittel'),
     difficulty: oneOf(o.difficulty, Object.keys(DIFFICULTY), 'normal'),
     world: oneOf(o.world, Object.keys(WORLDS), 'kontinente'),   // ältere Spielstände: bisherige Welt
+    land: oneOf(o.land, LAND_KEYS, 'gruen'),   // Landschaft (ältere Spielstände: grün)
     seed: isNum(o.seed) ? int(o.seed, 0, 0, SEED_MAX - 1) : null,   // Kartennummer (ältere Spielstände: unbekannt)
     gameId: typeof o.gameId === 'string' && /^[a-z0-9]{1,24}$/.test(o.gameId) ? o.gameId : null,   // Kennung der Partie (ältere: keine)
     turn: int(o.turn, 1, 1, 1e6), cur: Math.max(0, owner(o.cur, 0)),

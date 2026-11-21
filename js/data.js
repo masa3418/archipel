@@ -49,6 +49,11 @@ const PLAYERS = [
   { name: tt('Gelb', 'Yellow'),    color: '#d6970f', light: '#ffd56b', dark: '#6b4704' },
   { name: tt('Violett', 'Purple'), color: '#8e54c8', light: '#d0a8f5', dark: '#3f1a6a' },
 ];
+// Landschaften: wie die Karte eingefärbt ist (Farbsätze in gfx.js LANDSCAPES – dieselben Schlüssel). Gehört zur Partie (S.land), ändert aber
+// keine Regel. Eine neue Partie beginnt mit einer der START_LANDS, bestimmt aus der Kartennummer (gleiche Nummer = gleiches Aussehen);
+// in den Einstellungen sind jederzeit alle wählbar.
+const LAND_KEYS = ['gruen', 'wueste', 'schnee', 'lava', 'alien'];
+const START_LANDS = ['gruen', 'wueste', 'schnee'];
 const NEUTRAL = { color: '#9aa0a6', light: '#d7dadd', dark: '#55595e' };
 
 // Schwierigkeitsgrade. Sie wirken nur auf den Computergegner (und den Start):

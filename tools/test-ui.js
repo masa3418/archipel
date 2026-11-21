@@ -342,6 +342,14 @@ window.UiTest = (() => {
       openSettings(); ok = ok && !panes.find(p => p.dataset.setpane === 'special').hidden === false;   // „Schummeln & Zurücksetzen“ wird nicht gemerkt
       closeModals(); return ok;
     });
+    step('Landschaften: jede zeichnet anders, die Auswahl stimmt, zurück auf die Vorgabe', () => {
+      const keep = S.land, px = () => { render(performance.now()); const c = S.cities.find(c => c.owner === 0); return [...terrainCache.getContext('2d').getImageData((c.x + 1) * TS + 2, (c.y + 1) * TS + 2, 1, 1).data].join(); };
+      const seen = new Set(); let ok = true;
+      for (const k of Object.keys(LANDSCAPES)) { setLandscape(k); ok = ok && S.land === k && $('landSel').value === k && !!LAND_NAMES[k]; seen.add(landscape().mini.join()); draw(); }
+      setLandscape('gibtsnicht'); ok = ok && S.land === 'gruen' && JSON.stringify(Object.keys(LANDSCAPES)) === JSON.stringify(LAND_KEYS);
+      setLandscape(keep); draw();
+      return ok && seen.size === Object.keys(LANDSCAPES).length && $('landSel').options.length === seen.size;
+    });
     step('Zurücksetzen: Rückfrage, und was gelöscht würde', () => {
       saveSlot('Probe Zurücksetzen'); askReset();
       const ask = shown('mOffer') && !!$('resetSaves') && !$('resetSaves').checked; closeModals();

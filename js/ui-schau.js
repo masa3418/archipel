@@ -508,6 +508,16 @@ function renderGfx() {
 }
 function openGfx() { Sfx.unlock(); gfx.svg = null; renderGfx(); openModal('mGfx'); }
 $('bGfx').onclick = () => { closeModals(); openGfx(); };   // aus dem Fenster „Einstellungen“
+// Landschaft der laufenden Partie (S.land, LANDSCAPES in gfx.js): nur die Farben der Karte. Wird mit der Partie gespeichert.
+const LAND_NAMES = { gruen: tt('Grüne Inseln', 'Green islands'), wueste: tt('Wüste', 'Desert'), schnee: tt('Schnee', 'Snow'), lava: tt('Lava', 'Lava'), alien: tt('Fremder Planet', 'Alien planet') };
+function setLandscape(v) {
+  if (!LANDSCAPES[v]) v = 'gruen';
+  $('landSel').value = v;
+  if (S) { S.land = v; buildTerrainCache(); refresh(); }
+}
+$('landSel').innerHTML = Object.keys(LANDSCAPES).map(k => `<option value="${k}">${esc(LAND_NAMES[k] || k)}</option>`).join('');
+try { localStorage.removeItem('archipel-land'); } catch (e) {}   // kurze Zwischenfassung: Landschaft als Einstellung
+$('landSel').onchange = e => setLandscape(e.target.value);
 
 // ---------------------------------------------------------------------------
 // Zurücksetzen (Einstellungen; Wunsch des Nutzers: mehrere teilen sich einen Rechner). Das Spiel merkt sich alles im Browser unter
@@ -594,6 +604,7 @@ $('setTabs').addEventListener('click', e => { const b = e.target.closest('button
 function openSettings(tab) {
   closeMenu(); closeCtx();
   if (typeof tab !== 'string') { tab = null; try { tab = localStorage.getItem('archipel-settab'); } catch (e) {} }
+  $('landSel').value = (S && S.land) || 'gruen';
   setTab(tab); openModal('mSettings');
 }
 $('bSettings').onclick = openSettings;
