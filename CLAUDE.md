@@ -351,7 +351,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 741 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 742 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
@@ -528,3 +528,6 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   mit Backticks (Git Bash führt den Inhalt als Befehl aus).
 - `localStorage`: Autosave `archipel-save-v1` (nach jeder Änderung: `queueSave` in `refresh()`, 300 ms gebündelt, dazu `pagehide`; < 1 ms je Speichern), Spielstände `archipel-slot-*` mit Index
   `archipel-slots`, Einstellungen `archipel-*` (Ton, Zoom, Schwierigkeit, Rundenende, Sprache, Handbuch-Reiter, Rad/Touchpad, `archipel-welcome` = Willkommensfenster gesehen …).
+  **Zurücksetzen** (Einstellungen, `askReset`/`resetAll`/`resetKeys` in ui-schau.js; Wunsch des Nutzers für geteilte Rechner): löscht nach Rückfrage
+  alle Schlüssel `archipel-…` und lädt neu – wie beim ersten Besuch. Benannte Spielstände nur mit dem Haken in der Rückfrage. Neue Schlüssel
+  deshalb immer mit `archipel-` beginnen. `resetting` verhindert, dass `pagehide` die Partie beim Neuladen wieder speichert.

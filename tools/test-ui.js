@@ -334,6 +334,14 @@ window.UiTest = (() => {
     step('M schaltet den Ton um und zurück', () => { key('m'); key('m'); return true; });
     step('Hinweiszeile zum Feld unter der Maus', () => { const u = mine()[0]; hover = [u.x, u.y]; updateHover(); return $('hover').textContent.length > 5; });
     step('Schummeln „Nebel aus“ und wieder an', () => { setCheatFog(true); draw(); const on = CHEAT_FOG; setCheatFog(false); return on && !CHEAT_FOG; });
+    step('Zurücksetzen: Rückfrage, und was gelöscht würde', () => {
+      saveSlot('Probe Zurücksetzen'); askReset();
+      const ask = shown('mOffer') && !!$('resetSaves') && !$('resetSaves').checked; closeModals();
+      const a = resetKeys(false), b = resetKeys(true);
+      const r = ask && a.includes('archipel-save-v1') && !a.some(k => k.startsWith('archipel-slot')) && b.includes('archipel-slots') && b.length > a.length && b.every(k => k.startsWith('archipel-'));
+      for (const m of listSlots()) if (m.name === 'Probe Zurücksetzen') deleteSlot(m.id);
+      return r;
+    });
     step('Enter beendet die Runde', () => { const t = S.turn; sel = null; key('Enter'); skipAnim(); closeModals(); return S.turn === t + 1 || !!S.over; });
 
     // Spielstände

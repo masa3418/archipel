@@ -508,6 +508,39 @@ function renderGfx() {
 }
 function openGfx() { Sfx.unlock(); gfx.svg = null; renderGfx(); openModal('mGfx'); }
 $('bGfx').onclick = () => { closeModals(); openGfx(); };   // aus dem Fenster „Einstellungen“
+
+// ---------------------------------------------------------------------------
+// Zurücksetzen (Einstellungen; Wunsch des Nutzers: mehrere teilen sich einen Rechner). Das Spiel merkt sich alles im Browser unter
+// „archipel-…“ (keine Cookies): Einstellungen, gesehene Tipps, Willkommensfenster, die laufende Partie, benannte Spielstände.
+// Zurücksetzen löscht alles davon und lädt die Seite neu – wie beim ersten Besuch. Benannte Spielstände bleiben, außer der Haken
+// in der Rückfrage ist gesetzt (sie könnten jemand anderem gehören).
+// ---------------------------------------------------------------------------
+const isSlotKey = k => k === 'archipel-slots' || k.startsWith('archipel-slot-');
+function resetKeys(alsoSaves) {
+  const out = [];
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('archipel-') && (alsoSaves || !isSlotKey(k))) out.push(k); } } catch (e) {}
+  return out;
+}
+function resetAll(alsoSaves) {
+  resetting = true; clearTimeout(queueSave.t);
+  try { for (const k of resetKeys(alsoSaves)) localStorage.removeItem(k); } catch (e) {}
+  location.reload();
+}
+function askReset() {
+  const n = listSlots().length;
+  $('offerTitle').textContent = tt('Wirklich alles zurücksetzen?', 'Really reset everything?');
+  $('offerText').innerHTML = tt('Alle Einstellungen, die gesehenen Tipps und die <b>laufende Partie</b> werden gelöscht. Danach beginnt das Spiel wie beim ersten Besuch.',
+    'All settings, the tips you have seen and the <b>current game</b> will be deleted. The game then starts as on the first visit.')
+    + (n ? `<br><br><label class="chk"><input type="checkbox" id="resetSaves"> ${tt(`Auch die gespeicherten Spielstände löschen (${n})`, `Also delete the saved games (${n})`)}</label>`
+      : '') + '<br><br>' + tt('Das lässt sich nicht rückgängig machen.', 'This cannot be undone.');
+  // der hervorgehobene Knopf ist die sichere Wahl
+  $('offerYes').textContent = tt('Abbrechen', 'Cancel');
+  $('offerNo').textContent = tt('Ja, zurücksetzen', 'Yes, reset');
+  $('offerYes').onclick = () => closeModals();
+  $('offerNo').onclick = () => resetAll(!!($('resetSaves') && $('resetSaves').checked));
+  openModal('mOffer');
+}
+$('bReset').onclick = () => { closeModals(); askReset(); };
 $('mGfx').addEventListener('click', async e => {
   const b = e.target.closest('button');
   if (!b) return;

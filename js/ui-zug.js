@@ -349,7 +349,8 @@ function queueSave() {
   clearTimeout(queueSave.t);
   queueSave.t = setTimeout(() => { if (S) saveGame(); }, 300);
 }
-window.addEventListener('pagehide', () => { clearTimeout(queueSave.t); if (S) saveGame(); });
+let resetting = false;   // „Zurücksetzen“ (ui-schau.js) lädt die Seite neu – dabei darf die Partie nicht wieder gespeichert werden
+window.addEventListener('pagehide', () => { clearTimeout(queueSave.t); if (S && !resetting) saveGame(); });
 
 // Installierbare App (nur online): sw.js und manifest.webmanifest liegen auf GitHub Pages, nicht im Release. Über file://
 // (Offline-Fassung) gibt es keinen Service Worker – dort wird er gar nicht erst angemeldet.
