@@ -268,6 +268,7 @@ function closeModals() {
 // Liegt das Kräfteverhältnis 5 Runden in Folge unter der Schwelle (bzw. über 100 % minus Schwelle), bietet das
 // Spiel Aufgeben (den Sieg) an. Nach einer Ablehnung wird 10 Runden nicht erneut gefragt.
 // Die Schwelle stellt man im Menü ein (archipel-offer: 0 = nie fragen, sonst Prozent; Standard 10).
+const OFFER_NEUTRAL = 0.5;   // Angebot erst, wenn höchstens dieser Anteil der Städte noch neutral ist
 const OFFER_TURNS = 5, OFFER_PAUSE = 10, OFFER_MIN_TURN = 15, OFFER_STEPS = [0, 5, 10, 15, 20, 25, 30];
 let offerPct = 20;   // Vorgabe; gemessen (288 Partien KI gegen KI): bis 20 % lag das Angebot in 1 von 282 Fällen falsch, siehe CLAUDE.md
 try { const v = Number(localStorage.getItem('archipel-offer')); if (localStorage.getItem('archipel-offer') !== null && OFFER_STEPS.includes(v)) offerPct = v; } catch (e) {}
@@ -281,6 +282,13 @@ function maybeOfferEnd() {
   const lim = offerPct / 100;
   const low = last.every(e => shareOf(e) < lim), high = last.every(e => shareOf(e) > 1 - lim);
   if (!low && !high) return;
+  // Nicht zu früh (Spielstand des Nutzers: Runde 38, 84 % – aber 47 von 56 Städten neutral, 11 % der Karte erkundet, der Gegner noch nicht
+  // gefunden): erst wenn höchstens die Hälfte der Städte neutral ist, und den Sieg nur, wenn man eine Stadt eines Gegners kennt.
+  // Messung (192 Partien KI gegen KI): Angebote vor Runde 60 vorher 16 (mittel/Leicht 11 von 42, frühestes Runde 18), danach 0; die übrigen
+  // kommen so früh wie bisher (Mitte unverändert Runde 150 / 174 / 119–121), kein falsches Angebot.
+  if (S.cities.filter(c => c.owner < 0).length > S.cities.length * OFFER_NEUTRAL) return;
+  const P = S.players[0], known = P.real ? P.real.knownOwner : P.knownOwner;
+  if (high && !S.cities.some(c => known[c.id] >= 1)) return;
   S.offerPause = S.turn + OFFER_PAUSE;      // gilt auch, wenn der Dialog einfach geschlossen wird
   const pct = Math.round(shareOf(last[last.length - 1]) * 100);
   const a = strength(0), b = strength(1);

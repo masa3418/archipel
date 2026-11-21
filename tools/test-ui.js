@@ -457,6 +457,24 @@ window.UiTest = (() => {
       $('keyLegend').querySelector('.kl-open').click(); ok = ok && !keysMin && !!$('keyLegend').querySelector('.kl-row');
       setShowKeys(k0); setKeysMin(m0); return ok;
     });
+    step('Vorzeitiges Ende: kein Angebot, solange die meisten Städte neutral sind oder der Gegner unentdeckt ist', () => {
+      const keepS = serialize(), pct0 = offerPct; offerPct = 20; closeModals();
+      const P = S.players[0], own = S.cities.map(c => c.owner), known0 = P.knownOwner.slice();
+      const arm = () => { S.turn = Math.max(S.turn, 40); S.offerPause = 0; S.over = null; S.hist = Array.from({ length: 6 }, (_, k) => ({ t: S.turn - 5 + k, me: 900, en: 100 })); closeModals(); };
+      const offered = () => { maybeOfferEnd(); const o = shown('mOffer'); closeModals(); return o; };
+      // 1) fast alles neutral (wie im Spielstand des Nutzers: Runde 38, 84 %, 47 von 56 Städten neutral)
+      S.cities.forEach((c, k) => { c.owner = k < 3 ? 0 : k === 3 ? 1 : -1; }); P.knownOwner.fill(-1); arm();
+      let ok = !offered();
+      // 2) genug Städte vergeben, aber der Gegner ist noch nicht gefunden
+      S.cities.forEach((c, k) => { c.owner = k % 3 === 0 ? 1 : 0; }); arm(); ok = ok && !offered();
+      // 3) Gegner bekannt: jetzt kommt das Angebot
+      const foe = S.cities.find(c => c.owner === 1); P.knownOwner[foe.id] = 1; arm(); ok = ok && offered();
+      // 4) Aufgeben braucht keine Entdeckung, aber dieselbe Grenze bei den neutralen Städten
+      P.knownOwner.fill(-1); arm(); S.hist.forEach(e => { e.me = 100; e.en = 900; }); ok = ok && offered();
+      S.cities.forEach((c, k) => { c.owner = k < 3 ? 1 : k === 3 ? 0 : -1; }); arm(); S.hist.forEach(e => { e.me = 100; e.en = 900; }); ok = ok && !offered();
+      S.cities.forEach((c, k) => { c.owner = own[k]; }); deserialize(keepS); afterLoad(); closeModals(); offerPct = pct0; replay = 'off';
+      return ok;
+    });
     step('Neues Spiel: Landschaft vorgewählt aus den drei Startlandschaften, gewählte gilt', () => {
       let ok = true; const seen = new Set();
       for (let k = 0; k < 80; k++) { $('bNew').click(); ok = ok && shown('mNew') && START_LANDS.includes($('newLandSel').value); seen.add($('newLandSel').value); closeModals(); }
