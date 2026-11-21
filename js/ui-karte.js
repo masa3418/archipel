@@ -964,7 +964,11 @@ function render(now = performance.now()) {
       const path = findPath(su, su.order.x, su.order.y);
       if (path && path.length) drawGotoPath(su.x, su.y, path, now);
     }
-    drawSelRing(su.x, su.y, pulse);
+    drawSelRing(su.x, su.y, pulse, now);
+    if (ping.seen !== su.id && !cam.active && !anim.after && !(pendingCenter && pendingCenter.id === su.id) && !captureQueue.length && !anyModalOpen()) {
+      ping.seen = ping.id = su.id; ping.t0 = now;
+    }
+    if (ping.id === su.id && now - ping.t0 < PING_MS) drawSelPing(su.x, su.y, (now - ping.t0) / PING_MS);
     const gp = gotoPreviewFor(su), hp = showRoute ? hoverRoute(su) : null;
     if (hp && !(gp && gp.x === hp.x && gp.y === hp.y)) drawGotoConfirm(su, hp, false);
     if (gp) drawGotoConfirm(su, gp);
@@ -973,7 +977,7 @@ function render(now = performance.now()) {
     if (T(su).carries === 'land' && su.owner === 0) for (const o of assaultOptions(su)) drawAssaultChance(o.x, o.y, o.chance, pulse);
   } else if (selCity != null && !su) {
     const c = S.cities[selCity];
-    if (c) drawSelRing(c.x, c.y, pulse); else selCity = null;
+    if (c) drawSelRing(c.x, c.y, pulse, now); else selCity = null;
   }
   if (hover) {
     const [hx, hy] = hover;
@@ -1002,13 +1006,47 @@ function drawHint(x, y, kind) {
     ctx.beginPath(); ctx.arc(cx, cy, TS * 0.09, 0, 7); ctx.fill();
   }
 }
-// leuchtender Ring um die gewählte Einheit oder Stadt; pulse 0 … 1
-function drawSelRing(x, y, pulse) {
-  const cx = x * TS + TS / 2, cy = y * TS + TS / 2;
+// Leuchtender Ring um die gewählte Einheit oder Stadt; pulse 0 … 1. Die gewählte Einheit wurde am Rand des Ausschnitts leicht übersehen
+// (Hinweis des Nutzers), deshalb: dunkler Saum unter dem Ring (trägt auch auf Schnee und Wüste) und mit now ein Herzschlag – alle
+// SEL_BEAT ms läuft eine Welle nach außen; Bewegung fällt auch im Augenwinkel auf. Nicht bei reduzierter Bewegung (calmMotion).
+const SEL_BEAT = 1800;
+const calmMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+function drawSelRing(x, y, pulse, now) {
+  const cx = x * TS + TS / 2, cy = y * TS + TS / 2, r = TS * (0.5 + 0.04 * pulse), lw = Math.max(2, TS / 11);
   ctx.save();
+  const f = now == null || calmMotion ? 1 : (now % SEL_BEAT) / SEL_BEAT * 2;   // erste Hälfte Welle, zweite Ruhe
+  if (f < 1) {
+    ctx.strokeStyle = `rgba(255,236,160,${0.8 * (1 - f)})`; ctx.lineWidth = lw * (1 - f * 0.6);
+    ctx.beginPath(); ctx.arc(cx, cy, r + TS * 0.62 * (1 - (1 - f) * (1 - f)), 0, 7); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(12,16,24,0.55)'; ctx.lineWidth = lw + 3;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
   ctx.shadowColor = 'rgba(255,230,150,0.9)'; ctx.shadowBlur = TS * 0.3;
-  ctx.strokeStyle = `rgba(255,${220 + pulse * 35},${120 + pulse * 120},0.95)`; ctx.lineWidth = Math.max(2, TS / 11);
-  ctx.beginPath(); ctx.arc(cx, cy, TS * (0.5 + 0.04 * pulse), 0, 7); ctx.stroke();
+  ctx.strokeStyle = `rgba(255,${220 + pulse * 35},${120 + pulse * 120},0.95)`; ctx.lineWidth = lw;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
+  ctx.restore();
+}
+// Suchring: Wechselt die Auswahl von selbst zu einer anderen Einheit (nächste Einheit nach einem Zug, Rundenbeginn, Tasten N und Leertaste)
+// oder auf Taste F, ziehen sich zwei Ringe von weit außen auf sie zusammen – so findet das Auge sie auch am Rand des Ausschnitts, ohne
+// dass die Karte jedes Mal in die Mitte springt. Erst wenn Kamera und Wiedergabe stehen und kein Fenster offen ist (render); nach einem
+// Klick auf die Einheit nicht – dann weiß man, wo sie ist (pingSkip). f 0 … 1, r0 = Startradius in Pixeln.
+const PING_MS = 700;
+const ping = { seen: null, id: null, t0: -1e9 };
+function pingSkip() { ping.seen = sel; }
+function pingAgain() { ping.seen = null; }
+function drawSelPing(x, y, f, r0 = Math.max(TS * 3.4, 130)) {
+  const cx = x * TS + TS / 2, cy = y * TS + TS / 2, r1 = TS * 0.56;
+  ctx.save();
+  for (let k = 0; k < 2; k++) {
+    const g = (f - k * 0.22) / 0.78;
+    if (g <= 0 || g >= 1) continue;
+    const e = 1 - Math.pow(1 - g, 3);              // schnell herein, sanft ankommen
+    const r = r1 + (r0 - r1) * (1 - e), a = Math.min(1, g * 6) * (1 - g * 0.6);
+    ctx.strokeStyle = `rgba(12,16,24,${0.5 * a})`; ctx.lineWidth = Math.max(3, TS / 9) + 3;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
+    ctx.strokeStyle = `rgba(255,236,160,${a})`; ctx.lineWidth = Math.max(3, TS / 9);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
+  }
   ctx.restore();
 }
 // Marschweg der gewählten Einheit: laufende Striche von (x, y) über path, Kreis am Ziel

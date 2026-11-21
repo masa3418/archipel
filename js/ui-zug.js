@@ -172,17 +172,30 @@ function toast(msg, ms = 1800) {
 }
 
 function centerOn(x, y, force = false) {
-  const px = x * TS + TS / 2, py = y * TS + TS / 2;
-  const m = TS * 3;
-  const vx = view.x, vy = view.y, vw = wrap.clientWidth, vh = wrap.clientHeight;
-  if (force || px < vx + m || px > vx + vw - m || py < vy + m || py > vy + vh - m) {
-    view.x = px - vw / 2; view.y = py - vh / 2;
+  if (!force && wellInView(x, y)) return;
+  view.x = x * TS + TS / 2 - wrap.clientWidth / 2; view.y = y * TS + TS / 2 - wrap.clientHeight / 2;
+}
+// Liegt das Feld gut sichtbar im Ausschnitt? Abstand zum Rand mindestens 3 Felder und ein Sechstel des Ausschnitts (herausgezoomt
+// reichten 3 Felder nicht – die Einheit stand fast am Rand und wurde übersehen), und nicht unter Tastenlegende oder Tipp, die über
+// der Karte liegen. Sonst rückt die Karte die Einheit in die Mitte (centerOn, focusOn, Schwenk zur nächsten Einheit).
+function wellInView(x, y) {
+  const vw = wrap.clientWidth, vh = wrap.clientHeight;
+  const sx = x * TS + TS / 2 - view.x, sy = y * TS + TS / 2 - view.y;
+  const mx = Math.min(vw * 0.35, Math.max(TS * 3, vw / 6)), my = Math.min(vh * 0.35, Math.max(TS * 3, vh / 6));
+  if (sx < mx || sx > vw - mx || sy < my || sy > vh - my) return false;
+  const wr = wrap.getBoundingClientRect(), cx = wr.left + sx, cy = wr.top + sy, h = TS;   // Feld samt Ring und etwas Luft
+  for (const id of ['keyLegend', 'tipBox']) {
+    const el = $(id);
+    if (!el || el.hidden) continue;
+    const b = el.getBoundingClientRect();
+    if (b.width && cx + h > b.left && cx - h < b.right && cy + h > b.top && cy - h < b.bottom) return false;
   }
+  return true;
 }
 
 // Weicher Schwenk auf ein Feld, falls es nicht schon gut sichtbar ist (always: immer in die Mitte)
 function focusOn(x, y, always = false) {
-  if (!always && inViewMargin(x, y)) { cam.active = false; return; }
+  if (!always && wellInView(x, y)) { cam.active = false; return; }
   pan(x + 0.5, y + 0.5, 450);
 }
 // Knopf ⌖ / Taste F: Karte auf die ausgewählte Einheit (bzw. Stadt) zentrieren – nach dem Umsehen auf der Karte
@@ -192,6 +205,7 @@ function actFocus() {
   if (!t) { toast(tt('Keine Einheit ausgewählt', 'No unit selected')); Sfx.play('error'); return; }
   pendingCenter = null;
   focusOn(t.x, t.y, true);
+  pingAgain();   // nach dem Schwenk zeigt der Suchring noch einmal auf die Einheit
   dirty = true;
 }
 
@@ -228,11 +242,6 @@ function select(u, center = true) {
 
 // Verzögerter, weicher Kameraschwenk zur nächsten Einheit
 let pendingCenter = null;
-function inViewMargin(x, y, m = 3) {
-  const px = x * TS + TS / 2, py = y * TS + TS / 2, mm = TS * m;
-  return px >= view.x + mm && px <= view.x + wrap.clientWidth - mm &&
-         py >= view.y + mm && py <= view.y + wrap.clientHeight - mm;
-}
 function pendingCenterStep(now) {
   if (!pendingCenter || now < pendingCenter.at) return;
   // Solange ein Fenster offen ist oder gleich kommt (Eroberung, Landung), bleibt die Karte, wo sie ist – es bezieht sich auf diese Stelle
@@ -240,7 +249,7 @@ function pendingCenterStep(now) {
   const pc = pendingCenter; pendingCenter = null;
   const u = selUnit();
   if (!u || u.id !== pc.id) return;
-  if (!inViewMargin(u.x, u.y)) pan(u.x + 0.5, u.y + 0.5, 550);
+  if (!wellInView(u.x, u.y)) pan(u.x + 0.5, u.y + 0.5, 550);
 }
 
 // Beladener Transporter neben einer neutralen oder feindlichen Stadt: Seine Truppen haben ihren Zug noch und können vom Schiff aus
@@ -584,7 +593,7 @@ function onTileClick(x, y, shift) {
     if (u.x === x && u.y === y && !shift) {
       // weiter durch die Einheiten auf dem Feld schalten
       const here = own.concat(...own.map(cargoOf)).filter(o => o.owner === 0);
-      if (here.length > 1) { const k = here.indexOf(u); select(here[(k + 1) % here.length]); }
+      if (here.length > 1) { const k = here.indexOf(u); select(here[(k + 1) % here.length]); pingSkip(); }
       refresh(); return;
     }
     const adjacent = cheb(u.x, u.y, x, y) === 1;
@@ -593,7 +602,7 @@ function onTileClick(x, y, shift) {
     // Eigene Stadt = Ziel für die gewählte Einheit (auch wenn dort schon Einheiten stehen).
     // Stadt bearbeiten: erst Auswahl aufheben (Rechtsklick/Esc), dann Stadt anklicken.
     if (!shift && !ownCity && own.length && (!adjacent || !boardable)) {
-      select(own.find(needsOrders) || own[0]); Sfx.play('select'); refresh(); return;
+      select(own.find(needsOrders) || own[0]); pingSkip(); Sfx.play('select'); refresh(); return;
     }
     if (adjacent) { gotoPreview = null; doMove(u, x, y); return; }
     // Entferntes Feld: Marschbefehl (den Weg zeigt die Karte schon beim Überfahren, siehe hoverRoute). Nur bei einer eigenen Stadt zeigt
@@ -612,7 +621,7 @@ function onTileClick(x, y, shift) {
     Sfx.play('tick'); refresh();
     return;
   }
-  if (own.length) { select(own.find(needsOrders) || own[0]); Sfx.play('select'); }
+  if (own.length) { select(own.find(needsOrders) || own[0]); pingSkip(); Sfx.play('select'); }
   else sel = null;
   selCity = city && city.owner === 0 ? city.id : null;
   refresh();

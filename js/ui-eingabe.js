@@ -51,6 +51,7 @@ function openCtx(x, y, cx, cy) {
   let u = selUnit();
   if (!u || !units.includes(u)) u = units.find(needsOrders) || units[0] || null;
   sel = u ? u.id : null;            // ohne select(): eine Wache bleibt Wache
+  pingSkip();                       // angeklickt: kein Suchring
   selCity = ownCity ? ownCity.id : null;
   cmenu = { x, y, cx, cy };
   Sfx.play('tick');
@@ -233,7 +234,7 @@ $('panel').addEventListener('click', e => {
   const q = e.target.closest('[data-help]');
   if (q) { openHelp(null, q.dataset.help); return; }
   const chip = e.target.closest('[data-unit]');
-  if (chip) { const u = unitById(+chip.dataset.unit); if (u) { select(u); refresh(); } return; }
+  if (chip) { const u = unitById(+chip.dataset.unit); if (u) { select(u); pingSkip(); refresh(); } return; }
   const b = e.target.closest('[data-act]');
   if (!b) return;
   ({ skip: actSkip, sentry: actSentry, load: actLoad, unload: actUnload, unloadLand: () => actUnload(true), assaultUnit: () => { const tr = selUnit(), o = tr && assaultOptions(tr).find(k => k.kind === 'unit'); if (o) doAssault(tr, o); }, landing: actLanding, cancel: actCancel, next: actNext, patrol: actPatrol, patrolGo: patrolStart, patrolUndo: patrolUndo, patrolAbort: patrolAbort, explore: actExplore, home: actHome,

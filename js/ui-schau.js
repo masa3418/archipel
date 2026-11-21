@@ -362,15 +362,19 @@ function gfxLand(body) {
 function gfxMarks(body) {
   const P0 = PLAYERS[0].light, pct = v => Math.round(v * 100) + ' %';
   const sel = gfxSection(body, tt('Gewählte Einheit', 'Selected unit'));
-  sel.append(gfxCard(gfxPic(['...', '...', '...'], 40, now => { drawToken(gu('tank'), TS, TS, TS); drawSelRing(1, 1, gfxPulse(now)); }, { live: true }),
-    tt('Auswahl', 'Selection'), tt('pulsierender Ring', 'pulsing ring')));
+  sel.append(gfxCard(gfxPic(['...', '...', '...'], 40, now => { drawToken(gu('tank'), TS, TS, TS); drawSelRing(1, 1, gfxPulse(now), now); }, { live: true }),
+    tt('Auswahl', 'Selection'), tt('pulsierender Ring, alle paar Sekunden eine Welle', 'pulsing ring, a wave every few seconds')));
+  sel.append(gfxCard(gfxPic(['.....', '.....', '.....', '.....', '.....'], 24, now => {
+    drawToken(gu('tank'), 2 * TS, 2 * TS, TS); drawSelRing(2, 2, gfxPulse(now));
+    drawSelPing(2, 2, (now % 1800) / PING_MS, TS * 2.4);
+  }, { live: true }), tt('Suchring', 'Locator ring'), tt('wenn das Spiel zur nächsten Einheit wechselt', 'when the game moves on to the next unit')));
   sel.append(gfxCard(gfxPic(['...', '..~', '..~'], 40, now => {
     drawToken(gu('inf', 1), 0, 0, TS); drawToken(gu('trn'), 2 * TS, TS, TS);
     for (const [x, y, k] of [[0, 0, 'attack'], [1, 0, 'move'], [2, 0, 'move'], [0, 1, 'move'], [2, 1, 'board'], [0, 2, 'move'], [1, 2, 'move']]) drawHint(x, y, k);
-    drawToken(gu('tank'), TS, TS, TS); drawSelRing(1, 1, gfxPulse(now));
+    drawToken(gu('tank'), TS, TS, TS); drawSelRing(1, 1, gfxPulse(now), now);
   }, { live: true }), tt('Zugmarker', 'Move markers'), tt('Punkt: frei · gold: an Bord gehen · Fadenkreuz: angreifen', 'dot: free · gold: go aboard · crosshair: attack')));
   sel.append(gfxCard(gfxPic(['....', '..f.', '....'], 40, now => {
-    drawGotoPath(0, 2, [[1, 1], [2, 1], [3, 0]], now); drawToken(gu('tank'), 0, 2 * TS, TS, { goto: true }); drawSelRing(0, 2, gfxPulse(now));
+    drawGotoPath(0, 2, [[1, 1], [2, 1], [3, 0]], now); drawToken(gu('tank'), 0, 2 * TS, TS, { goto: true }); drawSelRing(0, 2, gfxPulse(now), now);
   }, { live: true }), tt('Marschweg', 'March route'), tt('laufende Striche bis zum Ziel', 'moving dashes to the destination')));
   sel.append(gfxCard(gfxPic(['....', '....', '~~..'], 40, now => {
     drawToken(gu('ftr'), 0, TS, TS, { patrol: true });
@@ -386,7 +390,7 @@ function gfxMarks(body) {
     drawToken(gu('inf'), 0, TS, TS); drawToken(gu('tank', 1), TS, TS, TS); drawHoverFrame(1, 1, true); drawOdds(1, 1, 0.31);
   }), tt('Siegchance gering', 'Poor odds'), tt('rot unter 50 %', 'red below 50 %')));
   mouse.append(gfxCard(gfxPic(['~~..', '~C..', '~~..'], 40, now => {
-    drawToken(gu('trn'), 0, TS, TS, { badge: 3 }); drawSelRing(0, 1, gfxPulse(now)); drawAssaultChance(1, 1, CAPTURE_BASE + SUPPORT_CAPTURE, gfxPulse(now));
+    drawToken(gu('trn'), 0, TS, TS, { badge: 3 }); drawSelRing(0, 1, gfxPulse(now), now); drawAssaultChance(1, 1, CAPTURE_BASE + SUPPORT_CAPTURE, gfxPulse(now));
   }, { live: true, cities: [1] }), tt('Sturm vom Schiff', 'Assault from the ship'), tt('Chance, die Stadt mit den Truppen an Bord zu nehmen', 'chance to take the city with the troops on board')));
 
   const sup = gfxSection(body, tt('Unterstützung', 'Support'), tt('In der Farbe des Schiffs, das unterstützt.', 'In the colour of the supporting ship.'));

@@ -145,6 +145,34 @@ window.UiTest = (() => {
     check(hoverRoute(u) != null, 'Vorschau abgeschaltet: die Wegsuche für den Klick läuft weiter');
     showRoute = wasOn;
   }
+  // Suchring und Kamera: Wechselt das Spiel von selbst zur nächsten Einheit (oder Taste F), zeigt der Suchring auf sie (render),
+  // nach einem Klick auf die Einheit nicht. Am Rand oder unter der Tastenlegende gilt eine Einheit nicht als gut sichtbar (wellInView).
+  function locator() {
+    reset();
+    const a = createUnit('inf', 0, ...base.l), b = createUnit('dst', 0, ...base.s); computeVision(0);
+    const frame = () => { dirty = true; render(performance.now()); };
+    let t = ping.t0;
+    sel = null; onTileClick(a.x, a.y, false); frame();
+    check(sel === a.id && ping.t0 === t, 'Suchring: nach einem Klick auf die Einheit keiner');
+    actNext(); frame();
+    check(sel === b.id && ping.id === b.id && ping.t0 > t, 'Suchring: „Nächste Einheit“ zeigt auf die neue Einheit');
+    t = ping.t0; frame();
+    check(ping.t0 === t, 'Suchring: nur einmal je Auswahl');
+    view.x += wrap.clientWidth; actFocus(); frame();
+    check(ping.t0 > t && wellInView(b.x, b.y), 'Taste F: Karte auf die Einheit, Suchring noch einmal');
+    // view begrenzt sich selbst auf den Rand um die Karte – deshalb an den Bildrand, der zur Kartenseite der Einheit passt
+    const sx = b.x * TS + TS / 2, sy = b.y * TS + TS / 2;
+    view.x = sx < S.W * TS / 2 ? sx - TS * 1.5 : sx - wrap.clientWidth + TS * 1.5;
+    check(!wellInView(b.x, b.y), 'Einheit 1,5 Felder vor dem Rand: nicht gut sichtbar');
+    const lg = $('keyLegend');
+    if (!lg.hidden) {
+      const r = lg.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+      view.x = sx - (r.left - w.left + r.width / 2); view.y = sy - (r.top - w.top + r.height / 2);
+      const px = w.left + sx - view.x, py = w.top + sy - view.y;
+      if (px > r.left && px < r.right && py > r.top && py < r.bottom) check(!wellInView(b.x, b.y), 'Einheit unter der Tastenlegende: nicht gut sichtbar');
+    }
+    centerOn(b.x, b.y, true);
+  }
   // Befehle: Knopf der Seitenleiste, Rechtsklick-Menü, Tastenlegende und Taste müssen sich einig sein (orderCheck).
   // Grauer Knopf = die Taste meldet denselben Grund und ändert nichts; aktiver Knopf = die Taste bewirkt etwas.
   function orders() {
@@ -577,7 +605,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); locator(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters

@@ -263,6 +263,14 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Fensterbreite/-höhe, damit jedes Feld in die Bildmitte passt (ein Erstspieler war verwirrt: Start am Kartenrand lag am Bildrand, unten links
   unter der Tastenlegende). `view.x`/`view.y` = Kartenpixel an der linken oberen Ecke des Sichtfensters (auch negativ) – immer darüber rechnen,
   nie mit `wrap.scrollLeft`/`scrollTop`; `clampCenter` begrenzt nur noch auf die Karte. Auch `tools/video/rec.js` rechnet mit `view`.
+- **Gewählte Einheit finden** (Hinweis des Nutzers: am Rand des Ausschnitts übersehen; jedes Mal in die Mitte wäre zu viel Bewegung):
+  `drawSelRing(x, y, pulse, now)` mit dunklem Saum (trägt auf Schnee und Wüste) und Herzschlag – alle `SEL_BEAT` ms eine Welle nach außen, nicht bei
+  reduzierter Bewegung (`calmMotion`). **Suchring** (ui-karte.js `ping`, `drawSelPing`, `PING_MS`): Wechselt die Auswahl von selbst (nächste Einheit nach
+  einem Zug, Rundenbeginn, Tasten N und Leertaste) oder auf Taste F (`pingAgain`), ziehen sich zwei Ringe von weit außen auf die Einheit zusammen. Ausgelöst
+  in `render`, erst wenn Kamera, Wiedergabe (`anim.after`), `pendingCenter` und Fenster ruhen – also nach dem Schwenk. Auswahl per Klick (Karte, Rechtsklick,
+  Ladung in der Seitenleiste) ruft `pingSkip`; neue Stellen, an denen der Spieler selbst auswählt, ebenso. **Kamera:** `wellInView(x, y)` (ui-zug.js) –
+  Abstand zum Rand mindestens 3 Felder und ein Sechstel des Ausschnitts (herausgezoomt reichten 3 Felder nicht), nicht unter Tastenlegende oder Tipp;
+  sonst rücken `centerOn`, `focusOn` und der Schwenk zur nächsten Einheit sie in die Mitte. Neue Elemente über der Karte dort eintragen.
 - **Karte bewegen** (ui.js): Ziehen mit jeder Maustaste (links erst ab `DRAG_THRESHOLD_LEFT`, der Klick danach wird über
   `dragSwallow` verschluckt), Umschalt + Pfeiltasten, Klick auf die Übersichtskarte. Rad-Ereignisse: Mausrad zoomt,
   Touchpad-Wischen verschiebt (`looksLikeTouchpad`: kleine, krumme oder seitliche Schritte), Spreizgeste = Rad mit Strg = Zoom.
@@ -421,8 +429,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 777 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
-     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 783 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
    Pull Requests (Entscheidung mit dem Nutzer: für eine Person zu viel Zeremonie; neu überlegen, wenn andere beitragen).
