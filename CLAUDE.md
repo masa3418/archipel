@@ -746,6 +746,17 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   Inselreich 55, Gemischt 62, Festland 53, Kontinente 66, Binnenmeer 57 %), offen 33 von 800, verlorene Schiffe je Partie ca. 15 % weniger. Stufen
   (Platz 0 einfach, je 192 über die drei alten Welten, ohne → mit): Schwer 13 → 9 %, Brutal 2 → 2 %; Leicht und Normal unberührt. Zeit je
   Computerzug unverändert (mittel 24/19 ms, groß mit 3 Gegnern 35/34 ms). Test: „KI: Schiffe sehen unterwegs hin …“ (200 Lagen).
+- **Landeziel bewerten** (Wunsch des Nutzers, wieder entfernt; Anlass: ein Gegner unten rechts fuhr in die umkämpfte Mitte, statt die neutralen
+  Inseln nebenan zu holen). So wählt die KI: Der beladene Transporter fährt zum nächsten Ufer irgendeiner Insel mit einer fremden Stadt, gemessen
+  von dort, wo er gerade liegt (meist sein Ladehafen); neutral oder verteidigt, Zahl der Städte zählen nicht. Versuch (nur Können 1, Schalter je
+  Platz): je Insel Wert / (Fahrstrecke + 8), Wert = neutrale Städte + fremde × Gewicht; die Wahl galt bis zum Ausladen. Erste Fassung (fremde × 0,5)
+  bevorzugte große Inseln der Gegner (viele Städte); zweite Fassung zählt höchstens so viele Städte, wie die Ladung nehmen kann (Ladung / 2), fremde
+  × 0,3 – wählte neutrale Inseln 164 statt 91 von 590 Fahrten (mittel, 3 Gegner, Schwer). Direkter Vergleich (klein, alle fünf Welten, beide Können 1,
+  ohne Fehler, beide Sitze, je 800 Partien): erste Fassung 379 : 378, zweite 378 : 377 – kein Effekt. Vier Parteien (mittel, Inselreich/Gemischt/
+  Kontinente, alle Können 1, Variante reihum auf einem Platz, je 72 Partien): Anteil an den Städten am Ende 22,8 % statt 25,6 % auf denselben Plätzen
+  ohne Variante, vorne 65-mal statt erwartet 74 – eher schlechter (erste Stichprobe mit je 36 ebenso). Grund vermutlich: Kurze Wege heißen mehr
+  Landungen, fremde Städte sind kaum besetzt (Angriff schlägt Verteidigung), und jede eroberte fremde Stadt schwächt zugleich einen Gegner.
+  Nicht wieder versuchen, solange die Eroberungsregeln gleich bleiben.
 - **Kapitulation** (siehe „Mehrere Gegner“; `CAPITULATE.turns = 1e9` schaltet sie für Messungen ab). Vorher (168 Partien, Platz 0 einfach, Normal):
   Von 232 Computer-Parteien, die von ≥ 4 auf ≤ 2 Städte fielen, kamen 3 zurück auf ≥ 5; Ausscheiden im Mittel 9 (klein, 2 Gegner) bzw. 6 Runden
   (mittel, 3 Gegner) danach, jede zehnte hielt sich über 30 Runden. Mit/ohne (klein 2 Gegner je 120, mittel 3 Gegner je 72 Partien): Siege
