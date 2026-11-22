@@ -3,6 +3,32 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.8.7
+
+Mehr Übersicht auf der Karte, verborgene Besatzungen und ein würdiges Ende.
+
+- **Die gewählte Einheit findet man leichter:** Wechselt das Spiel zur nächsten Einheit, zieht sich ein Suchring auf sie
+  zusammen. Der Ring um die Einheit hat einen dunklen Saum und einen leichten Herzschlag, und die Karte rückt sie früher in
+  die Mitte – auch wenn sie unter der Tastenlegende oder einem Tipp liegt.
+- **Weniger Springen:** „Nächste Einheit“ (N) nimmt immer die nächstgelegene wartende Einheit; nach einer Eroberung oder
+  einem Verlust geht es in der Nähe weiter. Märsche, Patrouillen und Erkunden laufen beim Rundenwechsel räumlich geordnet –
+  die Kamera der Wiedergabe fährt nur noch einen Bruchteil der bisherigen Wege.
+- **Verborgene Besatzung:** Feindliche Städte zeigen nur noch, dass sie besetzt sind (Schild mit Fragezeichen). Welche Einheit
+  verteidigt, zeigt sich erst im Kampf; gegen eine besetzte Stadt gibt es deshalb keine Siegchance mehr.
+- **Kapitulation:** Mit mehreren Gegnern gibt eine Partei auf, die schon einmal vier Städte hatte und zehn Runden lang nur
+  noch höchstens zwei besitzt – ihre Städte werden neutral. Das Angebot zum vorzeitigen Sieg ist ein eigenes Fenster
+  geworden: „Deine Gegner kapitulieren!“, die Rechnung dazu zum Aufklappen.
+- **Transporter des Computers:** Seine Truppen greifen jetzt auch nach der letzten Fahrt des Transporters vom Schiff aus an.
+  Auf Schwer und Brutal flüchtet ein bedrohter Transporter in einen nahen eigenen Hafen – diese Stufen sind dadurch etwas härter.
+- **Korrigiert:** Der Ring der Luftdeckung fährt in der Wiedergabe mit dem Träger, statt am Ziel zu warten; versenkte
+  Einheiten verschwinden auch bei langen Gegnerzügen rechtzeitig; der Jäger klingt nicht mehr lauter als die anderen Einheiten.
+
+*English:* a locator ring and a gentle pulse make the selected unit easier to find, and “Next unit” as well as standing orders
+now go by distance, so the map jumps far less. Enemy cities only show that they are garrisoned – the defender is revealed in
+battle. With several opponents, a party reduced to two cities for ten turns surrenders, and the offer of an early victory has
+its own celebratory window. Computer transports let their troops attack after the last move and, on Hard and Brutal, flee into
+a nearby port. Fixes for the air cover ring and sunk units during the replay, and the fighter is no longer louder than the rest.
+
 ## 1.8.6
 
 Eine Datei zum Offline-Spielen.
