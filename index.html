@@ -68,8 +68,8 @@
   .view-menu .ck { width: 26px; text-align: center; color: var(--accent); flex-shrink: 0; font-weight: 700; }
   .view-menu .mi.on { font-weight: 600; }
   .view-menu .mi kbd { margin-left: auto; font-size: 11px; }
-  .view-menu .mi[data-land].on { background: var(--panel2); }
-  .view-menu .mi[data-land].on::after { content: '✓'; margin-left: auto; color: var(--accent); }
+  .view-menu .mi[data-land].on, .view-menu .mi[data-border].on { background: var(--panel2); }
+  .view-menu .mi[data-land].on::after, .view-menu .mi[data-border].on::after { content: '✓'; margin-left: auto; color: var(--accent); }
   .menu a.mi { color: var(--text); text-decoration: none; }
   /* Verweis ins Internet (Erklärvideos): deutlich als „online“ gekennzeichnet */
   .ext { font-size: 11px; font-weight: 600; color: #9fc4ff; border: 1px solid #3d6aa8; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
@@ -138,7 +138,39 @@
   #mapWrap { flex: 1; min-height: 0; overflow: auto; position: relative; background: #070a0f; }
   /* Karte mit leerem Rand ringsum, Maße setzt applyPad (ui.js). Der Bereich außerhalb ist schraffiert und die Karte gerahmt,
      damit man ihn nicht mit unerforschtem Gebiet (fast schwarz) verwechselt. */
-  #mapPad { position: relative; background: repeating-linear-gradient(135deg, #141a23 0 10px, #10151c 10px 20px); }
+  /* Kartenrand = Bereich außerhalb der Karte (#mapPad, Klasse b-…; Auswahl setBorder in ui-schau.js). overflow: hidden – der Schmuck in #padDeco
+     und die per CSS vergrößerte Leinwand (stufenloser Zoom) dürfen die Fläche nicht vergrößern. */
+  #mapPad { position: relative; overflow: hidden; }
+  .padbg, .padbg.b-schlicht { background: repeating-linear-gradient(135deg, #141a23 0 10px, #10151c 10px 20px); }
+  .padbg.b-meer { background-color: var(--sea2, #0c2a45);
+    background-image: radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(0,4,12,.55) 100%), repeating-linear-gradient(170deg, rgba(200,230,255,.05) 0 2px, transparent 2px 26px),
+      repeating-linear-gradient(10deg, rgba(200,230,255,.035) 0 2px, transparent 2px 34px), radial-gradient(ellipse at 50% 50%, var(--sea1, #164a70) 0%, transparent 60%); }
+  .padbg.b-seekarte { background-color: #d9c69c;
+    background-image: radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(95,62,25,.42) 100%), var(--paper, none), linear-gradient(rgba(110,75,35,.26) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(110,75,35,.26) 1px, transparent 1px), linear-gradient(rgba(110,75,35,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(110,75,35,.1) 1px, transparent 1px);
+    background-size: 100% 100%, 256px 256px, 160px 160px, 160px 160px, 32px 32px, 32px 32px; }
+  .padbg.b-holz { background-color: #5b3a22;
+    background-image: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,.5) 100%), repeating-linear-gradient(91deg, rgba(255,220,170,.055) 0 2px, transparent 2px 7px, rgba(0,0,0,.07) 7px 9px, transparent 9px 17px),
+      repeating-linear-gradient(89.4deg, transparent 0 41px, rgba(0,0,0,.06) 41px 44px, transparent 44px 97px), repeating-linear-gradient(90deg, #6a4428 0 140px, #3e2614 140px 142px, #634026 142px 300px, #3e2614 300px 302px, #6d4529 302px 470px, #3e2614 470px 472px); }
+  .padbg.b-weltall { background-color: #04050b;
+    background-image: var(--stars, none), radial-gradient(ellipse at 22% 18%, rgba(90,70,170,.28), transparent 45%), radial-gradient(ellipse at 80% 78%, rgba(40,100,170,.22), transparent 45%),
+      radial-gradient(ellipse at 70% 20%, rgba(170,60,120,.14), transparent 35%); background-size: 512px 512px, 100% 100%, 100% 100%, 100% 100%; }
+  /* Rahmen der Karte je Rand: Seekarte mit Doppellinie, Holztisch mit Schatten wie ein Spielbrett, Weltall mit Schein */
+  #mapPad.b-meer #map { outline-color: rgba(170,215,255,.35); box-shadow: 0 0 26px 6px rgba(0,0,0,.35); }
+  #mapPad.b-seekarte #map { outline: 2px solid #6b4a22; box-shadow: 0 0 0 5px #d9c69c, 0 0 0 7px #6b4a22, 8px 12px 26px rgba(60,40,15,.45); }
+  #mapPad.b-holz #map { outline: 2px solid #1e1208; box-shadow: 0 0 0 6px #2c1a0c, 0 0 0 7px rgba(255,220,170,.18), 12px 18px 34px rgba(0,0,0,.7); }
+  #mapPad.b-weltall #map { outline-color: #5a6a90; box-shadow: 0 0 0 4px #04050b, 0 0 44px 12px rgba(120,140,255,.2); }
+  #padDeco { position: absolute; inset: 0; pointer-events: none; }
+  #padDeco img { position: absolute; opacity: .9; }
+  #padDeco .chart-cap { position: absolute; transform: translate(-50%, 0); font: italic 600 18px Georgia, "Times New Roman", serif; color: rgba(92,58,24,.8); white-space: nowrap; letter-spacing: .04em; }
+  #padDeco .twinkle { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; box-shadow: 0 0 6px 2px rgba(200,220,255,.55); animation: twinkle 3.4s ease-in-out infinite; }
+  @keyframes twinkle { 0%, 100% { opacity: .12; transform: scale(.6); } 50% { opacity: 1; transform: scale(1.25); } }
+  @media (prefers-reduced-motion: reduce) { #padDeco .twinkle { animation: none; opacity: .7; } }
+  /* Grafik-Übersicht: Kartenrand im Kleinen, unten rechts eine angedeutete Kartenecke */
+  .gfx-pad { position: relative; width: 200px; height: 112px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+  .gfx-pad-map { position: absolute; right: -12px; bottom: -12px; width: 92px; height: 58px; outline: 2px solid #4a5a70;
+    background: radial-gradient(ellipse at 40% 45%, #6ea84e 0 22%, #d8c890 23% 27%, transparent 28%), linear-gradient(135deg, #3c8cc0, #1d5a8a); }
+  .gfx-pad-deco { position: absolute; left: 50%; top: 50%; height: 96px; transform: translate(-50%, -50%); }
   #map { display: block; position: absolute; cursor: crosshair; image-rendering: auto; outline: 2px solid #4a5a70; box-shadow: 0 0 0 5px #0b0f15, 0 0 22px 6px rgba(0,0,0,.6); }
   aside { width: 320px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--line);
     display: flex; flex-direction: column; overflow: hidden; }
@@ -636,7 +668,7 @@
       <div id="hover">&nbsp;</div>
       <div id="banner" hidden data-en="Enemy is moving … <span>Click or press any key to skip</span>">Gegner zieht … <span>Klick oder beliebige Taste überspringt</span></div>
     </div>
-    <div id="mapWrap"><div id="mapPad"><canvas id="map"></canvas></div></div>
+    <div id="mapWrap"><div id="mapPad" class="padbg"><div id="padDeco"></div><canvas id="map"></canvas></div></div>
     <div id="keyLegend" class="keylegend" hidden></div>
     <canvas id="loupe" class="loupe" hidden></canvas>
     <div id="tipBox" class="tipbox" hidden></div>
@@ -1216,6 +1248,8 @@
       <p class="set-d" data-en="With a unit selected, the map shows the route to the tile under the mouse, how many turns it takes and why a tile cannot be reached. Experienced players can switch it off.">Mit gewählter Einheit zeigt die Karte den Weg zum Feld unter der Maus, die Dauer in Runden und warum ein Feld nicht erreichbar ist. Wer das Spiel kennt, kann es abschalten.</p>
       <label class="set-row"><span class="set-l"><span data-en="Landscape">Landschaft</span></span><select id="landSel"></select></label>
       <p class="set-d" data-en="How the map is coloured – same map, same rules, different look. Your choice also applies to new games and stays set; saved games keep the landscape they were saved with. You can also switch it under “View” (the eye at the top). Preset: climate zones.">Wie die Karte eingefärbt ist – gleiche Karte, gleiche Regeln, anderes Aussehen. Die Wahl gilt auch für neue Partien und bleibt eingestellt; gespeicherte Partien behalten ihre Landschaft. Umschalten geht auch über „Ansicht“ (das Auge oben). Voreingestellt: Klimazonen.</p>
+      <label class="set-row"><span class="set-l"><span data-en="Around the map">Kartenrand</span></span><select id="borderSel"></select></label>
+      <p class="set-d" data-en="What lies outside the map when you scroll to its edge or zoom far out – open sea, an old sea chart, a wooden table or outer space. Just for looks; also under “View”.">Was außerhalb der Karte liegt, wenn du an ihren Rand scrollst oder weit herauszoomst – offenes Meer, eine alte Seekarte, ein Holztisch oder das Weltall. Nur zum Ansehen; auch unter „Ansicht“.</p>
       <div class="set-row"><span class="set-l" data-en="Graphics">Grafiken</span><button id="bGfx" data-en="Open …">Öffnen …</button></div>
       <p class="set-d" data-en="All pictures and animations of the game at a glance – with the SVG code of the unit symbols.">Alle Bilder und Animationen des Spiels im Überblick – mit dem SVG-Code der Einheitensymbole.</p>
     </section>

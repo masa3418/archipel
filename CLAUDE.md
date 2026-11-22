@@ -445,6 +445,15 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   gut lesbar). Städte der Parteien: nur Gelb auf Wüste knapp (Platz 20–22, Rand 30+). Neutrale Städte verschwanden fast (beiger Platz auf Sand und
   Schnee 10–25) → seitdem dunkler Rand `#4a4f57` statt `#7f7254` (citySprite): Auf hellem Grund trägt der Rand, auf Lava der helle Platz.
   Neue Landschaft oder Parteifarbe → diese Prüfung wiederholen (Musterbogen: `gfxMap` + `buildTerrain` + `citySprite`/`drawToken` je Farbsatz).
+- **Kartenrand** (Gimmick, Wunsch des Nutzers; ui-schau.js `BORDER_KEYS`, `setBorder`, `applyBorder`, `borderVars`, `placeBorderDeco`; Gestaltung in index.html
+  `.padbg.b-…`): was außerhalb der Karte liegt (`#mapPad`, der Rand aus `pad`). Schlicht (Streifen wie früher), Offenes Meer (Vorgabe; tiefes Wasser der
+  gewählten Landschaft über `--sea1`/`--sea2`, nach außen dunkler), Alte Seekarte (Pergament mit Fasern `paperImg`, Gitter, Doppelrahmen um die Karte,
+  Windrose `compassImg`, Seeungeheuer `serpentImg`, „Terra incognita“ / „Hic sunt dracones“), Holztisch (Bretter, Karte wie ein Spielbrett mit Schatten),
+  Weltall (Sternenfeld `starsImg`, Nebel, funkelnde Sterne `.twinkle`, bei reduzierter Bewegung still). Eine Einstellung für alle Partien
+  (`archipel-border`), wählbar unter „Ansicht“ (Liste „Kartenrand“) und in den Einstellungen → Anzeige; gehört nicht zum Spielstand. Bilder entstehen im Code
+  (kleine Leinwände → data-Adresse, einmal je Art). Schmuck in `#padDeco` (über dem Rand, unter der Karte), gesetzt in `placeBorderDeco` – aufgerufen aus
+  `applyPad` (Fenstergröße) und `applyBorder` (aus `buildTerrainCache`: Zoom, Landschaft, neue Partie). `#mapPad` hat `overflow: hidden`. Neue Ränder: Klasse
+  in index.html, Eintrag in `BORDER_KEYS`/`BORDER_NAMES`/`BORDER_SW`; Grafik-Übersicht (Reiter Städte und Gelände) zeigt alle.
 - **Grafik-Übersicht** (Wunsch des Nutzers, wie der Klangtest; Einstellungen → Anzeige → Grafiken, `#mGfx`, ui.js `openGfx`/`renderGfx`): Reiter
   Einheiten (Abzeichen je Farbe, Zeichen an der Marke, SVG-Symbole der Oberfläche), Städte und Gelände, Markierungen, Animationen (▶ mit Ton).
   Alles wird mit den Zeichenfunktionen der Karte gezeichnet, nie nachgebaut: `drawOn(g, ts, fn)` leitet `ctx` und `TS` kurz auf eine kleine
@@ -467,8 +476,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 801 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
-     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, stufenloser Zoom, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 817 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
    Pull Requests (Entscheidung mit dem Nutzer: für eine Person zu viel Zeremonie; neu überlegen, wenn andere beitragen).

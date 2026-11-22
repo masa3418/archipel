@@ -31,6 +31,7 @@ function applyPad() {
   box.style.width = cv.width + pad.x * 2 + 'px'; box.style.height = cv.height + pad.y * 2 + 'px';
   cv.style.left = pad.x + 'px'; cv.style.top = pad.y + 'px';
   view.x = x; view.y = y;
+  if (typeof placeBorderDeco === 'function') placeBorderDeco();   // Schmuck des Kartenrands (ui-schau.js) neben die Karte legen
 }
 window.addEventListener('resize', () => { if (S) { applyPad(); dirty = true; } });
 
@@ -49,6 +50,7 @@ function ownerPal(o) { return o >= 0 ? PLAYERS[o] : NEUTRAL; }
 function buildTerrainCache() {
   clearSprites();
   terrainCache = buildTerrain(TS);
+  if (typeof applyBorder === 'function') applyBorder();   // Kartenrand (ui-schau.js): Meer in der Farbe der Landschaft, Schmuck neben die Karte
 }
 
 // ------------------------------------------------------------------ Animationen

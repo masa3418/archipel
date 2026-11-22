@@ -239,6 +239,20 @@ window.UiTest = (() => {
     check(TS === 34, 'Stufenloser Zoom aus: Viererschritte wie bisher');
     smoothZoom = keep; setZoom(z0);
   }
+  // Kartenrand: jede Wahl setzt die Gestaltung, der Schmuck liegt neben der Karte (nie darauf), Auswahl unter „Ansicht“ und gemerkt
+  function borderCheck() {
+    const keep = borderPref, mx0 = pad.x, my0 = pad.y, mx1 = pad.x + cv.width, my1 = pad.y + cv.height;
+    for (const k of BORDER_KEYS) {
+      setBorder(k);
+      const deco = [...$('padDeco').children], onMap = deco.filter(d => { const x = parseFloat(d.style.left), y = parseFloat(d.style.top); return x > mx0 && x < mx1 && y > my0 && y < my1; });
+      check($('mapPad').classList.contains('b-' + k) && localStorage.getItem('archipel-border') === k, `Kartenrand ${k}: gesetzt und gemerkt`);
+      check(k === 'seekarte' ? deco.length >= 4 : k === 'weltall' ? deco.length > 0 : deco.length === 0, `Kartenrand ${k}: Schmuck (${deco.length})`);
+      check(!onMap.length, `Kartenrand ${k}: kein Schmuck auf der Karte`);
+    }
+    openViewMenu(); const item = viewMenu.querySelector('[data-border="weltall"]'); item.click();
+    check(borderPref === 'weltall' && viewMenu.querySelector('[data-border="weltall"]').classList.contains('on'), 'Kartenrand: Auswahl unter „Ansicht“');
+    closeViewMenu(); setBorder(keep);
+  }
   // Gestauchte Wiedergabe (lange Gegnerzüge): Auch versenkte Einheiten verschwinden im gestauchten Takt – vorher blieben sie bis zu ihrem
   // ungestauchten Zeitpunkt stehen (ein Kreuzer fuhr auf das Feld des versenkten Zerstörers, der erst danach verschwand)
   function goneScale() {
@@ -703,7 +717,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); goneScale(); smoothZoomCheck(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); goneScale(); smoothZoomCheck(); borderCheck(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters

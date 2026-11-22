@@ -358,6 +358,18 @@ function gfxLand(body) {
   for (const t of [tt('unerforscht', 'unexplored'), tt('erforscht', 'explored'), tt('in Sicht', 'in sight')]) fogLeg.append(gfxEl('span', null, t));
   fogCard.append(fogPic, fogLeg);
   fg.append(fogCard);
+
+  const bd = gfxSection(body, tt('Kartenrand', 'Around the map'), tt('Was außerhalb der Karte liegt, wenn man an ihren Rand scrollt – wählbar unter „Ansicht“. Windrose und Seeungeheuer gehören zur alten Seekarte, im Weltall funkeln einige Sterne.',
+    'What lies outside the map when you scroll to its edge – selectable under “View”. Compass rose and sea serpent belong to the old sea chart; in outer space some stars twinkle.'));
+  for (const k of BORDER_KEYS) {
+    const d = gfxEl('div'); borderVars(d, k); d.append(gfxEl('div', 'gfx-pad-map'));
+    bd.append(gfxCard(d, BORDER_NAMES[k], k === borderPref ? tt('eingestellt', 'selected') : ''));
+  }
+  for (const [src, t] of [[compassImg(), tt('Windrose', 'Compass rose')], [serpentImg(), tt('Seeungeheuer', 'Sea serpent')]]) {
+    const d = gfxEl('div'); borderVars(d, 'seekarte');
+    const i = document.createElement('img'); i.src = src; i.alt = ''; i.className = 'gfx-pad-deco'; d.append(i);
+    bd.append(gfxCard(d, t, tt('Alte Seekarte', 'Old sea chart')));
+  }
 }
 
 // Reiter „Markierungen“
@@ -534,6 +546,145 @@ function setLandscape(v) {
 $('landSel').innerHTML = Object.keys(LANDSCAPES).map(k => `<option value="${k}">${esc(LAND_NAMES[k] || k)}</option>`).join('');
 try { localStorage.removeItem('archipel-land'); } catch (e) {}   // kurze Zwischenfassung: Landschaft als Einstellung
 $('landSel').onchange = e => setLandscape(e.target.value);
+
+// ------------------------------------------------------------------ Kartenrand
+// Was außerhalb der Karte liegt (#mapPad, der Rand um die Leinwand – siehe pad in ui-karte.js). Gimmick wie die Landschaften (Wunsch des Nutzers):
+// Schlicht (Streifen wie bisher), Offenes Meer (tiefes Wasser der gewählten Landschaft, nach außen dunkler – das Meer geht über den Kartenrand weiter),
+// Alte Seekarte (Pergament mit Gitter, Windrose, Seeungeheuer), Holztisch (die Karte liegt wie ein Spielbrett darauf, mit Schatten), Weltall (Sterne
+// und Nebel, einige funkeln). Nur Aussehen; eine Einstellung für alle Partien (archipel-border, Vorgabe meer), wählbar unter „Ansicht“ und in den
+// Einstellungen → Anzeige. Alles im Code erzeugt (Verläufe in index.html, kleine Leinwände als Bild) – keine Bilddateien. Der Schmuck (Windrose,
+// Ungeheuer, Schriftzug, funkelnde Sterne) liegt in #padDeco und wird in placeBorderDeco neben die Karte gelegt (aus applyPad und applyBorder).
+const BORDER_KEYS = ['schlicht', 'meer', 'seekarte', 'holz', 'weltall'];
+const BORDER_NAMES = { schlicht: tt('Schlicht', 'Plain'), meer: tt('Offenes Meer', 'Open sea'), seekarte: tt('Alte Seekarte', 'Old sea chart'), holz: tt('Holztisch', 'Wooden table'), weltall: tt('Weltall', 'Outer space') };
+const BORDER_SW = {   // Farbfeld in der Liste „Ansicht“
+  schlicht: 'repeating-linear-gradient(135deg, #2a3442 0 4px, #161c26 4px 8px)', meer: 'linear-gradient(180deg, #1d5a86, #0a2238)',
+  seekarte: 'linear-gradient(135deg, #e2d0a6, #c4ad7e)', holz: 'repeating-linear-gradient(90deg, #6a4428 0 7px, #4a2e18 7px 8px)',
+  weltall: 'radial-gradient(1px 1px at 6px 5px, #fff, transparent), radial-gradient(1px 1px at 18px 11px, #fff, transparent), linear-gradient(135deg, #1a1440, #04050b)',
+};
+let borderPref = 'meer';
+try { const v = localStorage.getItem('archipel-border'); if (BORDER_KEYS.includes(v)) borderPref = v; } catch (e) {}
+const borderImg = {};   // erzeugte Bilder (data-Adressen), je eins
+const INK = 'rgba(92,58,24,0.85)', PAPER = 'rgba(232,214,170,0.95)';
+function borderCanvas(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); return c.toDataURL(); }
+function paperImg() {   // Fasern und Flecken des Pergaments
+  return borderImg.paper || (borderImg.paper = borderCanvas(256, 256, (g, w, h) => {
+    const r = mulberry32(7);
+    for (let k = 0; k < 3200; k++) { g.fillStyle = `rgba(110,75,35,${(0.02 + r() * 0.06).toFixed(3)})`; g.fillRect(r() * w, r() * h, 1 + r() * 1.5, 1 + r() * 1.5); }
+    g.strokeStyle = 'rgba(110,75,35,0.06)';
+    for (let k = 0; k < 70; k++) { const x = r() * w, y = r() * h, a = r() * Math.PI, l = 6 + r() * 18; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke(); }
+  }));
+}
+function starsImg() {   // Sternenfeld, nahtlos wiederholbar
+  return borderImg.stars || (borderImg.stars = borderCanvas(512, 512, (g, w, h) => {
+    const r = mulberry32(11), tints = [[255, 255, 255], [200, 215, 255], [255, 238, 205]];
+    for (let k = 0; k < 230; k++) {
+      const x = r() * w, y = r() * h, big = r() > 0.88, rad = big ? 1.1 + r() * 0.8 : 0.45 + r() * 0.55, t = tints[Math.floor(r() * 3)].join();
+      g.fillStyle = `rgba(${t},${(0.35 + r() * 0.65).toFixed(2)})`; g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill();
+      if (big) { const gr = g.createRadialGradient(x, y, 0, x, y, rad * 4); gr.addColorStop(0, `rgba(${t},0.3)`); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, rad * 4, 0, 7); g.fill(); }
+    }
+  }));
+}
+function compassImg() {   // Windrose wie auf alten Seekarten
+  return borderImg.compass || (borderImg.compass = borderCanvas(240, 240, (g, w, h) => {
+    const cx = w / 2, cy = h / 2 + 8, R = 92, T = Math.PI * 2;
+    g.strokeStyle = INK; g.lineWidth = 1.6;
+    g.beginPath(); g.arc(cx, cy, R, 0, T); g.stroke();
+    g.beginPath(); g.arc(cx, cy, R - 7, 0, T); g.stroke();
+    for (let k = 0; k < 64; k++) {
+      const a = k / 64 * T, r1 = R - 7, r0 = k % 8 === 0 ? R - 17 : k % 2 === 0 ? R - 12 : R - 10;
+      g.beginPath(); g.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); g.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); g.stroke();
+    }
+    g.save(); g.globalAlpha = 0.35;
+    for (let k = 0; k < 16; k++) { const a = k / 16 * T; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * (R - 17), cy + Math.sin(a) * (R - 17)); g.stroke(); }
+    g.restore();
+    const point = (a, len, wid) => {   // Spitze: eine Hälfte gefüllt, eine hell
+      const tx = cx + Math.cos(a) * len, ty = cy + Math.sin(a) * len;
+      for (const [side, fill] of [[-1, INK], [1, PAPER]]) {
+        g.beginPath(); g.moveTo(cx, cy); g.lineTo(tx, ty);
+        g.lineTo(cx + Math.cos(a + side * Math.PI / 2) * wid, cy + Math.sin(a + side * Math.PI / 2) * wid); g.closePath();
+        g.fillStyle = fill; g.fill(); g.stroke();
+      }
+    };
+    for (let k = 0; k < 4; k++) point(Math.PI / 4 + k * Math.PI / 2, R * 0.5, R * 0.09);
+    for (let k = 0; k < 4; k++) point(-Math.PI / 2 + k * Math.PI / 2, R * 0.8, R * 0.14);
+    g.fillStyle = INK; g.beginPath(); g.arc(cx, cy, 4, 0, T); g.fill();
+    g.font = 'bold 22px Georgia, "Times New Roman", serif'; g.textAlign = 'center'; g.fillText('N', cx, cy - R - 6);
+  }));
+}
+function serpentImg() {   // Seeungeheuer: Buckel über den Wellen, Schwanz links, Kopf rechts
+  return borderImg.serpent || (borderImg.serpent = borderCanvas(300, 150, (g, w) => {
+    const wl = 110, T = Math.PI * 2;
+    g.strokeStyle = INK; g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = 1.4;
+    for (const [y, off] of [[wl + 2, 0], [wl + 14, 9], [wl + 26, 3]]) {
+      g.beginPath(); for (let x = 8 + off; x < w - 12; x += 18) { g.moveTo(x, y); g.quadraticCurveTo(x + 4.5, y - 5, x + 9, y); } g.stroke();
+    }
+    const humps = [[84, 20], [142, 25], [198, 19]];
+    g.lineWidth = 11; for (const [x, r] of humps) { g.beginPath(); g.arc(x, wl, r, Math.PI, 0); g.stroke(); }
+    g.lineWidth = 2; g.strokeStyle = PAPER; for (const [x, r] of humps) { g.beginPath(); g.arc(x, wl, r, Math.PI * 1.15, Math.PI * 1.85); g.stroke(); }
+    g.strokeStyle = INK; g.lineWidth = 7;
+    g.beginPath(); g.moveTo(60, wl); g.bezierCurveTo(48, wl - 30, 24, wl - 24, 28, wl - 9); g.bezierCurveTo(31, wl + 1, 44, wl - 6, 38, wl - 15); g.stroke();
+    g.lineWidth = 11; g.beginPath(); g.moveTo(222, wl); g.bezierCurveTo(226, wl - 40, 236, wl - 62, 254, wl - 60); g.stroke();
+    g.fillStyle = INK; g.beginPath(); g.ellipse(262, wl - 60, 16, 10, -0.15, 0, T); g.fill();
+    g.lineWidth = 3; g.beginPath(); g.moveTo(272, wl - 57); g.lineTo(290, wl - 49); g.stroke();
+    g.lineWidth = 1.5; g.beginPath(); g.moveTo(287, wl - 51); g.lineTo(297, wl - 55); g.moveTo(287, wl - 51); g.lineTo(297, wl - 47); g.stroke();
+    g.fillStyle = PAPER; g.beginPath(); g.arc(264, wl - 63, 3, 0, T); g.fill();
+    g.fillStyle = INK;
+    for (let k = -2; k <= 2; k++) {   // Rückenkamm auf dem mittleren Buckel
+      const a = Math.PI * 1.5 + k * 0.32, x = 142 + Math.cos(a) * 30, y = wl + Math.sin(a) * 30;
+      g.beginPath(); g.moveTo(x - 3, y + 2); g.lineTo(x + Math.cos(a) * 9, y + Math.sin(a) * 9); g.lineTo(x + 3, y + 2); g.fill();
+    }
+  }));
+}
+function setBorder(v) {
+  if (!BORDER_KEYS.includes(v)) v = 'meer';
+  borderPref = v; $('borderSel').value = v;
+  try { localStorage.setItem('archipel-border', v); } catch (e) {}
+  applyBorder();
+}
+function borderVars(el, k) {   // Farben und erzeugte Bilder eines Kartenrands an ein Element hängen (Karte und Grafik-Übersicht)
+  el.className = (el.id === 'mapPad' ? '' : 'gfx-pad ') + 'padbg b-' + k;
+  const w = landscape().water, rgb = (c, f) => `rgb(${c.map(v => Math.round(v * f)).join()})`;
+  el.style.setProperty('--sea1', rgb(w[w.length - 2], 0.95));   // Offenes Meer: tiefes Wasser der Landschaft
+  el.style.setProperty('--sea2', rgb(w[w.length - 1], 0.7));
+  el.style.setProperty('--paper', k === 'seekarte' ? `url(${paperImg()})` : 'none');
+  el.style.setProperty('--stars', k === 'weltall' ? `url(${starsImg()})` : 'none');
+}
+function applyBorder() {
+  borderVars($('mapPad'), borderPref);
+  placeBorderDeco();
+}
+function placeBorderDeco() {
+  const box = $('padDeco'), k = borderPref;
+  box.textContent = '';
+  if (k !== 'seekarte' && k !== 'weltall') return;
+  const W = cv.width + pad.x * 2, H = cv.height + pad.y * 2, mx0 = pad.x, my0 = pad.y, mx1 = pad.x + cv.width, my1 = pad.y + cv.height;
+  if (k === 'seekarte') {
+    const s = Math.max(110, Math.min(230, Math.min(pad.x, pad.y) * 0.75));
+    const img = (src, cx, cy, wd, flip) => { const i = document.createElement('img'); i.src = src; i.alt = ''; i.style.width = wd + 'px';
+      i.style.left = (cx - wd / 2) + 'px'; i.style.top = (cy - wd / 4) + 'px'; if (flip) i.style.transform = 'scaleX(-1)'; box.append(i); return i; };
+    const cap = (text, cx, cy) => { const d = document.createElement('div'); d.className = 'chart-cap'; d.textContent = text; d.style.left = cx + 'px'; d.style.top = cy + 'px'; box.append(d); };
+    img(compassImg(), mx0 / 2, my0 / 2 - s / 4, s);                                // Ecke oben links
+    img(compassImg(), mx1 + (W - mx1) / 2, my1 + (H - my1) / 2 - s * 0.3, s * 0.6);   // Ecke unten rechts, kleiner
+    img(serpentImg(), mx1 + (W - mx1) / 2, my0 + cv.height * 0.45, s * 1.25);     // rechts neben der Karte
+    cap('Hic sunt dracones', mx1 + (W - mx1) / 2, my0 + cv.height * 0.45 + s * 0.42);
+    img(serpentImg(), mx0 / 2, my0 + cv.height * 0.7, s * 1.1, true);            // links, gespiegelt
+    cap('Terra incognita', mx0 + cv.width / 2, my0 / 2);                          // über der Karte
+  } else {
+    const r = mulberry32(5), n = Math.round(Math.min(60, (W * H - cv.width * cv.height) / 60000));
+    for (let k2 = 0; k2 < n * 4 && box.childElementCount < n; k2++) {   // funkelnde Sterne, nur neben der Karte
+      const x = r() * W, y = r() * H;
+      if (x > mx0 - 20 && x < mx1 + 20 && y > my0 - 20 && y < my1 + 20) continue;
+      const d = document.createElement('i'); d.className = 'twinkle';
+      d.style.left = x.toFixed(0) + 'px'; d.style.top = y.toFixed(0) + 'px';
+      d.style.animationDelay = (-r() * 3.4).toFixed(2) + 's'; d.style.animationDuration = (2.6 + r() * 2.4).toFixed(2) + 's';
+      box.append(d);
+    }
+  }
+}
+$('borderSel').innerHTML = BORDER_KEYS.map(k => `<option value="${k}">${esc(BORDER_NAMES[k])}</option>`).join('');
+$('borderSel').value = borderPref;
+$('borderSel').onchange = e => setBorder(e.target.value);
+applyBorder();
 // Knopf „Ansicht“ in der Kopfzeile (bei Zoom und Zentrieren): EIN Symbol für alles, was die Anzeige der Karte betrifft – drei Schalter
 // (Tastenkürzel, Wegvorschau, Kräfteverhältnis – dieselben wie in den Einstellungen –, dazu „Wege und Marschziele“ = Wegeansicht) und darunter die fünf Landschaften mit Farbfeld
 // (Land und Meer der Übersichtskarte). Wunsch des Nutzers: Landschaft mitten im Spiel wechseln als Gimmick, das überrascht; und statt je
@@ -553,7 +704,9 @@ function renderViewMenu() {
     + VIEW_SW.map(([k, label, get, , kbd]) => `<button class="mi${get() ? ' on' : ''}" data-view="${k}" role="menuitemcheckbox" aria-checked="${get()}"><span class="ck">${get() ? '✓' : ''}</span>${label}${kbd ? `<kbd>${kbd}</kbd>` : ''}</button>`).join('')
     + `<h4>${tt('Landschaft', 'Landscape')}</h4>` + Object.keys(LANDSCAPES).map(k => { const m = LANDSCAPES[k].mini;
       const bg = LANDSCAPES[k].zones ? 'linear-gradient(180deg, #eef3f8 0 22%, #6ea84e 22% 40%, #e2c27e 40% 60%, #6ea84e 60% 78%, #eef3f8 78%)' : `linear-gradient(135deg, ${rgb(m[0])} 0 55%, ${rgb(m[1])} 55%)`;
-      return `<button class="mi${k === cur ? ' on' : ''}" data-land="${k}"><span class="sw" style="background:${bg}"></span>${esc(LAND_NAMES[k] || k)}</button>`; }).join('');
+      return `<button class="mi${k === cur ? ' on' : ''}" data-land="${k}"><span class="sw" style="background:${bg}"></span>${esc(LAND_NAMES[k] || k)}</button>`; }).join('')
+    + `<h4>${tt('Kartenrand', 'Around the map')}</h4>` + BORDER_KEYS.map(k =>
+      `<button class="mi${k === borderPref ? ' on' : ''}" data-border="${k}"><span class="sw" style="background:${BORDER_SW[k]}"></span>${esc(BORDER_NAMES[k])}</button>`).join('');
 }
 function closeViewMenu() { if (viewMenu.hidden) return; viewMenu.hidden = true; $('bView').classList.remove('open'); $('bView').setAttribute('aria-expanded', 'false'); }
 function openViewMenu() {
@@ -565,8 +718,9 @@ function openViewMenu() {
 }
 $('bView').onclick = () => { if (viewMenu.hidden) openViewMenu(); else closeViewMenu(); };
 viewMenu.addEventListener('click', e => {
-  const l = e.target.closest('[data-land]'), v = e.target.closest('[data-view]');
+  const l = e.target.closest('[data-land]'), v = e.target.closest('[data-view]'), b = e.target.closest('[data-border]');
   if (l) setLandscape(l.dataset.land);
+  else if (b) setBorder(b.dataset.border);
   else if (v) { const sw = VIEW_SW.find(s => s[0] === v.dataset.view); sw[3](!sw[2]()); }
   else return;
   Sfx.play('tick'); renderViewMenu();
