@@ -344,18 +344,133 @@ const Sfx = (() => {
         o[i] = hum * 0.35 + water[i] * 1.5 + bub[i] + ping[i];
       }
     } },
+
+    // ---- Weltraum-Set (Wunsch des Nutzers: eigene Klänge zu den eigenen Bildern; Frequenzen passen ganzzahlig in die Pufferlänge) ----
+    // Raumschiff-Triebwerk: tiefes, pulsierendes Brummen aus zwei leicht verstimmten Tönen, Plasmarauschen, kein Wasser
+    sdrive: { len: 4, gen(o, sr) {
+      const n = o.length, rumble = lowpass(lowpass(brown(n), 120, sr), 120, sr), hiss = lowpass(highpass(white(n), 1200, sr), 4000, sr);
+      for (let i = 0; i < n; i++) {
+        const t = i / sr, pulse = 0.5 + 0.5 * Math.sin(TAU * 1 * t);
+        let a = 0, b = 0;
+        for (let h = 1; h <= 6; h++) { a += Math.sin(TAU * 41 * h * t + h) / Math.pow(h, 0.9); b += Math.sin(TAU * 41.5 * h * t) / Math.pow(h, 1.3); }
+        o[i] = a * 0.32 * (0.7 + 0.3 * pulse) + b * 0.2 + rumble[i] * 1.6 + hiss[i] * 0.07 * (0.5 + 0.5 * pulse);
+      }
+    } },
+    // Tarnschiff: dunkles Summen, darüber ein schwebender, schimmernder Klang und ab und zu ein leises Aufheulen der Tarnung
+    cloak: { len: 4, gen(o, sr) {
+      const n = o.length, deep = lowpass(brown(n), 200, sr), warble = new Float32Array(n);
+      burst(warble, sr, 1.1, 1.2, 2.6, (i, t) => Math.sin(TAU * (380 * t + 140 * t * t)) * (1 - Math.exp(-t * 18)), 0.3);
+      lowpass(warble, 1500, sr);
+      for (let i = 0; i < n; i++) {
+        const t = i / sr;
+        let hum = 0;
+        for (let h = 1; h <= 3; h++) hum += Math.sin(TAU * 33 * h * t) / h;
+        const shimmer = (Math.sin(TAU * 880 * t) + Math.sin(TAU * 880.5 * t) + Math.sin(TAU * 881.25 * t)) * (0.6 + 0.4 * Math.sin(TAU * 0.5 * t));
+        o[i] = hum * 0.4 + deep[i] * 1.4 + shimmer * 0.025 + warble[i];
+      }
+    } },
+    // Raumjäger: Düsenrauschen mit hellem Turbinenton, der leicht schwankt
+    jet: { len: 2, gen(o, sr) {
+      const n = o.length, roar = lowpass(highpass(white(n), 200, sr), 1800, sr), whine = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const t = i / sr, ph = TAU * 220 * t + 0.8 * Math.sin(TAU * 1 * t);
+        let s = 0;
+        for (let h = 1; h <= 6; h++) s += Math.sin(h * ph) / h;
+        whine[i] = s;
+      }
+      lowpass(whine, 2600, sr);
+      for (let i = 0; i < n; i++) {
+        const t = i / sr;
+        o[i] = roar[i] * 1.1 * (0.85 + 0.15 * Math.sin(TAU * 0.5 * t)) + whine[i] * 0.22 + Math.sin(TAU * 1760 * t) * 0.012;
+      }
+    } },
+    // Rover: Surren der Elektromotoren, zwei Servos, Räder auf Geröll
+    rover: { len: 4, gen(o, sr) {
+      const n = o.length, grit = lowpass(white(n), 900, sr), low = lowpass(brown(n), 150, sr), servo = new Float32Array(n), click = new Float32Array(n);
+      burst(servo, sr, 0.6, 0.45, 5, (i, t) => Math.sin(TAU * (520 * t + 380 * t * t)), 0.22);
+      burst(servo, sr, 2.5, 0.45, 5, (i, t) => Math.sin(TAU * (700 * t - 300 * t * t)), 0.18);
+      for (const ts of [0.35, 1.45, 2.05, 3.3]) { const w = white(Math.floor(0.04 * sr)); burst(click, sr, ts, 0.04, 120, i => w[i], 0.35); }
+      lowpass(click, 3000, sr);
+      for (let i = 0; i < n; i++) {
+        const t = i / sr, ph = TAU * 180 * t + 2 * Math.sin(TAU * 0.5 * t);
+        let m = 0;
+        for (let h = 1; h <= 4; h++) m += Math.sin(h * ph) / (h * h);
+        o[i] = m * 0.3 + grit[i] * 0.5 * (0.7 + 0.3 * Math.sin(TAU * 2 * t)) + low[i] * 1.2 + servo[i] + click[i];
+      }
+    } },
+
+    // ---- Segelzeit-Set ----
+    // Kavallerie: Hufschlag im Galopp (drei Schläge, Pause), mehrere Pferde leicht versetzt, dumpfer Boden, ab und zu Geschirr
+    hooves: { len: 4.8, gen(o, sr) {
+      const n = o.length, air = lowpass(brown(n), 250, sr), thud = new Float32Array(n), clop = new Float32Array(n), jingle = new Float32Array(n);
+      const seed = Math.floor(Math.random() * 1e6), horses = [[0, 1], [0.07, 0.7], [0.16, 0.55]];
+      const drop = f => (i, t) => Math.sin(TAU * (f / 2 * t + f / 2 * (1 - Math.exp(-40 * t)) / 40));
+      for (let k = 0; k * 0.6 < 5.15; k++) {   // ein Galoppsprung je 0,6 s, acht Sprünge = Pufferlänge (Sprung 8 = Sprung 0)
+        const r = mulberry32(seed + (k % 8)), rnd = (a, b) => a + r() * (b - a);
+        for (const [off, amp] of horses) for (const [beat, acc] of [[0, 0.8], [0.11, 0.9], [0.22, 1.15]]) {
+          const ts = k * 0.6 + off + beat + rnd(-0.008, 0.008), a = amp * acc * rnd(0.85, 1.1);
+          burst(thud, sr, ts, 0.16, 28, drop(rnd(95, 125)), a);
+          const w = white(Math.floor(0.07 * sr));
+          burst(clop, sr, ts, 0.07, 55, i => w[i], a * 0.7);
+        }
+        if (k % 4 === 1) for (let j = 0; j < 3; j++) burst(jingle, sr, k * 0.6 + 0.3 + j * 0.05, 0.12, 30, (i, t) => Math.sin(TAU * (3100 + 400 * j) * t), 0.05);
+      }
+      lowpass(clop, 1600, sr); highpass(clop, 250, sr);
+      for (let i = 0; i < n; i++) o[i] = thud[i] * 1.0 + clop[i] * 1.3 + jingle[i] + air[i] * 0.4;
+    } },
+    // Heißluftballon: Brenner faucht in Stößen, dazwischen leiser Wind und ein knarrender Korb
+    burner: { len: 4, gen(o, sr) {
+      const n = o.length, flame = lowpass(highpass(white(n), 150, sr), 2400, sr), wind = lowpass(highpass(white(n), 300, sr), 1200, sr), creak = new Float32Array(n);
+      const env = t => { let e = 0; for (const [a, b] of [[0.3, 1.5], [2.6, 3.2]]) e = Math.max(e, Math.min(1, Math.max(0, (t - a) / 0.08)) * Math.min(1, Math.max(0, (b - t) / 0.25 + 1))); return e; };
+      burst(creak, sr, 2.0, 0.5, 6, (i, t) => Math.sin(TAU * (210 * t + 60 * t * t)) * Math.abs(Math.sin(TAU * 24 * t)), 0.25);
+      lowpass(creak, 900, sr);
+      for (let i = 0; i < n; i++) {
+        const t = i / sr;
+        o[i] = flame[i] * 1.3 * env(t) + wind[i] * 0.35 * (0.6 + 0.4 * Math.sin(TAU * 0.25 * t)) + creak[i];
+      }
+    } },
+    // Segelschiff: Wellen, Wind in Segeln und Takelage, knarrendes Holz, ab und zu schlägt ein Segel – keine Maschine
+    sail: { len: 6, gen(o, sr) {
+      const n = o.length, waves = lowpass(brown(n), 600, sr), wind = lowpass(highpass(white(n), 400, sr), 2000, sr);
+      const creak = new Float32Array(n), flap = new Float32Array(n);
+      for (const [ts, f] of [[0.9, 190], [2.8, 240], [4.5, 170]]) burst(creak, sr, ts, 0.6, 5, (i, t) => Math.sin(TAU * (f * t + 50 * t * t)) * Math.pow(Math.abs(Math.sin(TAU * 26 * t)), 3), 0.35);
+      lowpass(creak, 1000, sr);
+      { const w = lowpass(white(Math.floor(0.3 * sr)), 300, sr); burst(flap, sr, 3.7, 0.3, 14, i => w[i], 1.6); }
+      for (let i = 0; i < n; i++) {
+        const t = i / sr, swell = 0.35 + 0.65 * Math.pow(Math.sin(TAU * 0.5 * t / 2), 2);
+        const gust = 0.6 + 0.4 * Math.sin(TAU * t / 6);
+        o[i] = waves[i] * 1.5 * swell + wind[i] * 0.22 * gust + Math.sin(TAU * 620 * t) * 0.012 * gust + creak[i] + flap[i];
+      }
+    } },
   };
   const KIND = { inf: 'march', tank: 'tank', ftr: 'plane', sub: 'sub', trn: 'ship', dst: 'ship', crs: 'ship', car: 'ship', bat: 'ship' };
+  // Klänge der anderen Grafik-Sets (gfxSet in gfx.js); was fehlt, nimmt den Klang der Inselwelt (Infanterie marschiert überall)
+  const KIND_SET = {
+    weltraum: { tank: 'rover', ftr: 'jet', sub: 'cloak', trn: 'sdrive', dst: 'sdrive', crs: 'sdrive', car: 'sdrive', bat: 'sdrive' },
+    segel: { tank: 'hooves', ftr: 'burner', sub: 'sail', trn: 'sail', dst: 'sail', crs: 'sail', car: 'sail', bat: 'sail' },
+  };
+  const KIND_OF_SET = { sdrive: 'weltraum', cloak: 'weltraum', jet: 'weltraum', rover: 'weltraum', hooves: 'segel', burner: 'segel', sail: 'segel' };
+  const curSet = () => (typeof gfxSet === 'function' ? gfxSet() : 'insel');
+  const kindOf = type => (KIND_SET[curSet()] || {})[type] || KIND[type];
   const RATE = { dst: 1.12, crs: 0.96, car: 0.9, bat: 0.84 };
   // Pegel je Klangteppich (die Puffer selbst sind auf dieselbe Spitze normiert). Der Jäger klang lauter als die anderen (Hinweis des Nutzers):
   // Sein Motor mit Fahrtwind liegt im mittleren und hohen Tonbereich, in dem das Ohr am empfindlichsten ist. Gemessen als gehörte Lautheit
   // (ITU-R BS.1770, LUFS): Schleife vorher −28,1 (Panzer −30,1, Schiffe −29,9, U-Boot −28,0, Marsch −33,1), Zug −14,6 (−17,5 / −18,0 / −17,2 /
   // −20,4). Mit 0,12 / 0,5 statt 0,16 / 0,75 liegt er bei −30,6 / −18,1 wie Panzer und Schiffe. Neue Klänge ebenso messen, nicht nach der Spitze.
-  const LOOP_LEVEL = { march: 0.22, tank: 0.2, plane: 0.12, ship: 0.24, sub: 0.26 };
-  const MOVE_LEVEL = { march: 0.95, tank: 0.85, plane: 0.5, ship: 0.95, sub: 0.9 };
-  const KIND_NAME = { march: tt('Infanterie', 'Infantry'), tank: tt('Panzer', 'Tank'), plane: tt('Jäger', 'Fighter'), ship: tt('Schiffe', 'Ships'), sub: tt('U-Boot', 'Submarine') };
+  // Weltraum und Segelzeit: jeder neue Klang so laut wie der, den er ersetzt (Raumschiffe, Tarnschiff, Segelschiffe wie Schiffe; Rover, Kavallerie wie
+  // Panzer; Raumjäger, Ballon wie Jäger), gemessen im Browser mit K-Filter nachgebaut (Hochregal +4 dB bei 1681 Hz, Hochpass 38 Hz) über den
+  // ganzen Puffer: Puffer roh Schiffe −15,6, Panzer −13,7, Jäger −11,6; Raumschiffe −13,0, Tarnschiff −12,8, Raumjäger −11,9, Rover −12,6,
+  // Kavallerie −15,6, Ballon −12,8, Segelschiffe −16,8 LUFS → Pegel daraus (Tarnschiff 1 dB lauter, wie das U-Boot über den Schiffen liegt).
+  const LOOP_LEVEL = { march: 0.22, tank: 0.2, plane: 0.12, ship: 0.24, sub: 0.26,
+    sdrive: 0.18, cloak: 0.2, jet: 0.12, rover: 0.18, hooves: 0.25, burner: 0.14, sail: 0.27 };
+  const MOVE_LEVEL = { march: 0.95, tank: 0.85, plane: 0.5, ship: 0.95, sub: 0.9,
+    sdrive: 0.7, cloak: 0.75, jet: 0.5, rover: 0.75, hooves: 1.05, burner: 0.58, sail: 1.07 };
+  const KIND_NAME = { march: tt('Infanterie (alle Sets)', 'Infantry (all sets)'), tank: tt('Panzer', 'Tank'), plane: tt('Jäger', 'Fighter'), ship: tt('Schiffe', 'Ships'), sub: tt('U-Boot', 'Submarine'),
+    sdrive: tt('Raumschiffe', 'Spaceships'), cloak: tt('Tarnschiff', 'Stealth ship'), jet: tt('Raumjäger', 'Space fighter'), rover: tt('Rover', 'Rover'),
+    hooves: tt('Kavallerie', 'Cavalry'), burner: tt('Heißluftballon', 'Hot-air balloon'), sail: tt('Segelschiffe', 'Sailing ships') };
   const bufs = {};
-  let levels = { march: 1, tank: 1, plane: 1, ship: 1, sub: 1 };
+  let levels = {};
+  for (const k of Object.keys(LOOP_LEVEL)) levels[k] = 1;
   try { Object.assign(levels, JSON.parse(localStorage.getItem('archipel-levels') || '{}')); } catch (e) {}
 
   // Rohdaten (Float32Array, Länge N+F) -> nahtlos schleifbarer, normierter Puffer
@@ -382,7 +497,7 @@ const Sfx = (() => {
   let wantType = null, previewKind = null, loopKey = null, loopNode = null;
   function desired() {
     if (previewKind) return { kind: previewKind, rate: 1 };
-    if (wantType) return { kind: KIND[wantType], rate: RATE[wantType] || 1 };
+    if (wantType) return { kind: kindOf(wantType), rate: RATE[wantType] || 1 };
     return null;
   }
   function applyLoop() {
@@ -427,7 +542,7 @@ const Sfx = (() => {
     voices++;
     src.onended = () => { voices--; };
   }
-  function move(type, dur, gainMul = 1) { moveKind(KIND[type], RATE[type] || 1, dur, gainMul); }
+  function move(type, dur, gainMul = 1) { moveKind(kindOf(type), RATE[type] || 1, dur, gainMul); }
 
   // im Hintergrund-Tab pausieren
   document.addEventListener('visibilitychange', () => {
@@ -448,8 +563,8 @@ const Sfx = (() => {
     play, move, setLoop,
     unlock() {
       const r = ensure(); applyLoop();
-      // alle Klangteppiche nacheinander im Hintergrund vorberechnen
-      if (r && !warmed) { warmed = true; Object.keys(GEN).forEach((k, i) => setTimeout(() => getBuf(k), 400 + i * 150)); }
+      // die Klangteppiche des aktuellen Sets nacheinander im Hintergrund vorberechnen (die anderen beim ersten Gebrauch)
+      if (r && !warmed) { warmed = true; [...new Set(Object.keys(KIND).map(kindOf))].forEach((k, i) => setTimeout(() => getBuf(k), 400 + i * 150)); }
       return r;
     },
     isMuted: () => muted,
@@ -457,7 +572,9 @@ const Sfx = (() => {
     toggle() { muted = !muted; apply(); save(); if (!muted) play('tick'); return muted; },
     setVolume(v) { vol = Math.max(0, Math.min(1, v)); if (vol > 0 && muted) muted = false; apply(); save(); },
     // Klangtest
-    kinds: () => Object.keys(GEN).map(k => ({ kind: k, name: KIND_NAME[k], level: levels[k] })),
+    kinds: () => Object.keys(GEN).map(k => ({ kind: k, name: KIND_NAME[k], level: levels[k], set: KIND_OF_SET[k] || 'insel' })),
+    kindOf,   // Klang einer Einheit im aktuellen Grafik-Set (Klangtest, Oberflächentest)
+    buffer: kind => (ensure() && GEN[kind] ? getBuf(kind) : null),   // fertiger Klangteppich (Einmessen der Lautheit, Oberflächentest)
     effects: () => Object.keys(SOUNDS),
     preview(kind) { ensure(); previewKind = kind || null; applyLoop(); },
     previewing: () => previewKind,

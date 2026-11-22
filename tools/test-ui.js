@@ -265,6 +265,7 @@ window.UiTest = (() => {
     check(gfxSet() === 'weltraum' && S.land === 'asteroiden', 'Grafik-Set: Asteroiden gehören zum Weltraum');
     check(unitSprite('crs', 0, 30).toDataURL() !== ship.toDataURL() && citySprite(0, 30, 0).toDataURL() !== city.toDataURL() && iconUrl('u', 'crs') !== icon, 'Grafik-Set: eigene Bilder für Einheiten, Städte und Seitenleiste');
     check(UNIT_ORDER.every(k => ICON_SPACE[k] && unitSvg(k, 0, true, '', 'weltraum') !== unitSvg(k, 0, true, '', 'insel')), 'Grafik-Set: jede Einheit hat ein Weltraum-Bild (auch als SVG)');
+    check(Sfx.kindOf('crs') === 'sdrive' && Sfx.kindOf('sub') === 'cloak' && Sfx.kindOf('ftr') === 'jet' && Sfx.kindOf('tank') === 'rover' && Sfx.kindOf('inf') === 'march', 'Grafik-Set: Weltraum-Klänge (Triebwerk, Tarnschiff, Raumjäger, Rover)');
     check($('mapPad').classList.contains('b-' + borderPrefs.weltraum) && $('setSel').value === 'weltraum', 'Grafik-Set: Kartenrand des Weltraums');
     setBorder('holz');
     check(localStorage.getItem('archipel-border-weltraum') === 'holz' && borderPrefs.insel === keepB.insel, 'Grafik-Set: Rand je Set gemerkt');
@@ -307,6 +308,10 @@ window.UiTest = (() => {
     check(gfxSet() === 'segel' && curBorder() === (keepB.segel || 'seekarte') && $('mapPad').classList.contains('b-' + curBorder()), 'Segelzeit: Alte Karte gehört dazu, Rand der Segelzeit');
     check(UNIT_ORDER.every(k => ICON_SAIL[k] && unitSvg(k, 0, true, '', 'segel') !== unitSvg(k, 0, true, '', 'insel') && unitSvg(k, 0, true, '', 'segel') !== unitSvg(k, 0, true, '', 'weltraum')), 'Segelzeit: jede Einheit hat ein eigenes Bild');
     check(citySprite(-1, 30, 0).toDataURL() !== citySprite(-1, 30, 0, 'insel').toDataURL(), 'Segelzeit: Festungsstädte');
+    check(Sfx.kindOf('tank') === 'hooves' && Sfx.kindOf('ftr') === 'burner' && Sfx.kindOf('bat') === 'sail' && Sfx.kindOf('sub') === 'sail', 'Segelzeit: eigene Klänge (Hufschlag, Ballon, Segelschiffe)');
+    { const bad = Sfx.kinds().filter(k => { const b = Sfx.buffer(k.kind), d = b && b.getChannelData(0); if (!d) return true; let pk = 0; for (let i = 0; i < d.length; i += 7) { if (!isFinite(d[i])) return true; pk = Math.max(pk, Math.abs(d[i])); } return pk < 0.5; });
+      openSoundTest(); check(!bad.length && $('sndRows').querySelectorAll('.snd-set').length === 3 && $('sndRows').querySelectorAll('[data-loop]').length === Sfx.kinds().length
+        && $('sndRows').querySelector('.snd-set .muted').closest('tr').textContent.includes(SET_NAMES.segel), `Klangtest: alle Klänge erzeugt und nach Sets gruppiert${bad.length ? ' – fehlerhaft: ' + bad.map(k => k.kind).join(', ') : ''}`); closeModals(); }
     // Klimazonen der alten Karte: Verteilung wie bei den Inseln, aber mit den Farbsätzen der Segelzeit
     setLandscape('altzonen');
     const zk = new Set(); for (let i = 0; i < S.W * S.H; i++) if (S.terrain[i]) zk.add(tileLandscape(i));

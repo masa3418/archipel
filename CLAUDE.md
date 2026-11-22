@@ -69,7 +69,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung `captureChance`/`cityDefenders`, Unterstützung `fireSupport`/`airCover`, Produktion, Sicht `computeVision`/`canSee`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Rundenwechsel `nextRound`/`runStandingOrders`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
 | `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`), Landung im Hinterland auf dem Festland (`hinterInfo`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
 | `js/gfx.js` | Gelände-Rendering (`buildTerrain(TS, st)`), Einheiten-Abzeichen (SVG-Pfade `ICON_SRC`, Weltraum `ICON_SPACE`, Segelzeit `ICON_SAIL` → Sprites, als SVG-Code `unitSvg`), Stadtgrafik, Grafik-Sets (`gfxSet`) |
-| `js/sfx.js` | Web-Audio-Synthese: Effekte, Klangteppiche je Einheitentyp (Pegel `LOOP_LEVEL`/`MOVE_LEVEL` nach gehörter Lautheit in LUFS abgestimmt, nicht nach der Spitze – Messweg im Kommentar dort), Klangtest |
+| `js/sfx.js` | Web-Audio-Synthese: Effekte, Klangteppiche je Einheitentyp und Grafik-Set (`KIND_SET`, `kindOf`; Pegel `LOOP_LEVEL`/`MOVE_LEVEL` nach gehörter Lautheit in LUFS abgestimmt, nicht nach der Spitze – Messweg im Kommentar dort), Klangtest |
 | `js/ui-karte.js` | Oberfläche 1: Grundlagen (`$`, `view`, `pad`), Aufzeichnung der Animationen (`anim`, `hooks`), Kamera, Zeichnen der Karte (`render`, `drawToken`, `drawEffect` …), Produktions- und Wegeansicht |
 | `js/ui-zug.js` | Oberfläche 2: Landung, Auswahl (`select`, `needsOrders`), automatisches Rundenende, Aktionen (`doMove`, `doGoto`, `act…`), Patrouille, Klick auf die Karte (`onTileClick`), Wegvorschau (`hoverRoute`), `endHumanTurn` |
 | `js/ui-leiste.js` | Oberfläche 3: Seitenleiste (`updatePanel`), Kräfteverhältnis (`renderPower`), Kopf- und Hinweiszeile |
@@ -473,7 +473,12 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Farbprüfung: Parteien ≥ 32 (am knappsten Gelb auf Wüste, wie bei den Inseln); neutraler Platz auf dem Eismeer 12–24, dort trägt der Rand (49+). Menü: Überschriften `SET_HEAD`, Hinweistexte `SET_TIP`; Grafik-Übersicht mit drittem Knopf
   und eigenen Texten. Reihenfolge in `LANDSCAPES` und `LAND_KEYS` muss gleich sein (Durchlauf im Oberflächentest prüft das).
   Kartenrand je Set gemerkt (siehe „Kartenrand“). Grafik-Übersicht: Umschalter „Set“ im Reiter Einheiten (`gfx.set`, beim Öffnen das der Partie), Texte im
-  Reiter Städte und Gelände folgen dem Set. Klänge bleiben gleich. Neues Set: Eintrag in `ICON_SETS`, Landschaft mit `set`, `BORDER_DEFAULT`, `SET_KEYS`/`SET_NAMES`/`SET_DESC`/`SET_LAND` (ui-schau.js).
+  Reiter Städte und Gelände folgen dem Set. **Klänge je Set** (Wunsch des Nutzers; sfx.js `KIND_SET`, `kindOf` über `gfxSet()`): Weltraum – Raumschiffe `sdrive` (pulsierendes Triebwerk,
+  kein Wasser), Tarnschiff `cloak` (dunkles Summen, Schimmern), Raumjäger `jet` (Düse), Rover `rover` (Elektromotor, Servos, Geröll); Segelzeit –
+  Kavallerie `hooves` (Galopp, drei Pferde), Ballon `burner` (Brennerstöße, Wind, Korb), alle Schiffe einschließlich Piratenschiff `sail` (Wellen, Wind,
+  knarrendes Holz, Segelschlag); Infanterie marschiert in allen Sets. Pegel: jeder so laut wie der Klang, den er ersetzt (gemessen, siehe Kommentar bei
+  `LOOP_LEVEL`; Abweichung ≤ 0,7 dB). Vorberechnet werden beim Start nur die Klänge des aktuellen Sets. Klangtest nach Sets gruppiert (`.snd-set`,
+  aktuelles markiert); `Sfx.buffer(kind)` liefert einen Klangteppich zum Messen/Testen. Kampfgeräusche gleich für alle Sets. Neues Set: Eintrag in `ICON_SETS`, Landschaft mit `set`, `BORDER_DEFAULT`, `SET_KEYS`/`SET_NAMES`/`SET_DESC`/`SET_LAND` (ui-schau.js).
   **Auswahl** (Wunsch des Nutzers: zu viele Möglichkeiten – vor allem ein Set wählen): `chooseSet(set)` setzt die gemischte Landschaft des Sets (`SET_LAND`:
   zonen, guertel, altzonen) und seinen Rand (`BORDER_DEFAULT`) – auch wenn vorher Feineres gewählt war. Unter „Ansicht“ nur die drei Sets, in den Einstellungen
   das Auswahlfeld „Grafik-Set“ (`setSel`) und „Landschaft und Kartenrand: Anpassen …“ (`bLook`). Fenster „Aussehen der Karte“ (`#mLook`, `openLook`,
@@ -524,7 +529,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 844 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 847 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

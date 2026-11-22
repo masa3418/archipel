@@ -100,13 +100,15 @@ const FX_NAMES = EN ? { select: 'Select', tick: 'Click', error: 'Invalid', boom:
   cityLost: 'Stadt verloren', built: 'Einheit fertig', clank: 'Ein-/Ausladen', endTurn: 'Rundenende', alarm: 'Feindkontakt', start: 'Spielstart (Grieg)', victory: 'Sieg', defeat: 'Niederlage' };
 
 function renderSoundTest() {
-  const pv = Sfx.previewing();
-  $('sndRows').innerHTML = Sfx.kinds().map(k => `<tr>
+  const pv = Sfx.previewing(), cur = gfxSet(), kinds = Sfx.kinds();
+  // nach Grafik-Sets gruppiert (Wunsch des Nutzers: Klänge der Sets nebeneinander anhören), das Set der Karte ist markiert
+  $('sndRows').innerHTML = SET_KEYS.map(set => `<tr class="snd-set"><th colspan="3">${esc(SET_NAMES[set])}${set === cur ? ` <span class="muted">· ${tt('aktuelles Set', 'current set')}</span>` : ''}</th></tr>`
+    + kinds.filter(k => k.set === set).map(k => `<tr>
     <td>${k.name}</td>
     <td><button data-loop="${k.kind}" class="${pv === k.kind ? 'on' : ''}">${pv === k.kind ? tt('■ Stopp', '■ Stop') : tt('▶ Schleife', '▶ Loop')}</button>
         <button data-move="${k.kind}">${tt('▶ Zug', '▶ Move')}</button></td>
     <td><input type="range" min="0" max="200" value="${Math.round(k.level * 100)}" data-level="${k.kind}"> <span class="muted">${Math.round(k.level * 100)} %</span></td>
-  </tr>`).join('');
+  </tr>`).join('')).join('');
   $('sndFx').innerHTML = Sfx.effects().filter(n => FX_NAMES[n]).map(n => `<button data-fx="${n}">▶ ${FX_NAMES[n]}</button>`).join('');
 }
 function openSoundTest() { Sfx.unlock(); renderSoundTest(); openModal('mSound'); }
