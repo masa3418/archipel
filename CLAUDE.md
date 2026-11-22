@@ -82,7 +82,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `tools/pack.js` | Verpackt die Offline-Fassung nach `dist/` (Einzeldatei `archipel-offline.html`, Release-Text; ohne Manifest-Verweis). Seit 1.8.6 kein eigenes ZIP mehr (Wunsch des Nutzers): Die einzelnen Dateien liefert GitHub als „Source code“ zu jedem Release; bis 1.8.5 hieß die Datei `archipel.html` |
 | `tools/beispiele.js` | Erzeugt die Beispiel-Spielstände `docs/spielstaende/*.json` (nicht im Release) |
 | `tools/test.js` | Automatische Regeltests ohne Browser: `node tools/test.js` (nicht im Release) |
-| `tools/test-ui.js` | Oberflächentest im Browser: Wegvorschau gegen Klick, Klick-Abläufe, Einstiegstipps (nicht im Release) |
+| `tools/test-ui.js` | Oberflächentest im Browser: Wegvorschau gegen Klick, Klick-Abläufe, Einstiegstipps (nicht im Release). Text in erzeugtem Skriptcode (Ladereihenfolge) immer über `jsText` = `escapeUnsafeChars(JSON.stringify(…))` – CodeQL meldete „Improper code sanitization“ (#7, #8) |
 | `manifest.webmanifest`, `sw.js` | Installierbare App für die Online-Fassung (nur GitHub Pages, nicht im Release) |
 | `.github/workflows/release.yml` | Legt bei einem Tag `vX.Y.Z` den Release mit der Offline-Fassung an – erst nach bestandenen Regeltests |
 | `.github/workflows/tests.yml` | Lässt bei jedem Push auf `main` (und bei Pull Requests) Syntaxprüfung und `node tools/test.js` laufen |

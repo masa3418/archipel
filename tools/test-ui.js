@@ -451,6 +451,11 @@ window.UiTest = (() => {
   // späteren Skript aufrufen – innerhalb eines try/catch bliebe das ohne Fehlermeldung (so wären beim Aufteilen von ui.js Tipps und
   // Tastenlegende beim allerersten Besuch stillschweigend aus geblieben). Die Seite wird in einem unsichtbaren Rahmen neu aufgebaut;
   // vor jedem Skript stehen Attrappen für alle Funktionen der späteren, die jeden Aufruf melden. Geprüft in vier Ausgangslagen.
+  // JSON.stringify allein reicht für Text in einem <script> nicht: „</script>“ oder die Zeilentrenner U+2028/9 könnten ausbrechen.
+  // Deshalb diese Zeichen zusätzlich maskieren (Muster aus der CodeQL-Hilfe zu „Improper code sanitization“, Meldungen #7/#8).
+  const charMap = { '<': '\\u003C', '>': '\\u003E', '/': '\\u002F', '\\': '\\\\', '\b': '\\b', '\f': '\\f', '\n': '\\n', '\r': '\\r', '\t': '\\t', '\0': '\\0', '\u2028': '\\u2028', '\u2029': '\\u2029' };
+  const escapeUnsafeChars = str => str.replace(/[<>\b\f\n\r\t\0\u2028\u2029]/g, x => charMap[x]);
+  const jsText = v => escapeUnsafeChars(JSON.stringify(v));
   async function loadOrder() {
     let html = await (await fetch('index.html', { cache: 'no-store' })).text();
     const files = [...html.matchAll(/<script src="(js\/[\w-]+\.js)"><\/script>/g)].map(m => m[1]);
@@ -460,7 +465,7 @@ window.UiTest = (() => {
     let tags = '<script>window.__fwd = []; window.__err = []; window.addEventListener("error", e => window.__err.push(e.message));<\/script>';
     files.forEach((f, k) => {
       const later = Object.keys(fnOf).filter(n => files.indexOf(fnOf[n]) > k);
-      tags += '<script>' + later.map(n => `var ${n} = function () { window.__fwd.push(${JSON.stringify(f + ' ruft beim Laden ' + n + '() aus ' + fnOf[n])}); throw new ReferenceError(${JSON.stringify(n)}); };`).join('') + '<\/script>';
+      tags += '<script>' + later.map(n => `var ${n} = function () { window.__fwd.push(${jsText(f + ' ruft beim Laden ' + n + '() aus ' + fnOf[n])}); throw new ReferenceError(${jsText(n)}); };`).join('') + '<\/script>';
       tags += `<script src="${f}"><\/script>`;
     });
     html = html.replace('</body>', tags + '</body>');
