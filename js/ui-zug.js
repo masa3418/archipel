@@ -226,9 +226,41 @@ function setZoom(nts, ax = wrap.clientWidth / 2, ay = wrap.clientHeight / 2) {
   view.x = cx * TS - ax; view.y = cy * TS - ay;
   try { localStorage.setItem('archipel-zoom', String(TS)); } catch (e) {}
   render();
+  renderMini();
+}
+
+// Stufenloser Zoom (Wunsch des Nutzers; nach seinem Test so festgeschrieben – Vorgabe an, abschaltbar): Mausrad, Spreizgeste und die Zoomknöpfe ändern die Feldgröße fließend statt in Viererschritten.
+// Während des Zoomens vergrößert nur CSS das fertige Bild (sofort, ohne Ruckeln; Anker = Mausposition zu Beginn der Geste), erst wenn ZOOM_IDLE ms
+// nichts mehr kommt, zeichnet setZoom die Karte in der neuen ganzen Feldgröße neu (große Karte ca. 40–55 ms – für jedes Rad-Ereignis zu viel).
+// Mauskoordinaten rechnen solange mit TS × zoomG.s (tileFromEvent). Abschaltbar in den Einstellungen (archipel-smoothzoom): dann wie bisher ±4.
+const ZOOM_IDLE = 160, ZOOM_MIN = 14, ZOOM_MAX = 48, ZOOM_KEY = 1.2;   // ZOOM_KEY: Faktor je Druck auf + / − (Taste oder Knopf)
+let smoothZoom = true;
+try { smoothZoom = localStorage.getItem('archipel-smoothzoom') !== '0'; } catch (e) {}
+const zoomG = { s: 1, ax: 0, ay: 0, timer: 0 };
+function zoomBy(f, ax = wrap.clientWidth / 2, ay = wrap.clientHeight / 2, animate = false) {
+  if (!S) return;
+  if (!smoothZoom) { setZoom(TS + (f > 1 ? 4 : -4), ax, ay); return; }
+  if (zoomG.s === 1) { zoomG.ax = ax; zoomG.ay = ay; }
+  const s = Math.max(ZOOM_MIN / TS, Math.min(ZOOM_MAX / TS, zoomG.s * f));
+  if (Math.abs(s - zoomG.s) < 1e-4) return;
+  zoomG.s = s;
+  cam.active = false;
+  cv.style.transformOrigin = `${view.x + zoomG.ax}px ${view.y + zoomG.ay}px`;
+  cv.style.transition = animate ? 'transform .16s ease-out' : '';
+  cv.style.transform = `scale(${s})`;
+  clearTimeout(zoomG.timer);
+  zoomG.timer = setTimeout(zoomCommit, animate ? ZOOM_IDLE + 40 : ZOOM_IDLE);
+}
+function zoomReset() { clearTimeout(zoomG.timer); zoomG.s = 1; cv.style.transition = ''; cv.style.transform = ''; }
+function zoomCommit() {
+  if (zoomG.s === 1) return;
+  const nts = Math.round(TS * zoomG.s), { ax, ay } = zoomG;
+  zoomReset();
+  setZoom(nts, ax, ay);
 }
 
 function resizeCanvas() {
+  if (zoomG.s !== 1) zoomReset();   // neue Partie, Laden … während einer Zoomgeste: Vergrößerung verwerfen
   cv.width = S.W * TS; cv.height = S.H * TS;
   applyPad();
   buildTerrainCache();

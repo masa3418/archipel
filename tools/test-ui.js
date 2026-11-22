@@ -215,6 +215,23 @@ window.UiTest = (() => {
     select(b, false); killUnit(b, 1); afterAction(b); skipAnim(); closeModals();
     check(sel === a.id, 'Reihenfolge: fällt die Einheit, kommt die nächstgelegene zu ihrer letzten Stelle dran');
   }
+  // Stufenloser Zoom: eine Raste vergrößert sofort per CSS, nach der Pause wird neu gezeichnet; der Punkt unter der Maus bleibt, wo er war.
+  // Abgeschaltet: wie früher Viererschritte.
+  function smoothZoomCheck() {
+    const keep = smoothZoom, z0 = TS; smoothZoom = true; setZoom(30);
+    const r = wrap.getBoundingClientRect(), mx = r.left + wrap.clientWidth * 0.4, my = r.top + wrap.clientHeight * 0.45;
+    const at = () => { const c = cv.getBoundingClientRect(), ts = TS * (c.width / cv.width); return [(mx - c.left) / ts, (my - c.top) / ts]; };
+    const wheel = dy => wrap.dispatchEvent(new WheelEvent('wheel', { deltaY: dy, deltaMode: 0, clientX: mx, clientY: my, bubbles: true, cancelable: true }));
+    const p0 = at();
+    wheel(-100);
+    check(TS === 30 && zoomG.s > 1.05 && Math.abs(at()[0] - p0[0]) < 0.02, 'Stufenloser Zoom: sofort per CSS vergrößert, Punkt unter der Maus bleibt');
+    zoomCommit();
+    const p1 = at();
+    check(TS > 30 && TS < 36 && zoomG.s === 1 && Math.abs(p1[0] - p0[0]) < 0.05 && Math.abs(p1[1] - p0[1]) < 0.05, 'Stufenloser Zoom: neu gezeichnet, Punkt unter der Maus bleibt');
+    smoothZoom = false; setZoom(30); wheel(-100);
+    check(TS === 34, 'Stufenloser Zoom aus: Viererschritte wie bisher');
+    smoothZoom = keep; setZoom(z0);
+  }
   // Gestauchte Wiedergabe (lange Gegnerzüge): Auch versenkte Einheiten verschwinden im gestauchten Takt – vorher blieben sie bis zu ihrem
   // ungestauchten Zeitpunkt stehen (ein Kreuzer fuhr auf das Feld des versenkten Zerstörers, der erst danach verschwand)
   function goneScale() {
@@ -490,7 +507,7 @@ window.UiTest = (() => {
     step('Karte zeichnen', () => { draw(); return true; });
     step('Produktionsansicht (V) und zurück', () => { key('v'); const on = prodView; draw(); key('v'); return on && !prodView; });
     step('Wegeansicht (G) und zurück', () => { key('g'); const on = pathView; draw(); key('g'); return on && !pathView; });
-    step('Zoom + und −', () => { const z0 = TS; setZoom(24); const t = TS; key('+'); const up = TS; key('-'); draw(); const ok = up > t && TS === t; setZoom(z0); return ok; });
+    step('Zoom + und − (stufenlos: Neuzeichnen nach der Pause, hier sofort mit zoomCommit)', () => { const z0 = TS; setZoom(24); const t = TS; key('+'); zoomCommit(); const up = TS; key('-'); zoomCommit(); draw(); const ok = up > t && TS === t; setZoom(z0); return ok; });
     step('Zeichnen mit Auswahl, Mausfeld und Marschziel', () => { const u = mine().find(u => T(u).domain === 'land' && u.moves > 0); select(u); hover = [u.x + 1, u.y]; const c = S.cities.find(c => c.owner === 0); selCity = c.id; c.rally = [c.x + 1, c.y]; draw(); c.rally = null; return true; });
     step('Zeichnen während einer Wiedergabe (Explosion, Schriftzug)', () => { const u = mine()[0]; replay = 'normal'; animBegin(120); hooks.combat(u, { id: -5, type: 'inf', owner: 1, x: u.x, y: u.y, hp: 1 }, u.x, u.y, true); hooks.salvo(u, u.x, u.y); animEnd(); render(anim.t0 + 100); render(anim.t0 + 400); skipAnim(); replay = 'off'; return true; });
 
@@ -679,7 +696,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); goneScale(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); goneScale(); smoothZoomCheck(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters

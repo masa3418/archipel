@@ -7,8 +7,9 @@
 
 // ------------------------------------------------------------------ Eingabe
 function tileFromEvent(e) {
-  const r = cv.getBoundingClientRect();
-  return [Math.floor((e.clientX - r.left) / TS), Math.floor((e.clientY - r.top) / TS)];
+  // während einer stufenlosen Zoomgeste ist die Leinwand per CSS vergrößert – auch mitten im Gleiten zählt die sichtbare Größe
+  const r = cv.getBoundingClientRect(), ts = TS * ((r.width / cv.width) || 1);
+  return [Math.floor((e.clientX - r.left) / ts), Math.floor((e.clientY - r.top) / ts)];
 }
 
 cv.addEventListener('click', e => {
@@ -207,6 +208,13 @@ wrap.addEventListener('wheel', e => {
     return;
   }
   const unit = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 400 : 1;
+  if (smoothZoom) {   // stufenlos: jede Bewegung zoomt anteilig (eine Raste ≈ 12 %, Spreizgeste fein)
+    const r = wrap.getBoundingClientRect(), d = Math.max(-300, Math.min(300, e.deltaY * unit * (pinch ? 4 : 1)));
+    // Eine Mausrad-Raste (großer Schritt) gleitet wie + / −, sonst sprang das Bild Raste für Raste (dem Nutzer aufgefallen);
+    // die vielen kleinen Schritte einer Spreizgeste folgen direkt
+    zoomBy(Math.exp(-d * 0.0012), e.clientX - r.left, e.clientY - r.top, Math.abs(e.deltaY * unit) >= 40);
+    return;
+  }
   wheelAcc += e.deltaY * unit * (pinch ? 4 : 1);             // Spreizgesten liefern sehr kleine Schritte
   if (Math.abs(wheelAcc) < 60) return;
   const dir = wheelAcc < 0 ? 1 : -1;
@@ -218,6 +226,11 @@ cv.addEventListener('auxclick', e => { if (e.button === 1) e.preventDefault(); }
 // Einstellung im Handbuch (Reiter „Steuerung“)
 $('wheelSel').value = wheelMode;
 $('wheelSel').onchange = () => { wheelMode = $('wheelSel').value; try { localStorage.setItem('archipel-wheel', wheelMode); } catch (e) {} };
+$('smoothZoomChk').checked = smoothZoom;
+$('smoothZoomChk').onchange = e => {
+  smoothZoom = e.target.checked; zoomCommit();
+  try { localStorage.setItem('archipel-smoothzoom', smoothZoom ? '1' : '0'); } catch (err) {}
+};
 cv.addEventListener('mousemove', e => {
   const t = tileFromEvent(e);
   if (!hover || hover[0] !== t[0] || hover[1] !== t[1]) { hover = inb(t[0], t[1]) ? t : null; dirty = true; updateHover(); }
@@ -340,8 +353,8 @@ document.addEventListener('keydown', e => {
     case 'Escape':
       if (gotoPreview) { gotoPreview = null; refresh(); break; }   // erst nur den festgehaltenen Weg verwerfen, die Einheit bleibt gewählt
       sel = null; selCity = null; refresh(); break;
-    case '+': setZoom(TS + 4); break;
-    case '-': setZoom(TS - 4); break;
+    case '+': zoomBy(ZOOM_KEY, undefined, undefined, true); break;
+    case '-': zoomBy(1 / ZOOM_KEY, undefined, undefined, true); break;
     case 'h': case '?': openHelp(); break;
     case 'm': toggleSound(); break;
     case 'i': openStats(); break;

@@ -303,6 +303,13 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   `dragSwallow` verschluckt), Umschalt + Pfeiltasten, Klick auf die Übersichtskarte. Rad-Ereignisse: Mausrad zoomt,
   Touchpad-Wischen verschiebt (`looksLikeTouchpad`: kleine, krumme oder seitliche Schritte), Spreizgeste = Rad mit Strg = Zoom.
   Die Einstellung `archipel-wheel` (auto | zoom | pan, im Menü unter „Einstellungen“) übersteuert die Erkennung.
+  **Stufenloser Zoom** (Wunsch des Nutzers, nach seinem Test so festgeschrieben: an, abschaltbar; ui-zug.js `zoomBy`, `zoomCommit`, `zoomG`, Schalter `smoothZoom` / `archipel-smoothzoom`, Einstellungen →
+  Ton & Steuerung, Vorgabe an): Mausrad (Raste ≈ 12 %), Spreizgeste und + / − (Faktor `ZOOM_KEY` 1,2) ändern die Feldgröße fließend.
+  Während der Geste vergrößert nur CSS das fertige Bild (`transform: scale` um den Anker), nach `ZOOM_IDLE` (160 ms) Ruhe zeichnet `setZoom` in der
+  neuen ganzen Feldgröße 14–48 neu (große Karte 40–55 ms – zu viel für jedes Rad-Ereignis). Große Schritte (Mausrad-Raste, + / −) gleiten per CSS-Übergang
+  (0,16 s; ohne das sprang das Bild beim Mausrad Raste für Raste – dem Nutzer aufgefallen), die vielen kleinen einer Spreizgeste folgen direkt.
+  Mauskoordinaten: `tileFromEvent` rechnet mit der sichtbaren Größe (`getBoundingClientRect().width / cv.width`) – auch mitten im Gleiten richtig.
+  `resizeCanvas` verwirft eine laufende Geste. Aus: Viererschritte wie bisher.
   Echte Touchpad-Gesten lassen sich im eingebauten Browser nur als nachgestellte Rad-Ereignisse testen.
 - **Tastatur und Fenster** (ui.js, `keydown`): Tasten in Eingabefeldern, Häkchen, Reglern und Auswahllisten gehören dem Feld – außer Esc bei
   offenem Fenster: Das schließt es immer (vorher blieb z. B. „Spielstände“ offen, weil das Namensfeld den Fokus hat); nur ein Suchfeld mit Text
@@ -457,8 +464,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 797 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
-     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 800 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, stufenloser Zoom, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
    Pull Requests (Entscheidung mit dem Nutzer: für eine Person zu viel Zeremonie; neu überlegen, wenn andere beitragen).

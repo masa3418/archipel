@@ -742,6 +742,6 @@ $('mSound').addEventListener('input', e => {
   Sfx.setLevel(k, e.target.value / 100);
   e.target.nextElementSibling.textContent = e.target.value + ' %';
 });
-$('bZoomIn').onclick = () => setZoom(TS + 4);
-$('bZoomOut').onclick = () => setZoom(TS - 4);
+$('bZoomIn').onclick = () => zoomBy(ZOOM_KEY, undefined, undefined, true);
+$('bZoomOut').onclick = () => zoomBy(1 / ZOOM_KEY, undefined, undefined, true);
 $('bFocus').onclick = actFocus;
