@@ -250,9 +250,9 @@ window.UiTest = (() => {
       check(k === 'seekarte' ? deco.length >= 4 : k === 'weltall' ? deco.length > 0 : deco.length === 0, `Kartenrand ${k}: Schmuck (${deco.length})`);
       check(!onMap.length, `Kartenrand ${k}: kein Schmuck auf der Karte`);
     }
-    openViewMenu(); const item = viewMenu.querySelector('[data-border="weltall"]'); item.click();
-    check(curBorder() === 'weltall' && viewMenu.querySelector('[data-border="weltall"]').classList.contains('on'), 'Kartenrand: Auswahl unter „Ansicht“');
-    closeViewMenu(); setBorder(keep);
+    openLook(); $('lookBorders').querySelector('[data-lborder="weltall"]').click();
+    check(curBorder() === 'weltall' && $('lookBorders').querySelector('[data-lborder="weltall"]').classList.contains('on'), 'Kartenrand: Auswahl im Fenster „Aussehen der Karte“');
+    closeModals(); setBorder(keep);
   }
   // Grafik-Sets: Die Landschaft „Asteroiden“ bringt Weltraum-Bilder für Einheiten und Städte mit; der Kartenrand wird je Set gemerkt,
   // die Partie speichert die Landschaft (und damit das Set) mit
@@ -265,15 +265,25 @@ window.UiTest = (() => {
     check(gfxSet() === 'weltraum' && S.land === 'asteroiden', 'Grafik-Set: Asteroiden gehören zum Weltraum');
     check(unitSprite('crs', 0, 30).toDataURL() !== ship.toDataURL() && citySprite(0, 30, 0).toDataURL() !== city.toDataURL() && iconUrl('u', 'crs') !== icon, 'Grafik-Set: eigene Bilder für Einheiten, Städte und Seitenleiste');
     check(UNIT_ORDER.every(k => ICON_SPACE[k] && unitSvg(k, 0, true, '', 'weltraum') !== unitSvg(k, 0, true, '', 'insel')), 'Grafik-Set: jede Einheit hat ein Weltraum-Bild (auch als SVG)');
-    check($('mapPad').classList.contains('b-' + borderPrefs.weltraum) && $('borderSel').value === borderPrefs.weltraum, 'Grafik-Set: Kartenrand des Weltraums');
+    check($('mapPad').classList.contains('b-' + borderPrefs.weltraum) && $('setSel').value === 'weltraum', 'Grafik-Set: Kartenrand des Weltraums');
     setBorder('holz');
     check(localStorage.getItem('archipel-border-weltraum') === 'holz' && borderPrefs.insel === keepB.insel, 'Grafik-Set: Rand je Set gemerkt');
     setLandscape('gruen');
-    check(gfxSet() === 'insel' && $('mapPad').classList.contains('b-' + keepB.insel) && $('borderSel').value === keepB.insel && unitSprite('crs', 0, 30).toDataURL() === ship.toDataURL(), 'Grafik-Set: zurück zur Inselwelt, Bilder und Rand wie vorher');
-    openViewMenu(); viewMenu.querySelector('[data-land="asteroiden"]').click();
-    check(gfxSet() === 'weltraum' && viewMenu.querySelector('[data-land="asteroiden"]').classList.contains('on') && viewMenu.querySelector('[data-border="holz"]').classList.contains('on'), 'Grafik-Set: Auswahl unter „Ansicht“, Rand folgt');
-    closeViewMenu();
-    check(!!$('landSel').querySelector('optgroup option[value="asteroiden"]') && $('landSel').value === 'asteroiden', 'Grafik-Set: Einstellungen nach Sets gruppiert');
+    check(gfxSet() === 'insel' && $('mapPad').classList.contains('b-' + keepB.insel) && $('setSel').value === 'insel' && unitSprite('crs', 0, 30).toDataURL() === ship.toDataURL(), 'Grafik-Set: zurück zur Inselwelt, Bilder und Rand wie vorher');
+    openViewMenu();
+    check(viewMenu.querySelectorAll('[data-set]').length === 3 && !viewMenu.querySelector('[data-land], [data-border]') && !!viewMenu.querySelector('[data-look]'), 'Grafik-Set: unter „Ansicht“ nur die drei Sets und der Weg ins Fenster');
+    viewMenu.querySelector('[data-set="weltraum"]').click();
+    check(gfxSet() === 'weltraum' && S.land === SET_LAND.weltraum && curBorder() === BORDER_DEFAULT.weltraum && viewMenu.querySelector('[data-set="weltraum"]').classList.contains('on'), 'Grafik-Set: Set unter „Ansicht“ wählt Klimazonen-Variante und passenden Rand');
+    viewMenu.querySelector('[data-look]').click();
+    check(!$('mLook').hidden && viewMenu.hidden && [...$('lookLands').querySelectorAll('[data-lland]')].map(b => b.dataset.lland).join() === landsOf('weltraum').join()
+      && $('lookLands').querySelector('.on').dataset.lland === S.land && $('lookBorders').querySelector('.on').dataset.lborder === curBorder(), 'Grafik-Set: Fenster „Aussehen der Karte“ zeigt die Landschaften des Sets');
+    $('lookLands').querySelector('[data-lland="eis"]').click(); $('lookBorders').querySelector('[data-lborder="holz"]').click();
+    check(S.land === 'eis' && curBorder() === 'holz' && $('lookLands').querySelector('.on').dataset.lland === 'eis' && $('lookBorders').querySelector('.on').dataset.lborder === 'holz', 'Grafik-Set: im Fenster Landschaft und Rand einzeln wählbar');
+    $('lookSets').querySelector('[data-lset="segel"]').click();
+    check(S.land === SET_LAND.segel && curBorder() === BORDER_DEFAULT.segel && $('setSel').value === 'segel' && !!$('lookSets').querySelector('[data-lset="segel"].on'), 'Grafik-Set: Set im Fenster wählt Klimazonen-Variante und Rand');
+    closeModals();
+    for (const k of SET_KEYS) { $('setSel').value = k; $('setSel').onchange({ target: $('setSel') }); check(gfxSet() === k && S.land === SET_LAND[k] && curBorder() === BORDER_DEFAULT[k], `Grafik-Set: Einstellungen → ${k}`); }
+    setLandscape('asteroiden');
     const save = serialize(); S.land = 'gruen'; deserialize(save);
     check(S.land === 'asteroiden', 'Grafik-Set: die Partie speichert die Landschaft mit');
     for (const k of ['land', 'units']) { gfx.tab = k; openGfx(); }
@@ -302,7 +312,7 @@ window.UiTest = (() => {
     const zk = new Set(); for (let i = 0; i < S.W * S.H; i++) if (S.terrain[i]) zk.add(tileLandscape(i));
     check(gfxSet() === 'segel' && [...zk].every(L => L.set === 'segel') && zk.has(LANDSCAPES.altpolar) && zk.has(LANDSCAPES.altwueste), `Segelzeit: Klimazonen mit Eismeer und Wüste (${zk.size} Arten)`);
     setLandscape('altkarte');
-    openViewMenu(); check(!!viewMenu.querySelector('[data-land="altkarte"].on') && [...viewMenu.querySelectorAll('h4')].some(h => h.textContent === SET_HEAD.segel), 'Segelzeit: unter „Ansicht“ als eigene Gruppe'); closeViewMenu();
+    openViewMenu(); check(!!viewMenu.querySelector('[data-set="segel"].on'), 'Segelzeit: unter „Ansicht“ als Set markiert'); closeViewMenu();
     setLandscape('asteroiden');
     Object.assign(borderPrefs, keepB); for (const [k, v] of keepStore) { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); }
     setLandscape(keepLand); S.land = keepS; buildTerrainCache(); refresh();
@@ -619,10 +629,10 @@ window.UiTest = (() => {
     step('Landschaften: jede zeichnet anders, die Auswahl stimmt, zurück auf die Vorgabe', () => {
       const keep = S.land, px = () => { render(performance.now()); const c = S.cities.find(c => c.owner === 0); return [...terrainCache.getContext('2d').getImageData((c.x + 1) * TS + 2, (c.y + 1) * TS + 2, 1, 1).data].join(); };
       const seen = new Set(); let ok = true;
-      for (const k of Object.keys(LANDSCAPES)) { setLandscape(k); ok = ok && S.land === k && $('landSel').value === k && !!LAND_NAMES[k]; seen.add(landscape().mini.join()); draw(); }
+      for (const k of Object.keys(LANDSCAPES)) { setLandscape(k); ok = ok && S.land === k && !!LAND_NAMES[k]; seen.add(landscape().mini.join()); draw(); }
       setLandscape('gibtsnicht'); ok = ok && S.land === DEFAULT_LAND && JSON.stringify(Object.keys(LANDSCAPES)) === JSON.stringify(LAND_KEYS);
       setLandscape(keep); draw();
-      return ok && seen.size === Object.keys(LANDSCAPES).length && $('landSel').options.length === seen.size;
+      return ok && seen.size === Object.keys(LANDSCAPES).length && SET_KEYS.reduce((n, k) => n + landsOf(k).length, 0) === seen.size;
     });
     step('Tastenlegende: am Griff verschieben, bleibt im Kartenbereich, Doppelklick legt zurück', () => {
       const keep = showKeys, pos0 = keyPos; setShowKeys(true); setKeyPos(null); refresh();
@@ -638,19 +648,19 @@ window.UiTest = (() => {
       ok = ok && keyPos === null && Math.abs(r4.left - r0.left) <= 1 && Math.abs(r4.top - r0.top) <= 1 && !localStorage.getItem('archipel-keys-pos');
       setKeyPos(pos0); setShowKeys(keep); return ok;
     });
-    step('Kopfzeile: „Ansicht“ – Schalter und Landschaften, bleibt offen, Esc schließt', () => {
-      const keep = S.land, k0 = showKeys, m0 = keysMin, r0 = showRoute, p0 = showPower; $('bView').click();
-      const items = () => [...$('viewMenu').querySelectorAll('[data-land]')], sw = k => $('viewMenu').querySelector('[data-view="' + k + '"]');
-      let ok = !$('viewMenu').hidden && items().length === LAND_KEYS.length && items().filter(b => b.classList.contains('on')).length === 1 && $('viewMenu').querySelectorAll('[data-view]').length === 5 && !$('vPaths');
-      items().find(b => b.dataset.land === 'lava').click(); draw();
-      ok = ok && S.land === 'lava' && !$('viewMenu').hidden && items().find(b => b.dataset.land === 'lava').classList.contains('on');   // bleibt offen
+    step('Kopfzeile: „Ansicht“ – Schalter und Grafik-Sets, bleibt offen, Esc schließt', () => {
+      const keep = S.land, b0 = Object.assign({}, borderPrefs), s0 = localStorage.getItem('archipel-border-segel'), k0 = showKeys, m0 = keysMin, r0 = showRoute, p0 = showPower; $('bView').click();
+      const items = () => [...$('viewMenu').querySelectorAll('[data-set]')], sw = k => $('viewMenu').querySelector('[data-view="' + k + '"]');
+      let ok = !$('viewMenu').hidden && items().length === SET_KEYS.length && items().filter(b => b.classList.contains('on')).length === 1 && $('viewMenu').querySelectorAll('[data-view]').length === 5 && !$('vPaths');
+      items().find(b => b.dataset.set === 'segel').click(); draw();
+      ok = ok && S.land === SET_LAND.segel && !$('viewMenu').hidden && items().find(b => b.dataset.set === 'segel').classList.contains('on');   // bleibt offen
       sw('route').click(); ok = ok && showRoute === !r0 && $('routeChk').checked === showRoute && sw('route').classList.contains('on') === showRoute; sw('route').click(); ok = ok && showRoute === r0;
       sw('power').click(); ok = ok && showPower === !p0 && $('powerChk').checked === showPower && ($('power').style.display === 'none') === !showPower; sw('power').click(); ok = ok && showPower === p0;
       setShowKeys(false); renderViewMenu(); sw('keys').click(); ok = ok && showKeys && !keysMin && !$('keyLegend').hidden && $('keysChk').checked; sw('keys').click(); ok = ok && !showKeys && $('keyLegend').hidden;
       const t0 = threatView; sw('threat').click(); ok = ok && threatView === !t0 && sw('threat').classList.contains('on') === threatView; draw(); sw('threat').click(); ok = ok && threatView === t0;
       sw('paths').click(); ok = ok && pathView && sw('paths').classList.contains('on') && !$('pathLegend').hidden; draw(); sw('paths').click(); ok = ok && !pathView && $('pathLegend').hidden;
-      key('Escape'); ok = ok && $('viewMenu').hidden && S.land === 'lava';
-      setLandscape(keep); setShowKeys(k0); setKeysMin(m0); draw(); return ok;
+      key('Escape'); ok = ok && $('viewMenu').hidden && S.land === SET_LAND.segel;
+      Object.assign(borderPrefs, b0); if (s0 === null) localStorage.removeItem('archipel-border-segel'); else localStorage.setItem('archipel-border-segel', s0); setLandscape(keep); setShowKeys(k0); setKeysMin(m0); draw(); return ok;
     });
     step('Tastenlegende: × klappt zum Schildchen ein, Klick klappt auf', () => {
       const k0 = showKeys, m0 = keysMin; setShowKeys(true); refresh();
@@ -738,7 +748,7 @@ window.UiTest = (() => {
       ok = ok && S.land === 'schnee' && S.turn === 1;                       // neue Partie
       const o = JSON.parse(save); (o.S || o).land = 'lava'; deserialize(JSON.stringify(o)); afterLoad(); closeModals();
       ok = ok && S.land === 'lava' && landPref === 'schnee';                 // geladene Partie zeigt ihre gespeicherte Landschaft, die Einstellung bleibt
-      openSettings('view'); ok = ok && $('landSel').value === 'lava'; closeModals();
+      openSettings('view'); ok = ok && $('setSel').value === 'insel'; closeModals(); openLook(); ok = ok && $('lookLands').querySelector('.on').dataset.lland === 'lava'; closeModals();
       $('bNew').click(); $('sizeSel').value = 'klein'; $('bStart').click(); closeModals(); ok = ok && S.land === 'schnee';
       setLandscape(keep); if (store === null) localStorage.removeItem('archipel-landscape');
       deserialize(save); afterLoad(); closeModals(); replay = 'off';

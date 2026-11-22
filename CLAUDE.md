@@ -320,8 +320,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Kopfzeile und Menü**: Oben stehen nur Runde + Stufe (`updateHeader`), `☰ Menü`, Zoom, Zentrieren (Fadenkreuz/Taste F, `actFocus` → `focusOn`), Ansicht, Ton, Handbuch, Sprache.
   Ordnung der Leiste (Konzept mit dem Nutzer): Menü (Spiel, Seltenes) | Karte (Zoom, Zentrieren, Ansicht) | Ton | Hilfe (Handbuch, Sprache). **Ansicht** (`#bView`, Auge;
   `openViewMenu`/`renderViewMenu`/`VIEW_SW` in ui-schau.js, Liste `#viewMenu`): ein Symbol für alles, was die Anzeige der Karte betrifft – Schalter Tastenkürzel,
-  Wegvorschau, Kräfteverhältnis (dieselben wie in den Einstellungen: `setShowKeys`, `setShowRoute`, `setShowPower`), Wege und Marschziele (`setPathView`) und darunter die fünf Landschaften mit Farbfeld
-  (Wunsch des Nutzers: Landschaft mitten im Spiel wechseln als Gimmick). Die Liste bleibt beim Klicken offen. Neue Anzeige-Optionen kommen dorthin, nie als
+  Wegvorschau, Kräfteverhältnis (dieselben wie in den Einstellungen: `setShowKeys`, `setShowRoute`, `setShowPower`), Wege und Marschziele (`setPathView`) und darunter die drei Grafik-Sets mit Farbfeld
+  (`data-set` → `chooseSet`) und „Landschaft und Kartenrand …“ (öffnet `#mLook`; Wunsch des Nutzers: Aussehen mitten im Spiel wechseln als Gimmick – seit es
+  drei Sets mit 16 Landschaften und fünf Rändern gibt, stehen unter „Ansicht“ nur noch die Sets, alles Feinere im Fenster). Die Liste bleibt beim Klicken offen. Neue Anzeige-Optionen kommen dorthin, nie als
   weiteres Symbol in die Leiste. Seltenes liegt im
   Menü `#menu` (`openMenu`/`closeMenu`, ui.js): Neues Spiel, Spielstände, Statistik, Zeitraffer und „Einstellungen …“. Die Einstellungen stehen im
   eigenen Fenster `#mSettings` (`openSettings(tab)`, `setTab`), in vier Reitern wie im Handbuch (`data-settab`/`data-setpane`: Anzeige, Spielablauf, Ton & Steuerung,
@@ -423,11 +424,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Landschaften** (Wunsch des Nutzers; data.js `LAND_KEYS`/`START_LANDS`, gfx.js `LANDSCAPES`/`landscape()`, ui-schau.js `setLandscape`/`LAND_NAMES`,
   Einstellungen → Anzeige): Grüne Inseln, Wüste, Schnee, Lava, Fremder Planet, Klimazonen – dieselbe Karte, nur anders eingefärbt, ohne Einfluss auf Regeln.
   Die Landschaft gehört zur Partie (`S.land`, in `sanitizeState`, ältere Spielstände und die Beispiele: grün). Die Landschaft ist **eine dauerhafte Einstellung** (`landPref`, `setLandscape` in ui-schau.js, `archipel-landscape`, Vorgabe `DEFAULT_LAND` =
-  Klimazonen; Wunsch des Nutzers – getrennte Einstellungen für die laufende und für neue Partien waren umständlich): Umschalten über „Ansicht“ oder
-  Einstellungen → Anzeige gilt sofort für die laufende Partie und bleibt für neue eingestellt (auch den Start ohne Spielstand). Gespeicherte Partien
-  zeigen beim Laden die Landschaft, mit der sie gespeichert wurden (`S.land`, Wunsch des Nutzers) – das ändert die Einstellung nicht; das Auswahlfeld
-  in den Einstellungen zeigt, was die Karte gerade zeigt. „Zurücksetzen“ stellt sie zurück. In den Einstellungen sind jederzeit alle wählbar (ändert `S.land` der laufenden Partie),
-  ebenso über „Ansicht“ in der Kopfzeile (siehe „Kopfzeile und Menü“). Je Landschaft ein Farbsatz (Wasser nach Tiefe,
+  Klimazonen; Wunsch des Nutzers – getrennte Einstellungen für die laufende und für neue Partien waren umständlich): Umschalten (Set unter „Ansicht“
+  bzw. Einstellungen → Anzeige → Grafik-Set `setSel`, einzelne Landschaft im Fenster „Aussehen der Karte“) gilt sofort für die laufende Partie und bleibt für neue eingestellt (auch den Start ohne Spielstand). Gespeicherte Partien
+  zeigen beim Laden die Landschaft, mit der sie gespeichert wurden (`S.land`, Wunsch des Nutzers) – das ändert die Einstellung nicht; „Grafik-Set“
+  in den Einstellungen zeigt das Set der Karte. „Zurücksetzen“ stellt sie zurück. Jede Wahl ändert `S.land` der laufenden Partie. Je Landschaft ein Farbsatz (Wasser nach Tiefe,
   Strand, Land nach Höhe, Brandung, Berge, Gipfel, Hügel, „Wald“ – in der Lava glühende Tümpel, auf dem Planeten magentafarbene Gewächse –,
   Farben der Übersichtskarte); Formen und Zufallsfolge in `buildTerrain` sind für alle gleich, feste Farben dort immer über `L.…` holen. Der
   Zeitraffer bleibt bei seinen eigenen Farben (er färbt das Land ohnehin nach Besitzer). Lava: erst war das Meer heller als das Land – jetzt
@@ -469,7 +469,12 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Farbprüfung: Parteien ≥ 32 (am knappsten Gelb auf Wüste, wie bei den Inseln); neutraler Platz auf dem Eismeer 12–24, dort trägt der Rand (49+). Menü: Überschriften `SET_HEAD`, Hinweistexte `SET_TIP`; Grafik-Übersicht mit drittem Knopf
   und eigenen Texten. Reihenfolge in `LANDSCAPES` und `LAND_KEYS` muss gleich sein (Durchlauf im Oberflächentest prüft das).
   Kartenrand je Set gemerkt (siehe „Kartenrand“). Grafik-Übersicht: Umschalter „Set“ im Reiter Einheiten (`gfx.set`, beim Öffnen das der Partie), Texte im
-  Reiter Städte und Gelände folgen dem Set. Klänge bleiben gleich. Neues Set: Eintrag in `ICON_SETS`, Landschaft mit `set`, `BORDER_DEFAULT`, `LAND_GROUPS`.
+  Reiter Städte und Gelände folgen dem Set. Klänge bleiben gleich. Neues Set: Eintrag in `ICON_SETS`, Landschaft mit `set`, `BORDER_DEFAULT`, `SET_KEYS`/`SET_NAMES`/`SET_DESC`/`SET_LAND` (ui-schau.js).
+  **Auswahl** (Wunsch des Nutzers: zu viele Möglichkeiten – vor allem ein Set wählen): `chooseSet(set)` setzt die gemischte Landschaft des Sets (`SET_LAND`:
+  zonen, guertel, altzonen) und seinen Rand (`BORDER_DEFAULT`) – auch wenn vorher Feineres gewählt war. Unter „Ansicht“ nur die drei Sets, in den Einstellungen
+  das Auswahlfeld „Grafik-Set“ (`setSel`) und „Landschaft und Kartenrand: Anpassen …“ (`bLook`). Fenster „Aussehen der Karte“ (`#mLook`, `openLook`,
+  `renderLook`): oben die drei Sets als Karten (je fünf Einheitenbilder `lookIcon`, Farbfeld `landSwatch`, ein Satz), darunter die Landschaften des aktuellen
+  Sets (die gemischte als „Standard“) und alle Ränder (der des Sets „passt zum Set“); Klicks gelten sofort, das Fenster bleibt offen.
   **Klimazonen** (`zonen`, Wunsch des Nutzers statt „je Insel zufällig“): je Feld einer der Farbsätze Grün/Wüste/Schnee/Lava nach der Lage
   (`zoneMap`, `ZONE_KEYS`, `tileLandscape` in gfx.js): Abstand zur Mitte oben/unten mit welligem Rauschen – über `ZONE_SNOW` (0,78) Schnee, unter `ZONE_DESERT` (0,17) Wüste (Grün übergewichtet, Wunsch des Nutzers: Land mittel über alle Welten Grün/Wüste/Schnee/Lava 63/17/15/6 %, vorher mit 0,62/0,28 34/27/36/4 %),
   dazwischen Grün; Inseln unter 15 % des Landes einheitlich nach der **Rangfolge** ihrer Mitte von Nord nach Süd (`ISL_SNOW` je 10 % im Norden und Süden Schnee, `ISL_DESERT` die
@@ -489,7 +494,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Windrose `compassImg`, Seeungeheuer `serpentImg`, „Terra incognita“ / „Hic sunt dracones“), Holztisch (Bretter, Karte wie ein Spielbrett mit Schatten),
   Weltall (Sternenfeld `starsImg`, Nebel, funkelnde Sterne `.twinkle`, bei reduzierter Bewegung still). Eine Einstellung für alle Partien, **je Grafik-Set**
   (`borderPrefs`, `curBorder()`; Inselwelt `archipel-border`, Vorgabe Offenes Meer; Weltraum `archipel-border-weltraum`, Vorgabe Weltall; Segelzeit `archipel-border-segel`, Vorgabe Alte Seekarte – wechselt die Landschaft
-  das Set, wechselt der Rand mit), wählbar unter „Ansicht“ (Liste „Kartenrand“) und in den Einstellungen → Anzeige; gehört nicht zum Spielstand. Bilder entstehen im Code
+  das Set, wechselt der Rand mit), wählbar im Fenster „Aussehen der Karte“ (`#mLook`; „Ansicht“ und Einstellungen führen dorthin); gehört nicht zum Spielstand. Bilder entstehen im Code
   (kleine Leinwände → data-Adresse, einmal je Art). Schmuck in `#padDeco` (über dem Rand, unter der Karte), gesetzt in `placeBorderDeco` – aufgerufen aus
   `applyPad` (Fenstergröße) und `applyBorder` (aus `buildTerrainCache`: Zoom, Landschaft, neue Partie). `#mapPad` hat `overflow: hidden`. Neue Ränder: Klasse
   in index.html, Eintrag in `BORDER_KEYS`/`BORDER_NAMES`/`BORDER_SW`; Grafik-Übersicht (Reiter Städte und Gelände) zeigt alle.
@@ -515,7 +520,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 837 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 843 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

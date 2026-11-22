@@ -61,15 +61,16 @@
   .menu .mi { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left;
     background: none; border: 0; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
   .menu .mi:hover { background: var(--panel2); }
-  /* Ansicht (Knopf bei Zoom und Zentrieren): Schalter für die Anzeige, darunter die Landschaften mit Farbfeld */
+  /* Ansicht (Knopf bei Zoom und Zentrieren): Schalter für die Anzeige, darunter die drei Grafik-Sets mit Farbfeld */
   .view-menu { width: 280px; }
   .view-menu .mi { justify-content: flex-start; }
   .view-menu .sw { width: 26px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,.25); flex-shrink: 0; }
   .view-menu .ck { width: 26px; text-align: center; color: var(--accent); flex-shrink: 0; font-weight: 700; }
   .view-menu .mi.on { font-weight: 600; }
   .view-menu .mi kbd { margin-left: auto; font-size: 11px; }
-  .view-menu .mi[data-land].on, .view-menu .mi[data-border].on { background: var(--panel2); }
-  .view-menu .mi[data-land].on::after, .view-menu .mi[data-border].on::after { content: '✓'; margin-left: auto; color: var(--accent); }
+  .view-menu .mi[data-set].on { background: var(--panel2); }
+  .view-menu .mi[data-set].on::after { content: '✓'; margin-left: auto; color: var(--accent); }
+  .view-menu .mi small { margin-left: auto; color: var(--muted); font-size: 11px; font-weight: 400; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .menu a.mi { color: var(--text); text-decoration: none; }
   /* Verweis ins Internet (Erklärvideos): deutlich als „online“ gekennzeichnet */
   .ext { font-size: 11px; font-weight: 600; color: #9fc4ff; border: 1px solid #3d6aa8; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
@@ -335,6 +336,24 @@
   .patrolbox b { color: #7fe0d0; }
   .dlg.wide { max-width: 760px; }
   /* Grafik-Übersicht (Einstellungen → Anzeige → Grafiken) */
+  /* Fenster „Aussehen der Karte“ (#mLook): drei Sets als Karten, darunter Landschaften des Sets und Kartenränder */
+  .dlg.look-dlg { max-width: 660px; max-height: 92vh; overflow: auto; }
+  .look-dlg h3 { margin: 16px 0 8px; font-size: 14px; }
+  .look-sets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .look-set { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: none; text-align: left; font-size: 14px; }
+  .look-set:hover, .look-opt:hover { background: var(--panel2); }
+  .look-set.on { border-color: var(--accent); background: var(--panel2); box-shadow: inset 0 0 0 1px var(--accent); }
+  .look-set .ic { display: flex; gap: 1px; }
+  .look-set .ic img { width: 30px; height: 30px; }
+  .look-set .sw { width: 100%; height: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,.2); }
+  .look-set small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+  .look-set.on b::after { content: ' ✓'; color: var(--accent); }
+  .look-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+  .look-opt { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: none; text-align: left; font-size: 13px; }
+  .look-opt.on { border-color: var(--accent); background: var(--panel2); font-weight: 600; }
+  .look-opt .sw { width: 26px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,.25); flex-shrink: 0; }
+  .look-opt small { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 11px; white-space: nowrap; }
+  @media (max-width: 560px) { .look-sets { grid-template-columns: 1fr; } }
   .dlg.gfx-dlg { max-width: 900px; display: flex; flex-direction: column; height: min(90vh, 840px); }
   .gfx-intro { margin: 0 0 6px; font-size: 13px; }
   .gfx-tabs { padding: 0; margin: 0 0 2px; }
@@ -645,7 +664,7 @@
     <button id="bZoomOut" title="Verkleinern (-)" data-en-title="Zoom out (-)">−</button>
     <button id="bZoomIn" title="Vergrößern (+)" data-en-title="Zoom in (+)">+</button>
     <button id="bFocus" title="Karte auf die ausgewählte Einheit zentrieren (F)" data-en-title="Centre the map on the selected unit (F)" data-en-aria-label="Centre on unit" aria-label="Auf Einheit zentrieren"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" style="vertical-align:-3px"><circle cx="8" cy="8" r="4.6"/><circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/><path d="M8 0.8v2.6M8 12.6v2.6M0.8 8h2.6M12.6 8h2.6"/></svg></button>
-    <button id="bView" title="Ansicht: Tastenkürzel, Wegvorschau, Kräfteverhältnis und Landschaft" data-en-title="View: shortcuts, route preview, balance of power and landscape" data-en-aria-label="View" aria-label="Ansicht" aria-haspopup="true" aria-expanded="false"><svg width="17" height="15" viewBox="0 0 17 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.2 7.5c1.9-3.2 4.3-4.8 7.3-4.8s5.4 1.6 7.3 4.8c-1.900 3.200-4.300 4.800-7.300 4.800S3.100 10.700 1.200 7.500z"/><circle cx="8.5" cy="7.5" r="2.2"/></svg></button>
+    <button id="bView" title="Ansicht: Tastenkürzel, Wegvorschau, Kräfteverhältnis und Grafik-Set" data-en-title="View: shortcuts, route preview, balance of power and graphics set" data-en-aria-label="View" aria-label="Ansicht" aria-haspopup="true" aria-expanded="false"><svg width="17" height="15" viewBox="0 0 17 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.2 7.5c1.9-3.2 4.3-4.8 7.3-4.8s5.4 1.6 7.3 4.8c-1.900 3.200-4.300 4.800-7.300 4.800S3.100 10.700 1.200 7.500z"/><circle cx="8.5" cy="7.5" r="2.2"/></svg></button>
     <button id="bSound" title="Ton (M)" data-en-title="Sound (M)">🔊</button>
     <button id="bHelp" class="hl" title="Handbuch öffnen (H)" data-en-title="Open the handbook (H)"><span class="ico">❔</span><span class="lbl" data-en="Handbook">Handbuch</span></button>
     <button id="bLang" class="hl" title="Sprache wechseln / Change language"><span class="ico">🌐</span><span class="lbl" id="bLangLbl">English</span></button>
@@ -1171,6 +1190,19 @@
   </div>
 </div>
 
+<div id="mLook" class="modal" hidden>
+  <div class="dlg look-dlg">
+    <h2 data-en="Map appearance">Aussehen der Karte</h2>
+    <p class="muted" data-en="Only pictures – rules and the names of the units stay the same. A set brings a matching landscape and map border; here you can change both separately.">Nur Bilder – Regeln und die Namen der Einheiten bleiben gleich. Ein Set bringt passende Landschaft und Kartenrand mit; hier lässt sich beides einzeln ändern.</p>
+    <h3 data-en="Graphics set">Grafik-Set</h3>
+    <div id="lookSets" class="look-sets"></div>
+    <h3 data-en="Landscape">Landschaft</h3>
+    <div id="lookLands" class="look-grid"></div>
+    <h3 data-en="Around the map">Kartenrand</h3>
+    <div id="lookBorders" class="look-grid"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="primary" data-close data-en="Done">Fertig</button></div>
+  </div>
+</div>
 <div id="mGfx" class="modal" hidden>
   <div class="dlg gfx-dlg">
     <h2 data-en="Graphics">Grafiken</h2>
@@ -1248,10 +1280,10 @@
       <p class="set-d" data-en="The most important keys at the bottom left of the map; what is not possible right now is dimmed.">Unten links auf der Karte die wichtigsten Tasten; was gerade nicht geht, ist abgeblendet.</p>
       <label class="set-row chk"><input type="checkbox" id="routeChk"><span class="set-l"><span data-en="Show the route when pointing at a tile">Weg beim Zeigen auf ein Feld einblenden</span></span></label>
       <p class="set-d" data-en="With a unit selected, the map shows the route to the tile under the mouse, how many turns it takes and why a tile cannot be reached. Experienced players can switch it off.">Mit gewählter Einheit zeigt die Karte den Weg zum Feld unter der Maus, die Dauer in Runden und warum ein Feld nicht erreichbar ist. Wer das Spiel kennt, kann es abschalten.</p>
-      <label class="set-row"><span class="set-l"><span data-en="Landscape">Landschaft</span></span><select id="landSel"></select></label>
-      <p class="set-d" data-en="How the map is coloured – same map, same rules, different look. Your choice also applies to new games and stays set; saved games keep the landscape they were saved with. You can also switch it under “View” (the eye at the top). Preset: climate zones. The asteroids (space) bring their own pictures: spaceships instead of ships, space stations instead of cities, the edge of the map in space. Likewise the old map (age of sail): sailing ships, cavalry and fortified towns, with the old sea chart around it – rules and names stay the same.">Wie die Karte eingefärbt ist – gleiche Karte, gleiche Regeln, anderes Aussehen. Die Wahl gilt auch für neue Partien und bleibt eingestellt; gespeicherte Partien behalten ihre Landschaft. Umschalten geht auch über „Ansicht“ (das Auge oben). Voreingestellt: Klimazonen. Die Asteroiden (Weltraum) bringen eigene Bilder mit: Raumschiffe statt Schiffe, Raumstationen statt Städte, als Kartenrand das Weltall. Ebenso die Alte Karte (Segelzeit): Segelschiffe, Kavallerie und Festungsstädte, ringsum die alte Seekarte – Regeln und Namen bleiben gleich.</p>
-      <label class="set-row"><span class="set-l"><span data-en="Around the map">Kartenrand</span></span><select id="borderSel"></select></label>
-      <p class="set-d" data-en="What lies outside the map when you scroll to its edge or zoom far out – open sea, an old sea chart, a wooden table or outer space. Just for looks; also under “View”. Remembered separately for the island world, space and the age of sail.">Was außerhalb der Karte liegt, wenn du an ihren Rand scrollst oder weit herauszoomst – offenes Meer, eine alte Seekarte, ein Holztisch oder das Weltall. Nur zum Ansehen; auch unter „Ansicht“. Wird für Inselwelt, Weltraum und Segelzeit getrennt gemerkt.</p>
+      <label class="set-row"><span class="set-l"><span data-en="Graphics set">Grafik-Set</span></span><select id="setSel"></select></label>
+      <p class="set-d" data-en="Island world, space or age of sail: units, cities, landscape and map border to match – only pictures, rules and names stay the same. Applies at once and to new games; saved games keep their look. Also under “View” (the eye at the top).">Inselwelt, Weltraum oder Segelzeit: Einheiten, Städte, Landschaft und Kartenrand passend zusammen – nur Bilder, Regeln und Namen bleiben gleich. Gilt sofort und auch für neue Partien; gespeicherte Partien behalten ihr Aussehen. Auch unter „Ansicht“ (das Auge oben).</p>
+      <div class="set-row"><span class="set-l" data-en="Landscape and map border">Landschaft und Kartenrand</span><button id="bLook" data-en="Adjust …">Anpassen …</button></div>
+      <p class="set-d" data-en="Each set has several landscapes (for example only desert or only ice) and five map borders to choose from.">Jedes Set hat mehrere Landschaften (zum Beispiel nur Wüste oder nur Eis) und fünf Kartenränder zur Wahl.</p>
       <div class="set-row"><span class="set-l" data-en="Graphics">Grafiken</span><button id="bGfx" data-en="Open …">Öffnen …</button></div>
       <p class="set-d" data-en="All pictures and animations of the game at a glance – with the SVG code of the unit symbols.">Alle Bilder und Animationen des Spiels im Überblick – mit dem SVG-Code der Einheitensymbole.</p>
     </section>

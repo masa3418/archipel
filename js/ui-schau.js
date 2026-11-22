@@ -368,8 +368,8 @@ function gfxLand(body) {
   fogCard.append(fogPic, fogLeg);
   fg.append(fogCard);
 
-  const bd = gfxSection(body, tt('Kartenrand', 'Around the map'), tt('Was außerhalb der Karte liegt, wenn man an ihren Rand scrollt – wählbar unter „Ansicht“. Windrose und Seeungeheuer gehören zur alten Seekarte, im Weltall funkeln einige Sterne.',
-    'What lies outside the map when you scroll to its edge – selectable under “View”. Compass rose and sea serpent belong to the old sea chart; in outer space some stars twinkle.'));
+  const bd = gfxSection(body, tt('Kartenrand', 'Around the map'), tt('Was außerhalb der Karte liegt, wenn man an ihren Rand scrollt – wählbar unter „Ansicht“ → „Landschaft und Kartenrand“. Windrose und Seeungeheuer gehören zur alten Seekarte, im Weltall funkeln einige Sterne.',
+    'What lies outside the map when you scroll to its edge – selectable under “View” → “Landscape and map border”. Compass rose and sea serpent belong to the old sea chart; in outer space some stars twinkle.'));
   for (const k of BORDER_KEYS) {
     const d = gfxEl('div'); borderVars(d, k); d.append(gfxEl('div', 'gfx-pad-map'));
     bd.append(gfxCard(d, BORDER_NAMES[k], k === curBorder() ? tt('eingestellt', 'selected') : ''));
@@ -545,15 +545,26 @@ const LAND_NAMES = { gruen: tt('Grüne Inseln', 'Green islands'), wueste: tt('W�
   kristall: tt('Kristall-Asteroiden', 'Crystal asteroids'), guertel: tt('Asteroidengürtel', 'Asteroid belt'), altkarte: tt('Alte Karte', 'Old map'),
   altwueste: tt('Alte Karte · Wüste', 'Old map · desert'), altpolar: tt('Alte Karte · Eismeer', 'Old map · polar sea'), alttropen: tt('Alte Karte · Tropen', 'Old map · tropics'),
   altzonen: tt('Alte Karte · Klimazonen', 'Old map · climate zones') };
-// Grafik-Sets: Landschaften nach Set gruppiert (Einstellungen: optgroup, „Ansicht“: Überschrift). Die Asteroiden bringen eigene Einheitenbilder mit.
-const LAND_GROUPS = [['insel', tt('Inselwelt', 'Island world')], ['weltraum', tt('Weltraum – Raumschiffe und Raumstationen', 'Space – spaceships and space stations')],
-  ['segel', tt('Segelzeit – Segelschiffe, Kavallerie und Festungen', 'Age of sail – sailing ships, cavalry and forts')]];
-const SET_HEAD = { insel: tt('Landschaft', 'Landscape'), weltraum: tt('Weltraum', 'Space'), segel: tt('Segelzeit', 'Age of sail') };   // Überschriften unter „Ansicht“
-const SET_TIP = {   // Hinweistext der Landschaften mit eigenen Einheitenbildern
-  weltraum: tt('Mit eigenen Einheitenbildern: Raumschiffe statt Schiffe, Raumstationen statt Städte – Regeln und Namen bleiben gleich', 'With its own unit pictures: spaceships instead of ships, space stations instead of cities – rules and names stay the same'),
-  segel: tt('Mit eigenen Einheitenbildern: Segelschiffe, Kavallerie und Festungsstädte – Regeln und Namen bleiben gleich', 'With its own unit pictures: sailing ships, cavalry and fortified towns – rules and names stay the same'),
+// Grafik-Sets (Wunsch des Nutzers: zu viele Möglichkeiten – man wählt vor allem eines der drei Sets): Ein Set bringt seine gemischte Landschaft
+// (SET_LAND: Klimazonen, Asteroidengürtel, alte Karte mit Klimazonen) und seinen Kartenrand (BORDER_DEFAULT) mit – chooseSet. Einzelne Landschaften
+// und andere Ränder stehen im Fenster „Aussehen der Karte“ (#mLook, openLook); unter „Ansicht“ und in den Einstellungen nur noch die drei Sets.
+const SET_KEYS = ['insel', 'weltraum', 'segel'];
+const SET_NAMES = { insel: tt('Inselwelt', 'Island world'), weltraum: tt('Weltraum', 'Space'), segel: tt('Segelzeit', 'Age of sail') };
+const SET_DESC = {
+  insel: tt('Schiffe, Panzer und Flugzeuge auf Inseln mit Klimazonen', 'Ships, tanks and aircraft on islands with climate zones'),
+  weltraum: tt('Raumschiffe und Raumstationen im Asteroidengürtel', 'Spaceships and space stations in the asteroid belt'),
+  segel: tt('Segelschiffe, Kavallerie und Festungen auf einer alten Karte', 'Sailing ships, cavalry and forts on an old map'),
 };
+const SET_LAND = { insel: 'zonen', weltraum: 'guertel', segel: 'altzonen' };
 const landsOf = set => Object.keys(LANDSCAPES).filter(k => (LANDSCAPES[k].set || 'insel') === set);
+// Farbfeld einer Landschaft (Liste „Ansicht“, Fenster „Aussehen der Karte“): Land und Meer der Übersichtskarte, gemischte als Streifen
+function landSwatch(k) {
+  const L = LANDSCAPES[k], m = L.mini, rgb = c => `rgb(${c.join()})`;
+  return L.belt ? 'linear-gradient(90deg, #ffd59a 0 10%, #96624a 10% 37%, #8c8680 37% 64%, #c6d6e4 64% 90%, #79ffd4 90%)'   // Sonne, Eisen, Gestein, Eis, Kristall
+    : L.zones && L.zoneKeys ? (([a, b, c]) => `linear-gradient(180deg, ${c} 0 22%, ${a} 22% 40%, ${b} 40% 60%, ${a} 60% 78%, ${c} 78%)`)(L.zoneKeys.map(z => rgb(LANDSCAPES[z].mini[0])))   // Zonen aus den Farbsätzen
+    : L.zones ? 'linear-gradient(180deg, #eef3f8 0 22%, #6ea84e 22% 40%, #e2c27e 40% 60%, #6ea84e 60% 78%, #eef3f8 78%)'
+    : (L.space ? 'radial-gradient(1px 1px at 15px 4px, #fff, transparent), radial-gradient(1px 1px at 19px 10px, #fff, transparent), ' : '') + `linear-gradient(135deg, ${rgb(m[0])} 0 55%, ${rgb(m[1])} 55%)`;
+}
 // Die Landschaft ist EINE Einstellung (Wunsch des Nutzers – eine für die laufende und eine für neue Partien war umständlich): Umschalten über
 // „Ansicht“ oder die Einstellungen gilt sofort für die laufende Partie und bleibt für alle neuen eingestellt (archipel-landscape, Vorgabe
 // DEFAULT_LAND). Gespeicherte Partien zeigen beim Laden die Landschaft, mit der sie gespeichert wurden (S.land) – das ändert die Einstellung nicht.
@@ -561,15 +572,20 @@ let landPref = DEFAULT_LAND;
 try { const v = localStorage.getItem('archipel-landscape'); if (LAND_KEYS.includes(v)) landPref = v; } catch (e) {}
 function setLandscape(v) {
   if (!LANDSCAPES[v]) v = DEFAULT_LAND;
-  landPref = v; $('landSel').value = v;
+  landPref = v;
   try { localStorage.setItem('archipel-landscape', v); } catch (e) {}
   if (S) { S.land = v; buildTerrainCache(); refresh(); }   // buildTerrainCache → applyBorder: wechselt das Set, wechselt der Rand mit
   else applyBorder();
+  if (!$('mLook').hidden) renderLook();
 }
-$('landSel').innerHTML = LAND_GROUPS.map(([set, label]) => `<optgroup label="${esc(label)}">`
-  + landsOf(set).map(k => `<option value="${k}">${esc(LAND_NAMES[k] || k)}</option>`).join('') + '</optgroup>').join('');
+// Set wählen: seine gemischte Landschaft und sein Kartenrand (auch wenn vorher im Fenster etwas anderes gewählt war – das Set ist die Vorgabe)
+function chooseSet(set) {
+  if (!SET_LAND[set]) return;
+  setLandscape(SET_LAND[set]); setBorder(BORDER_DEFAULT[set]);
+}
+$('setSel').innerHTML = SET_KEYS.map(k => `<option value="${k}">${esc(SET_NAMES[k])}</option>`).join('');
 try { localStorage.removeItem('archipel-land'); } catch (e) {}   // kurze Zwischenfassung: Landschaft als Einstellung
-$('landSel').onchange = e => setLandscape(e.target.value);
+$('setSel').onchange = e => chooseSet(e.target.value);
 
 // ------------------------------------------------------------------ Kartenrand
 // Was außerhalb der Karte liegt (#mapPad, der Rand um die Leinwand – siehe pad in ui-karte.js). Gimmick wie die Landschaften (Wunsch des Nutzers):
@@ -680,9 +696,10 @@ function borderVars(el, k) {   // Farben und erzeugte Bilder eines Kartenrands a
   el.style.setProperty('--stars', k === 'weltall' ? `url(${starsImg()})` : 'none');
 }
 function applyBorder() {
-  $('borderSel').value = curBorder();
+  $('setSel').value = gfxSet();
   borderVars($('mapPad'), curBorder());
   placeBorderDeco();
+  if (!$('mLook').hidden) renderLook();
 }
 function placeBorderDeco() {
   const box = $('padDeco'), k = curBorder();
@@ -720,12 +737,31 @@ function placeBorderDeco() {
     }
   }
 }
-$('borderSel').innerHTML = BORDER_KEYS.map(k => `<option value="${k}">${esc(BORDER_NAMES[k])}</option>`).join('');
-$('borderSel').onchange = e => setBorder(e.target.value);
 applyBorder();
+// Fenster „Aussehen der Karte“ (#mLook): oben die drei Sets (je fünf Einheitenbilder, Farbfeld, kurze Beschreibung), darunter die Landschaften des
+// gewählten Sets (die gemischte als „Standard“) und alle Kartenränder (der des Sets als „passt zum Set“). Klicks gelten sofort, das Fenster bleibt offen.
+const lookIcons = {};
+function lookIcon(set, k) { const key = set + k; return lookIcons[key] || (lookIcons[key] = unitSprite(k, 0, 30, set).toDataURL()); }
+function renderLook() {
+  const set = gfxSet(), land = (S && S.land) || landPref, border = curBorder();
+  $('lookSets').innerHTML = SET_KEYS.map(k => `<button class="look-set${k === set ? ' on' : ''}" data-lset="${k}">`
+    + `<span class="ic">${['inf', 'tank', 'ftr', 'crs', 'bat'].map(t => `<img src="${lookIcon(k, t)}" alt="">`).join('')}</span>`
+    + `<b>${esc(SET_NAMES[k])}</b><span class="sw" style="background:${landSwatch(SET_LAND[k])}"></span><small>${esc(SET_DESC[k])}</small></button>`).join('');
+  $('lookLands').innerHTML = landsOf(set).map(k => `<button class="look-opt${k === land ? ' on' : ''}" data-lland="${k}"><span class="sw" style="background:${landSwatch(k)}"></span>`
+    + `${esc(LAND_NAMES[k] || k)}${k === SET_LAND[set] ? `<small>${tt('Standard', 'default')}</small>` : ''}</button>`).join('');
+  $('lookBorders').innerHTML = BORDER_KEYS.map(k => `<button class="look-opt${k === border ? ' on' : ''}" data-lborder="${k}"><span class="sw" style="background:${BORDER_SW[k]}"></span>`
+    + `${esc(BORDER_NAMES[k])}${k === BORDER_DEFAULT[set] ? `<small>${tt('passt zum Set', 'matches the set')}</small>` : ''}</button>`).join('');
+}
+function openLook() { closeMenu(); closeCtx(); closeViewMenu(); renderLook(); openModal('mLook'); }
+$('mLook').addEventListener('click', e => {
+  const a = e.target.closest('[data-lset]'), l = e.target.closest('[data-lland]'), b = e.target.closest('[data-lborder]');
+  if (a) chooseSet(a.dataset.lset); else if (l) setLandscape(l.dataset.lland); else if (b) setBorder(b.dataset.lborder); else return;
+  Sfx.play('tick'); renderLook();
+});
+$('bLook').onclick = () => { closeModals(); openLook(); };   // aus dem Fenster „Einstellungen“
 // Knopf „Ansicht“ in der Kopfzeile (bei Zoom und Zentrieren): EIN Symbol für alles, was die Anzeige der Karte betrifft – drei Schalter
-// (Tastenkürzel, Wegvorschau, Kräfteverhältnis – dieselben wie in den Einstellungen –, dazu „Wege und Marschziele“ = Wegeansicht) und darunter die fünf Landschaften mit Farbfeld
-// (Land und Meer der Übersichtskarte). Wunsch des Nutzers: Landschaft mitten im Spiel wechseln als Gimmick, das überrascht; und statt je
+// (Tastenkürzel, Wegvorschau, Kräfteverhältnis – dieselben wie in den Einstellungen –, dazu „Wege und Marschziele“ = Wegeansicht) und darunter die drei
+// Grafik-Sets mit Farbfeld, zuletzt „Landschaft und Kartenrand …“ (Fenster #mLook). Wunsch des Nutzers: Landschaft mitten im Spiel wechseln als Gimmick, das überrascht; und statt je
 // eines Symbols je Schalter ein Konzept für die Leiste – Menü | Karte (Zoom, Zentrieren, Ansicht) | Ton | Hilfe. Neue Anzeige-Optionen
 // kommen in diese Liste, nicht als weiteres Symbol in die Leiste. Die Liste bleibt beim Klicken offen (ausprobieren), Esc oder ein Klick daneben schließt.
 const viewMenu = $('viewMenu');
@@ -737,18 +773,12 @@ const VIEW_SW = [
   ['threat', tt('Reichweite der Gegner', 'Enemy reach'), () => threatView, on => setThreatView(on), 'K'],   // gilt für die laufende Partie, wird nicht gemerkt
 ];
 function renderViewMenu() {
-  const cur = (S && S.land) || 'gruen', rgb = c => `rgb(${c.join()})`;
+  const set = gfxSet(), land = (S && S.land) || landPref;
   viewMenu.innerHTML = `<h4>${tt('Anzeigen', 'Show')}</h4>`
     + VIEW_SW.map(([k, label, get, , kbd]) => `<button class="mi${get() ? ' on' : ''}" data-view="${k}" role="menuitemcheckbox" aria-checked="${get()}"><span class="ck">${get() ? '✓' : ''}</span>${label}${kbd ? `<kbd>${kbd}</kbd>` : ''}</button>`).join('')
-    + LAND_GROUPS.map(([set]) => `<h4>${SET_HEAD[set]}</h4>` + landsOf(set).map(k => { const L = LANDSCAPES[k], m = L.mini;
-      const bg = L.belt ? 'linear-gradient(90deg, #ffd59a 0 10%, #96624a 10% 37%, #8c8680 37% 64%, #c6d6e4 64% 90%, #79ffd4 90%)'   // Sonne, Eisen, Gestein, Eis, Kristall
-        : L.zones && L.zoneKeys ? (([a, b, c]) => `linear-gradient(180deg, ${c} 0 22%, ${a} 22% 40%, ${b} 40% 60%, ${a} 60% 78%, ${c} 78%)`)(L.zoneKeys.map(z => rgb(LANDSCAPES[z].mini[0])))   // Zonen aus den Farbsätzen
-        : L.zones ? 'linear-gradient(180deg, #eef3f8 0 22%, #6ea84e 22% 40%, #e2c27e 40% 60%, #6ea84e 60% 78%, #eef3f8 78%)'
-        : (L.space ? 'radial-gradient(1px 1px at 15px 4px, #fff, transparent), radial-gradient(1px 1px at 19px 10px, #fff, transparent), ' : '') + `linear-gradient(135deg, ${rgb(m[0])} 0 55%, ${rgb(m[1])} 55%)`;
-      const tip = SET_TIP[L.set] ? ` title="${esc(SET_TIP[L.set])}"` : '';
-      return `<button class="mi${k === cur ? ' on' : ''}" data-land="${k}"${tip}><span class="sw" style="background:${bg}"></span>${esc(LAND_NAMES[k] || k)}</button>`; }).join('')).join('')
-    + `<h4>${tt('Kartenrand', 'Around the map')}</h4>` + BORDER_KEYS.map(k =>
-      `<button class="mi${k === curBorder() ? ' on' : ''}" data-border="${k}"><span class="sw" style="background:${BORDER_SW[k]}"></span>${esc(BORDER_NAMES[k])}</button>`).join('');
+    + `<h4>${tt('Grafik-Set', 'Graphics set')}</h4>` + SET_KEYS.map(k => `<button class="mi${k === set ? ' on' : ''}" data-set="${k}" title="${esc(SET_DESC[k])}">`
+      + `<span class="sw" style="background:${landSwatch(SET_LAND[k])}"></span>${esc(SET_NAMES[k])}</button>`).join('')
+    + `<button class="mi" data-look title="${esc(tt('Jetzt: ', 'Now: ') + (LAND_NAMES[land] || '') + ' · ' + BORDER_NAMES[curBorder()])}"><span class="ck"></span>${tt('Landschaft und Kartenrand …', 'Landscape and map border …')}</button>`;
 }
 function closeViewMenu() { if (viewMenu.hidden) return; viewMenu.hidden = true; $('bView').classList.remove('open'); $('bView').setAttribute('aria-expanded', 'false'); }
 function openViewMenu() {
@@ -760,9 +790,9 @@ function openViewMenu() {
 }
 $('bView').onclick = () => { if (viewMenu.hidden) openViewMenu(); else closeViewMenu(); };
 viewMenu.addEventListener('click', e => {
-  const l = e.target.closest('[data-land]'), v = e.target.closest('[data-view]'), b = e.target.closest('[data-border]');
-  if (l) setLandscape(l.dataset.land);
-  else if (b) setBorder(b.dataset.border);
+  const t = e.target.closest('[data-set]'), v = e.target.closest('[data-view]');
+  if (e.target.closest('[data-look]')) { openLook(); return; }
+  if (t) chooseSet(t.dataset.set);
   else if (v) { const sw = VIEW_SW.find(s => s[0] === v.dataset.view); sw[3](!sw[2]()); }
   else return;
   Sfx.play('tick'); renderViewMenu();
@@ -857,7 +887,7 @@ $('setTabs').addEventListener('click', e => { const b = e.target.closest('button
 function openSettings(tab) {
   closeMenu(); closeCtx();
   if (typeof tab !== 'string') { tab = null; try { tab = localStorage.getItem('archipel-settab'); } catch (e) {} }
-  $('landSel').value = (S && S.land) || landPref;   // zeigt, was die Karte gerade zeigt
+  $('setSel').value = gfxSet();   // zeigt, was die Karte gerade zeigt
   setTab(tab); openModal('mSettings');
 }
 $('bSettings').onclick = openSettings;
