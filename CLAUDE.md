@@ -223,6 +223,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Während der Wiedergabe nach dem Rundenende bleibt die Karte stehen; erst danach geht es zur nächsten eigenen Einheit.
   `S.units` kennt während der Wiedergabe nur den Endstand: Was an einer Einheit hängt (Feuerschutz, Luftdeckung), richtet sich nach ihrer gezeigten Lage
   (`shownAt` in `render`: Startfeld bis zu ihrem Zug, unterwegs ausgeblendet bzw. beim Ring der Luftdeckung mitfahrend) – dem Nutzer fiel der Ring am Zielort auf.
+  Ist die Zeitleiste länger als erlaubt, staucht `animEnd` alle Zeitpunkte – auch `anim.gone` (`until`, `from`). Neue Zeitangaben außerhalb von
+  `anim.events` dort mitstauchen: Vorher blieb ein versenkter Zerstörer bis zu seinem ungestauchten Zeitpunkt stehen (bei Faktor 0,24: 25 s, die
+  Wiedergabe dauerte 6 s), und der Kreuzer fuhr schon auf sein Feld (dem Nutzer aufgefallen).
 - **Rundenwechsel** (game.js): `nextRound(onPhase)` nach `endTurn(0)` – alle lebenden Gegner ziehen (`enemyTurns`), dann `S.turn++` und
   `startTurn(0)`; `runStandingOrders(p, beforeLoad, from)` führt die Daueraufträge aus: Wachen wecken, dann Marsch, Patrouille und Erkunden
   **räumlich geordnet** (Wunsch des Nutzers: immer die Einheit, die der zuletzt bewegten am nächsten steht, die erste die nächste zu `from` – im Spiel
@@ -248,6 +251,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Gegner keine Stadt mehr hat, und entfernt alle seine Einheiten (`hooks.out`: Wiedergabe zeigt sie bis dahin); gewonnen, wenn alle Gegner
   draußen sind – auch mit einem Gegner (vorher musste man seine letzten Bodentruppen jagen). Der Mensch verliert weiterhin erst ohne Stadt
   und ohne Einheit, die erobern kann.
+  **Kapitulation** (Idee des Nutzers: sonst eine Jagd nach ein, zwei Städten; game.js `capitulations` in `nextRound` nach den Gegnerzügen, Werte in
+  `CAPITULATE`): Eine Computer-Partei, die schon einmal ≥ 4 Städte hatte und seit 10 Runden ≤ 2 besitzt (gezählt mit `S.hist`), gibt auf – nur, solange
+  noch ein anderer Computergegner im Spiel ist (den letzten deckt das Angebot zum vorzeitigen Ende ab). Ihre Städte werden neutral (alle `knownOwner`
+  erfahren es; `hooks.capture(c, -1, p)`: in der Wiedergabe Ring in Grau und Schriftzug „Kapituliert“), ihre Einheiten verschwinden (`hooks.out`),
+  `S.outAt[p]` = Runde, Meldung. Kein neues Feld im Spielstand. Messung siehe „KI messen“. Test: „Spielende: schwache Computer-Partei kapituliert …“.
   Zugfolge: `endHumanTurn` lässt die lebenden Gegner nacheinander ziehen, `anim.phases` merkt, ab wann wer in der Zeitleiste dran ist
   (`updateBanner`: „Gelb zieht …“). Kräftebalken (Wunsch des Nutzers): je Partei ein Abschnitt in ihrer Farbe mit ihrem Anteil an der
   Stärke aller (`#powerSegs`, Klasse `multi`; Zahl nur, wenn der Abschnitt breit genug ist), Kurve und Trend darunter = dein Anteil an allem
@@ -445,12 +453,12 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
    Repo) oder `node tools/serve.js .` → http://localhost:8765
 2. Syntax prüfen: `for f in js/*.js; do node --check $f; done`
    **Tests laufen lassen – vor jedem Commit, der Regeln oder Oberfläche ändert:**
-   - `node tools/test.js` (ca. 6 s, 35 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
+   - `node tools/test.js` (ca. 6 s, 36 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 796 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
-     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung in der Wiedergabe, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 797 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
    Pull Requests (Entscheidung mit dem Nutzer: für eine Person zu viel Zeremonie; neu überlegen, wenn andere beitragen).
@@ -633,6 +641,10 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   70 %, Kontinente 59 %, Festland 45 %, Binnenmeer 47 %; verlorene Transporter je Partie 17,6 statt 19,8). Stufen (Platz 0 einfach, alt → beides):
   Leicht 100 → 100 %, Normal 62 → 52 %, Schwer 17 → 11 %, Brutal 3 → 1 %; nur Truppen auf Normal 61 %. Entscheidung des Nutzers: Zuflucht nur
   ab Schwer, Normal bleibt so bei etwa 61 % (Tabelle oben). Test: `tools/test.js`, „KI: Transporter …“.
+- **Kapitulation** (siehe „Mehrere Gegner“; `CAPITULATE.turns = 1e9` schaltet sie für Messungen ab). Vorher (168 Partien, Platz 0 einfach, Normal):
+  Von 232 Computer-Parteien, die von ≥ 4 auf ≤ 2 Städte fielen, kamen 3 zurück auf ≥ 5; Ausscheiden im Mittel 9 (klein, 2 Gegner) bzw. 6 Runden
+  (mittel, 3 Gegner) danach, jede zehnte hielt sich über 30 Runden. Mit/ohne (klein 2 Gegner je 120, mittel 3 Gegner je 72 Partien): Siege
+  Platz 0 40/40 % bzw. 24/31 %, offen 6 → 2 bzw. 10 → 10, Ø Runden 200 → 183 bzw. 257 → 251; Kapitulationen 0,33 bzw. 0,46 je Partie.
 
 ## Bekannte Eigenheiten
 

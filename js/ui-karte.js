@@ -149,6 +149,9 @@ function animEnd(maxMs = 3500) {
     for (const e of anim.events) { e.t0 *= f; e.dur = Math.max(40, e.dur * f); }
     if (anim.ownFrom != null) anim.ownFrom *= f;
     for (const ph of anim.phases || []) ph.at *= f;
+    // Auch die Zeitpunkte, bis zu denen versenkte oder aufgegangene Einheiten zu sehen sind (dem Nutzer aufgefallen: Ein Kreuzer fuhr auf das
+    // Feld des versenkten Zerstörers, der erst danach verschwand – gestaucht wurden nur die Ereignisse, nicht anim.gone)
+    for (const g of anim.gone) { g.until *= f; if (g.from != null) g.from *= f; }
     end = maxMs;
   }
   anim.byUnit = new Map();
@@ -247,8 +250,10 @@ hooks.capture = (c, owner, prev, by = null) => {
   if (by) recGone(by, ev.t0 + 100);   // der Eroberer geht erst jetzt in der Stadt auf
   // Eigene Eroberung: kein Schriftzug – das Eroberungsfenster folgt gleich nach dem Farbwechsel
   if (owner === 0) { captureQueue.push({ game: S, id: c.id, ev }); anim.cursor += Math.max(200, anim.speed * 2); return; }
-  const text = lost ? tt('Stadt verloren', 'City lost') : nPlayers() > 2 ? tt(`${pname(owner)} erobert`, `${pname(owner)} captures`) : tt('Gegner erobert', 'Enemy captures');
-  anim.events.push({ type: 'label', x: c.x, y: c.y, text, tone: 'bad', t0: anim.cursor + 150, dur: LABEL_MS });
+  // owner < 0: Die Partei hat kapituliert (capitulations in game.js), ihre Stadt wird neutral
+  const text = owner < 0 ? tt('Kapituliert', 'Surrendered') : lost ? tt('Stadt verloren', 'City lost')
+    : nPlayers() > 2 ? tt(`${pname(owner)} erobert`, `${pname(owner)} captures`) : tt('Gegner erobert', 'Enemy captures');
+  anim.events.push({ type: 'label', x: c.x, y: c.y, text, tone: owner < 0 ? 'good' : 'bad', t0: anim.cursor + 150, dur: LABEL_MS });
   anim.cursor += Math.max(200, anim.speed * 2);
 };
 
@@ -782,7 +787,7 @@ function drawEffect(e, f) {
     ctx.fillText(e.text, cx, yy + 1);
     ctx.restore();
   } else if (e.type === 'capture') {
-    const pal = PLAYERS[e.owner];
+    const pal = ownerPal(e.owner);   // -1: Kapitulation, die Stadt wird neutral
     ctx.strokeStyle = pal.light; ctx.globalAlpha = 1 - f; ctx.lineWidth = Math.max(2, TS / 8) * (1 - f) + 1;
     ctx.beginPath(); ctx.arc(cx, cy, TS * (0.3 + 1.1 * ease(f)), 0, 7); ctx.stroke();
     ctx.globalAlpha = 1;
@@ -1209,7 +1214,7 @@ function eventSound(e, byUnit) {
   else if (e.type === 'salvo') Sfx.play('salvo', 60);
   else if (e.type === 'cover') Sfx.play('cover', 60);
   else if (e.type === 'boom') { Sfx.play('boom', 80); if (e.hl) setTimeout(() => Sfx.play('lost', 300), 380); }
-  else if (e.type === 'capture') { if (e.owner === 0) Sfx.play('capture'); else if (e.lost) Sfx.play('cityLost'); else Sfx.play('boom', 80); }
+  else if (e.type === 'capture') { if (e.owner === 0) Sfx.play('capture'); else if (e.lost) Sfx.play('cityLost'); else if (e.owner < 0) Sfx.play('tick'); else Sfx.play('boom', 80); }
 }
 
 // Wiedergabe der Gegnerzüge: Tempo und Überspringen

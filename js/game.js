@@ -1428,9 +1428,44 @@ function enemyTurns(onPhase) {
 function nextRound(onPhase) {
   enemyTurns(onPhase);
   if (S.over) return false;
+  capitulations();
   S.turn++;
   startTurn(0);
   return true;
+}
+// Kapitulation (Idee des Nutzers: Mit mehreren Gegnern wurde es sonst eine Jagd nach ein, zwei Städten): Eine Computer-Partei, die schon
+// einmal mindestens CAPITULATE.peak Städte hatte und seit CAPITULATE.turns Runden höchstens CAPITULATE.cities besitzt, gibt auf – aber nur,
+// solange noch ein anderer Computergegner im Spiel ist (den letzten deckt das Angebot zum vorzeitigen Ende ab). Ihre Städte werden neutral
+// (alle erfahren es: knownOwner), ihre Einheiten verschwinden (hooks.out wie beim Ausscheiden), S.outAt = Runde. Gezählt wird mit S.hist
+// (Städte je Runde). Messung vorher (168 Partien KI gegen KI, zwei bzw. drei Gegner): Von 232 Parteien, die von ≥ 4 auf ≤ 2 Städte fielen,
+// kamen 3 zurück auf ≥ 5; im Mittel schieden sie nach 6–9 Runden aus, jede zehnte hielt sich über 30 Runden. Ergebnis siehe CLAUDE.md.
+const CAPITULATE = { cities: 2, turns: 10, peak: 4 };
+function capitulations() {
+  const n = nPlayers();
+  if (n <= 2 || !Array.isArray(S.hist) || S.hist.length < CAPITULATE.turns) return;
+  if (!S.outAt || S.outAt.length !== n) S.outAt = new Array(n).fill(0);
+  const now = cityCounts().c;
+  for (let p = 1; p < n; p++) {
+    if (S.outAt[p] || now[p] === 0 || now[p] > CAPITULATE.cities) continue;   // ohne Stadt: checkGameOver
+    let others = 0;
+    for (let q = 1; q < n; q++) if (q !== p && !S.outAt[q] && isAlive(q)) others++;
+    if (!others) continue;
+    const cnt = e => (e && Array.isArray(e.c) ? e.c[p] || 0 : 99);
+    if (S.hist.slice(-CAPITULATE.turns).some(e => cnt(e) > CAPITULATE.cities)) continue;
+    if (!S.hist.some(e => cnt(e) !== 99 && cnt(e) >= CAPITULATE.peak)) continue;
+    for (const c of S.cities) {
+      if (c.owner !== p) continue;
+      c.owner = -1; c.prod = 'inf'; c.progress = 0; c.rally = null;
+      if (hooks.capture) hooks.capture(c, -1, p);   // Wiedergabe: Farbwechsel erst jetzt, Schriftzug „Kapituliert“ (vor knownOwner – zeigt den alten Stand bis dahin)
+      for (const P of S.players) for (const K of [P.knownOwner, P.real && P.real.knownOwner]) if (K && K[c.id] === p) K[c.id] = -1;
+    }
+    const gone = S.units.filter(u => u.owner === p);
+    if (hooks.out) hooks.out(p, gone);
+    S.units = S.units.filter(u => u.owner !== p);
+    S.outAt[p] = S.turn;
+    addLog(tt(`${pname(p)} kapituliert: Seine Städte werden neutral, seine Einheiten lösen sich auf.`,
+      `${pname(p)} surrenders: its cities become neutral and its units disband.`), 'good');
+  }
 }
 // Daueraufträge der Einheiten von Spieler p zu Beginn seiner Runde: Wachen wecken, dann Märsche, Patrouillen und Erkunden, zuletzt
 // „Laden bis voll“ (damit auch gerade angekommene Einheiten an Bord gehen). beforeLoad: Einschub der Oberfläche vor dem Laden

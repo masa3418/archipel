@@ -558,6 +558,36 @@ test('Spielende: Gegner ohne Stadt scheidet aus, seine Einheiten verschwinden', 
   checkGameOver();
   eq(S.over, 'win', 'ohne Gegner ist die Partie gewonnen');
 });
+test('Spielende: schwache Computer-Partei kapituliert, solange noch ein anderer Gegner im Spiel ist', () => {
+  const setup = (peak, low) => {   // Spieler 1: zwei Städte, Verlauf mit Höchststand peak und danach low Runden mit höchstens zwei Städten
+    board('inseln', 4711, 2);
+    const mine1 = S.cities.filter(c => c.owner === 1);
+    for (const c of S.cities.filter(c => c.owner < 0).slice(0, 2 - mine1.length)) c.owner = 1;
+    createUnit('dst', 1, ...tiles((x, y) => !land(x, y))[0]);
+    S.hist = [];
+    for (let k = 0; k < 5; k++) S.hist.push({ t: k + 1, c: [3, peak, 3], n: 10 });
+    for (let k = 0; k < low; k++) S.hist.push({ t: k + 6, c: [3, 2, 3], n: 10 });
+    S.turn = S.hist.length;
+    S.players[0].knownOwner[S.cities.find(c => c.owner === 1).id] = 1;
+  };
+  setup(5, CAPITULATE.turns);
+  const own1 = S.cities.filter(c => c.owner === 1), known = own1[0].id;
+  capitulations();
+  ok(S.outAt[1] === S.turn && !isAlive(1), 'Spieler 1 kapituliert und scheidet aus');
+  ok(own1.every(c => c.owner === -1), 'seine Städte werden neutral');
+  eq(S.players[0].knownOwner[known], -1, 'du erfährst es: die Stadt gilt als neutral');
+  eq(S.units.filter(u => u.owner === 1).length, 0, 'seine Einheiten sind weg');
+  ok(S.log.some(l => /kapituliert/.test(l.text)), 'Meldung');
+  ok(!S.outAt[2] && !checkGameOver(), 'der andere Gegner spielt weiter');
+  setup(5, CAPITULATE.turns - 1); capitulations();
+  ok(!S.outAt[1], 'eine Runde zu früh: noch keine Kapitulation');
+  setup(3, CAPITULATE.turns); capitulations();
+  ok(!S.outAt[1], 'nie größer als drei Städte (Anfang der Partie): keine Kapitulation');
+  setup(5, CAPITULATE.turns);
+  for (const c of S.cities) if (c.owner === 2) c.owner = 0;
+  S.outAt[2] = 1; capitulations();
+  ok(!S.outAt[1], 'der letzte Gegner kapituliert nicht von selbst (dafür gibt es das Angebot zum vorzeitigen Ende)');
+});
 
 // ------------------------------------------------------------------ Speichern und Laden
 test('Spielstand: Speichern → Laden → Speichern ergibt dasselbe', () => {

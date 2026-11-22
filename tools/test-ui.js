@@ -215,6 +215,20 @@ window.UiTest = (() => {
     select(b, false); killUnit(b, 1); afterAction(b); skipAnim(); closeModals();
     check(sel === a.id, 'Reihenfolge: fällt die Einheit, kommt die nächstgelegene zu ihrer letzten Stelle dran');
   }
+  // Gestauchte Wiedergabe (lange Gegnerzüge): Auch versenkte Einheiten verschwinden im gestauchten Takt – vorher blieben sie bis zu ihrem
+  // ungestauchten Zeitpunkt stehen (ein Kreuzer fuhr auf das Feld des versenkten Zerstörers, der erst danach verschwand)
+  function goneScale() {
+    reset();
+    const a = all((x, y) => !land(x, y) && free(x, y))[0], u = createUnit('dst', 0, ...a);
+    replay = 'normal'; animBegin(ENEMY_STEP_MS, true);
+    for (let i = 0; i < 60; i++) { anim.events.push({ type: 'move', id: -1, utype: 'dst', owner: 1, fx: a[0], fy: a[1], tx: a[0], ty: a[1], t0: anim.cursor, dur: anim.speed }); anim.cursor += anim.speed; }
+    recGone(u, anim.cursor + 280);
+    anim.events.push({ type: 'boom', x: a[0], y: a[1], t0: anim.cursor, dur: 650, win: 'att' });
+    const boom = anim.events[anim.events.length - 1];
+    animEnd(3500);
+    check(anim.gone[0].until <= boom.t0 + boom.dur, 'Wiedergabe gestaucht: die versenkte Einheit verschwindet in der Explosion');
+    skipAnim(); replay = 'off'; killUnit(u);
+  }
   // Luftdeckung in der Wiedergabe: Der Ring folgt dem fahrenden Träger – vorher wartete er schon am Zielort (S.units kennt nur den Endstand)
   function coverRing() {
     reset();
@@ -665,7 +679,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); goneScale(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters
