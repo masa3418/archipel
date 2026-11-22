@@ -3,6 +3,21 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.8.8
+
+Stufenloser Zoom und ein Rand nach Wahl.
+
+- **Stufenloser Zoom:** Mausrad, Spreizgeste am Touchpad und die Knöpfe „+“ / „−“ zoomen fließend – jede Feldgröße zwischen 14
+  und 48 Pixeln ist möglich statt neun fester Stufen. Jede Raste gleitet sanft, ohne nachzufedern, und der Punkt unter der Maus
+  bleibt, wo er ist. Abschaltbar unter Einstellungen → Ton & Steuerung.
+- **Kartenrand nach Wahl:** Was außerhalb der Karte liegt, wenn du an ihren Rand scrollst oder weit herauszoomst – offenes Meer
+  in der Wasserfarbe der Landschaft, eine alte Seekarte mit Windrose und Seeungeheuern, ein Holztisch, das Weltall mit funkelnden
+  Sternen oder schlicht wie bisher. Wählbar unter „Ansicht“ und in den Einstellungen.
+
+*English:* stepless zoom – mouse wheel, pinch and the zoom buttons now zoom smoothly to any size, and the point under the mouse
+stays put (can be switched off under Settings → Sound & controls). You can also choose what lies around the map: open sea in the
+colour of the landscape, an old sea chart with compass rose and sea serpents, a wooden table, outer space or plain as before.
+
 ## 1.8.7
 
 Mehr Übersicht auf der Karte, verborgene Besatzungen und ein würdiges Ende.
