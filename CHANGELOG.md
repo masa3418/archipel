@@ -13,7 +13,7 @@ Drei Grafik-Sets: Inselwelt, Weltraum und Segelzeit.
     Raumsoldat, Rover, Raumjäger, Frachter, Korvette, Tarnkappenschiff, Kreuzer, Mutterschiff und Schlachtschiff. Im
     Asteroidengürtel steht neben der Karte eine Sonne – nahe bei ihr Eisen-, weit weg Eis-Asteroiden, dazwischen Gestein,
     vereinzelt Kristall.
-  - **Segelzeit:** eine alte, von Hand kolorierte Karte mit Wellen und Küsten in Tinte und der alten Seekarte ringsum;
+  - **Segelzeit:** eine alte, scheinbar von Hand kolorierte Karte mit Wellen und Küsten in Tinte und der alten Seekarte ringsum;
     Musketier, Kavallerie, Heißluftballon, Handelsschiff, Schaluppe, Piratenschiff, Fregatte, Ballonschiff und Linienschiff,
     die Städte als Festungen. Mit Klimazonen: Eismeer im Norden und Süden, Wüste in der Mitte, vereinzelt Tropen.
   - **Eigene Klänge:** Triebwerke, Düsen und Servos im Weltraum, Hufschlag, Ballonbrenner und knarrende Segelschiffe in der
