@@ -182,8 +182,9 @@ hooks.move = (u, fx, fy, tx, ty) => {
   if (!anim.rec) return;
   if (!humanSeesAt(u, fx, fy) && !humanSeesAt(u, tx, ty)) return;
   recCam(fx, fy, tx, ty);
+  // sf/st: sähe der Mensch die Einheit auf dem Start-/Zielfeld (animAlpha – sonst stand ein getauchtes U-Boot schon sichtbar auf seinem Startfeld)
   anim.events.push({ type: 'move', id: u.id, utype: u.type, owner: u.owner, fx, fy, tx, ty, t0: anim.cursor, dur: anim.speed,
-    vr: u.owner === 0 ? T(u).vision : 0 });
+    vr: u.owner === 0 ? T(u).vision : 0, sf: humanSeesAt(u, fx, fy), st: humanSeesAt(u, tx, ty) });
   anim.cursor += anim.speed;
 };
 // from: Verteidiger einer fremden Stadt mit verborgener Besatzung – bis dahin nur als Zeichen „besetzt“ (render)
@@ -277,6 +278,27 @@ function animPos(u, rel, byUnit = anim.byUnit) {
     }
   }
   return null;
+}
+// Deckkraft einer fremden Einheit während der Wiedergabe (0 … 1; dem Nutzer aufgefallen): Aufgezeichnet wird jeder Schritt, bei dem der Mensch
+// die Einheit am Start oder am Ziel sieht – gezeigt wurde sie aber schon vorher auf dem Startfeld. Ein getauchtes U-Boot stand so sichtbar
+// 2 Felder vor einem Kreuzer, der es erst auf dem Nachbarfeld ortet; andere Einheiten standen im Nebel. Jetzt: unsichtbar, solange sie auf
+// einem Feld steht, auf dem der Mensch sie nicht sähe (sf/st aus hooks.move); ein Schritt ins Sichtbare blendet in seiner zweiten Hälfte
+// ein, einer hinaus in seiner ersten Hälfte aus. Ereignisse ohne sf/st (Grafik-Übersicht) gelten als sichtbar.
+function animAlpha(u, rel, byUnit = anim.byUnit) {
+  if (u.owner === 0 || S.over) return 1;
+  const evs = byUnit.get(u.id);
+  if (!evs) return 1;
+  if (rel < evs[0].t0) return evs[0].sf === false ? 0 : 1;
+  for (let k = 0; k < evs.length; k++) {
+    const e = evs[k];
+    if (rel < e.t0) return evs[k - 1].st === false ? 0 : 1;
+    if (rel < e.t0 + e.dur) {
+      const a = e.sf !== false, b = e.st !== false, f = (rel - e.t0) / e.dur;
+      if (a === b) return a ? 1 : 0;
+      return a ? Math.max(0, 1 - 2 * f) : Math.max(0, 2 * f - 1);
+    }
+  }
+  return 1;
 }
 
 // ------------------------------------------------------------------ Zeichnen
@@ -922,6 +944,7 @@ function render(now = performance.now()) {
   const shownAt = (u, glide = false) => {
     const p = playing ? animPos(u, rel) : null;
     if (!p) return [u.x, u.y];
+    if (animAlpha(u, rel) <= 0) return null;   // noch außer Sicht: auch kein Feuerschutz, keine Luftdeckung
     return glide || (Number.isInteger(p[0]) && Number.isInteger(p[1])) ? p : null;
   };
   // Feuerunterstützung: Städte neben einem sichtbaren Schlachtschiff markieren.
@@ -945,7 +968,7 @@ function render(now = performance.now()) {
   const covered = new Set();
   const goneNow = playing ? anim.gone.filter(g => rel < g.until).map(g => g.u) : [];
   // [Einheit, gezeigte Lage (auch unterwegs), nächstes Feld]
-  const placed = list => list.map(u => { const p = shownAt(u, true); return [u, p, [Math.round(p[0]), Math.round(p[1])]]; });
+  const placed = list => list.map(u => { const p = shownAt(u, true); return p && [u, p, [Math.round(p[0]), Math.round(p[1])]]; }).filter(Boolean);
   const shipsNow = placed(S.units.filter(s => s.carrier == null && T(s).domain === 'sea' && (S.over || canSee(0, s))).concat(goneNow.filter(s => T(s).domain === 'sea')));
   const carriersNow = placed(S.units.filter(c => c.type === 'car' && c.carrier == null && (S.over || canSee(0, c)) && S.units.some(f => f.carrier === c.id && f.type === 'ftr'))
     .concat(goneNow.filter(c => c.air)))
@@ -999,10 +1022,16 @@ function render(now = performance.now()) {
     const x = i % S.W, y = (i / S.W) | 0;
     drawTileToken(list, i, su, x, y, reveal.get(i));
   }
-  for (const [u, [x, y]] of moving) drawToken(u, x * TS, y * TS, TS, { badge: u.owner === 0 || S.over || CHEAT_FOG ? cargoOf(u).length : 0 });
+  for (const [u, [x, y]] of moving) {
+    const a = animAlpha(u, rel);   // fremde Einheit außer Sicht: erst beim Auftauchen zeigen
+    if (a <= 0) continue;
+    ctx.save(); ctx.globalAlpha = a;
+    drawToken(u, x * TS, y * TS, TS, { badge: u.owner === 0 || S.over || CHEAT_FOG ? cargoOf(u).length : 0 });
+    ctx.restore();
+  }
   // Vernichtete und in einer Stadt aufgegangene Einheiten bleiben bis zu ihrem Moment sichtbar
   if (playing) for (const g of anim.gone) {
-    if (rel >= g.until) continue;
+    if (rel >= g.until || animAlpha(g.u, rel) <= 0) continue;
     const [x, y] = animPos(g.u, rel) || [g.u.x, g.u.y];
     const still = Number.isInteger(x) && Number.isInteger(y);
     if (still && S.cityGrid[idx(x, y)] >= 0) {

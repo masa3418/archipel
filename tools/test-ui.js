@@ -363,6 +363,37 @@ window.UiTest = (() => {
       check(ringAt(mv.t0 + mv.dur + 5) === (a[0] + 1) + ',' + a[1], 'Luftdeckung: am Ziel');
     } finally { drawSupportMark = o; skipAnim(); replay = 'off'; }
   }
+  // Fremde Einheiten in der Wiedergabe erst zeigen, wo der Spieler sie sieht (animAlpha; dem Nutzer aufgefallen): Ein getauchtes U-Boot stand
+  // schon auf seinem Startfeld 2 Felder vor dem Kreuzer, der es erst auf dem Nachbarfeld ortet. Ebenso ein Zerstörer, der aus dem Nebel kommt.
+  function revealInReplay() {
+    reset();
+    const open = (x, y) => inb(x, y) && !land(x, y) && free(x, y);
+    const a = all((x, y) => [0, 1, 2, 3, 4].every(k => open(x + k, y)) && !S.cities.some(c => cheb(c.x, c.y, x + 2, y) <= 4))[0];
+    if (!a) { check(false, 'Wiedergabe: kein offenes Meer im Spielstand'); return; }
+    const [x, y] = a, krz = createUnit('crs', 0, x, y);
+    const o = drawToken, drawn = [];
+    drawToken = function (u, px, py, ...r) { if (u.owner !== 0) drawn.push([u.type, px / TS, ctx.globalAlpha]); return o(u, px, py, ...r); };
+    const at = t => { drawn.length = 0; render(anim.t0 + t); return drawn.slice(); };
+    try {
+      for (const [type, from, to] of [['sub', 4, 1], ['dst', 3, 2]]) {   // U-Boot: geortet erst daneben; Zerstörer: aus dem Nebel
+        const e = createUnit(type, 1, x + from, y);
+        computeVision(0);
+        replay = 'normal'; animBegin(ENEMY_STEP_MS, true);
+        for (let k = from - 1; k >= to; k--) moveStep(e, x + k, y);
+        computeVision(0); animEnd(30000);
+        const ev = anim.byUnit.get(e.id) || [], last = ev[ev.length - 1];
+        check(ev.length === 1 && ev[0].sf === false && ev[0].st === true, `Wiedergabe ${type}: nur der Schritt ins Sichtbare aufgezeichnet`);
+        if (!last) continue;
+        check(!at(last.t0 - 5).length, `Wiedergabe ${type}: vor seinem Schritt nicht zu sehen (Startfeld außer Sicht)`);
+        check(!at(last.t0 + last.dur * 0.25).length, `Wiedergabe ${type}: erste Hälfte des Schritts unsichtbar`);
+        const mid = at(last.t0 + last.dur * 0.75);
+        check(mid.length === 1 && mid[0][2] > 0 && mid[0][2] < 1, `Wiedergabe ${type}: blendet in der zweiten Hälfte ein`);
+        const end = at(last.t0 + last.dur + 5);
+        check(end.length === 1 && Math.round(end[0][1]) === x + to && end[0][2] === 1, `Wiedergabe ${type}: am Ziel ganz zu sehen`);
+        skipAnim(); killUnit(e);
+      }
+    } finally { drawToken = o; skipAnim(); replay = 'off'; killUnit(krz); }
+  }
   // Befehle: Knopf der Seitenleiste, Rechtsklick-Menü, Tastenlegende und Taste müssen sich einig sein (orderCheck).
   // Grauer Knopf = die Taste meldet denselben Grund und ändert nichts; aktiver Knopf = die Taste bewirkt etwas.
   function orders() {
@@ -809,7 +840,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); goneScale(); smoothZoomCheck(); borderCheck(); spaceSet(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); goneScale(); revealInReplay(); smoothZoomCheck(); borderCheck(); spaceSet(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters
