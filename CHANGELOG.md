@@ -3,6 +3,34 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.9.0
+
+Drei Grafik-Sets: Inselwelt, Weltraum und Segelzeit.
+
+- **Grafik-Sets:** Unter „Ansicht“ (das Auge oben) wählst du, wie die Welt aussieht – Einheiten, Städte, Landschaft, Kartenrand
+  und Klänge passen jeweils zusammen. Regeln und Namen der Einheiten bleiben in allen Sets gleich, es ist nur ein anderes Bild.
+  - **Weltraum:** Das Meer wird zum All mit Sternen und Nebeln, das Land zu Asteroiden, die Städte zu Raumstationen; dazu
+    Raumsoldat, Rover, Raumjäger, Frachter, Korvette, Tarnkappenschiff, Kreuzer, Mutterschiff und Schlachtschiff. Im
+    Asteroidengürtel steht neben der Karte eine Sonne – nahe bei ihr Eisen-, weit weg Eis-Asteroiden, dazwischen Gestein,
+    vereinzelt Kristall.
+  - **Segelzeit:** eine alte, von Hand kolorierte Karte mit Wellen und Küsten in Tinte und der alten Seekarte ringsum;
+    Musketier, Kavallerie, Heißluftballon, Handelsschiff, Schaluppe, Piratenschiff, Fregatte, Ballonschiff und Linienschiff,
+    die Städte als Festungen. Mit Klimazonen: Eismeer im Norden und Süden, Wüste in der Mitte, vereinzelt Tropen.
+  - **Eigene Klänge:** Triebwerke, Düsen und Servos im Weltraum, Hufschlag, Ballonbrenner und knarrende Segelschiffe in der
+    Segelzeit – gleich laut eingemessen wie die bisherigen. Der Klangtest zeigt sie nach Sets.
+- **Einfach wählen:** Ein Set bringt seine Landschaft mit Klimazonen und den passenden Rand mit. Einzelne Landschaften (nur
+  Wüste, nur Eis …) und andere Ränder stehen im neuen Fenster „Aussehen der Karte“ – unter „Ansicht“ und in den Einstellungen.
+- **Kräfteverhältnis klarer:** Der Balken zeigt nur noch die Anteile in Farben, ohne Prozentzahlen (sie passten nicht zur
+  Schwelle fürs vorzeitige Ende); die Städtezahlen stehen beim Zeigen mit der Maus, die Rechnung per Klick. Die Kurve darunter
+  zeigt die ganze Partie, ein Klick auf sie öffnet den Zeitraffer – ebenso ein neuer Knopf im Fenster „Kräfteverhältnis“.
+
+*English:* three graphics sets – island world, space and age of sail – each with its own units, cities, landscapes, map border
+and sounds; rules and unit names stay the same. Space turns the sea into stars and nebulae and the land into asteroids (in the
+asteroid belt a sun beside the map sorts them into iron, rock and ice); the age of sail shows an old hand-coloured map with
+sailing ships, cavalry and fortified towns, also with climate zones. You pick a set under “View”; single landscapes and other
+borders are in the new “Map appearance” window. The balance-of-power bar no longer shows percentages, and its curve now covers
+the whole game and opens the time-lapse when clicked.
+
 ## 1.8.8
 
 Stufenloser Zoom und ein Rand nach Wahl.
