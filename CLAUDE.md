@@ -342,7 +342,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   eigenen Fenster `#mSettings` (`openSettings(tab)`, `setTab`), in vier Reitern wie im Handbuch (`data-settab`/`data-setpane`: Anzeige, Spielablauf, Ton & Steuerung,
   Schummeln & Zurücksetzen – Wunsch des Nutzers: Das Fenster war anderthalbmal so lang wie der Bildschirm; die letzten beiden sind keine gewöhnlichen
   Einstellungen und stehen im rot gestrichelten Kasten `.set-special`; dieser Reiter wird nicht gemerkt, `archipel-settab`), je Zeile ein erklärender Satz
-  (`.set-row` + `.set-d`): Lautstärke, Klangtest, Wiedergabe der Züge, Wegvorschau beim Zeigen (`showRoute`), Grafiken (Übersicht, siehe unten), Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Tastenlegende über
+  (`.set-row` + `.set-d`): Lautstärke, Klangtest, Wiedergabe der Züge, Wegvorschau beim Zeigen (`showRoute`), Kräfteverhältnis anzeigen (`showPower`, `archipel-power`), Tastenlegende über
   der Karte (`showKeys`, `archipel-keys`; beim ersten Besuch an, sonst aus; das × klappt sie nur zum Schildchen „⌨ Tasten“ ein (`keysMin`, `archipel-keys-min` – ein Erstspieler hatte sie geschlossen und fand sie nicht wieder; ganz aus nur über Einstellungen oder Ansicht; das Schildchen liegt immer unten links, aufgeklappt kehrt die Legende an ihre gemerkte Stelle zurück); verschiebbar am Griff `.kl-grip` oben – Wunsch des Nutzers –, Stelle in `keyPos`/`archipel-keys-pos`, Doppelklick legt sie zurück; `updateKeyLegend` in `refresh()`, blendet ab, was gerade nicht geht – neue Tastenkürzel dort
   und in der Tastentabelle des Handbuchs eintragen), automatisches Rundenende, Schwelle fürs Angebot zum vorzeitigen Ende (`offerPct`, `archipel-offer`,
   0 = nie, Standard 20 %; `maybeOfferEnd`. Eigenes Fenster `#mEnd` (`showEndOffer`, Wunsch des Nutzers: eher Bestätigung als Rechnung – „Deine Gegner kapitulieren!“ mit weißer Flagge und den Gegnern in ihren Farben, beim Aufgeben rot; die Rechnung mit Städten aller Parteien zum Aufklappen). `#mOffer` bleibt die allgemeine Rückfrage (Nebel aus, Zurücksetzen). Zusatzbedingungen nach einem Spielstand des Nutzers (Runde 38, 84 %, aber 47 von 56 Städten neutral und der Gegner noch nicht gefunden – „zu früh“): Angebot erst, wenn höchstens die Hälfte der Städte neutral ist (`OFFER_NEUTRAL`), der Sieg nur, wenn eine Stadt eines Gegners bekannt ist. Messung, 192 Partien: Angebote vor Runde 60 vorher 16 (mittel/Leicht 11 von 42), danach 0; die übrigen so früh wie bisher, kein falsches. Bis 1.7.4 waren es 10 % – dem Nutzer zu spät. Messung KI gegen KI, 288 Partien, klein/mittel, Normal/Schwer: Angebot falsch bei 10/15/20/25/30/35 % in 0/0/1/3/7/22 Fällen von ca. 280; es kommt vor dem Ende um 10/18/29/43/63/91 Runden (klein) bzw. 20/30/44/66/86/120 (mittel)), Mausrad/Touchpad, Nebel aus. Neue Einstellungen dort einhängen, nicht ins Menü, in die Kopfzeile oder Seitenleiste.
@@ -485,7 +485,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Kartenrand je Set gemerkt (siehe „Kartenrand“). Grafik-Übersicht: Umschalter „Grafik-Set“ oben im Fenster für alle Reiter (`#gfxSets`, `gfx.set`, beim Öffnen das der
   Partie; Wunsch des Nutzers). `renderGfx` und `gfxLoop` zeichnen in `withLandscape(SET_LAND[gfx.set], …)` (gfx.js `LAND_FORCE`: `landscape()` liefert
   zeitweise die Landschaft des Sets, die Partie bleibt unverändert) – Einheiten, Städte, Gelände, Markierungen, Animationen samt Klängen. Texte im
-  Reiter Städte und Gelände folgen dem Set. **Klänge je Set** (Wunsch des Nutzers; sfx.js `KIND_SET`, `kindOf` über `gfxSet()`): Weltraum – Raumschiffe `sdrive` (pulsierendes Triebwerk,
+  Reiter Städte und Gelände folgen dem Set. Reiter Einheiten (Wunsch des Nutzers: nicht jedes Bild erklärt sich): je Karte „Bild: …“ (`SET_PIC`), darunter
+  „Warum diese Bilder?“ für die weniger offensichtlichen (`setWhy(set)`, Zahlen aus `UT`; z. B. Heißluftballon – einziges Fluggerät der Zeit, Regeln des
+  Jägers; Piratenschiff – U-Boote gab es nur als Versuch). Kommt ein Bild hinzu oder ändert sich eine Einheitenregel, Text dort anpassen. **Klänge je Set** (Wunsch des Nutzers; sfx.js `KIND_SET`, `kindOf` über `gfxSet()`): Weltraum – Raumschiffe `sdrive` (pulsierendes Triebwerk,
   kein Wasser), Tarnschiff `cloak` (dunkles Summen, Schimmern), Raumjäger `jet` (Düse), Rover `rover` (Elektromotor, Servos, Geröll); Segelzeit –
   Kavallerie `hooves` (Galopp, drei Pferde), Ballon `burner` (Brennerstöße, Wind, Korb), alle Schiffe einschließlich Piratenschiff `sail` (Wellen, Wind,
   knarrendes Holz, Segelschlag); Infanterie marschiert in allen Sets. Pegel: jeder so laut wie der Klang, den er ersetzt (gemessen, siehe Kommentar bei
@@ -519,7 +521,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   (kleine Leinwände → data-Adresse, einmal je Art). Schmuck in `#padDeco` (über dem Rand, unter der Karte), gesetzt in `placeBorderDeco` – aufgerufen aus
   `applyPad` (Fenstergröße) und `applyBorder` (aus `buildTerrainCache`: Zoom, Landschaft, neue Partie). `#mapPad` hat `overflow: hidden`. Neue Ränder: Klasse
   in index.html, Eintrag in `BORDER_KEYS`/`BORDER_NAMES`/`BORDER_SW`; Grafik-Übersicht (Reiter Städte und Gelände) zeigt alle.
-- **Grafik-Übersicht** (Wunsch des Nutzers, wie der Klangtest; Einstellungen → Anzeige → Grafiken, `#mGfx`, ui.js `openGfx`/`renderGfx`): Reiter
+- **Grafik-Übersicht** (Wunsch des Nutzers, wie der Klangtest; ☰ Menü → Hilfe → Grafiken (`bGfxMenu`) und Knopf „Alle Bilder des Sets ansehen …“ im Fenster
+  „Aussehen der Karte“ (`bLookGfx`) – bis 1.9.1 unter Einstellungen → Anzeige, dort stellt man aber nichts ein (Hinweis des Nutzers); `#mGfx`, ui.js `openGfx`/`renderGfx`): Reiter
   Einheiten (Abzeichen je Farbe, Zeichen an der Marke, SVG-Symbole der Oberfläche), Städte und Gelände, Markierungen, Animationen (▶ mit Ton).
   Alles wird mit den Zeichenfunktionen der Karte gezeichnet, nie nachgebaut: `drawOn(g, ts, fn)` leitet `ctx` und `TS` kurz auf eine kleine
   Leinwand um (deshalb `let ctx`), `buildTerrain(TS, st)` und `drawFog(P, st)` nehmen ein Kartenstück aus `gfxMap(rows)`. Dafür aus `render()`
@@ -541,7 +544,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 849 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 851 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

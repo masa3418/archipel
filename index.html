@@ -340,7 +340,7 @@
   .patrolbox { margin-top: 8px; padding: 8px 10px; border: 1px solid #2f6f66; background: #12302c; border-radius: 8px; font-size: 13px; }
   .patrolbox b { color: #7fe0d0; }
   .dlg.wide { max-width: 760px; }
-  /* Grafik-Übersicht (Einstellungen → Anzeige → Grafiken) */
+  /* Grafik-Übersicht (☰ Menü → Hilfe → Grafiken, Fenster „Aussehen der Karte“) */
   /* Fenster „Aussehen der Karte“ (#mLook): drei Sets als Karten, darunter Landschaften des Sets und Kartenränder */
   .dlg.look-dlg { max-width: 660px; max-height: 92vh; overflow: auto; }
   .look-dlg h3 { margin: 16px 0 8px; font-size: 14px; }
@@ -377,6 +377,10 @@
   .gfx-colors { display: flex; gap: 6px; align-items: center; margin: 10px 0; flex-wrap: wrap; font-size: 13px; }
   .gfx-colors button { padding: 3px 10px; font-size: 13px; margin: 0; display: inline-flex; align-items: center; gap: 6px; }
   .gfx-colors button i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .gfx-why { list-style: none; padding: 0; margin: 6px 0 14px; font-size: 13px; line-height: 1.45; }   /* Grafik-Übersicht: warum diese Bilder */
+  .gfx-why li { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+  .gfx-why li img { width: 30px; height: 30px; flex-shrink: 0; }
+  .gfx-why li b { white-space: nowrap; margin-right: 2px; }
   .gfx-sets { margin: 4px 0 8px; }   /* Grafik-Set der Übersicht (alle Reiter) */
   .gfx-sets button i { width: 22px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,.25); }
   .gfx-colors button.on i { box-shadow: 0 0 0 1.5px #fff; }
@@ -688,6 +692,7 @@
   <button id="bSettings" class="mi" title="Ton, Anzeige, Spielablauf, Steuerung" data-en-title="Sound, display, game flow, controls"><span data-en="Settings …">Einstellungen …</span></button>
   <h4 data-en="Help">Hilfe</h4>
   <button id="bHelpMenu" class="mi"><span data-en="Handbook">Handbuch</span><kbd>H</kbd></button>
+  <button id="bGfxMenu" class="mi" title="Alle Bilder und Animationen des Spiels: was die Zeichen auf der Karte bedeuten, je Grafik-Set" data-en-title="All pictures and animations of the game: what the marks on the map mean, for each graphics set"><span data-en="Graphics">Grafiken</span></button>
   <a class="mi" data-videos title="Zehn kurze Videos mit Ton zu den wichtigsten Regeln – öffnet eine Seite im Internet" data-en-title="Ten short videos with sound on the key rules – opens a page on the internet"><span data-en="Explainer videos">Erklärvideos</span><span class="ext" data-en="online ↗">online ↗</span></a>
 </div>
 <main>
@@ -1207,7 +1212,7 @@
     <div id="lookLands" class="look-grid"></div>
     <h3 data-en="Around the map">Kartenrand</h3>
     <div id="lookBorders" class="look-grid"></div>
-    <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="primary" data-close data-en="Done">Fertig</button></div>
+    <div class="row" style="justify-content:space-between;margin-top:14px"><button id="bLookGfx" data-en="See all pictures of the set …">Alle Bilder des Sets ansehen …</button><button class="primary" data-close data-en="Done">Fertig</button></div>
   </div>
 </div>
 <div id="mGfx" class="modal" hidden>
@@ -1292,8 +1297,6 @@
       <p class="set-d" data-en="Island world, space or age of sail: units, cities, landscape and map border to match – only pictures, rules and names stay the same. Applies at once and to new games; saved games keep their look. Also under “View” (the eye at the top).">Inselwelt, Weltraum oder Segelzeit: Einheiten, Städte, Landschaft und Kartenrand passend zusammen – nur Bilder, Regeln und Namen bleiben gleich. Gilt sofort und auch für neue Partien; gespeicherte Partien behalten ihr Aussehen. Auch unter „Ansicht“ (das Auge oben).</p>
       <div class="set-row"><span class="set-l" data-en="Landscape and map border">Landschaft und Kartenrand</span><button id="bLook" data-en="Adjust …">Anpassen …</button></div>
       <p class="set-d" data-en="Each set has several landscapes (for example only desert or only ice) and five map borders to choose from.">Jedes Set hat mehrere Landschaften (zum Beispiel nur Wüste oder nur Eis) und fünf Kartenränder zur Wahl.</p>
-      <div class="set-row"><span class="set-l" data-en="Graphics">Grafiken</span><button id="bGfx" data-en="Open …">Öffnen …</button></div>
-      <p class="set-d" data-en="All pictures and animations of the game at a glance – with the SVG code of the unit symbols.">Alle Bilder und Animationen des Spiels im Überblick – mit dem SVG-Code der Einheitensymbole.</p>
     </section>
     </div>
     <div data-setpane="flow" hidden>

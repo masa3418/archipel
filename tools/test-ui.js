@@ -294,6 +294,10 @@ window.UiTest = (() => {
       $('gfxTabs').querySelector('[data-gtab="anim"]').click(); const pl = $('gfxBody').querySelector('[data-gplay]'); if (pl) pl.click(); gfxLoop(performance.now() + 500);
       check($('gfxSets').querySelectorAll('[data-gset]').length === 3 && txt.insel !== txt.weltraum && txt.weltraum !== txt.segel && S.land === land0 && LAND_FORCE === null && landscape() === LANDSCAPES[land0],
         'Grafik-Übersicht: Set oben gilt für alle Reiter, die Partie bleibt unverändert'); }
+    { gfx.tab = 'units'; const n = {};
+      for (const k of SET_KEYS) { $('mGfx').querySelector('[data-gset="' + k + '"]').click(); n[k] = $('gfxBody').querySelectorAll('.gfx-why li').length; }
+      check(n.insel === 0 && n.weltraum === setWhy('weltraum').length && n.segel === setWhy('segel').length && n.segel > 0 && UNIT_ORDER.every(k => SET_PIC.weltraum[k] && SET_PIC.segel[k]),
+        'Grafik-Übersicht: Bildnamen und „Warum diese Bilder?“ je Set'); }
     closeModals(); gfx.tab = 'units';
     // Asteroidengürtel: alle vier Arten auf einer Karte, Eisen nahe der Sonne, Eis gegenüber, gleiche Nummer = gleiches Bild; Sonne neben der Karte
     setLandscape('guertel'); setBorder('weltall');
@@ -595,6 +599,8 @@ window.UiTest = (() => {
     for (const b of $('helpTabs').querySelectorAll('button[data-tab]')) step('Handbuch-Reiter ' + b.dataset.tab, () => { openHelp(b.dataset.tab); const p = document.querySelector(`section[data-pane="${b.dataset.tab}"]`); return !p.hidden && p.textContent.trim().length > 100; });
     step('Handbuch: Tabelle „Wer schlägt wen“ in beiden Ansichten', () => { openHelp('combat'); const sw = [...$('matrixSw').querySelectorAll('button')], was = sw.find(b => b.classList.contains('on')); let cells = 99; for (const b of sw) { b.click(); cells = Math.min(cells, document.querySelectorAll('.help-matrix td').length); } was.click(); return sw.length === 2 && cells >= 49; });
     closeModals();
+    step('Grafiken: aus dem Menü (Hilfe) und aus „Aussehen der Karte“, nicht mehr in den Einstellungen', () => { closeModals(); $('bGfxMenu').click(); let ok = shown('mGfx') && $('menu').hidden; closeModals();
+      gfx.tab = 'marks'; openLook(); $('bLookGfx').click(); ok = ok && shown('mGfx') && !shown('mLook') && gfx.tab === 'units' && gfx.set === gfxSet(); closeModals(); openSettings('view'); ok = ok && !$('mSettings').querySelector('#bGfx'); closeModals(); return ok; });
     for (const t of ['units', 'land', 'marks', 'anim']) step('Grafik-Reiter ' + t, () => { gfx.tab = t; openGfx(); return document.querySelectorAll('#gfxBody .gfx-card').length >= 5; });
     step('Grafiken: Animation abspielen und SVG-Code zeigen', () => { document.querySelector('[data-gplay="0"]').click(); gfx.tab = 'units'; renderGfx(); document.querySelector('[data-gsvg="tank"]').click(); return $('gfxSvg').querySelector('pre').textContent.startsWith('<svg'); });
     closeModals(); gfx.tab = 'units'; gfx.svg = null;

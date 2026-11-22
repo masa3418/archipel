@@ -115,7 +115,7 @@ function openSoundTest() { Sfx.unlock(); renderSoundTest(); openModal('mSound');
 $('bSndTest').onclick = () => { closeModals(); openSoundTest(); };   // aus dem Fenster „Einstellungen“
 
 // ------------------------------------------------------------------ Grafik-Übersicht
-// Wie der Klangtest, nur für die Bilder (Einstellungen → Anzeige → Grafiken): Abzeichen in allen Farben samt Zeichen, Städte,
+// Wie der Klangtest, nur für die Bilder (☰ Menü → Hilfe → Grafiken; Fenster „Aussehen der Karte“): Abzeichen in allen Farben samt Zeichen, Städte,
 // Gelände, Markierungen und Animationen. Gezeichnet wird mit denselben Funktionen wie auf der Karte (drawToken, drawEffect,
 // drawRoute, drawSupportMark …): drawOn leitet ctx und TS kurz auf eine kleine Leinwand um, buildTerrain und drawFog bekommen ein
 // Kartenstück (gfxMap). Ändert sich eine Grafik im Spiel, ändert sie sich hier mit. SVG-Code gibt es für die Einheitensymbole
@@ -196,6 +196,40 @@ function gfxButton(text, data, on = false) {
   return b;
 }
 
+// Was die Bilder der Grafik-Sets zeigen (Wunsch des Nutzers: nicht jedes Bild erklärt sich selbst – warum ein Heißluftballon, warum ein
+// Piratenschiff). SET_PIC: Name des Bilds je Einheit; SET_WHY: kurzer Grund für die weniger offensichtlichen. Regeln und Namen bleiben gleich,
+// Zahlen kommen aus UT. Angezeigt im Reiter „Einheiten“ der Grafik-Übersicht.
+const SET_PIC = {
+  weltraum: { inf: tt('Raumsoldat', 'Space trooper'), tank: tt('Rover', 'Rover'), ftr: tt('Raumjäger', 'Space fighter'), trn: tt('Frachter', 'Freighter'),
+    dst: tt('Korvette', 'Corvette'), sub: tt('Tarnkappenschiff', 'Stealth ship'), crs: tt('Kreuzer', 'Cruiser'), car: tt('Mutterschiff', 'Mothership'), bat: tt('Schlachtschiff', 'Battleship') },
+  segel: { inf: tt('Musketier', 'Musketeer'), tank: tt('Kavallerie', 'Cavalry'), ftr: tt('Heißluftballon', 'Hot-air balloon'), trn: tt('Handelsschiff', 'Merchant ship'),
+    dst: tt('Schaluppe', 'Sloop'), sub: tt('Piratenschiff', 'Pirate ship'), crs: tt('Fregatte', 'Frigate'), car: tt('Ballonschiff', 'Balloon ship'), bat: tt('Linienschiff', 'Ship of the line') },
+};
+function setWhy(set) {
+  const U = UT;
+  return {
+    weltraum: [
+      ['sub', tt('Im All kann nichts abtauchen – an die Stelle des Tauchens tritt die Tarnung. Das flache, kantige Schiff mit den Facetten entzieht sich der Ortung; wie das U-Boot sieht man es erst aus nächster Nähe oder wenn es angreift.',
+        'Nothing can dive in space – cloaking takes the place of diving. The flat, faceted ship evades detection; like the submarine it is only seen up close or when it attacks.')],
+      ['tank', tt(`Auf Asteroiden fährt kein Kettenpanzer: Der Rover mit Geschützkuppel auf sechs Rädern ist das schwere Bodenfahrzeug und zieht wie der Panzer ${U.tank.move} Felder.`,
+        `No tracked tank drives on asteroids: the six-wheeled rover with its gun turret is the heavy ground vehicle and moves ${U.tank.move} tiles like the tank.`)],
+      ['dst', tt('Die schlanke Korvette jagt die Tarnschiffe – so wie der Zerstörer die U-Boote.', 'The slim corvette hunts the stealth ships – just as the destroyer hunts submarines.')],
+      ['car', tt('Aus der Hangaröffnung am Bug starten die Raumjäger – das Mutterschiff trägt sie wie der Träger seine Flugzeuge.', 'The space fighters launch from the hangar opening at the bow – the mothership carries them as the carrier carries its aircraft.')],
+    ],
+    segel: [
+      ['ftr', tt(`Das einzige Fluggerät der Segelzeit: Ballone stiegen ab 1783 auf und dienten bald zur Aufklärung, etwa 1794 in der Schlacht bei Fleurus. Schnell waren sie nicht – im Spiel gelten aber die Regeln des Jägers: ${U.ftr.move} Felder je Zug, Treibstoff für ${U.ftr.fuel} Felder (beim Ballon der Brennstoff für den Brenner).`,
+        `The only flying craft of the age of sail: balloons rose from 1783 and soon served for reconnaissance, for example at the battle of Fleurus in 1794. They were not fast – but in the game the fighter's rules apply: ${U.ftr.move} tiles per turn, fuel for ${U.ftr.fuel} tiles (for the balloon, fuel for its burner).`)],
+      ['sub', tt('U-Boote gab es in der Segelzeit nur als Versuch (die „Turtle“ von 1776). Ungesehen lauern und Handels- wie Kriegsschiffe überfallen – diese Rolle übernimmt deshalb der Pirat. Zu erkennen an den schrägen Lateinersegeln, wie sie die Korsaren im Mittelmeer fuhren, und an der Flagge am Mast.',
+        'Submarines existed in the age of sail only as an experiment (the “Turtle” of 1776). Lurking unseen and raiding merchant and warships – that role therefore goes to the pirate. Recognisable by the slanted lateen sails used by the Mediterranean corsairs and by the flag on the mast.')],
+      ['car', tt('Es trägt die Ballone wie der Träger seine Flugzeuge. Das gab es wirklich: 1849 ließ die österreichische Marine vor Venedig Ballone von einem Schiff aufsteigen, 1861 die Unionsarmee im Amerikanischen Bürgerkrieg von einem umgebauten Kahn.',
+        'It carries the balloons as the carrier carries its aircraft. This really existed: in 1849 the Austrian navy launched balloons from a ship off Venice, and in 1861 the Union army did so from a converted barge in the American Civil War.')],
+      ['tank', tt(`Vor den Panzern war die Reiterei die schnelle, schlagkräftige Truppe zu Land – die Kavallerie zieht wie der Panzer ${U.tank.move} Felder.`,
+        `Before tanks, cavalry was the fast, hard-hitting force on land – it moves ${U.tank.move} tiles like the tank.`)],
+      ['dst', tt('Ein kleines, schnelles Kriegsschiff mit einem Mast – die Schaluppe jagt die Piraten, so wie der Zerstörer die U-Boote.', 'A small, fast warship with a single mast – the sloop hunts the pirates, just as the destroyer hunts submarines.')],
+    ],
+  }[set] || [];
+}
+
 // Reiter „Einheiten“: Abzeichen je Farbe mit SVG-Code, Zeichen an der Marke, SVG-Symbole der Oberfläche
 function gfxUnits(body) {
   const bar = gfxEl('div', 'gfx-colors');
@@ -214,9 +248,23 @@ function gfxUnits(body) {
     const c = gfxCanvas(1, 1, 80), spr = unitSprite(k, gfx.owner, Math.round(c.ts * 0.8), gfx.set);
     c.getContext('2d').drawImage(spr, (c.width - spr.width) / 2, (c.height - spr.height) / 2);
     const on = gfx.svg && gfx.svg.kind === 'unit' && gfx.svg.type === k;
-    grid.append(gfxCard(c, UT[k].name, UNIT_ROLE[k], gfxButton(tt('SVG-Code', 'SVG code'), { gsvg: k }, on)));
+    const pic = (SET_PIC[gfx.set] || {})[k];   // in Weltraum und Segelzeit: was das Bild zeigt
+    grid.append(gfxCard(c, UT[k].name, (pic ? tt('Bild: ', 'Picture: ') + pic + ' · ' : '') + UNIT_ROLE[k], gfxButton(tt('SVG-Code', 'SVG code'), { gsvg: k }, on)));
   }
   if (gfx.svg && gfx.svg.kind === 'unit') body.append(gfxSvgPanel());
+  const why = setWhy(gfx.set);
+  if (why.length) {   // Warum diese Bilder: die weniger offensichtlichen erklärt
+    body.append(gfxEl('h3', null, tt('Warum diese Bilder?', 'Why these pictures?')),
+      gfxEl('p', null, tt('Regeln und Namen sind in jedem Set gleich; die Bilder suchen für jede Rolle etwas Passendes aus der Welt des Sets. Wo das nicht auf den ersten Blick einleuchtet:',
+        'Rules and names are the same in every set; the pictures find something fitting for each role from the world of the set. Where that is not obvious at first glance:')));
+    const ul = gfxEl('ul', 'gfx-why');
+    for (const [k, text] of why) {
+      const li = gfxEl('li'), img = gfxEl('img'); img.src = lookIcon(gfx.set, k); img.alt = '';
+      li.append(img, gfxEl('b', null, `${UT[k].name} → ${SET_PIC[gfx.set][k]}: `), text);
+      ul.append(li);
+    }
+    body.append(ul);
+  }
 
   const st = gfxSection(body, tt('Zeichen an der Marke', 'Marks on the badge'),
     tt('So zeigt die Karte, was mit einer Einheit los ist. Die Zahl steht nur an eigenen Einheiten – wie viel der Gegner an Bord hat, bleibt verborgen; in seinen Städten sogar, welche Einheit dort steht.',
@@ -544,7 +592,10 @@ function renderGfx() {
   if (!gfx.raf) gfx.raf = requestAnimationFrame(gfxLoop);
 }
 function openGfx() { Sfx.unlock(); gfx.svg = null; gfx.set = gfxSet(); renderGfx(); openModal('mGfx'); }
-$('bGfx').onclick = () => { closeModals(); openGfx(); };   // aus dem Fenster „Einstellungen“
+// Aufruf (Wunsch des Nutzers: keine Einstellung, sondern Bildlegende – deshalb unter Hilfe statt in den Einstellungen): ☰ Menü → Hilfe → Grafiken und
+// aus dem Fenster „Aussehen der Karte“ (dort mit dem Reiter Einheiten – man will sehen, wie das gewählte Set aussieht)
+$('bGfxMenu').onclick = () => { closeMenu(); closeModals(); openGfx(); };
+$('bLookGfx').onclick = () => { closeModals(); gfx.tab = 'units'; openGfx(); };
 // Landschaft der laufenden Partie (S.land, LANDSCAPES in gfx.js): nur die Farben der Karte. Wird mit der Partie gespeichert.
 const LAND_NAMES = { gruen: tt('Grüne Inseln', 'Green islands'), wueste: tt('Wüste', 'Desert'), schnee: tt('Schnee', 'Snow'), lava: tt('Lava', 'Lava'), alien: tt('Fremder Planet', 'Alien planet'), zonen: tt('Klimazonen', 'Climate zones'),
   asteroiden: tt('Asteroiden', 'Asteroids'), eis: tt('Eis-Asteroiden', 'Ice asteroids'), eisen: tt('Eisen-Asteroiden', 'Iron asteroids'),
