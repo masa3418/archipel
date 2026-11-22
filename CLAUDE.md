@@ -175,9 +175,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   das echte. Beim Abschalten kehrt der Nebel zurück. Wer `P.seen`/`P.knownOwner` schreibt, muss `P.real` beachten (bisher schreibt nur
   `computeVision`). In Simulationen bleibt der Schalter aus. Anzeige: Schildchen `.cheat` neben der Rundenzahl.
 - **Kräfteverhältnis = Anteil an den Städten** (seit 1.8.3, Wunsch des Nutzers; game.js `cityCounts`, `cityShares`, `recordStrength`, `histFromTimeline`):
-  Balken = je Partei ihr Anteil an **allen** Städten in ihrer Farbe, die neutralen grau gestreift (immer Abschnitte, auch im Zweikampf). Einschätzung
+  Balken = je Partei ihr Anteil an **allen** Städten in ihrer Farbe, die neutralen grau gestreift (immer Abschnitte, auch im Zweikampf; **ohne Prozentzahlen** – Wunsch des
+  Nutzers: sie sagten wenig und passten nicht zur Schwelle fürs vorzeitige Ende; Städtezahlen im Hinweistext, Rechnung per Klick). Einschätzung
   („Überlegen“ …), Kapitulationsangebot und Eroberungsfenster rechnen „du gegen den stärksten Gegner“ nur mit vergebenen Städten (`cityShares().vs`),
-  Kurve und Trend mit deinem Anteil an allen vergebenen (`mine`, gestrichelt 50 % bzw. 1/n). Zeitraffer-Kurve gestapelt in Parteifarben, oben grau die
+  Kurve und Trend mit deinem Anteil an allen vergebenen (`mine`, gestrichelt 50 % bzw. 1/n; Kurve über die ganze Partie, bis
+  zum Wunsch des Nutzers nur die letzten 80 Runden – das stand nirgends; Trendpfeil: seit Beginn der letzten Runde). Zeitraffer-Kurve gestapelt in Parteifarben, oben grau die
   neutralen. `strongestEnemy` = meiste Städte (Gleichstand: Einheitenwert). `strength(p)` (Einheitenwert + `CITY_VALUE` je Stadt) bleibt für Werkzeuge,
   Tests und `tools/beispiele.js`. Das Kräftefenster (`renderPower`) zeigt Städte je Partei und neutral, Anteile und wie gezählt wird – den Spoiler-Haken
   gibt es nicht mehr: Der Balken verrät die Städtezahl des Gegners ohnehin (dem Nutzer vorher gesagt). Einheiten zählen nicht mehr (eine Flotte auf dem
@@ -258,7 +260,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   `S.outAt[p]` = Runde, Meldung. Kein neues Feld im Spielstand. Messung siehe „KI messen“. Test: „Spielende: schwache Computer-Partei kapituliert …“.
   Zugfolge: `endHumanTurn` lässt die lebenden Gegner nacheinander ziehen, `anim.phases` merkt, ab wann wer in der Zeitleiste dran ist
   (`updateBanner`: „Gelb zieht …“). Kräftebalken (Wunsch des Nutzers): je Partei ein Abschnitt in ihrer Farbe mit ihrem Anteil an der
-  Stärke aller (`#powerSegs`, Klasse `multi`; Zahl nur, wenn der Abschnitt breit genug ist), Kurve und Trend darunter = dein Anteil an allem
+  Stärke aller (`#powerSegs`, Klasse `multi`; ohne Zahlen – Wunsch des Nutzers: der Anteil an allen Städten passte nicht zur Schwelle fürs vorzeitige Ende; Städtezahlen im Hinweistext, Rechnung per Klick im Kräftefenster), Kurve und Trend darunter = dein Anteil an allem
   (gestrichelt: gleiche Anteile 1/n), Zeitraffer-Kurve gestapelt in allen Farben (`tlCurve`) – dafür speichert `recordStrength` in `S.hist`
   zusätzlich `all` (Stärke je Spieler; ältere Einträge ohne). Das Urteil („Überlegen“ …) und das Angebot zum vorzeitigen Ende vergleichen
   weiter mit dem stärksten Gegner (`strongestEnemy`). Das Kräftefenster hat eine Spalte je Gegner (Anteil immer, Zahlen nur mit dem

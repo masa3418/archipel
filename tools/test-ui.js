@@ -698,7 +698,7 @@ window.UiTest = (() => {
       const segs = () => [...$('powerSegs').children].map(i => i.style.width ? parseFloat(i.style.width) : 0);
       updatePower(); const cc = cityCounts(), w = segs();
       let ok = w.length >= 2 && Math.abs(w.reduce((a, b) => a + b, 0) - 100) < 0.5 && /repeating-linear-gradient/.test($('powerSegs').lastElementChild.style.background) === (cc.n > 0);
-      ok = ok && Math.abs(w[0] - cc.c[0] / S.cities.length * 100) < 0.5;
+      ok = ok && Math.abs(w[0] - cc.c[0] / S.cities.length * 100) < 0.5 && [...$('powerSegs').children].every(i => !i.textContent);   // ohne Zahlen
       // alter Spielstand: Verlauf mit Stärkewerten statt Städten → beim Laden aus dem Zeitraffer nachgerechnet
       const o = JSON.parse(keep), st = o.S || o; st.hist = [{ t: 1, me: 300, en: 100, all: [300, 100] }];
       deserialize(JSON.stringify(o)); afterLoad(); closeModals();

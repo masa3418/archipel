@@ -214,7 +214,9 @@ function verdictOf(share) {
     : share > b.even ? [tt('Ausgeglichen', 'Even'), 'flat'] : share > b.behind ? [tt('Unterlegen', 'Behind'), 'down'] : share >= b.lo ? [tt('Stark unterlegen', 'Far behind'), 'down'] : [tt('Aussichtslos', 'Hopeless'), 'down'];
 }
 // Balken: je Partei ein Abschnitt in ihrer Farbe mit ihrem Anteil an ALLEN Städten, die neutralen grau (Wunsch des Nutzers) – so sieht man auch,
-// wie weit die Partie ist. Einschätzung („Überlegen“ …), Kurve und Trend rechnen nur mit den vergebenen Städten.
+// wie weit die Partie ist. Einschätzung („Überlegen“ …), Kurve und Trend rechnen nur mit den vergebenen Städten. Ohne Zahlen in den Abschnitten
+// (Wunsch des Nutzers: der Anteil an allen Städten sagte wenig und passte nicht zur Schwelle fürs vorzeitige Ende, die mit „du gegen den
+// stärksten Gegner“ rechnet) – die Städtezahlen stehen im Hinweistext, die ganze Rechnung im Fenster (Klick).
 function updatePower() {
   const multi = nPlayers() > 2, cc = cityCounts(), sh = cityShares(cc), en = strongestEnemy();
   const bar = $('powerMe').parentElement;
@@ -224,9 +226,8 @@ function updatePower() {
   let left = 0, h = '';
   for (const s of segs) {
     if (s.w <= 0) continue;
-    const pc = Math.round(s.w), lab = s.w >= 12 ? (s.p === 0 && s.w >= 18 ? tt('Du ', 'You ') : '') + pc + ' %' : '';
     const bg = s.p < 0 ? 'repeating-linear-gradient(135deg, #565d67 0 6px, #4d545d 6px 12px)' : `linear-gradient(90deg, ${PLAYERS[s.p].dark}, ${PLAYERS[s.p].color})`;
-    h += `<i style="left:${left.toFixed(2)}%;width:${s.w.toFixed(2)}%;background:${bg}${s.p < 0 ? ';color:#d7dadd' : ''}">${lab}</i>`;
+    h += `<i style="left:${left.toFixed(2)}%;width:${s.w.toFixed(2)}%;background:${bg}"></i>`;
     left += s.w;
   }
   $('powerSegs').innerHTML = h;
@@ -249,10 +250,10 @@ function updatePower() {
   const parts = segs.map(s => s.p < 0 ? tt(`neutral ${s.v}`, `neutral ${s.v}`) : `${s.p === 0 ? tt('Du', 'You') : pname(s.p)} ${s.v}`).join(' · ');
   $('power').title = tt(`Städte: ${parts} (von ${S.cities.length})\n`
     + `Einschätzung „${v[0]}“: du gegen ${multi ? `den stärksten Gegner (${pname(en)})` : 'den Gegner'}, ${cc.c[0]} : ${cc.c[en]} Städte, also ${pct} % : ${100 - pct} %\n`
-    + `Kurve und Trend: dein Anteil an allen vergebenen Städten (gestrichelt: ${multi ? `gleiche Anteile, 1/${alive}` : 'Gleichstand'})\nKlick: Einzelheiten`,
+    + `Kurve: dein Anteil an allen vergebenen Städten über die ganze Partie (gestrichelt: ${multi ? `gleiche Anteile, 1/${alive}` : 'Gleichstand'}); Pfeil: seit Beginn der letzten Runde\nKlick: Einzelheiten`,
     `Cities: ${parts} (of ${S.cities.length})\n`
     + `Assessment “${v[0]}”: you against ${multi ? `the strongest enemy (${pname(en)})` : 'the enemy'}, ${cc.c[0]} : ${cc.c[en]} cities, i.e. ${pct} % : ${100 - pct} %\n`
-    + `Curve and trend: your share of all cities taken (dashed: ${multi ? `equal shares, 1/${alive}` : 'even'})\nClick: details`);
+    + `Curve: your share of all cities taken over the whole game (dashed: ${multi ? `equal shares, 1/${alive}` : 'even'}); arrow: since the start of the last turn\nClick: details`);
   drawPowerSpark(hist, mine, multi ? 1 / alive : 0.5);
 }
 
@@ -276,10 +277,10 @@ function renderPower() {
   h += `<h3>${tt('So wird gezählt', 'How it is counted')}</h3><ul class="power-notes">
     <li>${tt('Gezählt werden nur die Städte – wer alle Städte hat, hat gewonnen. Der Balken zeigt, wie viel von allen Städten jede Partei besitzt; grau sind die neutralen. Einheiten zählen nicht: Eine Flotte auf dem Weg zu dir sieht man am Balken erst, wenn Städte fallen.',
       'Only cities count – whoever holds all cities has won. The bar shows how much of all cities each party owns; the neutral ones are grey. Units do not count: a fleet on its way to you shows on the bar only once cities fall.')}</li>
-    <li>${multi ? tt('Die Einschätzung („Überlegen“ …) vergleicht deine Städte mit denen des stärksten Gegners; die Kurve darunter zeigt deinen Anteil an allen vergebenen Städten (gestrichelt: gleiche Anteile).',
-      'The assessment (“Ahead” …) compares your cities with those of the strongest enemy; the curve below shows your share of all cities taken (dashed: equal shares).')
-      : tt('Die Einschätzung („Überlegen“ …) und die Kurve vergleichen deine Städte mit denen des Gegners; neutrale zählen dafür nicht.',
-      'The assessment (“Ahead” …) and the curve compare your cities with the enemy\'s; neutral cities do not count for it.')}</li>
+    <li>${multi ? tt('Die Einschätzung („Überlegen“ …) vergleicht deine Städte mit denen des stärksten Gegners; die Kurve darunter zeigt deinen Anteil an allen vergebenen Städten über die ganze Partie (gestrichelt: gleiche Anteile).',
+      'The assessment (“Ahead” …) compares your cities with those of the strongest enemy; the curve below shows your share of all cities taken over the whole game (dashed: equal shares).')
+      : tt('Die Einschätzung („Überlegen“ …) und die Kurve vergleichen deine Städte mit denen des Gegners; neutrale zählen dafür nicht. Die Kurve zeigt die ganze Partie.',
+      'The assessment (“Ahead” …) and the curve compare your cities with the enemy\'s; neutral cities do not count for it. The curve shows the whole game.')}</li>
     <li>${(() => { const b = verdictBands(), P = v => Math.round(v * 100) + ' %';
       return tt(`Einstufung nach deinem Anteil: über ${P(b.hi)} erdrückend überlegen · ab ${P(b.clear)} klar überlegen · ab ${P(b.ahead)} überlegen · über ${P(b.even)} ausgeglichen · über ${P(b.behind)} unterlegen · ab ${P(b.lo)} stark unterlegen · darunter aussichtslos. Die äußeren Stufen richten sich nach der Schwelle fürs vorzeitige Ende.`,
         `Rating by your share: above ${P(b.hi)} overwhelming · from ${P(b.clear)} clearly ahead · from ${P(b.ahead)} ahead · above ${P(b.even)} even · above ${P(b.behind)} behind · from ${P(b.lo)} far behind · below that hopeless. The outer levels follow the threshold for the early end.`); })()}</li>
@@ -309,7 +310,7 @@ function drawPowerSpark(hist, share, base = 0.5) {
   g.strokeStyle = 'rgba(255,255,255,0.15)'; g.lineWidth = 1; g.setLineDash([3, 3]);
   g.beginPath(); g.moveTo(0, y(base)); g.lineTo(w, y(base)); g.stroke(); g.setLineDash([]);
   if (pts.length < 2) return;
-  const show = pts.slice(-80);
+  const show = pts;   // die ganze Partie (Wunsch des Nutzers; bis dahin nur die letzten 80 Runden – das stand nirgends); die jüngste Bewegung zeigt der Trendpfeil
   const x = i => i / (show.length - 1) * (w - 4) + 2;
   g.beginPath(); g.moveTo(x(0), y(base));
   show.forEach((v, i) => g.lineTo(x(i), y(v)));
