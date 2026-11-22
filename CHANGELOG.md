@@ -3,6 +3,22 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.9.1
+
+Viel mehr Platz für Spielstände.
+
+- **Gepackte Spielstände:** Benannte Spielstände belegen im Browserspeicher nur noch etwa ein Zehntel – statt rund 15 späten
+  Partien auf der großen Karte passen jetzt etwa 200 hinein. Exportierte Dateien sind etwa fünfmal kleiner. Der automatische
+  Spielstand bleibt ungepackt. Vorhandene Spielstände werden beim Start einmal nachgepackt, ältere exportierte Dateien laden
+  weiter. Gepackte Spielstände und Dateien lassen sich mit Version 1.9.0 und älter nicht mehr öffnen.
+- **Grafik-Übersicht nach Sets:** Oben im Fenster „Grafiken“ (Einstellungen → Anzeige) wählst du Inselwelt, Weltraum oder
+  Segelzeit – Einheiten, Städte, Gelände, Markierungen und Animationen samt Klängen erscheinen dann im gewählten Set.
+
+*English:* named saved games are now packed and take only about a tenth of the browser storage (about 200 late games on the
+large map instead of 15); exported files are about five times smaller. The autosave stays unpacked; existing saved games are
+packed once at start, and older exported files still load. Packed saved games and files cannot be opened with version 1.9.0 or
+older. The graphics overview has a set switch at the top that applies to all its tabs.
+
 ## 1.9.0
 
 Drei Grafik-Sets: Inselwelt, Weltraum und Segelzeit.
