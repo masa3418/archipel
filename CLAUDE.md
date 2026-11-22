@@ -106,7 +106,31 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Infanterie → Zerstörer 50 %, Panzer → Zerstörer 75 %, Panzer → Träger 31 %. Die KI-Bedrohungskarte (`threatMap`) berücksichtigt das.
 - **Schlachtschiffe**: `fireSupport(owner, x, y)` und `captureChance(owner, c)` (game.js) – Feuerunterstützung/Feuerschutz auf
   Nachbarfelder (Eroberung 75 % / 25 %, Bodentruppen treffen zu 2/3 bzw. werden zu 1/3 getroffen). Eroberungschancen nie fest
-  mit 50 % rechnen, immer `captureChance` nehmen (Grundwert `CAPTURE_BASE`, Zuschlag `SUPPORT_CAPTURE`). Salven meldet `hooks.salvo`; Markierungen zeichnet `drawSupportMark` (ui.js). Luftdeckung im Kampf: `hooks.cover` (in `attack`, Jäger gegen Schiff unter `airCover`) – Abfangjäger, Schutzring, Klang `cover`.
+  mit 50 % rechnen, immer `captureChance` nehmen (Grundwert `CAPTURE_BASE`, Zuschlag `SUPPORT_CAPTURE`). Salven meldet `hooks.salvo`; Markierungen zeichnen `drawSupportMark` (Eckwinkel; Ring der Luftdeckung) und `drawCityWall` (ui.js).
+  **Gegner unter Feuer** (`troopMark`, gezeichnet mit der Einheit in `drawTileToken` und für untergehende in der Wiedergabe; Felder je Besitzer in `supportAt`
+  aus `render`; dem Nutzer war unklar, wann es wirkt – Infanterie neben dem Schiff, die ein Feld weiter landeinwärts angreift, bekommt nichts: Es zählt
+  das **angegriffene Feld**, nicht der Standort der Truppe): Eckwinkel wie an fremden Städten an sichtbaren gegnerischen Bodentruppen neben deinem
+  Schlachtschiff (nicht auf Stadtfeldern, dort zeigt es die Stadt), immer sichtbar; nicht an fahrenden Einheiten. Bewusst nur das (Wunsch des Nutzers, nach zwei Versuchen: erst eine getönte Fläche über alle neun Felder bei
+  gewählter Bodentruppe, dann zusätzlich Ringe an eigenen Truppen und Zeichen fremder Schlachtschiffe an Truppen – beides „zu viel“).
+  **Befestigt** (Idee des Nutzers; `drawFortRim`, `opts.fort` in `drawToken`, ebenfalls über `troopMark`): Eigene Bodentruppen neben dem eigenen
+  Schlachtschiff (Feuerschutz, werden nur zu 1/3 getroffen) tragen statt eines Rings einen Zinnenkranz hinter der Marke – zwölf Zinnen in Steinfarbe
+  (`#cfc6b4`; in der Parteifarbe sah er aus wie ein Zahnrad). Nicht in Städten. **Auch beim Gegner** (Wunsch des Nutzers): seine Truppen neben
+  seinem sichtbaren Schlachtschiff (nicht in einer verborgenen Stadt) tragen denselben Kranz – deine Bodentruppen treffen sie dort nur zu 1/3. Steht ein
+  Gegner neben beiden Schiffen, trägt er Eckwinkel und Kranz (hebt sich auf, wie bei Städten). **Städte unter Feuerschutz** (fällt nur zu 25 %)
+  tragen seitdem statt des gestrichelten Rings eine Stadtmauer mit 16 Zinnen (`drawCityWall`, innen offen; gemeinsam `battlements`/`stoneWall`) –
+  für jede Partei, deren Schlachtschiff daneben liegt. Eine eckige Mauer am Feldrand wirkte wie eine Briefmarke. Der gestrichelte Ring bleibt der
+  Luftdeckung an Schiffen; „unter Feuer“ bleiben Eckwinkel in der Farbe des Schiffs.
+  **Alles im Feld** (dem Nutzer aufgefallen: die Zeichen ragten heraus, bei eng stehenden Einheiten mit Eckwinkeln daneben unübersichtlich): Einheiten mit
+  Zinnen oder Eckwinkeln zeichnet `drawToken` mit `opts.mark` auf `MARK_K` (0,86) verkleinert, Städte mit Zeichen `drawCityImg` auf `CITY_K` (Eckwinkel 0,8,
+  Mauer 0,74; die unteren Ecken des Platzes liegen unter der Mauer). Eckwinkel 5 % innerhalb des Feldrands, Mauer 0,385–0,475, Zinnenkranz bis 0,456 der
+  Feldgröße. Dafür bestimmt `render` die Schlachtschiffe (`batsNow`, `cityMarks`) vor dem Zeichnen der Städte. Grafik-Übersicht ebenso (Karten und
+  Animation „Salve und Eroberung“, `k` je Stadt in `gfxScene`).
+  **Herausgezoomt** (`STONE_SMALL` = 26 Pixel Markengröße bzw. Feldgröße bei der Mauer): 8 statt 12 Zinnen (Mauer 10 statt 16), Saum 2 Pixel statt
+  Linienbreite + 2 – bei 14–18 Pixeln je Feld wurde der Kranz sonst zu einem dunklen Ring (Saum so breit wie die Zinnen hoch). Ganz ohne Saum verschwamm
+  er auf hellem Gestein. Geprüft bei 14–44 Pixeln in allen 16 Landschaften: überall erkennbar. Farbabstand des Steins zum Land (ΔE, Lab, ohne Strand):
+  Lava, Planet, Eisen, Kristall 30–34, Grün 26, Wüste 23, Tropen der alten Karte 22, Eis 19, Schnee, Asteroiden 17, alte Karte und Eismeer 16 – auf hellem
+  Land trägt der dunkle Saum. Erwogen, nicht umgesetzt: Stein je Landschaft hell oder dunkel wählen (bessere Abstände laut Rechnung, aber auf Grün, Wüste, alter Karte wäre er
+  dunkel – anders als das, was der Nutzer gut fand). Luftdeckung im Kampf: `hooks.cover` (in `attack`, Jäger gegen Schiff unter `airCover`) – Abfangjäger, Schutzring, Klang `cover`.
 - **Sicherer Anfang** (`START_SURE` = 3 in `captureChance`, game.js; Wunsch des Nutzers: Pech bei den ersten Städten entschied zu viel): Solange ein
   Spieler weniger als drei Städte besitzt, fällt eine **neutrale** Stadt sicher – für alle Spieler, auch die KI; gegnerische Städte bleiben beim
   Grundwert. Greift erneut, wenn jemand wieder unter drei fällt. Messung, zwei gleich starke KI ohne Fehler, kleine Karte, je 150 Partien: wer bis
@@ -549,8 +573,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 861 Prüfungen; in einem kleinen Fenster scheitern einige Lageprüfungen – Tastenlegende, Kartenrand, Taste F –, im eigenen Reiter in voller Größe laufen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
-     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, Auftauchen fremder Einheiten in der Wiedergabe, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 869 Prüfungen; in einem kleinen Fenster scheitern einige Lageprüfungen – Tastenlegende, Kartenrand, Taste F –, im eigenen Reiter in voller Größe laufen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+     × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, Auftauchen fremder Einheiten in der Wiedergabe, Feuerunterstützung an Truppen, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
    Pull Requests (Entscheidung mit dem Nutzer: für eine Person zu viel Zeremonie; neu überlegen, wenn andere beitragen).

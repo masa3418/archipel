@@ -394,6 +394,55 @@ window.UiTest = (() => {
       }
     } finally { drawToken = o; skipAnim(); replay = 'off'; killUnit(krz); }
   }
+  // Feuerunterstützung an Truppen (dem Nutzer war unklar, wo sie wirkt – es zählt das angegriffene Feld, nicht der Standort der Truppe): Wie bei
+  // fremden Städten markieren Eckwinkel Gegner an Land neben deinem Schlachtschiff; zwei Felder weiter nichts. Eigene Truppen dort tragen statt
+  // eines Rings einen Zinnenkranz an der Marke (opts.fort). Bewusst sparsam (Wunsch des Nutzers): keine Zeichen fremder Schlachtschiffe an Truppen.
+  function supportMarks() {
+    reset();
+    const water = (x, y) => inb(x, y) && !land(x, y) && free(x, y), ground = (x, y) => inb(x, y) && land(x, y) && free(x, y);
+    const a = all((x, y) => water(x, y) && water(x, y - 1) && ground(x + 1, y) && ground(x + 1, y + 1) && ground(x + 2, y) && !S.cities.some(c => cheb(c.x, c.y, x, y) <= 2))[0];
+    if (!a) { check(false, 'Feuerunterstützung: keine passende Küste im Spielstand'); return; }
+    const [x, y] = a, made = [createUnit('bat', 0, x, y), createUnit('inf', 0, x + 1, y), createUnit('inf', 1, x + 1, y + 1), createUnit('inf', 1, x + 2, y)];
+    computeVision(0);
+    const o = drawSupportMark, got = [], ot = drawToken, forts = [];
+    drawSupportMark = function (X, Y, protect, col, ...r) { got.push(`${X},${Y} ${protect ? 'Ring' : 'Ecken'} ${PLAYERS.findIndex(p => p.light === col)}`); return o(X, Y, protect, col, ...r); };
+    const sizes = new Map();   // Feld → Größe der Marke: mit Zeichen kleiner (MARK_K), damit das Zeichen ins Feld passt
+    drawToken = function (u, px, py, size, opts = {}) { if (opts.fort) forts.push(`${u.x},${u.y}`); sizes.set(`${u.x},${u.y}`, opts.mark ? size * MARK_K : size); return ot(u, px, py, size, opts); };
+    const marks = () => { got.length = forts.length = 0; render(); return got.join(' | '); };
+    try {
+      let m = marks();
+      check(m === `${x + 1},${y + 1} Ecken 0`, `Feuerunterstützung: Eckwinkel nur am Gegner neben dem Schlachtschiff, nicht an eigener Truppe, zwei Felder weiter nichts (${m})`);
+      check(forts.join(' ') === `${x + 1},${y}`, `Feuerschutz: Zinnen nur an der eigenen Truppe neben dem Schlachtschiff (${forts.join(' ')})`);
+      const sz = k => Math.round(sizes.get(k) / TS * 100);
+      check(sz(`${x + 1},${y}`) === Math.round(MARK_K * 100) && sz(`${x + 1},${y + 1}`) === Math.round(MARK_K * 100) && sz(`${x + 2},${y}`) === 100,
+        `Feuerunterstützung: Marken mit Zeichen kleiner, ohne in voller Größe (${[[x + 1, y], [x + 1, y + 1], [x + 2, y]].map(p => sz(p.join())).join('/')} %)`);
+      made.push(createUnit('bat', 1, x, y - 1)); computeVision(0);
+      m = marks();
+      check(m === `${x + 1},${y + 1} Ecken 0`, `Feuerunterstützung: fremdes Schlachtschiff setzt keine Eckwinkel an deine Truppen (${m})`);
+      // Gegner neben seinem Schlachtschiff: Zinnenkranz wie bei deinen Truppen (Wunsch des Nutzers) – nur, wenn du das Schiff siehst
+      const P = S.players[0], w2 = all((X, Y) => water(X, Y) && cheb(X, Y, x, y) >= 5 && DIRS.some(([dx, dy]) => ground(X + dx, Y + dy)))[0];
+      check(!!w2, 'Feuerschutz des Gegners: Küste im Spielstand');
+      if (w2) {
+        const [dx, dy] = DIRS.find(([dx, dy]) => ground(w2[0] + dx, w2[1] + dy)), g2 = [w2[0] + dx, w2[1] + dy];
+        const eb = createUnit('bat', 1, ...w2), ei = createUnit('inf', 1, ...g2); made.push(eb, ei);
+        computeVision(0); P.vis[idx(...w2)] = P.vis[idx(...g2)] = 1;
+        marks();
+        check(forts.includes(g2.join()) && sizes.get(g2.join()) === TS * MARK_K, `Feuerschutz des Gegners: Zinnen an seiner Truppe neben seinem Schlachtschiff (${forts.join(' ')})`);
+        computeVision(0); P.vis[idx(...g2)] = 1;   // Schiff außer Sicht: kein Kranz
+        marks();
+        check(!forts.includes(g2.join()), `Feuerschutz des Gegners: ohne sichtbares Schiff kein Kranz (${forts.join(' ')})`);
+        computeVision(0);
+      }
+    } finally { drawSupportMark = o; drawToken = ot; for (const u of made) if (alive(u)) killUnit(u); }
+    // eigene Stadt neben dem eigenen Schlachtschiff: Stadtmauer statt Ring (Feuerschutz, fällt nur zu 25 %)
+    const ow = drawCityWall, oc = drawCityImg, walls = [], ks = new Map(), b2 = createUnit('bat', 0, ...base.s);
+    drawCityWall = function (X, Y) { walls.push(X + ',' + Y); return ow(X, Y); };
+    drawCityImg = function (g, o, v, X, Y, ts, k = 1) { ks.set(X + ',' + Y, k); return oc(g, o, v, X, Y, ts, k); };
+    try { render(); } finally { drawCityWall = ow; drawCityImg = oc; killUnit(b2); }
+    check(walls.join(' ') === base.c.join(','), `Feuerschutz: Stadtmauer um die eigene Stadt neben dem Schlachtschiff (${walls.join(' ')})`);
+    const other = S.cities.find(c => c.x + ',' + c.y !== base.c.join(',') && S.players[0].seen[idx(c.x, c.y)]);
+    check(ks.get(base.c.join(',')) === CITY_K.wall && (!other || ks.get(other.x + ',' + other.y) === 1), `Feuerschutz: Stadt mit Mauer kleiner gezeichnet, andere in voller Größe`);
+  }
   // Befehle: Knopf der Seitenleiste, Rechtsklick-Menü, Tastenlegende und Taste müssen sich einig sein (orderCheck).
   // Grauer Knopf = die Taste meldet denselben Grund und ändert nichts; aktiver Knopf = die Taste bewirkt etwas.
   function orders() {
@@ -840,7 +889,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); goneScale(); revealInReplay(); smoothZoomCheck(); borderCheck(); spaceSet(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); goneScale(); revealInReplay(); supportMarks(); smoothZoomCheck(); borderCheck(); spaceSet(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters

@@ -468,11 +468,18 @@ function gfxMarks(body) {
     drawSelRing(0, 1, gfxPulse(now), now); drawAssaultChance(1, 1, null, gfxPulse(now));
   }, { live: true, cities: [1] }), tt('Sturm auf besetzte Stadt', 'Assault on a garrisoned city'), tt('wer verteidigt, ist unbekannt: „?“ statt einer Chance', 'the defender is unknown: “?” instead of a chance')));
 
-  const sup = gfxSection(body, tt('Unterstützung', 'Support'), tt('In der Farbe des Schiffs, das unterstützt.', 'In the colour of the supporting ship.'));
-  sup.append(gfxCard(gfxPic(['~~.', '~C.', '~..'], 44, () => { drawToken(gu('bat'), 0, TS, TS); drawSupportMark(1, 1, false, P0); }, { cities: [1] }),
+  const sup = gfxSection(body, tt('Unterstützung', 'Support'), tt('In der Farbe des Schiffs, das unterstützt – Mauer und Zinnen aus Stein.', 'In the colour of the supporting ship – walls and battlements in stone.'));
+  sup.append(gfxCard(gfxPic(['~~.', '~C.', '~..'], 44, () => { drawToken(gu('bat'), 0, TS, TS); drawCityImg(ctx, 1, 0, 1, 1, TS, CITY_K.fire); drawSupportMark(1, 1, false, P0); }),
     tt('Stadt unter Feuer', 'City under fire'), tt(`Schlachtschiff daneben: fällt zu ${pct(CAPTURE_BASE + SUPPORT_CAPTURE)}`, `battleship next to it: falls at ${pct(CAPTURE_BASE + SUPPORT_CAPTURE)}`)));
-  sup.append(gfxCard(gfxPic(['~~.', '~C.', '~..'], 44, () => { drawToken(gu('bat'), 0, TS, TS); drawSupportMark(1, 1, true, P0); }, { cities: [0] }),
+  sup.append(gfxCard(gfxPic(['~~.', '~C.', '~..'], 44, () => { drawToken(gu('bat'), 0, TS, TS); drawCityImg(ctx, 0, 0, 1, 1, TS, CITY_K.wall); drawCityWall(1, 1); }),
     tt('Feuerschutz', 'Fire cover'), tt(`eigene Stadt fällt nur zu ${pct(CAPTURE_BASE - SUPPORT_CAPTURE)}`, `own city falls only at ${pct(CAPTURE_BASE - SUPPORT_CAPTURE)}`)));
+  sup.append(gfxCard(gfxPic(['~~.', '~..', '~..'], 44, () => {
+    drawToken(gu('bat'), 0, TS, TS);
+    drawSupportMark(1, 1, false, P0); drawToken(gu('inf', 1), TS, TS, TS, { mark: true });
+  }), tt('Gegner unter Feuer', 'Enemy under fire'), tt(`deine Bodentruppen treffen ihn zu ${pct(SUPPORT_HIT)}`, `your ground troops hit it at ${pct(SUPPORT_HIT)}`)));
+  sup.append(gfxCard(gfxPic(['~~.', '~..', '~..'], 44, () => {
+    drawToken(gu('bat'), 0, TS, TS); drawToken(gu('inf'), TS, TS, TS, { mark: true, fort: true });
+  }), tt('Befestigt', 'Fortified'), tt(`Zinnen: wird nur zu ${pct(1 - SUPPORT_HIT)} getroffen – auch beim Gegner`, `battlements: only hit at ${pct(1 - SUPPORT_HIT)} – the enemy’s too`)));
   sup.append(gfxCard(gfxPic(['~~~~', '~~~~', '~~~~'], 44, () => {
     drawSupportMark(1, 1, true, P0); drawSupportMark(2, 1, true, P0);
     drawToken(gu('car'), TS, TS, TS, { badge: 2 }); drawToken(gu('trn'), 2 * TS, TS, TS, { badge: 6 });
@@ -514,9 +521,9 @@ function gfxAnimSpecs() {
       rows: ['..f..', '.....', 'f...h'], units: [gu('tank', 0, { id: 1, x: 1, y: 1, gone: 280 }), gu('inf', 1, { id: 2, x: 2, y: 1 })],
       events: [boom(2, 1, 0, true), label(2, 1, tt('Verloren', 'Lost'), 'bad', 250)] },
     { title: tt('Salve und Eroberung', 'Salvo and capture'), note: tt('Schlachtschiff feuert, dann fällt die Stadt', 'the battleship fires, then the city falls'),
-      rows: ['~~~.f', '~~~C.', '~~~..'], cities: [{ owner: 1, to: 0, at: 560 }],
+      rows: ['~~~.f', '~~~C.', '~~~..'], cities: [{ owner: 1, to: 0, at: 560, k: rel => rel >= 560 ? CITY_K.wall : CITY_K.fire }],
       units: [gu('bat', 0, { id: 1, x: 2, y: 1 }), gu('inf', 0, { id: 2, x: 4, y: 1, gone: 660 })],
-      marks: rel => drawSupportMark(3, 1, rel >= 560, P0),
+      marks: rel => rel >= 560 ? drawCityWall(3, 1) : drawSupportMark(3, 1, false, P0),
       events: [{ type: 'salvo', fx: 2, fy: 1, x: 3, y: 1, t0: 0, dur: 560 }, { type: 'capture', x: 3, y: 1, owner: 0, lost: false, t0: 560, dur: 900 }] },
     { title: tt('Luftdeckung', 'Air cover'), note: tt('Jäger vom Träger fangen den Angreifer ab', 'fighters from the carrier intercept the attacker'),
       rows: ['~~~~~', '~~~~~', '~~~~~'], units: [gu('car', 0, { id: 1, x: 1, y: 1 }), gu('trn', 0, { id: 2, x: 2, y: 1 }), gu('ftr', 1, { id: 3, x: 3, y: 0, gone: 800 })],
@@ -539,7 +546,7 @@ function gfxScene(spec) {
     const rel = sc.t0 == null ? -1 : now - sc.t0;   // -1: Ausgangslage
     const g = c.getContext('2d');
     g.drawImage(bg, 0, 0);
-    st.cities.forEach(([x, y], k) => { const cs = spec.cities[k]; g.drawImage(citySprite(rel >= cs.at ? cs.to : cs.owner, c.ts, k % 2), x * c.ts, y * c.ts); });
+    st.cities.forEach(([x, y], k) => { const cs = spec.cities[k]; drawCityImg(g, rel >= cs.at ? cs.to : cs.owner, k % 2, x, y, c.ts, cs.k ? cs.k(rel) : 1); });
     drawOn(g, c.ts, () => {
       if (spec.marks) spec.marks(rel);
       for (const u of spec.units) {

@@ -303,10 +303,12 @@ function animAlpha(u, rel, byUnit = anim.byUnit) {
 
 // ------------------------------------------------------------------ Zeichnen
 function drawToken(u, px, py, size, opts = {}) {
+  if (opts.mark) { const d = size * (1 - MARK_K) / 2; px += d; py += d; size *= MARK_K; }   // Zeichen der Feuerunterstützung: Marke kleiner
   const spr = unitSprite(u.type, u.owner, size);
   const t = T(u);
   ctx.save();
   if (opts.dim) ctx.globalAlpha = 0.6;
+  if (opts.fort) drawFortRim(px + size / 2, py + size / 2, size);
   ctx.drawImage(spr, px - spr.pad, py - spr.pad);
   ctx.restore();
   // U-Boot: Getaucht ist der Normalzustand und bekommt kein Zeichen. Nur das aufgetauchte (nach einem Angriff,
@@ -376,6 +378,57 @@ function drawToken(u, px, py, size, opts = {}) {
     ctx.strokeStyle = '#cfe2ff'; ctx.lineWidth = Math.max(1, r * 0.25);
     ctx.beginPath(); ctx.moveTo(bx - r * 0.4, by - r * 0.45); ctx.lineTo(bx + r * 0.25, by); ctx.lineTo(bx - r * 0.4, by + r * 0.45); ctx.stroke();
   }
+}
+
+// Zeichen der Feuerunterstützung passen ganz ins Feld (dem Nutzer aufgefallen: Eckwinkel, Mauer und Zinnen ragten heraus – bei eng stehenden
+// Einheiten unübersichtlich). Dafür zeichnet die Karte markierte Einheiten (MARK_K) und Städte (CITY_K) etwas kleiner.
+const MARK_K = 0.86, CITY_K = { fire: 0.8, wall: 0.74 };
+// Stadtbild auf Feld (x, y) in g mit Feldgröße ts; k < 1: verkleinert in der Feldmitte
+function drawCityImg(g, owner, variant, x, y, ts = TS, k = 1) {
+  const s = Math.round(ts * k), o = Math.round((ts - s) / 2);
+  g.drawImage(citySprite(owner, s, variant), x * ts + o, y * ts + o);
+}
+// Befestigung (Idee des Nutzers): Zinnenkranz rund um die Marke – eigene Bodentruppen unter Feuerschutz des eigenen Schlachtschiffs (werden nur
+// zu 1/3 getroffen). Liegt hinter dem Abzeichen (unitSprite, Radius 0,42): ein schmaler Mauerring mit zwölf Zinnen in Steinfarbe. In der Farbe
+// der Partei sah er aus wie ein Zahnrad. Ein Ring wie an Städten war dem Nutzer an Truppen zu viel.
+// Herausgezoomt (STONE_SMALL) weniger, dafür breitere Zinnen und nur ein dünner Rand: Sonst wurde der Kranz zu einem dunklen Ring (der Saum war
+// so breit wie die Zinnen hoch – bei 14 Pixeln je Feld etwa ein Pixel).
+const STONE_SMALL = 26;
+function drawFortRim(cx, cy, size) {
+  ctx.beginPath();
+  battlements(cx, cy, size < STONE_SMALL ? 8 : 12, size * 0.46, size * 0.53);
+  stoneWall(size);
+}
+// Stadt unter Feuerschutz des Schlachtschiffs ihres Besitzers (fällt nur zu 25 %): Stadtmauer mit 16 Zinnen im Feld, innen offen – wie der
+// Zinnenkranz der Truppen (Wunsch des Nutzers; vorher ein gestrichelter Ring, den die Luftdeckung an Schiffen weiter benutzt). Die Stadt ist
+// dann auf CITY_K.wall verkleinert; die unteren Ecken ihres Platzes liegen unter der Mauer.
+function drawCityWall(x, y) {
+  const cx = x * TS + TS / 2, cy = y * TS + TS / 2;
+  ctx.save();
+  ctx.beginPath();
+  battlements(cx, cy, TS < STONE_SMALL ? 10 : 16, TS * 0.435, TS * 0.475);
+  ctx.moveTo(cx + TS * 0.385, cy); ctx.arc(cx, cy, TS * 0.385, 0, Math.PI * 2, true);   // innen offen: die Stadt bleibt zu sehen
+  stoneWall(TS, 'evenodd');
+  ctx.restore();
+}
+// Umriss eines Zinnenkranzes (n Zinnen, Mauer bis r0, Zinnen bis r1) an den laufenden Pfad anhängen
+function battlements(cx, cy, n, r0, r1) {
+  const step = Math.PI * 2 / n, w = step * 0.55, base = -Math.PI / 2 - w / 2;
+  for (let k = 0; k < n; k++) {
+    const a = base + k * step;
+    ctx.arc(cx, cy, r0, a - (step - w), a);   // Scharte auf dem Mauerring …
+    ctx.arc(cx, cy, r1, a, a + w);            // … dann die Zinne außen; die Verbindungen ergeben die geraden Flanken
+  }
+  ctx.closePath();
+}
+// Steinfarbe mit dunklem Saum – in der Farbe der Partei sah der Kranz aus wie ein Zahnrad. Herausgezoomt ein schmaler Saum (2 Pixel): Der breite
+// machte einen dunklen Ring daraus, ganz ohne verschwamm der helle Stein auf hellem Gestein und Schnee (Farbabstand dort nur 16–19).
+function stoneWall(size, rule = 'nonzero') {
+  ctx.lineJoin = 'miter';
+  const big = size >= STONE_SMALL;
+  ctx.strokeStyle = big ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.45)'; ctx.lineWidth = big ? Math.max(1, size * 0.045) + 2 : 2; ctx.stroke();
+  ctx.fillStyle = '#cfc6b4'; ctx.fill(rule);
+  ctx.strokeStyle = '#4a4237'; ctx.lineWidth = size >= STONE_SMALL ? Math.max(1, size * 0.04) : 1; ctx.stroke();
 }
 
 // Sicht für die Darstellung: während einer Wiedergabe nur das, was die
@@ -449,7 +502,7 @@ function drawSupportMark(x, y, protect, col) {
     ctx.setLineDash([TS * 0.16, TS * 0.12]);
     stroke(() => { ctx.beginPath(); ctx.arc(x0 + TS / 2, y0 + TS / 2, TS * 0.56, 0, 7); });
   } else {
-    const a = TS * 0.3, m = -TS * 0.06, e = TS - m;
+    const a = TS * 0.26, m = TS * 0.05, e = TS - m;   // ganz im Feld (vorher ragten sie 6 % heraus)
     stroke(() => {
       ctx.beginPath();
       ctx.moveTo(x0 + m, y0 + m + a); ctx.lineTo(x0 + m, y0 + m); ctx.lineTo(x0 + m + a, y0 + m);
@@ -838,6 +891,17 @@ function knownCapture(c) {
 }
 // Die Marke eines Feldes: welche der Einheiten dort gezeigt wird und mit welchen Zeichen. x, y = Feld, an dem gezeichnet wird (Karte: das Feld
 // selbst; Lupe: seine Lage im Ausschnitt). rv = Verteidiger, der sich gerade im Kampf zeigt (sonst bei verborgener Besatzung das Zeichen).
+let supportAt = new Map();   // Besitzer → Felder neben seinen gezeigten Schlachtschiffen (in render je Bild aus der gezeigten Lage der Schiffe)
+// Zeichen der Feuerunterstützung an einer Truppe auf Feld i (nicht in Städten – dort zeigt es die Stadt), oder null:
+// fort = neben einem Schlachtschiff ihres Besitzers (Zinnenkranz, wird nur zu 1/3 getroffen) – deine und, wenn du das Schiff siehst, die des
+// Gegners (Wunsch des Nutzers); fire = Gegner neben deinem Schlachtschiff (Eckwinkel, deine Bodentruppen treffen zu 2/3). Beides zugleich:
+// Es hebt sich auf, beide Zeichen bleiben stehen (das Handbuch sagt es).
+function troopMark(u, i) {
+  if (T(u).domain !== 'land' || S.cityGrid[i] >= 0) return null;
+  const near = p => { const z = supportAt.get(p); return !!z && z.has(i); };
+  const fort = near(u.owner), fire = u.owner !== 0 && near(0);
+  return fort || fire ? { fort, fire } : null;
+}
 function drawTileToken(list, i, su, x, y, rv = null) {
   const inCity = S.cityGrid[i] >= 0;
   // list enthält schon nur, was du siehst (während der Wiedergabe mit dem Sichtstand von damals) – deshalb hier nicht garrisonHidden
@@ -861,6 +925,8 @@ function drawTileToken(list, i, su, x, y, rv = null) {
     explore: own && show.order && show.order.type === 'explore',
     landing: own && !!show.landing,
   };
+  const tm = troopMark(show, i);   // Feuerunterstützung: Marke kleiner, Zinnen bzw. Eckwinkel im Feld
+  if (tm) { opts.mark = true; opts.fort = tm.fort; if (tm.fire) drawSupportMark(x, y, false, PLAYERS[0].light); }
   if (inCity) drawToken(show, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66, opts);
   else drawToken(show, x * TS, y * TS, TS, opts);
 }
@@ -925,17 +991,8 @@ function render(now = performance.now()) {
   const P = S.players[0];
   const rel = now - anim.t0;
   const playing = animActive(now);
-  ctx.drawImage(terrainCache, 0, 0);
-
-  for (const c of S.cities) {
-    if (!P.seen[idx(c.x, c.y)] && !S.over) continue;
-    ctx.drawImage(citySprite(S.over ? c.owner : shownOwner(c, rel, playing), TS, c.id % 2), c.x * TS, c.y * TS);
-  }
-
   const V = viewNow(rel, playing);
-  drawFog(V);
-  if (prodView) { drawProdView(); return; }   // Produktionsansicht: keine Einheiten, Marker, Effekte
-  if (threatView && !playing && !S.over) drawThreat();   // Reichweite der Gegner (nicht während der Wiedergabe: Sie rechnet mit dem Endstand)
+  ctx.drawImage(terrainCache, 0, 0);
 
   // Wo eine Einheit gerade zu sehen ist: Während der Wiedergabe steht sie bis zu ihrem Zug am Startfeld und ist danach unterwegs (null) –
   // S.units kennt nur den Endstand. Feuerschutz und Luftdeckung richten sich danach (dem Nutzer aufgefallen: Der Ring der Luftdeckung
@@ -947,28 +1004,58 @@ function render(now = performance.now()) {
     if (animAlpha(u, rel) <= 0) return null;   // noch außer Sicht: auch kein Feuerschutz, keine Luftdeckung
     return glide || (Number.isInteger(p[0]) && Number.isInteger(p[1])) ? p : null;
   };
+  // Während der Wiedergabe zählen auch Einheiten mit, die erst im Lauf des Zugs untergehen (anim.gone) – sonst verlören sie
+  // Ring oder Eckwinkel schon, bevor der Angriff auf sie gezeigt wird.
+  const goneNow = playing ? anim.gone.filter(g => rel < g.until).map(g => g.u) : [];
+  // [Einheit, gezeigte Lage (auch unterwegs), nächstes Feld]
+  const placed = list => list.map(u => { const p = shownAt(u, true); return p && [u, p, [Math.round(p[0]), Math.round(p[1])]]; }).filter(Boolean);
   // Feuerunterstützung: Städte neben einem sichtbaren Schlachtschiff markieren.
-  // Eckwinkel = unter Feuer (fällt zu 75 %), gestrichelter Ring = Feuerschutz (fällt nur zu 25 %)
+  // Eckwinkel = unter Feuer (fällt zu 75 %), Stadtmauer mit Zinnen = Feuerschutz (fällt nur zu 25 %). Die Stadt wird dann etwas kleiner
+  // gezeichnet, damit das Zeichen ins Feld passt (dem Nutzer aufgefallen: es ragte heraus, bei eng stehenden Einheiten unübersichtlich).
+  const batsNow = [], cityMarks = new Map();   // Stadt-Nr. → { wall, fire: [Farben] }
   for (const b of S.units) {
-    if (b.type !== 'bat' || b.carrier != null) continue;
+    if (prodView || b.type !== 'bat' || b.carrier != null) continue;
     const bp = shownAt(b);
     if (!bp) continue;
     if (b.owner !== 0 && ((!V.vis[idx(bp[0], bp[1])] && !S.over) || veiledCity(cityAt(bp[0], bp[1])))) continue;   // in einer fremden Stadt: verborgen
+    batsNow.push([b, bp]);
     for (const [dx, dy] of [[0, 0], ...DIRS]) {
       const x = bp[0] + dx, y = bp[1] + dy;
       if (!inb(x, y)) continue;
       const c = cityAt(x, y);
       if (!c || !P.seen[idx(x, y)]) continue;
-      drawSupportMark(x, y, (S.over ? c.owner : shownOwner(c, rel, playing)) === b.owner, PLAYERS[b.owner].light);
+      if (!cityMarks.has(c.id)) cityMarks.set(c.id, { wall: false, fire: [] });
+      const m = cityMarks.get(c.id);
+      if ((S.over ? c.owner : shownOwner(c, rel, playing)) === b.owner) m.wall = true;
+      else if (!m.fire.includes(PLAYERS[b.owner].light)) m.fire.push(PLAYERS[b.owner].light);
     }
   }
+  for (const c of S.cities) {
+    if (!P.seen[idx(c.x, c.y)] && !S.over) continue;
+    const m = cityMarks.get(c.id);
+    drawCityImg(ctx, S.over ? c.owner : shownOwner(c, rel, playing), c.id % 2, c.x, c.y, TS, !m ? 1 : m.wall ? CITY_K.wall : CITY_K.fire);
+  }
+
+  drawFog(V);
+  if (prodView) { drawProdView(); return; }   // Produktionsansicht: keine Einheiten, Marker, Effekte
+  if (threatView && !playing && !S.over) drawThreat();   // Reichweite der Gegner (nicht während der Wiedergabe: Sie rechnet mit dem Endstand)
+
+  for (const [id, m] of cityMarks) {
+    const c = S.cities[id];
+    if (m.wall) drawCityWall(c.x, c.y);
+    for (const col of m.fire) drawSupportMark(c.x, c.y, false, col);
+  }
+  // Truppen neben Schlachtschiffen (troopMark, gezeichnet mit der Einheit in drawTileToken): Gegner neben deinem mit Eckwinkeln – deine
+  // Bodentruppen treffen sie zu 2/3 (dem Nutzer war unklar, wann es wirkt: Es zählt das angegriffene Feld, nicht der Standort der Truppe) –,
+  // Truppen neben einem Schiff ihres Besitzers mit Zinnenkranz (werden nur zu 1/3 getroffen). Keine Eckwinkel fremder Schlachtschiffe an deinen
+  // Truppen (dem Nutzer zu viel; die Hinweiszeile nennt es).
+  supportAt = new Map();
+  for (const [b, bp] of batsNow) {
+    if (!supportAt.has(b.owner)) supportAt.set(b.owner, new Set());
+    for (const [dx, dy] of [[0, 0], ...DIRS]) if (inb(bp[0] + dx, bp[1] + dy)) supportAt.get(b.owner).add(idx(bp[0] + dx, bp[1] + dy));
+  }
   // Luftdeckung: Schiffe neben einem sichtbaren Träger mit Jägern an Bord (gestrichelter Ring = geschützt).
-  // Während der Wiedergabe zählen auch Schiffe mit, die erst im Lauf des Zugs untergehen (anim.gone) – sonst
-  // verlören sie den Ring schon, bevor der Angriff auf sie gezeigt wird.
   const covered = new Set();
-  const goneNow = playing ? anim.gone.filter(g => rel < g.until).map(g => g.u) : [];
-  // [Einheit, gezeigte Lage (auch unterwegs), nächstes Feld]
-  const placed = list => list.map(u => { const p = shownAt(u, true); return p && [u, p, [Math.round(p[0]), Math.round(p[1])]]; }).filter(Boolean);
   const shipsNow = placed(S.units.filter(s => s.carrier == null && T(s).domain === 'sea' && (S.over || canSee(0, s))).concat(goneNow.filter(s => T(s).domain === 'sea')));
   const carriersNow = placed(S.units.filter(c => c.type === 'car' && c.carrier == null && (S.over || canSee(0, c)) && S.units.some(f => f.carrier === c.id && f.type === 'ftr'))
     .concat(goneNow.filter(c => c.air)))
@@ -1038,7 +1125,11 @@ function render(now = performance.now()) {
       if (g.from != null && rel < g.from) drawGarrison(g.u.owner, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66);
       else drawToken(g.u, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66);
     }
-    else drawToken(g.u, x * TS, y * TS, TS);
+    else {
+      const tm = still ? troopMark(g.u, idx(x, y)) : null;
+      if (tm && tm.fire) drawSupportMark(x, y, false, PLAYERS[0].light);
+      drawToken(g.u, x * TS, y * TS, TS, { mark: !!tm, fort: !!tm && tm.fort });
+    }
   }
 
   // Effekte
