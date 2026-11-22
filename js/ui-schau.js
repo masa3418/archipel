@@ -538,7 +538,8 @@ function openGfx() { Sfx.unlock(); gfx.svg = null; gfx.set = gfxSet(); renderGfx
 $('bGfx').onclick = () => { closeModals(); openGfx(); };   // aus dem Fenster „Einstellungen“
 // Landschaft der laufenden Partie (S.land, LANDSCAPES in gfx.js): nur die Farben der Karte. Wird mit der Partie gespeichert.
 const LAND_NAMES = { gruen: tt('Grüne Inseln', 'Green islands'), wueste: tt('Wüste', 'Desert'), schnee: tt('Schnee', 'Snow'), lava: tt('Lava', 'Lava'), alien: tt('Fremder Planet', 'Alien planet'), zonen: tt('Klimazonen', 'Climate zones'),
-  asteroiden: tt('Asteroiden', 'Asteroids') };
+  asteroiden: tt('Asteroiden', 'Asteroids'), eis: tt('Eis-Asteroiden', 'Ice asteroids'), eisen: tt('Eisen-Asteroiden', 'Iron asteroids'),
+  kristall: tt('Kristall-Asteroiden', 'Crystal asteroids'), guertel: tt('Asteroidengürtel', 'Asteroid belt') };
 // Grafik-Sets: Landschaften nach Set gruppiert (Einstellungen: optgroup, „Ansicht“: Überschrift). Die Asteroiden bringen eigene Einheitenbilder mit.
 const LAND_GROUPS = [['insel', tt('Inselwelt', 'Island world')], ['weltraum', tt('Weltraum – Raumschiffe und Raumstationen', 'Space – spaceships and space stations')]];
 const landsOf = set => Object.keys(LANDSCAPES).filter(k => (LANDSCAPES[k].set || 'insel') === set);
@@ -689,6 +690,14 @@ function placeBorderDeco() {
     img(serpentImg(), mx0 / 2, my0 + cv.height * 0.7, s * 1.1, true);            // links, gespiegelt
     cap('Terra incognita', mx0 + cv.width / 2, my0 / 2);                          // über der Karte
   } else {
+    if (S && landscape().sun) {   // Asteroidengürtel: Sonne auf ihrer Seite neben der Karte (dort liegen die Eisen-Asteroiden, gegenüber das Eis)
+      const side = sunSide(), d = document.createElement('i'); d.className = 'sun';
+      const size = Math.max(160, Math.min(420, (side < 2 ? pad.x : pad.y) * 1.1));
+      const x = side === 0 ? mx0 * 0.42 : side === 1 ? mx1 + (W - mx1) * 0.58 : mx0 + cv.width / 2;
+      const y = side === 2 ? my0 * 0.42 : side === 3 ? my1 + (H - my1) * 0.58 : my0 + cv.height / 2;
+      d.style.cssText = `left:${x.toFixed(0)}px;top:${y.toFixed(0)}px;width:${size.toFixed(0)}px;height:${size.toFixed(0)}px`;
+      box.append(d);
+    }
     const r = mulberry32(5), n = Math.round(Math.min(60, (W * H - cv.width * cv.height) / 60000));
     for (let k2 = 0; k2 < n * 4 && box.childElementCount < n; k2++) {   // funkelnde Sterne, nur neben der Karte
       const x = r() * W, y = r() * H;
@@ -721,7 +730,8 @@ function renderViewMenu() {
   viewMenu.innerHTML = `<h4>${tt('Anzeigen', 'Show')}</h4>`
     + VIEW_SW.map(([k, label, get, , kbd]) => `<button class="mi${get() ? ' on' : ''}" data-view="${k}" role="menuitemcheckbox" aria-checked="${get()}"><span class="ck">${get() ? '✓' : ''}</span>${label}${kbd ? `<kbd>${kbd}</kbd>` : ''}</button>`).join('')
     + LAND_GROUPS.map(([set]) => `<h4>${set === 'insel' ? tt('Landschaft', 'Landscape') : tt('Weltraum', 'Space')}</h4>` + landsOf(set).map(k => { const L = LANDSCAPES[k], m = L.mini;
-      const bg = L.zones ? 'linear-gradient(180deg, #eef3f8 0 22%, #6ea84e 22% 40%, #e2c27e 40% 60%, #6ea84e 60% 78%, #eef3f8 78%)'
+      const bg = L.belt ? 'linear-gradient(90deg, #ffd59a 0 10%, #96624a 10% 37%, #8c8680 37% 64%, #c6d6e4 64% 90%, #79ffd4 90%)'   // Sonne, Eisen, Gestein, Eis, Kristall
+        : L.zones ? 'linear-gradient(180deg, #eef3f8 0 22%, #6ea84e 22% 40%, #e2c27e 40% 60%, #6ea84e 60% 78%, #eef3f8 78%)'
         : (L.space ? 'radial-gradient(1px 1px at 15px 4px, #fff, transparent), radial-gradient(1px 1px at 19px 10px, #fff, transparent), ' : '') + `linear-gradient(135deg, ${rgb(m[0])} 0 55%, ${rgb(m[1])} 55%)`;
       const tip = L.set ? ` title="${esc(tt('Mit eigenen Einheitenbildern: Raumschiffe statt Schiffe, Raumstationen statt Städte – Regeln und Namen bleiben gleich', 'With its own unit pictures: spaceships instead of ships, space stations instead of cities – rules and names stay the same'))}"` : '';
       return `<button class="mi${k === cur ? ' on' : ''}" data-land="${k}"${tip}><span class="sw" style="background:${bg}"></span>${esc(LAND_NAMES[k] || k)}</button>`; }).join('')).join('')

@@ -435,7 +435,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   **Grafik-Sets** (Wunsch des Nutzers: Einheitenbilder + Landschaft + Kartenrand als ein Set; gfx.js `gfxSet()`, `ICON_SETS`, `ICON_SPACE`): Das Set folgt aus der
   Landschaft (`LANDSCAPES[k].set`, ohne Angabe `insel`) – kein eigener Schalter, kein neues Feld im Spielstand (`S.land` reicht). Entscheidungen des Nutzers:
   nur Bilder, **Namen und Regeln bleiben** (ein U-Boot heißt weiter U-Boot); Wahl über die Landschaft (Liste „Ansicht“ und Einstellungen nach Sets gruppiert,
-  `LAND_GROUPS`, `landsOf`); vorerst eine Landschaft im Weltraum. **Weltraum** = Landschaft `asteroiden` (`space: true`, nie zufällig: `START_LANDS` ohne sie):
+  `LAND_GROUPS`, `landsOf`). Weltraum anfangs nur grau, dann Arten und Gürtel (unten). **Weltraum** = Landschaft `asteroiden` (`space: true`, nie zufällig: `START_LANDS` ohne sie):
   All statt Meer (dunkelblau, Nebelschleier `nebula` über `valueNoise`, Sterne statt Wellen), Staubschimmer statt Brandung, Gestein mit Einschlägen, Krater
   statt Wald (`crater`), Felsbrocken und Eiskristalle statt Bergen, Licht von links oben (`bevel`: Streifen an den Kanten zum All, die sich um 1 px
   überlappen – ein verschobener Landpfad oder bündige Streifen ließen an jeder Kachelgrenze feine Nähte; ebenso muss `surf` grau sein, er liegt unter dem
@@ -445,6 +445,15 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Korvette, Tarnkappenschiff, Kreuzer, Mutterschiff, Schlachtschiff (Rangpunkte wie im Inselset). Zufallsfolge der Inseln unverändert (Bildvergleich alt/neu
   aller sechs Landschaften: nur die üblichen ±1-Abweichungen, die auch alt/alt auftreten). Bildspeicher je Set (`unitSprite`/`citySprite`/`iconUrl` mit Set
   im Schlüssel). Farbprüfung Asteroiden: Parteien ≥ 37 (Violett auf Nebel 37, Blau auf Nebel 42), neutraler Platz auf flachem Gestein 20 (Rand trägt).
+  **Arten und Gürtel** (Wunsch des Nutzers: Vielfalt wie bei den Klimazonen): `eis` (hell, bläulich), `eisen` (rostrot, goldene Erzadern), `kristall`
+  (dunkles Schiefergestein, leuchtende Kristallgruppen statt Krater: `shards`) – Kopien von `asteroiden` (`AST`) mit anderem Gestein –, dazu
+  `guertel` (Asteroidengürtel, `belt`, `zoneKeys = BELT_KEYS`): Eine Sonne steht außerhalb der Karte (`sunSide` aus der Kartennummer, `sunDist` 0 … 1),
+  nahe bei ihr Eisen, weit weg Eis (Frostgrenze), dazwischen Gestein, `BELT_CRYSTAL` 12 % Kristall. `beltMap` wie `zoneMap`: kleinere Asteroiden (< 15 % des
+  Landes) einheitlich nach ihrer Rangfolge zur Sonne (nächste 30 % Eisen, fernste 30 % Eis), große Landmassen Feld für Feld mit welliger Grenze und
+  Kristallfeldern aus einem zweiten Rauschen. `zonesOf(L)`/`zoneKeysOf(L)` wählen die Zonenkarte (buildTerrain, `tileLandscape`); `zoneMap` der Klimazonen
+  unverändert. Warmer Schein im All zur Sonne hin (`sun`, bis 40 % der Karte), im Rand „Weltall“ die Sonne selbst (`.sun` in `placeBorderDeco`, nur beim
+  Gürtel). Farbprüfung: Parteien ≥ 43 (am knappsten Rot auf Eisen), neutraler Platz ≥ 25. Mittlere Karte, Nummer 2024: Gestein/Eisen/Eis/Kristall
+  371/209/188/74 Landfelder.
   Kartenrand je Set gemerkt (siehe „Kartenrand“). Grafik-Übersicht: Umschalter „Set“ im Reiter Einheiten (`gfx.set`, beim Öffnen das der Partie), Texte im
   Reiter Städte und Gelände folgen dem Set. Klänge bleiben gleich. Neues Set: Eintrag in `ICON_SETS`, Landschaft mit `set`, `BORDER_DEFAULT`, `LAND_GROUPS`.
   **Klimazonen** (`zonen`, Wunsch des Nutzers statt „je Insel zufällig“): je Feld einer der Farbsätze Grün/Wüste/Schnee/Lava nach der Lage
@@ -492,7 +501,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 827 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 832 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

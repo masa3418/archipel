@@ -326,6 +326,26 @@ LANDSCAPES.asteroiden = {
   mount: ['#a29b94', '#625d5a'], cap: '#c4e8ff', hill: '#8e8882', tree: ['#5a5551', '#aaa39c'], treeP: 0.5, crater: true, bevel: true,
   steg: ['#8e99a8', '#363e4c', 'rgba(36,44,58,0.6)', '#bfe3ff'], grid: 'rgba(170,190,235,0.05)', mini: [[132, 126, 120], [30, 33, 58]],
 };
+// Weitere Arten von Asteroiden (Wunsch des Nutzers: Vielfalt wie bei den Klimazonen) – All, Sterne, Kanten und Stege wie oben, nur das Gestein anders.
+// surf jeweils etwa in der Farbe des Gesteins (liegt darunter, siehe oben).
+const AST = LANDSCAPES.asteroiden;
+LANDSCAPES.eis = Object.assign({}, AST, {   // Eis: hell, bläulich, Kristalle auf den Brocken
+  sand: [214, 226, 238], stops: [[0, [206, 220, 232]], [0.1, [186, 202, 218]], [0.42, [166, 184, 202]], [0.7, [148, 166, 186]], [1, [180, 196, 212]]],
+  surf: 'rgb(172,188,206)', glow: 'rgba(190,225,255,0.5)', mount: ['#e4eef6', '#8aa2ba'], cap: '#ffffff', hill: '#c4d4e4', tree: ['#8ea6bf', '#eef6fc'],
+  mini: [[192, 208, 222], [30, 33, 58]],
+});
+LANDSCAPES.eisen = Object.assign({}, AST, {   // Eisen: rostrot, Erzadern glänzen golden
+  sand: [182, 132, 104], stops: [[0, [172, 118, 90]], [0.1, [152, 100, 76]], [0.42, [132, 86, 66]], [0.7, [114, 74, 58]], [1, [146, 104, 86]]],
+  surf: 'rgb(134,88,68)', glow: 'rgba(255,196,160,0.35)', mount: ['#c08664', '#6a4030'], cap: '#ffd28a', hill: '#a26c52', tree: ['#6a3e2c', '#cc9474'],
+  mini: [[150, 98, 74], [30, 33, 58]],
+});
+LANDSCAPES.kristall = Object.assign({}, AST, {   // Kristall: dunkles Schiefergestein, leuchtende Kristalle statt Krater (shards)
+  sand: [122, 132, 140], stops: [[0, [116, 126, 134]], [0.1, [100, 110, 120]], [0.42, [86, 96, 106]], [0.7, [74, 84, 94]], [1, [96, 106, 116]]],
+  surf: 'rgb(86,96,106)', glow: 'rgba(120,255,215,0.42)', mount: ['#8a9aa8', '#465460'], cap: '#79ffd4', hill: '#748490', tree: ['#3e4a54', '#9aaab6'], shards: true,
+  mini: [[86, 112, 110], [30, 33, 58]],
+});
+// Asteroidengürtel: alle vier Arten auf einer Karte (beltMap), dazu ein warmer Schein im All auf der Seite der Sonne (sun)
+LANDSCAPES.guertel = Object.assign({}, AST, { zones: true, belt: true, zoneKeys: null, sun: [120, 78, 58], mini: [[140, 124, 116], [30, 33, 58]] });
 function landscape() { return LANDSCAPES[typeof S !== 'undefined' && S && S.land] || LANDSCAPES.gruen; }
 
 // Klimazonen (Landschaft „zonen“, Wunsch des Nutzers): je Feld eine der Landschaften Grün, Wüste, Schnee, Lava – nach der Lage wie auf einer
@@ -389,10 +409,58 @@ function zoneMap() {
   zoneCache = { key, z: out };
   return out;
 }
+
+// Asteroidengürtel (Landschaft „guertel“, Wunsch des Nutzers: verschiedene Arten von Asteroiden wie bei den Klimazonen). Eine Sonne steht außerhalb
+// der Karte (Seite aus der Kartennummer, sunSide): nahe der Sonne Eisen, weit weg Eis – wie im Sonnensystem jenseits der Frostgrenze –, dazwischen
+// Gestein, vereinzelt Kristall. Kleinere Asteroiden einheitlich nach ihrer Rangfolge zur Sonne (wie die Inseln der Klimazonen: so gibt es auf jeder
+// Karte alle Arten), große Landmassen Feld für Feld mit welliger Grenze. Nur Aussehen, aus der Kartennummer.
+const BELT_KEYS = ['asteroiden', 'eisen', 'eis', 'kristall'];
+LANDSCAPES.guertel.zoneKeys = BELT_KEYS;
+const BELT_NEAR = 0.3, BELT_FAR = 0.3, BELT_CRYSTAL = 0.12;   // Anteile: nächste 30 % Eisen, fernste 30 % Eis, 12 % Kristall
+function sunSide() { return Math.floor(mulberry32(((S.seed || 7) ^ 0x2f6b1d) >>> 0)() * 4); }   // 0 links, 1 rechts, 2 oben, 3 unten
+function sunDist(x, y, side = sunSide()) {   // 0 an der Sonnenseite … 1 gegenüber
+  return side === 0 ? (x + 0.5) / S.W : side === 1 ? 1 - (x + 0.5) / S.W : side === 2 ? (y + 0.5) / S.H : 1 - (y + 0.5) / S.H;
+}
+let beltCache = null;
+function beltMap() {
+  const W = S.W, H = S.H, key = [S.gameId, W, H, S.seed].join();
+  if (beltCache && beltCache.key === key) return beltCache.z;
+  const seed = (S.seed || 7) >>> 0, side = sunSide(), cont = S.cont, land = i => S.terrain[i] === 1;
+  const hash = (a, k) => mulberry32((Math.imul(a + 1, 73856093) ^ Math.imul(k, 83492791) ^ seed) >>> 0)();
+  const size = new Map(), sd = new Map(); let total = 0;
+  for (let i = 0; i < W * H; i++) if (land(i)) {
+    total++; const k = cont ? cont[i] : -1; if (k < 0) continue;
+    size.set(k, (size.get(k) || 0) + 1); sd.set(k, (sd.get(k) || 0) + sunDist(i % W, (i / W) | 0, side));
+  }
+  const rockZone = new Map();
+  const rocks = [...size].filter(([, n]) => n < total * 0.15).map(([k, n]) => ({ k, d: sd.get(k) / n })).sort((p, q) => p.d - q.d || p.k - q.k);
+  rocks.forEach((o, j) => {
+    const q = rocks.length > 1 ? j / (rocks.length - 1) : 0.5;
+    rockZone.set(o.k, hash(o.k, 5) < BELT_CRYSTAL ? 3 : q < BELT_NEAR ? 1 : q > 1 - BELT_FAR ? 2 : 0);
+  });
+  const z = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    const x = i % W, y = (i / W) | 0, k = cont && land(i) ? cont[i] : -1;
+    if (rockZone.has(k)) { z[i] = rockZone.get(k); continue; }
+    const t = sunDist(x, y, side) + (valueNoise(x, y, 7, seed ^ 0x51) - 0.5) * 0.3;
+    z[i] = land(i) && valueNoise(x, y, 6, seed ^ 0x93) > 0.8 ? 3 : t < BELT_NEAR ? 1 : t > 1 - BELT_FAR ? 2 : 0;
+  }
+  const out = z.slice();   // Rand des Alls nimmt die Art des Asteroiden daneben (Farbe am Ufer)
+  for (let i = 0; i < W * H; i++) {
+    if (land(i)) continue;
+    const x = i % W, y = (i / W) | 0;
+    for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < W && ny < H && land(ny * W + nx)) { out[i] = z[ny * W + nx]; break; } }
+  }
+  beltCache = { key, z: out };
+  return out;
+}
+// Zonenkarte und Farbsätze einer gemischten Landschaft (Klimazonen, Asteroidengürtel)
+function zonesOf(L) { return L.belt ? beltMap() : zoneMap(); }
+function zoneKeysOf(L) { return L.zoneKeys || ZONE_KEYS; }
 // Farbsatz für ein Feld der laufenden Partie (Übersichtskarte)
 function tileLandscape(i) {
   const L = landscape();
-  return L.zones ? LANDSCAPES[ZONE_KEYS[zoneMap()[i]]] : L;
+  return L.zones ? LANDSCAPES[zoneKeysOf(L)[zonesOf(L)[i]]] : L;
 }
 
 // Weiches Rauschen 0…1 auf einem Gitter der Weite cell (Nebelschleier im All)
@@ -423,9 +491,14 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   const ox = st.ox | 0, oy = st.oy | 0;
   const seedAt = (x, y, k) => { r = mulberry32((Math.imul(x + ox + 1, 73856093) ^ Math.imul(y + oy + 1, 19349663) ^ Math.imul(k, 83492791)) >>> 0); };
   const L = landscape(), WATER_COL = L.water, SAND = L.sand;
-  // Klimazonen: Farbsatz je Feld aus der Zonenkarte der Partie (auch für den Ausschnitt der Lupe); Kartenstücke der Grafik-Übersicht: grün
-  const Z = L.zones && (st === S || st.ox != null) && typeof S !== 'undefined' && S ? zoneMap() : null;
-  const pal = (x, y) => (Z ? LANDSCAPES[ZONE_KEYS[Z[(y + oy) * S.W + x + ox]]] : L);
+  // Klimazonen, Asteroidengürtel: Farbsatz je Feld aus der Zonenkarte der Partie (auch für den Ausschnitt der Lupe); Kartenstücke der
+  // Grafik-Übersicht: der Grundfarbsatz (grün bzw. Gestein)
+  const onMap = (st === S || st.ox != null) && typeof S !== 'undefined' && S;
+  const Z = L.zones && onMap ? zonesOf(L) : null, ZK = zoneKeysOf(L);
+  const pal = (x, y) => (Z ? LANDSCAPES[ZK[Z[(y + oy) * S.W + x + ox]]] : L);
+  // Asteroidengürtel: warmer Schein im All auf der Seite der Sonne (bis 40 % der Karte weit)
+  const sunSd = L.sun && onMap ? sunSide() : -1;
+  const sunF = sunSd < 0 ? null : (x, y) => { const d = sunDist(x + ox, y + oy, sunSd); return d < 0.4 ? (1 - d / 0.4) ** 2 * 0.5 : 0; };
   const isW = (x, y) => x < 0 || y < 0 || x >= W || y >= H || !st.terrain[y * W + x];
 
   // 1) Wasser: weiche Tiefenverläufe
@@ -439,6 +512,7 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   for (let i = 0; i < W * H; i++) {
     let wcol = st.terrain[i] ? WATER_COL[0] : WATER_COL[Math.min(WATER_COL.length - 1, st.depth[i] - 1)];
     if (neb && !st.terrain[i]) { const f = neb(i % W, (i / W) | 0); if (f > 0) wcol = wcol.map((v, j) => v + (L.nebula[j] - v) * f); }
+    if (sunF && !st.terrain[i]) { const f = sunF(i % W, (i / W) | 0); if (f > 0) wcol = wcol.map((v, j) => v + (L.sun[j] - v) * f); }
     const P = pal(i % W, (i / W) | 0), lcol = st.terrain[i] ? landColor(st.elev[i], P.stops) : (Z ? P.sand : SAND);
     for (let j = 0; j < 3; j++) { wi.data[i * 4 + j] = wcol[j]; li.data[i * 4 + j] = lcol[j]; }
     wi.data[i * 4 + 3] = 255; li.data[i * 4 + 3] = 255;
@@ -588,6 +662,21 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
       g.fillStyle = 'rgba(255,255,255,0.12)';
       g.beginPath(); g.ellipse(cx - TS * 0.06, by - TS * 0.05, TS * 0.12, TS * 0.07, 0, Math.PI, 0); g.fill();
     } else if (el > 0.14 && el < 0.56 && r() < Q.treeP) {
+      if (Q.shards) {
+        // Kristall-Asteroiden: Gruppen leuchtender Kristalle mit hellem Schein statt Krater
+        const cx = X + TS * (0.3 + r() * 0.4), by = Y + TS * (0.55 + r() * 0.25), n = 2 + Math.floor(r() * 3);
+        const halo = g.createRadialGradient(cx, by - TS * 0.08, 0, cx, by - TS * 0.08, TS * 0.36);
+        halo.addColorStop(0, Q.glow); halo.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = halo; g.beginPath(); g.arc(cx, by - TS * 0.08, TS * 0.36, 0, 7); g.fill();
+        for (let k = 0; k < n; k++) {
+          const h = TS * (0.14 + r() * 0.16), w = TS * (0.04 + r() * 0.025), tilt = (k - (n - 1) / 2) * 0.35 + (r() - 0.5) * 0.2;
+          g.save(); g.translate(cx + (k - (n - 1) / 2) * TS * 0.07, by); g.rotate(tilt);
+          g.fillStyle = Q.cap; g.beginPath(); g.moveTo(-w, 0); g.lineTo(-w * 0.8, -h * 0.75); g.lineTo(0, -h); g.lineTo(w * 0.8, -h * 0.75); g.lineTo(w, 0); g.closePath(); g.fill();
+          g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.moveTo(-w * 0.6, -h * 0.1); g.lineTo(-w * 0.5, -h * 0.72); g.lineTo(0, -h); g.lineTo(0, 0); g.closePath(); g.fill();
+          g.restore();
+        }
+        continue;
+      }
       if (Q.crater) {
         // Krater (Asteroiden statt Wald): heller Rand, nach rechts unten versetzt, darüber die dunkle Mulde
         const n = r() < 0.45 ? 2 : 1;

@@ -279,6 +279,19 @@ window.UiTest = (() => {
     for (const k of ['land', 'units']) { gfx.tab = k; openGfx(); }
     check(gfx.set === 'weltraum' && !!$('mGfx').querySelector('[data-gset="weltraum"].on'), 'Grafik-Set: Grafik-Übersicht zeigt das Set der Partie');
     closeModals(); gfx.tab = 'units';
+    // Asteroidengürtel: alle vier Arten auf einer Karte, Eisen nahe der Sonne, Eis gegenüber, gleiche Nummer = gleiches Bild; Sonne neben der Karte
+    setLandscape('guertel'); setBorder('weltall');
+    const z = beltMap(), n = [0, 0, 0, 0], d = [[], [], [], []];
+    for (let i = 0; i < z.length; i++) if (S.terrain[i]) { n[z[i]]++; d[z[i]].push(sunDist(i % S.W, (i / S.W) | 0)); }
+    const avg = a => a.reduce((p, q) => p + q, 0) / (a.length || 1);
+    check(n.every(v => v > 0) && gfxSet() === 'weltraum', `Asteroidengürtel: alle Arten auf der Karte (Gestein/Eisen/Eis/Kristall ${n.join('/')})`);
+    check(avg(d[1]) < avg(d[0]) && avg(d[0]) < avg(d[2]), 'Asteroidengürtel: Eisen nahe der Sonne, Eis weit weg');
+    beltCache = null;
+    check(beltMap().join() === z.join() && LANDSCAPES[BELT_KEYS[z[S.terrain.indexOf(1)]]].space, 'Asteroidengürtel: aus der Kartennummer, Farbsätze des Weltraums');
+    const sun = $('padDeco').querySelector('.sun'), sx = sun && parseFloat(sun.style.left), sy = sun && parseFloat(sun.style.top);
+    check(!!sun && !(sx > pad.x && sx < pad.x + cv.width && sy > pad.y && sy < pad.y + cv.height), 'Asteroidengürtel: Sonne neben der Karte');
+    setLandscape('asteroiden');
+    check(!$('padDeco').querySelector('.sun'), 'Asteroiden ohne Gürtel: keine Sonne');
     Object.assign(borderPrefs, keepB); for (const [k, v] of keepStore) { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); }
     setLandscape(keepLand); S.land = keepS; buildTerrainCache(); refresh();
   }
