@@ -481,9 +481,9 @@ function gfxMarks(body) {
     drawToken(gu('bat'), 0, TS, TS); drawToken(gu('inf'), TS, TS, TS, { mark: true, fort: true });
   }), tt('Befestigt', 'Fortified'), tt(`Zinnen: wird nur zu ${pct(1 - SUPPORT_HIT)} getroffen – auch beim Gegner`, `battlements: only hit at ${pct(1 - SUPPORT_HIT)} – the enemy’s too`)));
   sup.append(gfxCard(gfxPic(['~~~~', '~~~~', '~~~~'], 44, () => {
-    drawSupportMark(1, 1, true, P0); drawSupportMark(2, 1, true, P0);
-    drawToken(gu('car'), TS, TS, TS, { badge: 2 }); drawToken(gu('trn'), 2 * TS, TS, TS, { badge: 6 });
-  }), tt('Luftdeckung', 'Air cover'), tt('Träger mit Jägern schützt die Schiffe nebenan', 'a carrier with fighters protects the ships next to it')));
+    drawToken(gu('car'), TS, TS, TS, { badge: 2, mark: true, cover: true }); drawToken(gu('trn'), 2 * TS, TS, TS, { badge: 6, mark: true, cover: true });
+  }), tt('Luftdeckung', 'Air cover'), tt(`heller Ring: Träger mit Jägern schützt sich und die Schiffe nebenan – feindliche Jäger treffen nur zu ${pct(1 / 3)}`,
+    `light ring: a carrier with fighters protects itself and the ships next to it – enemy fighters hit only at ${pct(1 / 3)}`)));
 
   const rt = gfxSection(body, tt('Wegeansicht (Taste G)', 'Route view (key G)'), tt('Alle Befehle auf einen Blick – unterscheidbar auch ohne Farbe: Striche, Punkte, Strich-Punkt.',
     'All orders at a glance – distinguishable without colour too: dashes, dots, dash-dot.'));
@@ -527,7 +527,7 @@ function gfxAnimSpecs() {
       events: [{ type: 'salvo', fx: 2, fy: 1, x: 3, y: 1, t0: 0, dur: 560 }, { type: 'capture', x: 3, y: 1, owner: 0, lost: false, t0: 560, dur: 900 }] },
     { title: tt('Luftdeckung', 'Air cover'), note: tt('Jäger vom Träger fangen den Angreifer ab', 'fighters from the carrier intercept the attacker'),
       rows: ['~~~~~', '~~~~~', '~~~~~'], units: [gu('car', 0, { id: 1, x: 1, y: 1 }), gu('trn', 0, { id: 2, x: 2, y: 1 }), gu('ftr', 1, { id: 3, x: 3, y: 0, gone: 800 })],
-      marks: () => { drawSupportMark(1, 1, true, P0); drawSupportMark(2, 1, true, P0); },
+      cover: [1, 2],   // Schirmring an Träger und Transporter
       events: [{ type: 'cover', fx: 1, fy: 1, x: 3, y: 0, sx: 2, sy: 1, col: P0, t0: 0, dur: 700 }, boom(2, 1, 520), label(2, 1, tt('Abgewehrt!', 'Repelled!'), 'good', 770)] },
     { title: tt('Stadt erobert', 'City captured'), note: tt('der Eroberer geht in der Stadt auf', 'the conqueror merges into the city'),
       rows: ['..f..', '..C..', '~~..h'], cities: [{ owner: -1, to: 0, at: 0 }], units: [gu('inf', 0, { id: 1, x: 3, y: 1, gone: 100 })],
@@ -553,7 +553,8 @@ function gfxScene(spec) {
         if (u.gone != null && rel >= u.gone) continue;
         const evs = byUnit.get(u.id), last = evs && evs[evs.length - 1];
         const [x, y] = animPos(u, rel, byUnit) || (last && rel >= 0 ? [last.tx, last.ty] : [u.x, u.y]);
-        drawToken(u, x * TS, y * TS, TS);
+        const cov = !!spec.cover && spec.cover.includes(u.id);
+        drawToken(u, x * TS, y * TS, TS, { mark: cov, cover: cov });
       }
       if (rel >= 0) for (const e of spec.events) if (e.type !== 'move' && rel >= e.t0 && rel <= e.t0 + e.dur) drawEffect(e, (rel - e.t0) / e.dur);
     });

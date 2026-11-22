@@ -309,6 +309,7 @@ function drawToken(u, px, py, size, opts = {}) {
   ctx.save();
   if (opts.dim) ctx.globalAlpha = 0.6;
   if (opts.fort) drawFortRim(px + size / 2, py + size / 2, size);
+  if (opts.cover) drawCoverRim(px + size / 2, py + size / 2, size);
   ctx.drawImage(spr, px - spr.pad, py - spr.pad);
   ctx.restore();
   // U-Boot: Getaucht ist der Normalzustand und bekommt kein Zeichen. Nur das aufgetauchte (nach einem Angriff,
@@ -400,7 +401,7 @@ function drawFortRim(cx, cy, size) {
   stoneWall(size);
 }
 // Stadt unter Feuerschutz des Schlachtschiffs ihres Besitzers (fällt nur zu 25 %): Stadtmauer mit 16 Zinnen im Feld, innen offen – wie der
-// Zinnenkranz der Truppen (Wunsch des Nutzers; vorher ein gestrichelter Ring, den die Luftdeckung an Schiffen weiter benutzt). Die Stadt ist
+// Zinnenkranz der Truppen (Wunsch des Nutzers; vorher ein gestrichelter Ring). Die Stadt ist
 // dann auf CITY_K.wall verkleinert; die unteren Ecken ihres Platzes liegen unter der Mauer.
 function drawCityWall(x, y) {
   const cx = x * TS + TS / 2, cy = y * TS + TS / 2;
@@ -410,6 +411,18 @@ function drawCityWall(x, y) {
   ctx.moveTo(cx + TS * 0.385, cy); ctx.arc(cx, cy, TS * 0.385, 0, Math.PI * 2, true);   // innen offen: die Stadt bleibt zu sehen
   stoneWall(TS, 'evenodd');
   ctx.restore();
+}
+// Luftdeckung (Wunsch des Nutzers, wie der Zinnenkranz): Schiffe neben einem Träger ihres Besitzers mit Jägern an Bord (feindliche Jäger treffen
+// nur zu 1/3) tragen einen hellen, himmelblauen Schirmring hinter der Marke – vorher ein gestrichelter Ring, der über das Feld hinausragte.
+// Verworfen: kleine Jäger am Rand (kaum zu sehen), eine Zackenkrone (wirkte wie ein Stern), zwei Jäger in den Ecken der Marke (dort stehen
+// schon Befehlszeichen, Ladungszahl und der Pfeil „Ausladen“).
+function drawCoverRim(cx, cy, size) {
+  const big = size >= STONE_SMALL;
+  ctx.beginPath(); ctx.arc(cx, cy, size * 0.52, 0, Math.PI * 2); ctx.arc(cx, cy, size * 0.4, 0, Math.PI * 2, true);
+  ctx.strokeStyle = big ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.45)'; ctx.lineWidth = big ? Math.max(1, size * 0.045) + 2 : 2; ctx.stroke();
+  ctx.fillStyle = 'rgba(205,236,255,0.92)'; ctx.fill('evenodd');
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = big ? Math.max(1, size * 0.03) : 1;
+  ctx.beginPath(); ctx.arc(cx, cy, size * 0.52, 0, Math.PI * 2); ctx.stroke();
 }
 // Umriss eines Zinnenkranzes (n Zinnen, Mauer bis r0, Zinnen bis r1) an den laufenden Pfad anhängen
 function battlements(cx, cy, n, r0, r1) {
@@ -490,6 +503,8 @@ function moveHints(u) {
   return out;
 }
 
+// Eckwinkel „unter Feuer“ (Schlachtschiff) in der Farbe des Schiffs. protect = gestrichelter Ring – auf der Karte nicht mehr benutzt (Feuerschutz:
+// Stadtmauer/Zinnen, Luftdeckung: Schirmring an der Marke), bleibt für Aufrufe mit false
 function drawSupportMark(x, y, protect, col) {
   const x0 = x * TS, y0 = y * TS, lw = Math.max(2, TS / 12);
   ctx.save();
@@ -803,7 +818,7 @@ function drawEffect(e, f) {
       ctx.beginPath(); ctx.arc(cx, cy, TS * (0.2 + (1 - a) * 0.35), 0, 7); ctx.fill();
     }
   } else if (e.type === 'cover') {
-    // Schutzschirm um das angegriffene Schiff (gestrichelt wie die Markierung der Luftdeckung)
+    // Schutzschirm um das angegriffene Schiff (gestrichelt, kurz aufleuchtend)
     const px = e.sx * TS + TS / 2, py = e.sy * TS + TS / 2, sh = Math.sin(Math.PI * f);
     ctx.save();
     ctx.strokeStyle = e.col; ctx.globalAlpha = 0.9 * sh; ctx.lineWidth = Math.max(1.5, TS / 16);
@@ -891,6 +906,7 @@ function knownCapture(c) {
 }
 // Die Marke eines Feldes: welche der Einheiten dort gezeigt wird und mit welchen Zeichen. x, y = Feld, an dem gezeichnet wird (Karte: das Feld
 // selbst; Lupe: seine Lage im Ausschnitt). rv = Verteidiger, der sich gerade im Kampf zeigt (sonst bei verborgener Besatzung das Zeichen).
+let coverIds = new Set();   // Schiffe unter Luftdeckung (Nummern; in render je Bild aus der gezeigten Lage von Schiffen und Trägern)
 let supportAt = new Map();   // Besitzer → Felder neben seinen gezeigten Schlachtschiffen (in render je Bild aus der gezeigten Lage der Schiffe)
 // Zeichen der Feuerunterstützung an einer Truppe auf Feld i (nicht in Städten – dort zeigt es die Stadt), oder null:
 // fort = neben einem Schlachtschiff ihres Besitzers (Zinnenkranz, wird nur zu 1/3 getroffen) – deine und, wenn du das Schiff siehst, die des
@@ -927,6 +943,7 @@ function drawTileToken(list, i, su, x, y, rv = null) {
   };
   const tm = troopMark(show, i);   // Feuerunterstützung: Marke kleiner, Zinnen bzw. Eckwinkel im Feld
   if (tm) { opts.mark = true; opts.fort = tm.fort; if (tm.fire) drawSupportMark(x, y, false, PLAYERS[0].light); }
+  if (!inCity && coverIds.has(show.id)) opts.mark = opts.cover = true;   // Luftdeckung: Schirmring, Marke kleiner
   if (inCity) drawToken(show, x * TS + TS * 0.36, y * TS + TS * 0.36, TS * 0.66, opts);
   else drawToken(show, x * TS, y * TS, TS, opts);
 }
@@ -1054,8 +1071,9 @@ function render(now = performance.now()) {
     if (!supportAt.has(b.owner)) supportAt.set(b.owner, new Set());
     for (const [dx, dy] of [[0, 0], ...DIRS]) if (inb(bp[0] + dx, bp[1] + dy)) supportAt.get(b.owner).add(idx(bp[0] + dx, bp[1] + dy));
   }
-  // Luftdeckung: Schiffe neben einem sichtbaren Träger mit Jägern an Bord (gestrichelter Ring = geschützt).
-  const covered = new Set();
+  // Luftdeckung: Schiffe neben einem sichtbaren Träger mit Jägern an Bord – Schirmring an der Marke (coverIds, drawTileToken und unten für
+  // fahrende und untergehende). Die gezeigte Lage zählt: Der Ring fährt mit dem Träger (dem Nutzer aufgefallen: er wartete schon am Zielort).
+  coverIds = new Set();
   const shipsNow = placed(S.units.filter(s => s.carrier == null && T(s).domain === 'sea' && (S.over || canSee(0, s))).concat(goneNow.filter(s => T(s).domain === 'sea')));
   const carriersNow = placed(S.units.filter(c => c.type === 'car' && c.carrier == null && (S.over || canSee(0, c)) && S.units.some(f => f.carrier === c.id && f.type === 'ftr'))
     .concat(goneNow.filter(c => c.air)))
@@ -1063,10 +1081,8 @@ function render(now = performance.now()) {
   for (const [c, , ct] of carriersNow) {
     for (const [s, sp, st] of shipsNow) {
       if (s.owner !== c.owner || cheb(st[0], st[1], ct[0], ct[1]) > 1) continue;
-      const i = idx(st[0], st[1]);
-      if (covered.has(i) || S.cityGrid[i] >= 0) continue;
-      covered.add(i);
-      drawSupportMark(sp[0], sp[1], true, PLAYERS[c.owner].light);
+      if (S.cityGrid[idx(st[0], st[1])] >= 0) continue;   // im Hafen: kein Ring
+      coverIds.add(s.id);
     }
   }
 
@@ -1113,7 +1129,8 @@ function render(now = performance.now()) {
     const a = animAlpha(u, rel);   // fremde Einheit außer Sicht: erst beim Auftauchen zeigen
     if (a <= 0) continue;
     ctx.save(); ctx.globalAlpha = a;
-    drawToken(u, x * TS, y * TS, TS, { badge: u.owner === 0 || S.over || CHEAT_FOG ? cargoOf(u).length : 0 });
+    const cov = coverIds.has(u.id);
+    drawToken(u, x * TS, y * TS, TS, { badge: u.owner === 0 || S.over || CHEAT_FOG ? cargoOf(u).length : 0, mark: cov, cover: cov });
     ctx.restore();
   }
   // Vernichtete und in einer Stadt aufgegangene Einheiten bleiben bis zu ihrem Moment sichtbar
@@ -1128,7 +1145,8 @@ function render(now = performance.now()) {
     else {
       const tm = still ? troopMark(g.u, idx(x, y)) : null;
       if (tm && tm.fire) drawSupportMark(x, y, false, PLAYERS[0].light);
-      drawToken(g.u, x * TS, y * TS, TS, { mark: !!tm, fort: !!tm && tm.fort });
+      const cov = coverIds.has(g.u.id);
+      drawToken(g.u, x * TS, y * TS, TS, { mark: !!tm || cov, fort: !!tm && tm.fort, cover: cov });
     }
   }
 

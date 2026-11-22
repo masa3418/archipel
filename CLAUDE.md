@@ -106,7 +106,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Infanterie → Zerstörer 50 %, Panzer → Zerstörer 75 %, Panzer → Träger 31 %. Die KI-Bedrohungskarte (`threatMap`) berücksichtigt das.
 - **Schlachtschiffe**: `fireSupport(owner, x, y)` und `captureChance(owner, c)` (game.js) – Feuerunterstützung/Feuerschutz auf
   Nachbarfelder (Eroberung 75 % / 25 %, Bodentruppen treffen zu 2/3 bzw. werden zu 1/3 getroffen). Eroberungschancen nie fest
-  mit 50 % rechnen, immer `captureChance` nehmen (Grundwert `CAPTURE_BASE`, Zuschlag `SUPPORT_CAPTURE`). Salven meldet `hooks.salvo`; Markierungen zeichnen `drawSupportMark` (Eckwinkel; Ring der Luftdeckung) und `drawCityWall` (ui.js).
+  mit 50 % rechnen, immer `captureChance` nehmen (Grundwert `CAPTURE_BASE`, Zuschlag `SUPPORT_CAPTURE`). Salven meldet `hooks.salvo`; Markierungen zeichnen `drawSupportMark` (Eckwinkel), `drawCityWall`, `drawFortRim` und `drawCoverRim` (ui.js).
   **Gegner unter Feuer** (`troopMark`, gezeichnet mit der Einheit in `drawTileToken` und für untergehende in der Wiedergabe; Felder je Besitzer in `supportAt`
   aus `render`; dem Nutzer war unklar, wann es wirkt – Infanterie neben dem Schiff, die ein Feld weiter landeinwärts angreift, bekommt nichts: Es zählt
   das **angegriffene Feld**, nicht der Standort der Truppe): Eckwinkel wie an fremden Städten an sichtbaren gegnerischen Bodentruppen neben deinem
@@ -118,8 +118,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   seinem sichtbaren Schlachtschiff (nicht in einer verborgenen Stadt) tragen denselben Kranz – deine Bodentruppen treffen sie dort nur zu 1/3. Steht ein
   Gegner neben beiden Schiffen, trägt er Eckwinkel und Kranz (hebt sich auf, wie bei Städten). **Städte unter Feuerschutz** (fällt nur zu 25 %)
   tragen seitdem statt des gestrichelten Rings eine Stadtmauer mit 16 Zinnen (`drawCityWall`, innen offen; gemeinsam `battlements`/`stoneWall`) –
-  für jede Partei, deren Schlachtschiff daneben liegt. Eine eckige Mauer am Feldrand wirkte wie eine Briefmarke. Der gestrichelte Ring bleibt der
-  Luftdeckung an Schiffen; „unter Feuer“ bleiben Eckwinkel in der Farbe des Schiffs.
+  für jede Partei, deren Schlachtschiff daneben liegt. Eine eckige Mauer am Feldrand wirkte wie eine Briefmarke. „Unter Feuer“ bleiben Eckwinkel in der
+  Farbe des Schiffs.
   **Alles im Feld** (dem Nutzer aufgefallen: die Zeichen ragten heraus, bei eng stehenden Einheiten mit Eckwinkeln daneben unübersichtlich): Einheiten mit
   Zinnen oder Eckwinkeln zeichnet `drawToken` mit `opts.mark` auf `MARK_K` (0,86) verkleinert, Städte mit Zeichen `drawCityImg` auf `CITY_K` (Eckwinkel 0,8,
   Mauer 0,74; die unteren Ecken des Platzes liegen unter der Mauer). Eckwinkel 5 % innerhalb des Feldrands, Mauer 0,385–0,475, Zinnenkranz bis 0,456 der
@@ -130,7 +130,14 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   er auf hellem Gestein. Geprüft bei 14–44 Pixeln in allen 16 Landschaften: überall erkennbar. Farbabstand des Steins zum Land (ΔE, Lab, ohne Strand):
   Lava, Planet, Eisen, Kristall 30–34, Grün 26, Wüste 23, Tropen der alten Karte 22, Eis 19, Schnee, Asteroiden 17, alte Karte und Eismeer 16 – auf hellem
   Land trägt der dunkle Saum. Erwogen, nicht umgesetzt: Stein je Landschaft hell oder dunkel wählen (bessere Abstände laut Rechnung, aber auf Grün, Wüste, alter Karte wäre er
-  dunkel – anders als das, was der Nutzer gut fand). Luftdeckung im Kampf: `hooks.cover` (in `attack`, Jäger gegen Schiff unter `airCover`) – Abfangjäger, Schutzring, Klang `cover`.
+  dunkel – anders als das, was der Nutzer gut fand).
+  **Luftdeckung auf der Karte** (Wunsch des Nutzers: ähnlich wie beim Schlachtschiff; `drawCoverRim`, `opts.cover`, Nummern in `coverIds` aus `render`): Schiffe
+  neben einem sichtbaren Träger ihres Besitzers mit Jägern an Bord (auch der Träger selbst; im Hafen ohne Ring, obwohl die Regel dort gilt – Entscheidung des Nutzers, die Marke in der Stadt ist klein) tragen einen hellen, himmelblauen Schirmring
+  hinter der Marke (0,40–0,52 der Markengröße, verkleinert wie beim Zinnenkranz) statt des gestrichelten Rings um das Feld (ragte heraus) – für jede Partei.
+  Die gezeigte Lage zählt (`placed`): fahrende Schiffe und Träger nehmen den Ring mit, untergehende behalten ihn bis zu ihrem Moment. Verworfen: kleine
+  Jäger am Rand (kaum zu sehen), Zackenkrone (wirkte wie ein Stern), zwei Jäger in den Ecken der Marke (dort stehen Befehlszeichen, Ladungszahl, Pfeil
+  „Ausladen“). Der gestrichelte Ring (`drawSupportMark` mit protect) wird auf der Karte nicht mehr benutzt; nur der Effekt der Abwehr (`drawEffect`, cover)
+  zeigt kurz einen gestrichelten Schirm. Luftdeckung im Kampf: `hooks.cover` (in `attack`, Jäger gegen Schiff unter `airCover`) – Abfangjäger, Schutzring, Klang `cover`.
 - **Sicherer Anfang** (`START_SURE` = 3 in `captureChance`, game.js; Wunsch des Nutzers: Pech bei den ersten Städten entschied zu viel): Solange ein
   Spieler weniger als drei Städte besitzt, fällt eine **neutrale** Stadt sicher – für alle Spieler, auch die KI; gegnerische Städte bleiben beim
   Grundwert. Greift erneut, wenn jemand wieder unter drei fällt. Messung, zwei gleich starke KI ohne Fehler, kleine Karte, je 150 Partien: wer bis

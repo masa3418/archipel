@@ -345,23 +345,25 @@ window.UiTest = (() => {
     check(anim.gone[0].until <= boom.t0 + boom.dur, 'Wiedergabe gestaucht: die versenkte Einheit verschwindet in der Explosion');
     skipAnim(); replay = 'off'; killUnit(u);
   }
-  // Luftdeckung in der Wiedergabe: Der Ring folgt dem fahrenden Träger – vorher wartete er schon am Zielort (S.units kennt nur den Endstand)
+  // Luftdeckung: heller Schirmring an der Marke (opts.cover, statt des gestrichelten Rings um das Feld). In der Wiedergabe folgt er dem fahrenden
+  // Träger – vorher wartete er schon am Zielort (S.units kennt nur den Endstand). Ein Schiff zwei Felder weiter bekommt ihn erst, wenn der Träger da ist.
   function coverRing() {
     reset();
     const water = (x, y) => inb(x, y) && !land(x, y) && free(x, y) && DIRS.every(([dx, dy]) => inb(x + dx, y + dy) && !land(x + dx, y + dy));
-    const a = all((x, y) => water(x, y) && water(x + 1, y))[0];
+    const a = all((x, y) => water(x, y) && water(x + 1, y) && water(x + 2, y))[0];
     if (!a) { check(false, 'Luftdeckung: kein offenes Meer im Spielstand'); return; }
     const car = createUnit('car', 0, ...a); createUnit('ftr', 0, ...a).carrier = car.id;
+    const trn = createUnit('trn', 0, a[0] + 2, a[1]);
     computeVision(0); select(car, false);
     replay = 'normal'; doMove(car, a[0] + 1, a[1]);
-    const mv = anim.events.find(e => e.type === 'move'), o = drawSupportMark, at = [];
-    drawSupportMark = function (x, y, ...r) { at.push([x, y]); return o(x, y, ...r); };
-    const ringAt = t => { at.length = 0; render(anim.t0 + t); return at.map(p => p.join(',')).join(' '); };
+    const mv = anim.events.find(e => e.type === 'move'), o = drawToken, at = [];
+    drawToken = function (u, px, py, size, opts = {}) { if (opts.cover) at.push(u.type + '@' + px / TS + ',' + py / TS); return o(u, px, py, size, opts); };
+    const ringAt = t => { at.length = 0; render(anim.t0 + t); return at.sort().join(' '); };
     try {
-      check(ringAt(mv.t0 - 5) === a.join(','), 'Luftdeckung: vor der Fahrt am Startfeld');
-      check(ringAt(mv.t0 + mv.dur / 2) === (a[0] + 0.5) + ',' + a[1], 'Luftdeckung: unterwegs mit dem Träger');
-      check(ringAt(mv.t0 + mv.dur + 5) === (a[0] + 1) + ',' + a[1], 'Luftdeckung: am Ziel');
-    } finally { drawSupportMark = o; skipAnim(); replay = 'off'; }
+      check(ringAt(mv.t0 - 5) === `car@${a.join(',')}`, `Luftdeckung: vor der Fahrt am Startfeld, Transporter noch ohne (${ringAt(mv.t0 - 5)})`);
+      check(ringAt(mv.t0 + mv.dur / 2).includes(`car@${a[0] + 0.5},${a[1]}`), 'Luftdeckung: unterwegs mit dem Träger');
+      check(ringAt(mv.t0 + mv.dur + 5) === `car@${a[0] + 1},${a[1]} trn@${a[0] + 2},${a[1]}`, `Luftdeckung: am Ziel, Transporter daneben geschützt (${ringAt(mv.t0 + mv.dur + 5)})`);
+    } finally { drawToken = o; skipAnim(); replay = 'off'; killUnit(trn); }
   }
   // Fremde Einheiten in der Wiedergabe erst zeigen, wo der Spieler sie sieht (animAlpha; dem Nutzer aufgefallen): Ein getauchtes U-Boot stand
   // schon auf seinem Startfeld 2 Felder vor dem Kreuzer, der es erst auf dem Nachbarfeld ortet. Ebenso ein Zerstörer, der aus dem Nebel kommt.
