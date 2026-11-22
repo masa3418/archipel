@@ -26,8 +26,8 @@ Drei Grafik-Sets: Inselwelt, Weltraum und Segelzeit.
 
 *English:* three graphics sets – island world, space and age of sail – each with its own units, cities, landscapes, map border
 and sounds; rules and unit names stay the same. Space turns the sea into stars and nebulae and the land into asteroids (in the
-asteroid belt a sun beside the map sorts them into iron, rock and ice); the age of sail shows an old hand-coloured map with
-sailing ships, cavalry and fortified towns, also with climate zones. You pick a set under “View”; single landscapes and other
+asteroid belt a sun beside the map sorts them into iron, rock and ice); the age of sail shows an old map that looks hand-coloured,
+with sailing ships, cavalry and fortified towns, also with climate zones. You pick a set under “View”; single landscapes and other
 borders are in the new “Map appearance” window. The balance-of-power bar no longer shows percentages, and its curve now covers
 the whole game and opens the time-lapse when clicked.
 
