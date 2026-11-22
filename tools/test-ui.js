@@ -569,6 +569,7 @@ window.UiTest = (() => {
   // abstürzt und das Erwartete da ist – der häufigste Fehler nach einem Umbau ist ein Absturz an einer selten benutzten Stelle.
   async function walkthrough() {
     const step = (name, fn) => { try { const r = fn(); check(r !== false, 'Durchlauf: ' + name); } catch (e) { fails.push('Durchlauf: ' + name + ' – Absturz: ' + e.message); } };
+    const astep = async (name, fn) => { try { const r = await fn(); check(r !== false, 'Durchlauf: ' + name); } catch (e) { fails.push('Durchlauf: ' + name + ' – Absturz: ' + e.message); } };   // wartet (Spielstände packen)
     const shown = id => !$(id).hidden, filled = id => $(id).textContent.trim().length > 20;
     const key = (k, more = {}) => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...more }));
     const draw = () => { render(performance.now()); renderMini(); };
@@ -766,8 +767,8 @@ window.UiTest = (() => {
       deserialize(save); afterLoad(); closeModals(); replay = 'off';
       return ok && DEFAULT_LAND === 'zonen';
     });
-    step('Zurücksetzen: Rückfrage, und was gelöscht würde', () => {
-      saveSlot('Probe Zurücksetzen'); askReset();
+    await astep('Zurücksetzen: Rückfrage, und was gelöscht würde', async () => {
+      await saveSlot('Probe Zurücksetzen'); askReset();
       const ask = shown('mOffer') && !!$('resetSaves') && !$('resetSaves').checked; closeModals();
       const a = resetKeys(false), b = resetKeys(true);
       const r = ask && a.includes('archipel-save-v1') && !a.some(k => k.startsWith('archipel-slot')) && b.includes('archipel-slots') && b.length > a.length && b.every(k => k.startsWith('archipel-'));
@@ -777,7 +778,8 @@ window.UiTest = (() => {
     step('Enter beendet die Runde', () => { const t = S.turn; sel = null; key('Enter'); skipAnim(); closeModals(); return S.turn === t + 1 || !!S.over; });
 
     // Spielstände
-    step('Spielstand anlegen, laden, löschen', () => { const turn = S.turn; if (!trySave('UiTest')) return false; const m = listSlots().find(s => s.name === 'UiTest'); openSaves(); const listed = $('saveList').textContent.includes('UiTest'); const okLoad = loadSlot(m.id); afterSlotLoad('geladen'); deleteSlot(m.id); return listed && okLoad && S.turn === turn && !listSlots().some(s => s.name === 'UiTest'); });
+    await astep('Spielstand anlegen (gepackt), laden, löschen', async () => { const turn = S.turn; if (!(await trySave('UiTest'))) return false; const m = listSlots().find(s => s.name === 'UiTest'); const packed = localStorage.getItem('archipel-slot-' + m.id).startsWith(PACK_MARK) && localStorage.getItem('archipel-save-v1').startsWith('{'); openSaves(); const listed = $('saveList').textContent.includes('UiTest'); const okLoad = await loadSlot(m.id); afterSlotLoad('geladen'); deleteSlot(m.id); return packed && listed && okLoad && S.turn === turn && !listSlots().some(s => s.name === 'UiTest'); });
+    await astep('Spielstand als Datei: gepackt, und wieder lesbar', async () => { const plain = serialize(), file = await packFile(plain); return JSON.parse(file).archipel === 'spielstand' && file.length * 2 < plain.length && (await unpackFile(file)) === plain && (await unpackFile(plain)) === plain; });
     step('Strg+S öffnet die Spielstände', () => { closeModals(); key('s', { ctrlKey: true }); const o = shown('mSaves'); closeModals(); return o; });
     if (slots0 == null) localStorage.removeItem('archipel-slots'); else localStorage.setItem('archipel-slots', slots0);
 

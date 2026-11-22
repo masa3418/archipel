@@ -212,6 +212,16 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   leer = zufällig), `fmtSeed` (Dreiergruppen). Gleiche Nummer + Größe + Welt = gleiche Karte, Städte und Startplätze (nicht die KI-Züge).
   Eingabe und „Diese Welt noch einmal“ im Fenster „Neues Spiel“, Anzeige in Statistik und Abschlussfenster. Der Generator darf nur
   `mulberry32(seed)` nutzen, nie `Math.random` – sonst stimmt die Nummer nicht mehr. Ältere Spielstände: `seed = null`.
+- **Gepackte Spielstände** (Wunsch des Nutzers: der Browser gibt je Website nur rund 5 MB; game.js `packSave`/`unpackSave`, `packFile`/`unpackFile`,
+  `packOldSlots`): Benannte Spielstände und exportierte Dateien werden gepackt (deflate über `CompressionStream`, eingebaut, auch offline), der
+  automatische Stand `archipel-save-v1` bleibt ungepackt (wird beim Schließen der Seite geschrieben, muss sofort fertig sein; Entscheidung des Nutzers).
+  Im Browserspeicher: `PACK_MARK` ('AZ1:') + Byte-Anzahl + ':' + 15 Bit je Zeichen (0x20 … 0x801F, nie Surrogate); als Datei JSON-Hülle
+  `{ archipel: 'spielstand', v: 1, deflate: Base64 }`. Nach dem Packen Gegenprobe (entpacken, vergleichen) – sonst ungepackt wie früher, ebenso ohne
+  CompressionStream. Laden erkennt beides; ältere Versionen lesen gepackte Stände und Dateien nicht (dem Nutzer vorher gesagt). Ältere ungepackte
+  benannte Stände packt `packOldSlots` 2,5 s nach dem Start einmal nach. Entpacken höchstens `UNPACK_MAX` 32 MB (fremde Dateien, „Packbombe“).
+  Dadurch sind `saveSlot`, `loadSlot`, `slotData`, `trySave` async. Messung (Zeichen × 2 Byte wie im Fenster): mittlere Karte, 1 Gegner, Runde 100/200
+  0,11 → 0,01 MB bzw. 0,14 → 0,01 MB (11×); große Karte, 3 Gegner 0,21 → 0,01 / 0,28 → 0,02 MB (13–14×); Dateien 58 → 13 kB … 145 → 29 kB (≈ 5×).
+  Vorher passten etwa 15 späte Partien der großen Karte in den Speicher, jetzt rund 200. `tools/test.js` kann seitdem auch async-Tests (laufen nach den übrigen).
 - **Spielstände** (ui.js `renderSaves`): nach Partie gruppiert über `S.gameId` (bei `newGame` vergeben, ältere Partien in `afterLoad`; in den
   Metadaten als `game`, dazu `world`/`seed`/`ais` aus `saveSummary`; mehrere Gegner nennt der Gruppentitel). Laufende Partie oben und offen, sonst zugeklappt (`saveOpen`); ohne Kennung →
   „Ältere Spielstände“. Suchfeld ab 7 Ständen, `data-delgame` löscht alle Stände einer Partie.
@@ -525,11 +535,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
    Repo) oder `node tools/serve.js .` → http://localhost:8765
 2. Syntax prüfen: `for f in js/*.js; do node --check $f; done`
    **Tests laufen lassen – vor jedem Commit, der Regeln oder Oberfläche ändert:**
-   - `node tools/test.js` (ca. 6 s, 36 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
+   - `node tools/test.js` (ca. 6 s, 37 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 847 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 848 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
@@ -746,7 +756,7 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   setzen, `serialize()` in eine Datei schreiben; geladen wird über „Spielstände → Aus Datei laden…“.
 - Lange Ersetzungen lieber als Node-Skript im Scratchpad ausführen statt per `sed`/Heredoc oder `node -e`
   mit Backticks (Git Bash führt den Inhalt als Befehl aus).
-- `localStorage`: Autosave `archipel-save-v1` (nach jeder Änderung: `queueSave` in `refresh()`, 300 ms gebündelt, dazu `pagehide`; < 1 ms je Speichern), Spielstände `archipel-slot-*` mit Index
+- `localStorage`: Autosave `archipel-save-v1` (nach jeder Änderung: `queueSave` in `refresh()`, 300 ms gebündelt, dazu `pagehide`; < 1 ms je Speichern), Spielstände `archipel-slot-*` (gepackt, siehe „Gepackte Spielstände“) mit Index
   `archipel-slots`, Einstellungen `archipel-*` (Ton, Zoom, Schwierigkeit, Rundenende, Sprache, Handbuch-Reiter, Rad/Touchpad, `archipel-welcome` = Willkommensfenster gesehen …).
   **Zurücksetzen** (Einstellungen, `askReset`/`resetAll`/`resetKeys` in ui-schau.js; Wunsch des Nutzers für geteilte Rechner): löscht nach Rückfrage
   alle Schlüssel `archipel-…` und lädt neu – wie beim ersten Besuch. Benannte Spielstände nur mit dem Haken in der Rückfrage. Neue Schlüssel

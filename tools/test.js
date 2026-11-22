@@ -22,11 +22,15 @@ function eq(got, want, what) {
   if (a !== b) throw new Error(`${what}: erwartet ${b}, bekommen ${a}`);
 }
 function ok(cond, what) { checks++; if (!cond) throw new Error(what); }
+// Tests, die warten müssen (async, z. B. Packen der Spielstände), laufen nacheinander nach den übrigen
+let queue = Promise.resolve();
 function test(name, fn) {
   if (only && !name.toLowerCase().includes(only)) return;
+  const done = () => { passed++; console.log('  ok   ' + name); };
+  const fail = e => { failed++; fails.push(name + ' – ' + e.message); console.log('  FEHLER ' + name + '\n         ' + e.message); };
+  if (fn.constructor.name === 'AsyncFunction') { queue = queue.then(async () => { current = name; try { await fn(); done(); } catch (e) { fail(e); } }); return; }
   current = name;
-  try { fn(); passed++; console.log('  ok   ' + name); }
-  catch (e) { failed++; fails.push(name + ' – ' + e.message); console.log('  FEHLER ' + name + '\n         ' + e.message); }
+  try { fn(); done(); } catch (e) { fail(e); }
 }
 const pct = v => Math.round(v * 100);
 
@@ -618,28 +622,64 @@ test('Spielstand: kaputte Dateien werden abgelehnt', () => {
   ok(S.units.every(u => UT[u.type] && inb(u.x, u.y) && u.owner < nPlayers()), 'unsinnige Einheiten wurden nicht verworfen');
   ok(S.unbekanntesFeld === undefined, 'unbekanntes Feld wurde übernommen');
 });
-test('Spielstand: automatisch und benannt speichern, laden, löschen', () => {
+test('Spielstand: automatisch und benannt speichern, laden, löschen', async () => {
   for (const k of [...store.keys()]) if (k !== 'archipel-lang') store.delete(k);
   ok(!hasSave(), 'anfangs kein Spielstand');
   newGame('klein', 'normal', 'inseln', 31, 1);
   for (let k = 0; k < 5; k++) simRound();
   const turn = S.turn, id = S.gameId;
   saveGame(); ok(hasSave(), 'automatischer Spielstand angelegt');
-  const meta = saveSlot('Probe');
+  ok(store.get('archipel-save-v1').startsWith('{'), 'automatischer Spielstand bleibt ungepackt');
+  const meta = await saveSlot('Probe');
   eq([meta.name, meta.turn], ['Probe', turn], 'Angaben zum benannten Stand');
   eq(listSlots().map(m => m.name), ['Probe'], 'Liste der Stände');
-  ok(slotData(meta.id) && slotData('auto'), 'Daten zum Exportieren vorhanden');
+  ok(store.get('archipel-slot-' + meta.id).startsWith(PACK_MARK), 'benannter Stand ist gepackt');
+  ok((await slotData(meta.id)).startsWith('{') && (await slotData('auto')).startsWith('{'), 'Daten zum Exportieren vorhanden (entpackt)');
   for (let k = 0; k < 3; k++) simRound();
-  ok(loadSlot(meta.id) && S.turn === turn && S.gameId === id, 'benannter Stand lädt die frühere Runde');
+  ok((await loadSlot(meta.id)) && S.turn === turn && S.gameId === id, 'benannter Stand lädt die frühere Runde');
   for (let k = 0; k < 3; k++) simRound();
   ok(loadGame() && S.turn === turn, 'automatischer Stand lädt');
-  saveSlot('Probe neu', meta.id);
+  await saveSlot('Probe neu', meta.id);
   eq(listSlots().map(m => m.name), ['Probe neu'], 'Überschreiben behält einen Eintrag');
   deleteSlot(meta.id);
   eq(listSlots().length, 0, 'gelöscht');
-  ok(!loadSlot(meta.id), 'gelöschter Stand lässt sich nicht laden');
+  ok(!(await loadSlot(meta.id)), 'gelöschter Stand lässt sich nicht laden');
   store.set('archipel-save-v1', '{kaputt');
   ok(!loadGame(), 'kaputter automatischer Stand wird abgelehnt statt abzustürzen');
+});
+test('Spielstand: Packen spart Platz, Gegenprobe, alte Stände und Dateien', async () => {
+  for (const k of [...store.keys()]) if (k !== 'archipel-lang') store.delete(k);
+  // Zeichenverpackung (15 Bit je Zeichen) ist verlustfrei, auch für zufällige Bytes jeder Länge
+  for (const n of [0, 1, 2, 14, 15, 16, 1000, 4097]) { const u8 = Uint8Array.from({ length: n }, (_, i) => (i * 131 + n * 7) & 255); eq([...charsToBytes(bytesToChars(u8))], [...u8], `Zeichenverpackung, ${n} Bytes`); }
+  ok([...bytesToChars(Uint8Array.from({ length: 999 }, (_, i) => (i * 97) & 255))].every(ch => { const c = ch.charCodeAt(0); return c < 0xd800 || c > 0xdfff; }), 'keine Ersatzzeichen (Surrogate) im gepackten Text');
+  newGame('mittel', 'normal', 'inseln', 7, 2);
+  for (let k = 0; k < 20; k++) simRound();
+  const plain = serialize(), packed = await packSave(plain);
+  ok(packed.startsWith(PACK_MARK) && (await unpackSave(packed)) === plain, 'gepackt und zurück ergibt denselben Spielstand');
+  ok(packed.length * 3 < plain.length, `Platz: ${plain.length} → ${packed.length} Zeichen (mindestens dreimal kleiner)`);
+  eq(await unpackSave(plain), plain, 'Ungepacktes kommt unverändert zurück');
+  // ältere, ungepackte benannte Stände werden nachgepackt; sie laden danach genauso
+  store.set('archipel-slot-alt', plain); writeSlots([{ id: 'alt', name: 'Alt', date: 1, bytes: plain.length }]);
+  eq(await packOldSlots(), 1, 'ein älterer Stand nachgepackt');
+  ok(store.get('archipel-slot-alt').startsWith(PACK_MARK) && listSlots()[0].bytes < plain.length / 3, 'nachgepackt und Größe vermerkt');
+  eq(await packOldSlots(), 0, 'kein zweites Mal');
+  deserialize(plain); const ref = serialize();   // Vergleich: derselbe Stand ungepackt geladen
+  newGame('klein', 'normal', 'inseln', 8, 1);
+  ok((await loadSlot('alt')) && serialize() === ref, 'nachgepackter Stand lädt unverändert');
+  // kaputter gepackter Stand: Laden scheitert mit Fehler, das laufende Spiel bleibt
+  const turn = S.turn; store.set('archipel-slot-alt', PACK_MARK + '99:' + 'x'.repeat(10));
+  let threw = false; try { await loadSlot('alt'); } catch (e) { threw = true; }
+  ok(threw && S.turn === turn, 'kaputter gepackter Stand wird abgelehnt');
+  // Dateien: gepackt in einer JSON-Hülle; ungepackte Dateien früherer Versionen laden weiter
+  const file = await packFile(plain), o = JSON.parse(file);
+  ok(o.archipel === 'spielstand' && o.v === 1 && typeof o.deflate === 'string' && file.length * 2 < plain.length, `Datei gepackt: ${plain.length} → ${file.length} Zeichen`);
+  eq(await unpackFile(file), plain, 'gepackte Datei entpackt');
+  eq(await unpackFile(plain), plain, 'ungepackte Datei bleibt, wie sie ist');
+  eq(await unpackFile('{kaputt'), '{kaputt', 'keine JSON-Datei: unverändert (deserialize lehnt ab)');
+  // „Packbombe“: eine kleine Datei, die sich zu über 32 MB entpacken würde, wird abgelehnt
+  const bomb = JSON.stringify({ archipel: 'spielstand', v: 1, deflate: b64(await deflateText(' '.repeat(40 * 1024 * 1024))) });
+  let refused = false; try { await unpackFile(bomb); } catch (e) { refused = true; }
+  ok(bomb.length < 200000 && refused, `Packbombe (${Math.round(bomb.length / 1000)} kB) wird abgelehnt`);
 });
 test('Spielstand: alle Beispiel-Spielstände lassen sich laden', () => {
   const dir = path.join(root, 'docs', 'spielstaende');
@@ -694,5 +734,7 @@ test('Partie: KI gegen KI läuft auf allen Welten fehlerfrei bis zum Ende', () =
 });
 
 // ------------------------------------------------------------------ Ergebnis
-console.log(`\n${passed} bestanden, ${failed} fehlgeschlagen (${checks} Einzelprüfungen)`);
-if (failed) { console.log('\nFehlgeschlagen:\n- ' + fails.join('\n- ')); process.exit(1); }
+queue.then(() => {
+  console.log(`\n${passed} bestanden, ${failed} fehlgeschlagen (${checks} Einzelprüfungen)`);
+  if (failed) { console.log('\nFehlgeschlagen:\n- ' + fails.join('\n- ')); process.exit(1); }
+});

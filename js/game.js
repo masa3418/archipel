@@ -1774,27 +1774,121 @@ function listSlots() {
 }
 function writeSlots(list) { localStorage.setItem(SLOT_INDEX, JSON.stringify(list)); }
 
-// speichert unter neuem Namen oder überschreibt (id). Wirft bei vollem Speicher.
-function saveSlot(name, id = null) {
-  const list = listSlots();
+// ---- gepackte Spielstände (Wunsch des Nutzers: mehr Platz im Browserspeicher, der je Website nur rund 5 MB hat)
+// Benannte Spielstände und exportierte Dateien werden mit dem Packverfahren des Browsers gepackt (deflate über CompressionStream – eingebaut,
+// keine Abhängigkeit, auch in der Offline-Fassung). Der automatische Spielstand bleibt ungepackt: Er wird beim Schließen der Seite geschrieben
+// und muss sofort fertig sein. Nach dem Packen wird zur Probe entpackt und verglichen – nur wenn alles stimmt, wird gepackt gespeichert, sonst
+// ungepackt wie bisher (ebenso in Browsern ohne CompressionStream). Laden erkennt beides; ältere Spielversionen lesen gepackte Stände nicht.
+//  im Browserspeicher: PACK_MARK + Byte-Anzahl + ':' + je 15 Bit in einem Zeichen (0x20 … 0x801F, nie ein Ersatzzeichen-Paar) – ein Zeichen
+//    belegt dort 2 Bytes, so wird der Platz gut genutzt;
+//  als Datei: JSON { archipel: 'spielstand', v: 1, deflate: Base64 } – eine Datei bleibt eine .json-Datei.
+const PACK_MARK = 'AZ1:';
+const canPack = () => typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+async function deflateText(str) { return new Uint8Array(await new Response(new Blob([str]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer()); }
+// Entpacken mit Obergrenze: Ein Spielstand hat unter 1 MB; eine fremde Datei, die sich zu Riesenmengen entpackt („Packbombe“), bricht ab
+const UNPACK_MAX = 32 * 1024 * 1024;
+async function inflateBytes(u8) {
+  const reader = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate')).getReader(), parts = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.length;
+    if (n > UNPACK_MAX) { reader.cancel().catch(() => {}); throw new Error(tt('Spielstand zu groß', 'Saved game too large')); }
+    parts.push(value);
+  }
+  const all = new Uint8Array(n); let o = 0;
+  for (const p of parts) { all.set(p, o); o += p.length; }
+  return new TextDecoder().decode(all);
+}
+function bytesToChars(u8) {
+  const codes = []; let acc = 0, bits = 0;
+  for (let i = 0; i < u8.length; i++) {
+    acc = (acc << 8) | u8[i]; bits += 8;
+    if (bits >= 15) { bits -= 15; codes.push(((acc >> bits) & 0x7fff) + 0x20); acc &= (1 << bits) - 1; }
+  }
+  if (bits) codes.push(((acc << (15 - bits)) & 0x7fff) + 0x20);
+  let s = '';
+  for (let i = 0; i < codes.length; i += 0x2000) s += String.fromCharCode.apply(null, codes.slice(i, i + 0x2000));
+  return u8.length + ':' + s;
+}
+function charsToBytes(str) {
+  const c = str.indexOf(':'), n = +str.slice(0, c);
+  if (!(c > 0) || !Number.isInteger(n) || n < 0 || n > str.length * 2) throw new Error(tt('Ungültige Daten', 'Invalid data'));
+  const u8 = new Uint8Array(n); let acc = 0, bits = 0, j = 0;
+  for (let i = c + 1; i < str.length && j < n; i++) {
+    const v = str.charCodeAt(i) - 0x20;
+    if (v < 0 || v > 0x7fff) throw new Error(tt('Ungültige Daten', 'Invalid data'));
+    acc = (acc << 15) | v; bits += 15;
+    while (bits >= 8 && j < n) { bits -= 8; u8[j++] = (acc >> bits) & 0xff; }
+    acc &= (1 << bits) - 1;
+  }
+  if (j < n) throw new Error(tt('Ungültige Daten', 'Invalid data'));
+  return u8;
+}
+// Spielstand für den Browserspeicher packen (mit Gegenprobe) bzw. entpacken; Ungepacktes kommt unverändert zurück
+async function packSave(str) {
+  if (!canPack()) return str;
+  try {
+    const p = PACK_MARK + bytesToChars(await deflateText(str));
+    return p.length < str.length && (await unpackSave(p)) === str ? p : str;
+  } catch (e) { return str; }
+}
+async function unpackSave(v) { return typeof v === 'string' && v.startsWith(PACK_MARK) ? inflateBytes(charsToBytes(v.slice(PACK_MARK.length))) : v; }
+// Spielstand als Datei: gepackt in einer kleinen JSON-Hülle (mit Gegenprobe); Laden erkennt auch ungepackte Dateien früherer Versionen
+async function packFile(str) {
+  if (!canPack()) return str;
+  try {
+    const u8 = await deflateText(str);
+    return (await inflateBytes(u8)) === str ? JSON.stringify({ archipel: 'spielstand', v: 1, deflate: b64(u8) }) : str;
+  } catch (e) { return str; }
+}
+async function unpackFile(text) {
+  let o = null;
+  try { o = JSON.parse(text); } catch (e) { return text; }
+  return o && typeof o === 'object' && o.archipel === 'spielstand' && typeof o.deflate === 'string' ? inflateBytes(unb64(o.deflate, Uint8Array)) : text;
+}
+
+// speichert unter neuem Namen oder überschreibt (id), gepackt. Wirft bei vollem Speicher. Der Stand wird beim Aufruf festgehalten (serialize),
+// das Packen dauert danach nur Millisekunden.
+async function saveSlot(name, id = null) {
   id = id || 's' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
-  const data = serialize();
+  const summary = saveSummary(), data = await packSave(serialize());
   localStorage.setItem(SLOT_PREFIX + id, data);
-  const meta = { id, name: name || 'Spielstand', date: Date.now(), bytes: data.length, ...saveSummary() };
+  const list = listSlots(), meta = { id, name: name || 'Spielstand', date: Date.now(), bytes: data.length, ...summary };
   const i = list.findIndex(s => s.id === id);
   if (i >= 0) list[i] = meta; else list.push(meta);
   writeSlots(list);
   return meta;
 }
-function loadSlot(id) {
+async function loadSlot(id) {
   const j = localStorage.getItem(SLOT_PREFIX + id);
   if (!j) return false;
-  deserialize(j);
+  deserialize(await unpackSave(j));
   return true;
 }
 function deleteSlot(id) {
   localStorage.removeItem(SLOT_PREFIX + id);
   writeSlots(listSlots().filter(s => s.id !== id));
 }
-function slotData(id) { return id === 'auto' ? localStorage.getItem(SAVE_KEY) : localStorage.getItem(SLOT_PREFIX + id); }
+// ungepackte Daten eines Stands (Export); 'auto' = automatischer Spielstand
+async function slotData(id) { const v = id === 'auto' ? localStorage.getItem(SAVE_KEY) : localStorage.getItem(SLOT_PREFIX + id); return v && unpackSave(v); }
+// Ältere, ungepackte benannte Spielstände nachträglich packen (einmal je Stand, mit Gegenprobe). Liefert die Zahl der gepackten.
+async function packOldSlots() {
+  if (!canPack()) return 0;
+  let n = 0;
+  for (const m of listSlots()) {
+    const v = localStorage.getItem(SLOT_PREFIX + m.id);
+    if (!v || v.startsWith(PACK_MARK)) continue;
+    const p = await packSave(v);
+    if (p === v) continue;
+    try {
+      localStorage.setItem(SLOT_PREFIX + m.id, p);
+      const list = listSlots(), k = list.findIndex(s => s.id === m.id);
+      if (k >= 0) { list[k].bytes = p.length; writeSlots(list); }
+      n++;
+    } catch (e) { break; }
+  }
+  return n;
+}
 

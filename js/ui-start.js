@@ -74,8 +74,9 @@ function renderSaves() {
   $('saveList').innerHTML = h;
   let used = 0;
   try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('archipel')) used += (localStorage.getItem(k) || '').length; } } catch (e) {}
-  $('saveInfo').textContent = tt(`${slots.length} gespeicherte Spielstände · belegt etwa ${(used * 2 / 1024 / 1024).toFixed(1)} MB von ca. 5 MB Browserspeicher. Export (⤓) sichert einen Spielstand als Datei, ⟳ überschreibt ihn mit dem aktuellen Spiel.`,
-    `${slots.length} saved game${slots.length === 1 ? '' : 's'} · using about ${(used * 2 / 1024 / 1024).toFixed(1)} MB of roughly 5 MB browser storage. Export (⤓) saves a game as a file, ⟳ overwrites it with the current game.`);
+  const mb = used * 2 / 1024 / 1024, mbUsed = mb < 0.1 ? mb.toFixed(2) : mb.toFixed(1);   // gepackt sind kleine Werte üblich
+  $('saveInfo').textContent = tt(`${slots.length} gespeicherte Spielstände · belegt etwa ${mbUsed} MB von ca. 5 MB Browserspeicher (benannte Spielstände werden gepackt, etwa zehnmal kleiner). Export (⤓) sichert einen Spielstand als Datei, ⟳ überschreibt ihn mit dem aktuellen Spiel.`,
+    `${slots.length} saved game${slots.length === 1 ? '' : 's'} · using about ${mbUsed} MB of roughly 5 MB browser storage (named saved games are packed, about ten times smaller). Export (⤓) saves a game as a file, ⟳ overwrites it with the current game.`);
 }
 function openSaves() {
   if (!S) return;
@@ -85,9 +86,9 @@ function openSaves() {
   renderSaves(); openModal('mSaves');
   setTimeout(() => { $('saveName').focus(); $('saveName').select(); }, 30);
 }
-function trySave(name, id) {
-  // Erfolg: Fenster schließen (weiterspielen); bei vollem Speicher bleibt es offen, damit man alte Stände löschen kann
-  try { saveSlot(name, id); closeModals(); toast(tt(`Gespeichert: „${name}“`, `Saved: “${name}”`), 2200); Sfx.play('select'); return true; }
+async function trySave(name, id) {
+  // Erfolg: Fenster schließen (weiterspielen); bei vollem Speicher bleibt es offen, damit man alte Stände löschen kann. Benannte Stände werden gepackt (saveSlot).
+  try { await saveSlot(name, id); closeModals(); toast(tt(`Gespeichert: „${name}“`, `Saved: “${name}”`), 2200); Sfx.play('select'); return true; }
   catch (e) { toast(tt('Speicher voll – bitte alte Spielstände löschen oder exportieren', 'Storage full – please delete or export old saved games')); Sfx.play('error'); return false; }
 }
 function afterSlotLoad(msg) {
@@ -99,7 +100,7 @@ function afterSlotLoad(msg) {
 $('bSaves').onclick = openSaves;
 $('saveNew').onclick = () => trySave($('saveName').value.trim() || `${tt('Runde', 'Turn')} ${S.turn}`);
 $('saveName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('saveNew').click(); } });
-$('mSaves').addEventListener('click', e => {
+$('mSaves').addEventListener('click', async e => {
   const b = e.target.closest('button');
   if (!b) return;
   const d = b.dataset;
@@ -113,21 +114,24 @@ $('mSaves').addEventListener('click', e => {
     return;
   }
   if (d.load) {
-    const ok = d.load === 'auto' ? loadGame() : (() => { try { return loadSlot(d.load); } catch (err) { return false; } })();
+    let ok = false;
+    try { ok = d.load === 'auto' ? loadGame() : await loadSlot(d.load); } catch (err) { ok = false; }
     if (ok) afterSlotLoad(tt('Spielstand geladen', 'Game loaded')); else { toast(tt('Laden fehlgeschlagen', 'Loading failed')); Sfx.play('error'); }
   } else if (d.over) {
     const m = listSlots().find(x => x.id === d.over);
-    if (m && confirm(tt(`„${m.name}“ mit dem aktuellen Spiel (Runde ${S.turn}) überschreiben?`, `Overwrite “${m.name}” with the current game (turn ${S.turn})?`))) trySave(m.name, m.id);
+    if (m && confirm(tt(`„${m.name}“ mit dem aktuellen Spiel (Runde ${S.turn}) überschreiben?`, `Overwrite “${m.name}” with the current game (turn ${S.turn})?`))) await trySave(m.name, m.id);
   } else if (d.del) {
     const m = listSlots().find(x => x.id === d.del);
     if (m && confirm(tt(`Spielstand „${m.name}“ endgültig löschen?`, `Delete saved game “${m.name}” for good?`))) { deleteSlot(m.id); renderSaves(); toast(tt('Gelöscht', 'Deleted')); }
   } else if (d.export) {
-    const data = slotData(d.export);
-    if (!data) return;
+    // Export: auch der automatische Stand wird für die Datei gepackt (Wunsch des Nutzers); Laden erkennt gepackte und ungepackte Dateien
+    let data = null;
+    try { data = await slotData(d.export); } catch (err) { data = null; }
+    if (!data) { toast(tt('Export fehlgeschlagen', 'Export failed')); Sfx.play('error'); return; }
     const m = d.export === 'auto' ? { name: tt('automatisch', 'autosave') } : listSlots().find(x => x.id === d.export);
     const turn = (() => { try { return JSON.parse(data).turn; } catch (err) { return ''; } })();
     const fname = ('archipel-' + (m ? m.name : tt('spielstand', 'savegame')) + tt('-R', '-T') + turn).replace(/[^\w\-äöüÄÖÜß]+/g, '_') + '.json';
-    const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+    const url = URL.createObjectURL(new Blob([await packFile(data)], { type: 'application/json' }));
     const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
@@ -140,13 +144,15 @@ importPick.onchange = async () => {
   const f = importPick.files[0]; importPick.value = '';
   if (!f) return;
   try {
-    const text = await f.text();
+    const text = await unpackFile(await f.text());   // gepackte Datei (ab 1.9.1) oder ungepackte früherer Versionen
     const backup = S;
     try { deserialize(text); } catch (err) { S = backup; buildCityGrid(); throw err; }
     afterSlotLoad(tt('Spielstand aus Datei geladen', 'Game loaded from file'));
   } catch (err) { toast(tt('Datei ist kein gültiger Spielstand', 'File is not a valid saved game')); Sfx.play('error'); }
 };
 $('saveImport').onclick = () => importPick.click();
+// Ältere, ungepackte benannte Spielstände einmal nachträglich packen (kurz nach dem Start, im Hintergrund; mit Gegenprobe je Stand)
+setTimeout(() => { packOldSlots().then(n => { if (n && !$('mSaves').hidden) renderSaves(); }, () => {}); }, 2500);
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeModals);
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModals(); }));
 
