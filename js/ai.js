@@ -213,9 +213,32 @@ function threatMap(u) {
   return z;
 }
 
+// Hinsehen unterwegs (Wunsch des Nutzers, nur Können ≥ 1 = Schwer, Brutal): Die Sicht wurde nur nach dem ganzen Zug einer Einheit
+// erneuert und die Bedrohungskarte nur einmal je Runde gezeichnet – ein Zerstörer fuhr so an einem Kreuzer vorbei, den er erst danach
+// bemerkte, und blieb in dessen Reichweite liegen. Jetzt sieht ein Schiff nach jedem Feld hin (aiLook in stepAlong): Steht ein Gegner in
+// seiner Sichtweite, den der Computer noch nicht sieht, wird die Sicht erneuert. Die Bedrohungskarte wird neu gezeichnet, sobald sich
+// ändert, welche Gegner sichtbar sind (auch nach einem Treffer oder einer Versenkung, freshThreats). AI_LOOK je Platz (für Messungen);
+// Messung siehe CLAUDE.md.
+const AI_LOOK = [true, true, true, true];
+let lookSig = '';
+const aiLooks = p => AI_LOOK[p] !== false && aiSkill(p) >= 1;
+function freshThreats(p) {
+  let n = 0, h = 0;
+  for (const e of S.units) if (e.owner !== p && e.carrier == null && canSee(p, e)) { n++; h = (h * 31 + e.id * 16 + e.hp) | 0; }
+  const s = n + ':' + h;
+  if (s !== lookSig) { lookSig = s; threatCache = new Map(); }
+}
+function aiLook(u) {
+  const p = u.owner, r = T(u).vision;
+  if (!aiLooks(p) || !alive(u)) return;
+  if (!S.units.some(e => e.owner !== p && e.carrier == null && cheb(e.x, e.y, u.x, u.y) <= r && !canSee(p, e))) return;
+  computeVision(p);
+  freshThreats(p);
+}
+
 // ------------------------------------------------------------------ Runde
 function aiTurn(p = 1) {
-  threatCache = new Map();
+  threatCache = new Map(); lookSig = '';
   aiPlan = aiSkill(p) >= 1 ? buildPlan(p) : null;
   for (const c of S.cities) if (c.owner === p && !c.prod) aiChooseProduction(c);
   if (aiPlan) {
@@ -239,6 +262,7 @@ function aiTurn(p = 1) {
         else aiWarship(u);
       } catch (e) { console.error('KI-Fehler', e); }
       computeVision(p);
+      if (aiLooks(p)) freshThreats(p);   // was diese Einheit entdeckt oder versenkt hat, gilt für die nächste
       checkGameOver();
     }
   }
@@ -296,6 +320,7 @@ function aiAdjTarget(u, minProb) {
 function stepAlong(u, path) {
   if (!path || !path.length) return false;
   const r = moveStep(u, path[0][0], path[0][1]);
+  if (r.ok && T(u).domain === 'sea') aiLook(u);   // Schiffe sehen nach jedem Feld hin (ab Können 1)
   return r.ok;
 }
 

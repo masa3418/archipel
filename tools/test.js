@@ -437,6 +437,57 @@ test('KI: Transporter – Truppen handeln nach der letzten Fahrt, Zuflucht im ei
     AI_REFUGE[1] = true;
   }
 });
+test('KI: Schiffe sehen unterwegs hin (ab Schwer) und weichen einem Kreuzer aus, den sie erst unterwegs entdecken', () => {
+  // aiLook: Ein Kreuzer, den der Computer noch nicht kennt, kommt in Sichtweite des Zerstörers – Sicht und Bedrohungskarte werden erneuert.
+  // Auf Normal (Können 0) und mit abgeschaltetem AI_LOOK bleibt alles beim Alten.
+  const sea = () => tiles((x, y) => !land(x, y) && farFromLand(x, y, 2));
+  for (const [level, on, want] of [['schwer', true, true], ['schwer', false, false], ['normal', true, false]]) {
+    board('inseln', 4711, 1, level);
+    AI_LOOK[1] = on;
+    const [kx, ky] = sea().find(([x, y]) => inb(x - 3, y) && !land(x - 3, y) && !land(x - 2, y));
+    const k = createUnit('crs', 0, kx, ky), d = createUnit('dst', 1, kx - 3, ky);
+    computeVision(1);
+    ok(!canSee(1, k), 'Kreuzer anfangs außer Sicht');
+    threatCache = new Map(); lookSig = '';
+    ok(moveStep(d, kx - 2, ky).ok, 'Zerstörer fährt ein Feld');
+    eq(threatMap(d)[idx(d.x, d.y)], 0, 'Bedrohungskarte vor dem Hinsehen');
+    aiLook(d);
+    eq(canSee(1, k), want, `${level}, AI_LOOK ${on}: Kreuzer jetzt gesehen`);
+    eq(!!threatMap(d)[idx(d.x, d.y)], want, `${level}, AI_LOOK ${on}: Feld des Zerstörers bedroht`);
+    AI_LOOK[1] = true;
+  }
+  // Ganze Züge, 200 Lagen: Kreuzer 4–6 Felder vom Zerstörer, anfangs außer Sicht. Endet der Zerstörer in Reichweite des Kreuzers, darf er
+  // ihn erst mit seinem letzten Feld entdeckt haben (dann blieb kein Zug zum Ausweichen). Ohne AI_LOOK fuhr er oft daran vorbei.
+  for (const on of [true, false]) {
+    board('inseln', 4711, 1, 'schwer');
+    AI_LOOK[1] = on;
+    const r = mulberry32(7), s = sea();
+    let lagen = 0, bad = 0;
+    for (let t = 0; t < 4000 && lagen < 200; t++) {
+      const [kx, ky] = s[Math.floor(r() * s.length)];
+      const near = s.filter(([x, y]) => cheb(x, y, kx, ky) >= 4 && cheb(x, y, kx, ky) <= 6);
+      if (!near.length) continue;
+      const [dx, dy] = near[Math.floor(r() * near.length)];
+      for (const u of S.units.slice()) killUnit(u);
+      const k = createUnit('crs', 0, kx, ky), d = createUnit('dst', 1, dx, dy);
+      computeVision(1);
+      if (canSee(1, k)) continue;
+      lagen++;
+      threatCache = new Map(); lookSig = ''; aiPlan = buildPlan(1);
+      const steps = [], mv = moveStep;
+      moveStep = (u, x, y) => { const res = mv(u, x, y); if (u === d && res.ok) steps.push(cheb(d.x, d.y, kx, ky)); return res; };
+      try { aiWarship(d); } finally { moveStep = mv; }
+      computeVision(1); threatCache = new Map();
+      if (!alive(d) || !canSee(1, k) || !threatMap(d)[idx(d.x, d.y)]) continue;
+      const first = steps.findIndex(x => x <= T(d).vision);
+      if (first >= 0 && first < steps.length - 1) bad++;
+    }
+    eq(lagen, 200, 'genug Lagen');
+    if (on) eq(bad, 0, 'mit AI_LOOK: nie an einem gesehenen Kreuzer vorbei in dessen Reichweite');
+    else ok(bad > 0, `ohne AI_LOOK fährt er daran vorbei (${bad} von 200)`);
+    AI_LOOK[1] = true;
+  }
+});
 test('Kampf: Wirtschaftlichkeit (Bilanz der Tabelle „Wer schlägt wen“)', () => {
   board();
   const [p, q] = openSeaPair();

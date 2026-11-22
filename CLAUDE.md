@@ -67,7 +67,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `js/data.js` | Sprache `LANG`/`tt()`, Einheitentypen `UT` (inkl. `stealth`, `sonar`, `noAttack`) + `canAttack`, `UNIT_ORDER`, `DIRS`, Spieler `PLAYERS` (Name, Farben; Du, Rot, Gelb, Violett), `MAP_SIZES` (inkl. `maxAi`), Weltarten `WORLDS`, Schwierigkeitsgrade `DIFFICULTY` (inkl. `skill`) + `diff()`, `aiKnowsMap(p)`, `aiMistake(p)` |
 | `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen (getrennt mit `split`), Festland (`festland`: Küstensaum, Binnenmeere, Flüsse mit Brücken); Städte, faire Startpositionen (ab drei Spielern `pickStarts`) |
 | `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung `captureChance`/`cityDefenders`, Unterstützung `fireSupport`/`airCover`, Produktion, Sicht `computeVision`/`canSee`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Rundenwechsel `nextRound`/`runStandingOrders`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
-| `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`), Landung im Hinterland auf dem Festland (`hinterInfo`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
+| `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`), Landung im Hinterland auf dem Festland (`hinterInfo`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter, Hinsehen unterwegs `aiLook`) |
 | `js/gfx.js` | Gelände-Rendering (`buildTerrain(TS, st)`), Einheiten-Abzeichen (SVG-Pfade `ICON_SRC`, Weltraum `ICON_SPACE`, Segelzeit `ICON_SAIL` → Sprites, als SVG-Code `unitSvg`), Stadtgrafik, Grafik-Sets (`gfxSet`) |
 | `js/sfx.js` | Web-Audio-Synthese: Effekte, Klangteppiche je Einheitentyp und Grafik-Set (`KIND_SET`, `kindOf`; Pegel `LOOP_LEVEL`/`MOVE_LEVEL` nach gehörter Lautheit in LUFS abgestimmt, nicht nach der Spitze – Messweg im Kommentar dort), Klangtest |
 | `js/ui-karte.js` | Oberfläche 1: Grundlagen (`$`, `view`, `pad`), Aufzeichnung der Animationen (`anim`, `hooks`), Kamera, Zeichnen der Karte (`render`, `drawToken`, `drawEffect` …), Produktions- und Wegeansicht |
@@ -540,7 +540,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
    Repo) oder `node tools/serve.js .` → http://localhost:8765
 2. Syntax prüfen: `for f in js/*.js; do node --check $f; done`
    **Tests laufen lassen – vor jedem Commit, der Regeln oder Oberfläche ändert:**
-   - `node tools/test.js` (ca. 6 s, 37 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
+   - `node tools/test.js` (ca. 6 s, 38 Tests; auch: `index.html`, `CORE` in `sw.js` und der Ordner `js/` nennen dieselben Skripte): Kampfchancen aus dieser Datei (89/25/44 %, Küstenangriff 50/75/31 %, Luftdeckung 33 %), `canStrike`,
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
@@ -585,6 +585,7 @@ im ausgeblendeten Browser-Fenster werden Zeitgeber gedrosselt, lange Läufe brec
 Kleine Karte, „Siege“ des einfachen KI-Spielers auf Platz 0, je 96 Partien über die drei alten Welten (Inselreich, Gemischt, Festland).
 **Neuester Stand (nach 1.8.6, Transporter: Truppen handeln nach der Fahrt, Zuflucht ab Schwer – siehe „KI messen“), in Prozent:** Leicht 100,
 Normal 61 (192 Partien), Schwer 11, Brutal 1; offen 0 / 2 / 1 / 0. Unmittelbar davor im selben Lauf: Leicht 100, Normal 62 (288), Schwer 17, Brutal 3.
+Danach „Hinsehen unterwegs“ (nur ab Schwer, je 192 Partien, ohne → mit): Schwer 13 → 9, Brutal 2 → 2; offen 2 → 1 bzw. 1 → 0.
 Die Tabelle darunter ist der Stand seit dem sicheren Anfang.
 Stand **seit dem sicheren Anfang (1.8.1)**; davor: Leicht 96, Normal 56, Schwer 24, Brutal 5 (offen 0 / 3 / 4 / 1) – Schwer und Brutal sind also
 etwas härter geworden, weil die KI dort die Karte kennt und den schnelleren Start besser nutzt. Die älteren Messreihen weiter unten und bei den
@@ -728,6 +729,18 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   70 %, Kontinente 59 %, Festland 45 %, Binnenmeer 47 %; verlorene Transporter je Partie 17,6 statt 19,8). Stufen (Platz 0 einfach, alt → beides):
   Leicht 100 → 100 %, Normal 62 → 52 %, Schwer 17 → 11 %, Brutal 3 → 1 %; nur Truppen auf Normal 61 %. Entscheidung des Nutzers: Zuflucht nur
   ab Schwer, Normal bleibt so bei etwa 61 % (Tabelle oben). Test: `tools/test.js`, „KI: Transporter …“.
+- **Hinsehen unterwegs** (dem Nutzer auf Schwer aufgefallen: ein Zerstörer fuhr an seinem Kreuzer vorbei und blieb 2 Felder daneben liegen; ai.js
+  `aiLook`, `freshThreats`, Schalter `AI_LOOK` je Platz, nur Können ≥ 1 – Entscheidung des Nutzers). Fehler: Die Sicht des Computers wurde erst nach dem
+  ganzen Zug einer Einheit erneuert (`computeVision` in `aiTurn`), die Bedrohungskarte nur einmal je Runde gezeichnet (`threatCache`). Ein Schiff
+  bemerkte so nicht, was es unterwegs entdeckte, und spätere Schiffe nicht, was frühere entdeckt hatten. Jetzt: Nach jedem Feld eines Schiffs
+  (`stepAlong`) wird die Sicht erneuert, wenn ein noch ungesehener Gegner in seiner Sichtweite steht; die Bedrohungskarte wird neu gezeichnet, sobald
+  sich ändert, welche Gegner sichtbar sind oder wie viel Kraft sie haben (auch nach jeder Einheit). Grenze, gewollt: Ein Zerstörer sieht 2 Felder, ein
+  Kreuzer erreicht 3 – was erst mit dem letzten Feld auftaucht, kann er nicht mehr meiden. Nachgestellte Lagen (Kreuzer 4–6 Felder entfernt, außer
+  Sicht, 300 Lagen mittlere Karte): Zerstörer endet in Reichweite 36–38 → 18, die übrigen alle mit Entdeckung erst auf dem letzten Feld. Direkter
+  Vergleich (Können 1 beide, ohne Fehler, beide Sitze, je 400 Partien über alle fünf Welten, klein): Variante gewinnt 59 % der entschiedenen (451 : 316;
+  Inselreich 55, Gemischt 62, Festland 53, Kontinente 66, Binnenmeer 57 %), offen 33 von 800, verlorene Schiffe je Partie ca. 15 % weniger. Stufen
+  (Platz 0 einfach, je 192 über die drei alten Welten, ohne → mit): Schwer 13 → 9 %, Brutal 2 → 2 %; Leicht und Normal unberührt. Zeit je
+  Computerzug unverändert (mittel 24/19 ms, groß mit 3 Gegnern 35/34 ms). Test: „KI: Schiffe sehen unterwegs hin …“ (200 Lagen).
 - **Kapitulation** (siehe „Mehrere Gegner“; `CAPITULATE.turns = 1e9` schaltet sie für Messungen ab). Vorher (168 Partien, Platz 0 einfach, Normal):
   Von 232 Computer-Parteien, die von ≥ 4 auf ≤ 2 Städte fielen, kamen 3 zurück auf ≥ 5; Ausscheiden im Mittel 9 (klein, 2 Gegner) bzw. 6 Runden
   (mittel, 3 Gegner) danach, jede zehnte hielt sich über 30 Runden. Mit/ohne (klein 2 Gegner je 120, mittel 3 Gegner je 72 Partien): Siege
