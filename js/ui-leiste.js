@@ -249,11 +249,12 @@ function updatePower() {
   }
   const parts = segs.map(s => s.p < 0 ? tt(`neutral ${s.v}`, `neutral ${s.v}`) : `${s.p === 0 ? tt('Du', 'You') : pname(s.p)} ${s.v}`).join(' · ');
   $('power').title = tt(`Städte: ${parts} (von ${S.cities.length})\n`
-    + `Einschätzung „${v[0]}“: du gegen ${multi ? `den stärksten Gegner (${pname(en)})` : 'den Gegner'}, ${cc.c[0]} : ${cc.c[en]} Städte, also ${pct} % : ${100 - pct} %\n`
-    + `Kurve: dein Anteil an allen vergebenen Städten über die ganze Partie (gestrichelt: ${multi ? `gleiche Anteile, 1/${alive}` : 'Gleichstand'}); Pfeil: seit Beginn der letzten Runde\nKlick: Einzelheiten`,
+    + `Einschätzung „${v[0]}“: du gegen ${multi ? `den stärksten Gegner (${pname(en)})` : 'den Gegner'}, ${cc.c[0]} : ${cc.c[en]} Städte, also ${pct} % : ${100 - pct} %\nKlick: Einzelheiten`,
     `Cities: ${parts} (of ${S.cities.length})\n`
-    + `Assessment “${v[0]}”: you against ${multi ? `the strongest enemy (${pname(en)})` : 'the enemy'}, ${cc.c[0]} : ${cc.c[en]} cities, i.e. ${pct} % : ${100 - pct} %\n`
-    + `Curve: your share of all cities taken over the whole game (dashed: ${multi ? `equal shares, 1/${alive}` : 'even'}); arrow: since the start of the last turn\nClick: details`);
+    + `Assessment “${v[0]}”: you against ${multi ? `the strongest enemy (${pname(en)})` : 'the enemy'}, ${cc.c[0]} : ${cc.c[en]} cities, i.e. ${pct} % : ${100 - pct} %\nClick: details`);
+  // Kurve und Pfeil (Wunsch des Nutzers): eine Miniatur des Zeitraffers – ein Klick darauf öffnet ihn, eigener Hinweistext
+  $('powerFoot').title = tt(`Kurve: dein Anteil an allen vergebenen Städten über die ganze Partie (gestrichelt: ${multi ? `gleiche Anteile, 1/${alive}` : 'Gleichstand'}); Pfeil: seit Beginn der letzten Runde\nKlick: Zeitraffer der Partie (Taste T)`,
+    `Curve: your share of all cities taken over the whole game (dashed: ${multi ? `equal shares, 1/${alive}` : 'even'}); arrow: since the start of the last turn\nClick: time-lapse of the game (key T)`);
   drawPowerSpark(hist, mine, multi ? 1 / alive : 0.5);
 }
 
@@ -273,6 +274,10 @@ function renderPower() {
     + row(tt('Anteil an allen Städten', 'Share of all cities'), ...cols.map(p => Math.round(sh.of[p] * 100) + ' %'), Math.round(sh.neutral * 100) + ' %')
     + row(tt('Anteil an den vergebenen', 'Share of the cities taken'), ...cols.map(p => (owned ? Math.round(cc.c[p] / owned * 100) : 0) + ' %'), '–')
     + '</tbody></table>';
+  // Verweis auf den Zeitraffer (Wunsch des Nutzers): dort steht, wie es dazu kam
+  h += `<div class="power-tl"><span>${tt('Wie es dazu kam, zeigt der Zeitraffer: die Karte Runde für Runde, soweit du sie kennst, und die Städte aller Parteien als Kurve.',
+    'The time-lapse shows how it came to this: the map turn by turn, as far as you know it, and the cities of all parties as a curve.')}</span>`
+    + `<button data-tl>▶ ${tt('Zeitraffer', 'Time-lapse')}</button></div>`;
   const hi = 100 - offerPct;
   h += `<h3>${tt('So wird gezählt', 'How it is counted')}</h3><ul class="power-notes">
     <li>${tt('Gezählt werden nur die Städte – wer alle Städte hat, hat gewonnen. Der Balken zeigt, wie viel von allen Städten jede Partei besitzt; grau sind die neutralen. Einheiten zählen nicht: Eine Flotte auf dem Weg zu dir sieht man am Balken erst, wenn Städte fallen.',
@@ -292,6 +297,8 @@ function renderPower() {
 }
 function openPower() { if (!S) return; closeCtx(); renderPower(); openModal('mPower'); }
 $('power').onclick = openPower;
+$('powerFoot').onclick = e => { e.stopPropagation(); openTimelapse(); };   // Kurve und Pfeil → Zeitraffer (statt Kräftefenster)
+$('powerCalc').addEventListener('click', e => { if (e.target.closest('[data-tl]')) { closeModals(); openTimelapse(); } });
 $('bPowerMenu').onclick = openPower;
 
 // Verlauf unter dem Balken: dein Anteil an den vergebenen Städten, um die Linie base zentriert (ein Gegner: 50 %; mehrere: gleiche Anteile

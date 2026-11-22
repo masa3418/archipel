@@ -693,6 +693,13 @@ window.UiTest = (() => {
       S.cities.forEach((c, k) => { c.owner = own[k]; }); deserialize(keepS); afterLoad(); closeModals(); offerPct = pct0; replay = 'off';
       return ok;
     });
+    step('Kräfteverhältnis: Balken öffnet das Kräftefenster, Kurve und Knopf darin den Zeitraffer', () => {
+      closeModals(); if (S.over) return true;
+      $('powerFoot').click(); let ok = !$('mTime').hidden && $('mPower').hidden; closeModals();
+      $('power').querySelector('.power-bar').click(); ok = ok && !$('mPower').hidden && $('mTime').hidden;
+      $('powerCalc').querySelector('[data-tl]').click(); ok = ok && !$('mTime').hidden && $('mPower').hidden; closeModals();
+      return ok;
+    });
     step('Kräfteverhältnis: Balken nach Städten, neutrale grau, alter Spielstand bekommt seinen Verlauf aus dem Zeitraffer', () => {
       const keep = serialize(); closeModals();
       const segs = () => [...$('powerSegs').children].map(i => i.style.width ? parseFloat(i.style.width) : 0);
