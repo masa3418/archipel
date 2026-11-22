@@ -137,10 +137,12 @@ const ICON_SAIL = {
     fill: ['M14 64 H86 L96 59 L88 72 H22 Z', 'M46 14 H48.5 V64 H46 Z', 'M45 17 L45 61 L18 61 Z', 'M49.5 18 L84 60 L49.5 60 Z',
       'M86 61 L99 54.5 L99 57 L88 63.5 Z', DOT(50)],
   },
-  sub: {   // Piratenschiff: flacher Rumpf, zwei schräge Lateinersegel, Flagge mit Totenkopf
-    fill: ['M10 64 H84 L96 58 L88 72 H18 Z', 'M36 22 H38.5 V64 H36 Z', 'M62 14 H64.5 V64 H62 Z',
-      'M21 57 L54 16 L56.5 18 L41 61 Z', 'M47 59 L82 22 L84.5 24 L66 62 Z', 'M64.5 13 H79 V23 H64.5 Z'],
-    cut: [circ(71.8, 17.2, 2.7), 'M67.5 20.5 L76 20.5 L76 21.6 L67.5 21.6 Z'],
+  sub: {   // Piratenschiff: flacher Rumpf, zwei schräge Lateinersegel, große schwarze Flagge mit hellem Totenkopf
+    // Die Flagge ist eine Aussparung (dunkel) über einem hellen Rechteck; Schädel, Kiefer und Knochen sind Löcher darin – im SELBEN Pfad gegen
+    // den Uhrzeigersinn gezeichnet (nonzero), damit dort das helle Rechteck durchscheint (auch im SVG-Code). Löcher dürfen sich nicht überlappen.
+    fill: ['M10 64 H84 L96 58 L88 72 H18 Z', 'M36 22 H38.5 V64 H36 Z', 'M62 4 H64.5 V64 H62 Z',
+      'M21 57 L54 16 L56.5 18 L41 61 Z', 'M47 59 L82 22 L84.5 24 L66 62 Z', 'M64.5 4 H90.5 V21 H64.5 Z'],
+    cut: ['M64.5 4 H90.5 V21 H64.5 Z ' + circ(77.5, 10.2, 4.2) + ' M75.7 14.4 V16.2 H79.3 V14.4 Z M69.5 17.6 V19.2 H85.5 V17.6 Z'],
   },
   crs: {   // Fregatte: drei Masten mit je zwei Rahsegeln, eine Reihe Stückpforten
     fill: ['M8 60 H86 L96 55 L88 74 H16 Q10 70 8 60 Z', 'M8 53 H21 V60 H8 Z',
