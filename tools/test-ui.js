@@ -258,7 +258,7 @@ window.UiTest = (() => {
   // die Partie speichert die Landschaft (und damit das Set) mit
   function spaceSet() {
     const keepLand = landPref, keepS = S.land, keepB = Object.assign({}, borderPrefs);
-    const keepStore = ['archipel-border', 'archipel-border-weltraum'].map(k => [k, localStorage.getItem(k)]);
+    const keepStore = ['archipel-border', 'archipel-border-weltraum', 'archipel-border-segel'].map(k => [k, localStorage.getItem(k)]);
     setLandscape('gruen');
     const ship = unitSprite('crs', 0, 30), city = citySprite(0, 30, 0), icon = iconUrl('u', 'crs');   // (Bildspeicher wird beim Neuzeichnen geleert: Bilder über toDataURL vergleichen)
     setLandscape('asteroiden');
@@ -292,6 +292,18 @@ window.UiTest = (() => {
     check(!!sun && !(sx > pad.x && sx < pad.x + cv.width && sy > pad.y && sy < pad.y + cv.height), 'Asteroidengürtel: Sonne neben der Karte');
     setLandscape('asteroiden');
     check(!$('padDeco').querySelector('.sun'), 'Asteroiden ohne Gürtel: keine Sonne');
+    // Segelzeit: Alte Karte mit Segelschiffen, Kavallerie und Festungsstädten, Rand „Alte Seekarte“; eigene Bilder je Einheit
+    setLandscape('altkarte');
+    check(gfxSet() === 'segel' && curBorder() === (keepB.segel || 'seekarte') && $('mapPad').classList.contains('b-' + curBorder()), 'Segelzeit: Alte Karte gehört dazu, Rand der Segelzeit');
+    check(UNIT_ORDER.every(k => ICON_SAIL[k] && unitSvg(k, 0, true, '', 'segel') !== unitSvg(k, 0, true, '', 'insel') && unitSvg(k, 0, true, '', 'segel') !== unitSvg(k, 0, true, '', 'weltraum')), 'Segelzeit: jede Einheit hat ein eigenes Bild');
+    check(citySprite(-1, 30, 0).toDataURL() !== citySprite(-1, 30, 0, 'insel').toDataURL(), 'Segelzeit: Festungsstädte');
+    // Klimazonen der alten Karte: Verteilung wie bei den Inseln, aber mit den Farbsätzen der Segelzeit
+    setLandscape('altzonen');
+    const zk = new Set(); for (let i = 0; i < S.W * S.H; i++) if (S.terrain[i]) zk.add(tileLandscape(i));
+    check(gfxSet() === 'segel' && [...zk].every(L => L.set === 'segel') && zk.has(LANDSCAPES.altpolar) && zk.has(LANDSCAPES.altwueste), `Segelzeit: Klimazonen mit Eismeer und Wüste (${zk.size} Arten)`);
+    setLandscape('altkarte');
+    openViewMenu(); check(!!viewMenu.querySelector('[data-land="altkarte"].on') && [...viewMenu.querySelectorAll('h4')].some(h => h.textContent === SET_HEAD.segel), 'Segelzeit: unter „Ansicht“ als eigene Gruppe'); closeViewMenu();
+    setLandscape('asteroiden');
     Object.assign(borderPrefs, keepB); for (const [k, v] of keepStore) { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); }
     setLandscape(keepLand); S.land = keepS; buildTerrainCache(); refresh();
   }

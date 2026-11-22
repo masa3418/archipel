@@ -90,6 +90,10 @@ on GitHub) and open it via ☰ Menu → Saved games → Load from file.*
 - Weltraum-Set: Mit den Asteroiden wird das Meer zum All mit Sternen und Nebeln, das Land zu Felsbrocken, die Städte zu Raumstationen und die
   Einheiten zu Raumsoldaten, Rovern, Raumjägern und Raumschiffen – gleiche Regeln, nur ein anderes Bild. Vier Arten (Gestein, Eis, Eisen, Kristall)
   und der Asteroidengürtel mit allen zusammen: Neben der Karte steht eine Sonne, nahe bei ihr Eisen, weit weg Eis
+- Segelzeit-Set: Die Landschaft „Alte Karte“ sieht aus wie eine handkolorierte Karte (Wellen und Küsten in Tinte, ringsum die alte Seekarte);
+  die Einheiten werden zu Musketieren, Kavallerie, Heißluftballons, Handelsschiffen, Schaluppen, Piratenschiffen, Fregatten, Ballonschiffen und
+  Linienschiffen, die Städte zu Festungsstädten – auch hier nur ein anderes Bild. Dazu Wüste, Eismeer und Tropen als eigene alte Karten und
+  die Klimazonen mit allen zusammen (Eismeer im Norden und Süden, Wüste in der Mitte)
 - Nebel des Krieges, Städte erobern (50 % Chance, die ersten beiden neutralen sicher; der Eroberer geht in der Stadt auf) und Produktion wählen
 - Neun Einheiten: Infanterie, Panzer, Jäger (mit Treibstoff), Transporter, Zerstörer,
   U-Boot, Kreuzer, Träger, Schlachtschiff

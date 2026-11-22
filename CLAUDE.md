@@ -68,7 +68,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen (getrennt mit `split`), Festland (`festland`: Küstensaum, Binnenmeere, Flüsse mit Brücken); Städte, faire Startpositionen (ab drei Spielern `pickStarts`) |
 | `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung `captureChance`/`cityDefenders`, Unterstützung `fireSupport`/`airCover`, Produktion, Sicht `computeVision`/`canSee`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Rundenwechsel `nextRound`/`runStandingOrders`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
 | `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`), Landung im Hinterland auf dem Festland (`hinterInfo`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
-| `js/gfx.js` | Gelände-Rendering (`buildTerrain(TS, st)`), Einheiten-Abzeichen (SVG-Pfade `ICON_SRC`, Weltraum `ICON_SPACE` → Sprites, als SVG-Code `unitSvg`), Stadtgrafik, Grafik-Sets (`gfxSet`) |
+| `js/gfx.js` | Gelände-Rendering (`buildTerrain(TS, st)`), Einheiten-Abzeichen (SVG-Pfade `ICON_SRC`, Weltraum `ICON_SPACE`, Segelzeit `ICON_SAIL` → Sprites, als SVG-Code `unitSvg`), Stadtgrafik, Grafik-Sets (`gfxSet`) |
 | `js/sfx.js` | Web-Audio-Synthese: Effekte, Klangteppiche je Einheitentyp (Pegel `LOOP_LEVEL`/`MOVE_LEVEL` nach gehörter Lautheit in LUFS abgestimmt, nicht nach der Spitze – Messweg im Kommentar dort), Klangtest |
 | `js/ui-karte.js` | Oberfläche 1: Grundlagen (`$`, `view`, `pad`), Aufzeichnung der Animationen (`anim`, `hooks`), Kamera, Zeichnen der Karte (`render`, `drawToken`, `drawEffect` …), Produktions- und Wegeansicht |
 | `js/ui-zug.js` | Oberfläche 2: Landung, Auswahl (`select`, `needsOrders`), automatisches Rundenende, Aktionen (`doMove`, `doGoto`, `act…`), Patrouille, Klick auf die Karte (`onTileClick`), Wegvorschau (`hoverRoute`), `endHumanTurn` |
@@ -454,6 +454,20 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   unverändert. Warmer Schein im All zur Sonne hin (`sun`, bis 40 % der Karte), im Rand „Weltall“ die Sonne selbst (`.sun` in `placeBorderDeco`, nur beim
   Gürtel). Farbprüfung: Parteien ≥ 43 (am knappsten Rot auf Eisen), neutraler Platz ≥ 25. Mittlere Karte, Nummer 2024: Gestein/Eisen/Eis/Kristall
   371/209/188/74 Landfelder.
+  **Segelzeit** (Set `segel`, Wunsch des Nutzers: Segelschiffe, Kavallerie – wieder nur Bilder, Namen und Regeln bleiben): Landschaft `altkarte` („Alte Karte“,
+  wie handkoloriert: blassgrünes Meer, Wellen in Tinte, Land in Ocker/Oliv, Küste mit Tintenstrich `ink` – dieselben überlappenden Kantenstreifen wie
+  `bevel`, hier auf allen vier Seiten –, Berge/Hügel/Bäume mit Umriss `outline`, nur Striche, Zufallsfolge unverändert), Rand-Vorgabe Alte Seekarte
+  (`BORDER_DEFAULT.segel`, `archipel-border-segel`). Einheiten `ICON_SAIL`: Musketier (Dreispitz), Kavallerie, Heißluftballon (Jäger), Handelsschiff
+  (Kisten, Achterkastell), Schaluppe (Dreiecksegel), Piratenschiff (U-Boot: Lateinersegel, Flagge), Fregatte (zwei Reihen Rahsegel), Ballonschiff
+  (Träger), Linienschiff (drei Reihen, zwei Reihen Stückpforten). Städte = Festungsstädte (`citySprite` Zweig `segel`: Mauer mit Zinnen und Tor, Turm
+  mit Kegeldach, Häuser; Dächer in Besitzerfarbe); neutraler Platz dort schiefergrau `#a7adb4` statt beige (auf Pergament Farbabstand 7–12 → 30–34).
+  **Klimazonen der alten Karte** (Wunsch des Nutzers): `altwueste` (warmes Sandgelb, selten Oasen), `altpolar` (Eismeer: blassblau-weiß, Schneegipfel,
+  dunkle Nadelwälder), `alttropen` (sattes Grün, dichter Wald) – Kopien von `altkarte` (`OLD`) mit anderem Land –, dazu `altzonen` mit `zoneKeys`
+  [altkarte, altwueste, altpolar, alttropen] auf der Zonenkarte der Inseln (`zoneMap`: Eismeer im Norden und Süden, Wüste in der Mitte, Tropen an der
+  Stelle der Lava). Damit Wüste und Gemäßigt nicht verschwimmen, ist `altkarte` seitdem etwas grüner und die Wüste wärmer. Farbfeld der gemischten
+  Landschaften unter „Ansicht“ aus den `mini`-Farben der Zonen (Klimazonen der Inseln behalten ihr festes Farbfeld).
+  Farbprüfung: Parteien ≥ 32 (am knappsten Gelb auf Wüste, wie bei den Inseln); neutraler Platz auf dem Eismeer 12–24, dort trägt der Rand (49+). Menü: Überschriften `SET_HEAD`, Hinweistexte `SET_TIP`; Grafik-Übersicht mit drittem Knopf
+  und eigenen Texten. Reihenfolge in `LANDSCAPES` und `LAND_KEYS` muss gleich sein (Durchlauf im Oberflächentest prüft das).
   Kartenrand je Set gemerkt (siehe „Kartenrand“). Grafik-Übersicht: Umschalter „Set“ im Reiter Einheiten (`gfx.set`, beim Öffnen das der Partie), Texte im
   Reiter Städte und Gelände folgen dem Set. Klänge bleiben gleich. Neues Set: Eintrag in `ICON_SETS`, Landschaft mit `set`, `BORDER_DEFAULT`, `LAND_GROUPS`.
   **Klimazonen** (`zonen`, Wunsch des Nutzers statt „je Insel zufällig“): je Feld einer der Farbsätze Grün/Wüste/Schnee/Lava nach der Lage
@@ -474,7 +488,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   gewählten Landschaft über `--sea1`/`--sea2`, nach außen dunkler), Alte Seekarte (Pergament mit Fasern `paperImg`, Gitter, Doppelrahmen um die Karte,
   Windrose `compassImg`, Seeungeheuer `serpentImg`, „Terra incognita“ / „Hic sunt dracones“), Holztisch (Bretter, Karte wie ein Spielbrett mit Schatten),
   Weltall (Sternenfeld `starsImg`, Nebel, funkelnde Sterne `.twinkle`, bei reduzierter Bewegung still). Eine Einstellung für alle Partien, **je Grafik-Set**
-  (`borderPrefs`, `curBorder()`; Inselwelt `archipel-border`, Vorgabe Offenes Meer; Weltraum `archipel-border-weltraum`, Vorgabe Weltall – wechselt die Landschaft
+  (`borderPrefs`, `curBorder()`; Inselwelt `archipel-border`, Vorgabe Offenes Meer; Weltraum `archipel-border-weltraum`, Vorgabe Weltall; Segelzeit `archipel-border-segel`, Vorgabe Alte Seekarte – wechselt die Landschaft
   das Set, wechselt der Rand mit), wählbar unter „Ansicht“ (Liste „Kartenrand“) und in den Einstellungen → Anzeige; gehört nicht zum Spielstand. Bilder entstehen im Code
   (kleine Leinwände → data-Adresse, einmal je Art). Schmuck in `#padDeco` (über dem Rand, unter der Karte), gesetzt in `placeBorderDeco` – aufgerufen aus
   `applyPad` (Fenstergröße) und `applyBorder` (aus `buildTerrainCache`: Zoom, Landschaft, neue Partie). `#mapPad` hat `overflow: hidden`. Neue Ränder: Klasse
@@ -501,7 +515,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 832 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 837 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

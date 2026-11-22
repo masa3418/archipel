@@ -105,9 +105,70 @@ const ICON_SPACE = {
     cut: ['M46 24 H52 V27 H46 Z'],
   },
 };
+// Segelzeit-Set (Landschaft „Alte Karte“, Wunsch des Nutzers): Musketier, Kavallerie, Heißluftballon, Handelsschiff, Schaluppe, Piratenschiff,
+// Fregatte, Ballonschiff und Linienschiff – wieder nur Bilder, Regeln und Namen bleiben. Schiffe von der Seite, Bug rechts; jedes an seinen Segeln
+// zu erkennen (Schaluppe: Dreiecksegel, Piratenschiff: schräge Lateinersegel und Flagge, Fregatte: zwei Reihen Rahsegel, Linienschiff: drei Reihen
+// und zwei Reihen Stückpforten). Rangpunkte wie in den anderen Sets.
+const ICON_SAIL = {
+  inf: {   // Musketier: Dreispitz, Rock, Muskete mit Bajonett, Kreuzgurt
+    fill: ['M30 25 Q32 15 40 18 Q50 10 60 18 Q68 15 70 25 Q60 21.5 50 24 Q40 21.5 30 25 Z', circ(50, 30, 7),
+      'M36 39 Q50 35 64 39 L67 63 L60 64 L59 55 L60 89 L53 89 L50 69 L47 89 L40 89 L41 55 L40 64 L33 63 Z',
+      'M69.5 9 L73 9 L74.5 70 L71 70 Z', 'M70.2 9 L71.3 1 L72.4 9 Z'],
+    cut: ['M41.5 40.5 L45 39.5 L59 57 L55.5 58 Z'],
+  },
+  tank: {   // Kavallerie: Reiter mit erhobenem Säbel auf einem Pferd
+    fill: ['M22 51 Q22 43 32 43 H62 Q68 43 72 39 L80 31 L82 25 L85 29 Q90 30 96 37 Q98 41 94 42 L87 40 L82 46 Q80 54 75 57 L74 82 H69 L67 60 H62 L61 82 H56 L56 59 H40 L39 82 H34 L33 59 H32 L30 82 H25 L26 57 Q22 55 22 51 Z',
+      'M23 46 Q11 49 13 68 Q17 57 25 53 Z',
+      'M43 44 L45 27 Q47 22 53 22 L57 24 L56 44 Z', circ(51, 15, 5.5), 'M56 25 L74 6 L76.5 8.5 L59 28 Z'],
+    cut: ['M46 44 L50 57 L54 57 L52 44 Z', circ(88, 34, 1.5)],
+  },
+  ftr: {   // Heißluftballon: Hülle mit Bahnen, Seile, Korb
+    fill: ['M50 5 Q75 5 75 31 Q75 47 59 60 L41 60 Q25 47 25 31 Q25 5 50 5 Z',
+      'M42 60 L44.5 60 L45.5 74 L43 74 Z', 'M55.5 60 L58 60 L57 74 L54.5 74 Z', 'M39 74 H61 L58.5 88 H41.5 Z'],
+    cut: ['M49.2 7 H50.8 V58 H49.2 Z', 'M38 9 Q31 31 42 58 L40.6 58.6 Q29 31 36.4 9.6 Z', 'M62 9 Q69 31 58 58 L59.4 58.6 Q71 31 63.6 9.6 Z',
+      'M27 34 H73 V35.8 H27 Z', 'M41 79 H59 V80.6 H41 Z'],
+  },
+  trn: {   // Handelsschiff: breiter Rumpf mit Achterkastell, ein großes Rahsegel, Kisten an Deck
+    fill: ['M8 62 H88 L96 55 L91 66 L84 78 H18 Q10 73 8 62 Z', 'M8 51 H25 V62 H8 Z', 'M50 12 H53 V62 H50 Z', 'M53 12 L63 15 L53 18 Z',
+      'M31 20 Q51.5 16 72 20 Q76 36 72 52 Q51.5 48 31 52 Q27 36 31 20 Z', 'M57 54 H66 V62 H57 Z', 'M68 54 H77 V62 H68 Z'],
+    cut: ['M32 35.2 H71 V37 H32 Z', 'M11 54 H16 V57 H11 Z', 'M18 54 H23 V57 H18 Z'],
+  },
+  dst: {   // Schaluppe: ein Mast, Großsegel und Klüver als Dreiecke, langer Bugspriet
+    fill: ['M14 64 H86 L96 59 L88 72 H22 Z', 'M46 14 H48.5 V64 H46 Z', 'M45 17 L45 61 L18 61 Z', 'M49.5 18 L84 60 L49.5 60 Z',
+      'M86 61 L99 54.5 L99 57 L88 63.5 Z', DOT(50)],
+  },
+  sub: {   // Piratenschiff: flacher Rumpf, zwei schräge Lateinersegel, Flagge mit Totenkopf
+    fill: ['M10 64 H84 L96 58 L88 72 H18 Z', 'M36 22 H38.5 V64 H36 Z', 'M62 14 H64.5 V64 H62 Z',
+      'M21 57 L54 16 L56.5 18 L41 61 Z', 'M47 59 L82 22 L84.5 24 L66 62 Z', 'M64.5 13 H79 V23 H64.5 Z'],
+    cut: [circ(71.8, 17.2, 2.7), 'M67.5 20.5 L76 20.5 L76 21.6 L67.5 21.6 Z'],
+  },
+  crs: {   // Fregatte: drei Masten mit je zwei Rahsegeln, eine Reihe Stückpforten
+    fill: ['M8 60 H86 L96 55 L88 74 H16 Q10 70 8 60 Z', 'M8 53 H21 V60 H8 Z',
+      'M29 16 H31.4 V60 H29 Z', 'M51 12 H53.4 V60 H51 Z', 'M72 18 H74.4 V60 H72 Z',
+      'M22 22 H38 L39 31 H21 Z', 'M19 34 H41 L42 50 H18 Z', 'M43 16 H61 L62 29 H42 Z', 'M39 32 H65 L66 50 H38 Z',
+      'M65 24 H81 L82 33 H64 Z', 'M62 36 H84 L85 50 H61 Z', 'M88 57 L99 51 L99 53.6 L90 59.6 Z', DOT(43), DOT(57)],
+    cut: ['M24 64 h4.5 v3.5 h-4.5 Z', 'M34 64 h4.5 v3.5 h-4.5 Z', 'M44 64 h4.5 v3.5 h-4.5 Z', 'M54 64 h4.5 v3.5 h-4.5 Z', 'M64 64 h4.5 v3.5 h-4.5 Z', 'M74 64 h4.5 v3.5 h-4.5 Z'],
+  },
+  car: {   // Ballonschiff: großer Rumpf mit Deckshaus, darüber ein gefesselter Ballon
+    fill: ['M4 60 H90 L98 55 L92 77 H12 Q5 72 4 60 Z', 'M12 51 H33 V60 H12 Z', 'M64 4 Q80 4 80 20 Q80 29 70 37 L58 37 Q48 29 48 20 Q48 4 64 4 Z',
+      'M59 41 H69 L67.5 48 H60.5 Z', 'M59.5 37 L61 37 L61.5 41 L60 41 Z', 'M67 37 L68.5 37 L68 41 L66.5 41 Z', 'M63.3 48 H64.7 V60 H63.3 Z'],
+    cut: ['M63.2 6 H64.8 V35 H63.2 Z', 'M56 8 Q51 20 59 35 L57.8 35.6 Q49 20 54.6 8.6 Z', 'M72 8 Q77 20 69 35 L70.2 35.6 Q79 20 73.4 8.6 Z', 'M16 54 H20 V57 H16 Z', 'M25 54 H29 V57 H25 Z',
+      'M40 64 h9 v2 h-9 Z', 'M54 64 h9 v2 h-9 Z', 'M68 64 h9 v2 h-9 Z'],
+  },
+  bat: {   // Linienschiff: drei Masten mit je drei Rahsegeln, zwei Reihen Stückpforten
+    fill: ['M4 56 H86 L98 51 L90 78 H14 Q6 72 4 56 Z', 'M4 47 H18 V56 H4 Z',
+      'M29 8 H31.4 V56 H29 Z', 'M53 4 H55.4 V56 H53 Z', 'M75 10 H77.4 V56 H75 Z',
+      'M23 12 H37 L38 19 H22 Z', 'M20 22 H40 L41 32 H19 Z', 'M18 35 H42 L43 49 H17 Z',
+      'M46 7 H62 L63 15 H45 Z', 'M42 18 H66 L67 30 H41 Z', 'M39 33 H69 L70 49 H38 Z',
+      'M69 14 H83 L84 21 H68 Z', 'M66 24 H86 L87 34 H65 Z', 'M64 37 H88 L89 50 H63 Z',
+      'M90 53 L100 46 L100 49 L92 55.5 Z', DOT(36), DOT(50), DOT(64)],
+    cut: ['M20 60 h4 v3.2 h-4 Z', 'M30 60 h4 v3.2 h-4 Z', 'M40 60 h4 v3.2 h-4 Z', 'M50 60 h4 v3.2 h-4 Z', 'M60 60 h4 v3.2 h-4 Z', 'M70 60 h4 v3.2 h-4 Z', 'M80 60 h4 v3.2 h-4 Z',
+      'M22 67 h4 v3.2 h-4 Z', 'M32 67 h4 v3.2 h-4 Z', 'M42 67 h4 v3.2 h-4 Z', 'M52 67 h4 v3.2 h-4 Z', 'M62 67 h4 v3.2 h-4 Z', 'M72 67 h4 v3.2 h-4 Z'],
+  },
+};
 // Grafik-Sets (Wunsch des Nutzers): Einheitenbilder, Landschaft und Kartenrand gehören zusammen. Das Set folgt aus der Landschaft
 // (LANDSCAPES[…].set, ohne Angabe 'insel') – wer „Asteroiden“ wählt, sieht Raumschiffe; der Kartenrand wird je Set gemerkt (ui-schau.js).
-const ICON_SETS = { insel: ICON_SRC, weltraum: ICON_SPACE };
+const ICON_SETS = { insel: ICON_SRC, weltraum: ICON_SPACE, segel: ICON_SAIL };
 const ICONS_OF = {};
 for (const [s, src] of Object.entries(ICON_SETS)) {
   ICONS_OF[s] = {};
@@ -224,7 +285,7 @@ function citySprite(owner, size, variant, set = gfxSet()) {
   } else {
     // Neutral: heller Platz mit dunklem Rand – auf Wüste und Schnee trägt der Rand, auf Lava der helle Platz (Farbprüfung aller Landschaften:
     // vorher verschwand die beige Stadt auf Sand und Schnee fast, Farbabstand 10–25)
-    g.fillStyle = '#cdbf9c'; g.fill();
+    g.fillStyle = set === 'segel' ? '#a7adb4' : '#cdbf9c'; g.fill();   // alte Karte: beige auf Pergament verschwände (Farbabstand 7–12), schiefergrau 30–34
     g.lineWidth = Math.max(1.2, s * 0.045); g.strokeStyle = '#4a4f57'; g.stroke();
   }
   g.fillStyle = 'rgba(255,255,255,0.18)';
@@ -245,6 +306,28 @@ function citySprite(owner, size, variant, set = gfxSet()) {
       g.strokeStyle = 'rgba(63,90,112,0.55)'; g.lineWidth = Math.max(0.6, s * 0.012);   // Streben der Kuppel
       g.beginPath(); g.moveTo(X, Y - R); g.lineTo(X, Y); g.moveTo(X - R * 0.7, Y - R * 0.7); g.quadraticCurveTo(X - R * 0.25, Y - R * 0.4, X - R * 0.35, Y); g.stroke();
     }
+  } else if (set === 'segel') {
+    // Festungsstadt (Segelzeit): Häuser hinter der Mauer, Turm mit Kegeldach, vorn die Mauer mit Zinnen und Tor. Dächer in Besitzerfarbe
+    // wie bei den Städten der Inselwelt; zwei Anordnungen wechseln sich ab.
+    const lay = [{ tower: [0.16, 0.26, 0.34, 0.64], houses: [[0.42, 0.4, 0.58, 0.6], [0.58, 0.44, 0.76, 0.6]] },
+      { tower: [0.58, 0.24, 0.75, 0.64], houses: [[0.16, 0.42, 0.34, 0.6], [0.34, 0.38, 0.52, 0.6]] }][variant % 2];
+    const lw = Math.max(0.8, s * 0.02), STONE = '#d2cab6', EDGE = '#5d574c';
+    const box = (x0, y0, x1, y1, fill, edge) => { g.fillStyle = fill; g.strokeStyle = edge; g.lineWidth = lw; g.fillRect(s * x0, s * y0, s * (x1 - x0), s * (y1 - y0)); g.strokeRect(s * x0, s * y0, s * (x1 - x0), s * (y1 - y0)); };
+    const roof = (x0, x1, y, h) => { g.beginPath(); g.moveTo(s * (x0 - 0.02), s * y); g.lineTo(s * (x0 + x1) / 2, s * (y - h)); g.lineTo(s * (x1 + 0.02), s * y); g.closePath();
+      g.fillStyle = pal.color; g.fill(); g.strokeStyle = pal.dark; g.lineWidth = Math.max(0.8, s * 0.025); g.stroke(); };
+    for (const [x0, y0, x1, y1] of lay.houses) {
+      box(x0, y0, x1, y1, '#f2ead8', '#8d806a');
+      g.fillStyle = '#5b6b80'; g.fillRect(s * (x0 + (x1 - x0) * 0.38), s * (y0 + (y1 - y0) * 0.3), s * (x1 - x0) * 0.24, s * (y1 - y0) * 0.3);
+      roof(x0, x1, y0, 0.13);
+    }
+    const [tx0, ty0, tx1, ty1] = lay.tower;
+    box(tx0, ty0, tx1, ty1, STONE, EDGE);
+    g.fillStyle = '#4a3f33'; g.fillRect(s * ((tx0 + tx1) / 2 - 0.02), s * (ty0 + 0.1), s * 0.04, s * 0.1);   // Schießscharte
+    roof(tx0, tx1, ty0, 0.2);
+    box(0.1, 0.6, 0.9, 0.8, STONE, EDGE);   // Mauer
+    for (let x = 0.12; x < 0.86; x += 0.12) box(x, 0.54, x + 0.06, 0.6, STONE, EDGE);   // Zinnen
+    g.fillStyle = '#4a3f33'; g.beginPath();   // Tor
+    g.moveTo(s * 0.44, s * 0.8); g.lineTo(s * 0.44, s * 0.7); g.arc(s * 0.5, s * 0.7, s * 0.06, Math.PI, 0); g.lineTo(s * 0.56, s * 0.8); g.closePath(); g.fill();
   } else {
     const layouts = [
       [[0.30, 0.38, 0.26, 0.2], [0.14, 0.58, 0.26, 0.22], [0.48, 0.6, 0.3, 0.2]],
@@ -346,6 +429,35 @@ LANDSCAPES.kristall = Object.assign({}, AST, {   // Kristall: dunkles Schieferge
 });
 // Asteroidengürtel: alle vier Arten auf einer Karte (beltMap), dazu ein warmer Schein im All auf der Seite der Sonne (sun)
 LANDSCAPES.guertel = Object.assign({}, AST, { zones: true, belt: true, zoneKeys: null, sun: [120, 78, 58], mini: [[140, 124, 116], [30, 33, 58]] });
+// Alte Karte (Segelzeit-Set: Segelschiffe, Kavallerie, Festungsstädte – eigene Einheitenbilder): wie eine handkolorierte Karte – blassgrünes Meer
+// mit Wellen in Tinte, Land in Ocker und Oliv, Küste mit Tintenstrich (ink), Berge, Hügel und Bäume umrandet (outline). Passender Rand: Alte Seekarte.
+LANDSCAPES.altkarte = {
+  set: 'segel',
+  water: [[184, 208, 196], [168, 196, 188], [154, 184, 180], [142, 174, 172], [132, 164, 164], [124, 156, 158]], sand: [222, 204, 160],
+  stops: [[0, [222, 214, 166]], [0.1, [206, 206, 150]], [0.42, [188, 194, 134]], [0.7, [186, 172, 126]], [1, [172, 156, 120]]],
+  surf: 'rgb(198,200,142)', glow: 'rgba(246,238,206,0.75)', wave: 'rgba(60,78,74,0.34)',   // surf in Landfarbe (liegt darunter, siehe Asteroiden)
+  mount: ['#c8ae84', '#8c7254'], cap: null, hill: '#b8a670', tree: ['#62703c', '#8e9c5c'], treeP: 0.42,
+  ink: 'rgba(72,54,30,0.85)', outline: 'rgba(72,54,30,0.65)', grid: 'rgba(90,70,40,0.08)', mini: [[194, 196, 140], [156, 186, 180]],
+};
+// Weitere alte Karten (Wunsch des Nutzers: Klimazonen auch in der Segelzeit) – Meer, Tinte und Umrisse wie oben, nur das Land anders koloriert.
+// surf jeweils in der Landfarbe (liegt darunter, siehe Asteroiden).
+const OLD = LANDSCAPES.altkarte;
+LANDSCAPES.altwueste = Object.assign({}, OLD, {   // Wüste: sandgelb, Dünen (Hügel), selten Oasen
+  sand: [240, 222, 170], stops: [[0, [242, 216, 156]], [0.1, [238, 204, 136]], [0.42, [230, 188, 118]], [0.7, [216, 170, 108]], [1, [198, 152, 104]]],
+  surf: 'rgb(232,190,122)', mount: ['#dcb27e', '#a2744c'], hill: '#deb070', tree: ['#5e7038', '#8c9c58'], treeP: 0.1, mini: [[232, 192, 124], [156, 186, 180]],
+});
+LANDSCAPES.altpolar = Object.assign({}, OLD, {   // Eismeer: blassblau-weißes Land, Gipfel mit Schnee, dunkle Nadelwälder
+  sand: [226, 232, 230], stops: [[0, [234, 238, 236]], [0.1, [222, 230, 232]], [0.42, [208, 218, 224]], [0.7, [194, 206, 214]], [1, [180, 192, 202]]],
+  surf: 'rgb(212,222,226)', mount: ['#dfe6ec', '#97a6b4'], cap: '#ffffff', hill: '#d2dce4', tree: ['#3e5a4a', '#62806a'], treeP: 0.3,
+  mini: [[222, 228, 232], [156, 186, 180]],
+});
+LANDSCAPES.alttropen = Object.assign({}, OLD, {   // Tropen: sattes Grün, dichter Wald
+  sand: [230, 216, 162], stops: [[0, [186, 204, 138]], [0.1, [164, 190, 116]], [0.42, [146, 174, 100]], [0.7, [150, 162, 104]], [1, [154, 148, 112]]],
+  surf: 'rgb(160,186,112)', mount: ['#b0a878', '#706a48'], hill: '#9cb26e', tree: ['#3a6a2c', '#5e9044'], treeP: 0.7, mini: [[150, 178, 104], [156, 186, 180]],
+});
+// Klimazonen der alten Karte: dieselbe Verteilung wie bei den Inseln (zoneMap: Eismeer im Norden und Süden, Wüste in der Mitte, dazwischen
+// gemäßigt, vereinzelt Tropen – an der Stelle, wo die Inseln Lava haben)
+LANDSCAPES.altzonen = Object.assign({}, OLD, { zones: true, zoneKeys: ['altkarte', 'altwueste', 'altpolar', 'alttropen'], mini: [[206, 198, 146], [156, 186, 180]] });
 function landscape() { return LANDSCAPES[typeof S !== 'undefined' && S && S.land] || LANDSCAPES.gruen; }
 
 // Klimazonen (Landschaft „zonen“, Wunsch des Nutzers): je Feld eine der Landschaften Grün, Wüste, Schnee, Lava – nach der Lage wie auf einer
@@ -576,24 +688,25 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   // Asteroiden: Licht von links oben – Schatten an den Kanten zum All rechts und unten, Glanz links und oben. Je Stufe ein Pfad aus Streifen,
   // die sich um 1 px überlappen und einmal gefüllt werden: Streifen, die genau aneinanderstoßen (oder das Land als verschobener Pfad),
   // ließen an den Kachelgrenzen feine Nähte. Die Abrundung der Ecken übernimmt der Zuschnitt aufs Land.
-  if (L.bevel) {
-    const band = (b, shade, col) => {
-      const p = new Path2D(), o = 1;
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-        if (isW(x, y)) continue;
-        const X = x * TS, Y = y * TS;
-        if (shade) {
-          if (isW(x + 1, y)) p.rect(X + TS - b, Y - o, b + o + 1, TS + 2 * o);
-          if (isW(x, y + 1)) p.rect(X - o, Y + TS - b, TS + 2 * o, b + o + 1);
-        } else {
-          if (isW(x - 1, y)) p.rect(X - o - 1, Y - o, b + o + 1, TS + 2 * o);
-          if (isW(x, y - 1)) p.rect(X - o, Y - o - 1, TS + 2 * o, b + o + 1);
-        }
+  // Alte Karte: Tintenstrich an der ganzen Küste (dieselben Streifen auf allen vier Seiten)
+  const band = (b, shade, light, col) => {
+    const p = new Path2D(), o = 1;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (isW(x, y)) continue;
+      const X = x * TS, Y = y * TS;
+      if (shade) {
+        if (isW(x + 1, y)) p.rect(X + TS - b, Y - o, b + o + 1, TS + 2 * o);
+        if (isW(x, y + 1)) p.rect(X - o, Y + TS - b, TS + 2 * o, b + o + 1);
       }
-      g.fillStyle = col; g.fill(p);
-    };
-    band(TS * 0.07, true, 'rgba(0,0,0,0.3)'); band(TS * 0.17, true, 'rgba(0,0,0,0.16)'); band(TS * 0.07, false, 'rgba(255,255,255,0.16)');
-  }
+      if (light) {
+        if (isW(x - 1, y)) p.rect(X - o - 1, Y - o, b + o + 1, TS + 2 * o);
+        if (isW(x, y - 1)) p.rect(X - o, Y - o - 1, TS + 2 * o, b + o + 1);
+      }
+    }
+    g.fillStyle = col; g.fill(p);
+  };
+  if (L.bevel) { band(TS * 0.07, true, false, 'rgba(0,0,0,0.3)'); band(TS * 0.17, true, false, 'rgba(0,0,0,0.16)'); band(TS * 0.07, false, true, 'rgba(255,255,255,0.16)'); }
+  if (L.ink) band(Math.max(1.2, TS * 0.045), true, true, L.ink);
 
   // Bodenstruktur
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -647,6 +760,11 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
         g.beginPath(); g.moveTo(cx - w, by); g.lineTo(cx, by - h); g.lineTo(cx, by); g.closePath(); g.fill();
         g.fillStyle = Q.mount[1];
         g.beginPath(); g.moveTo(cx, by - h); g.lineTo(cx + w, by); g.lineTo(cx, by); g.closePath(); g.fill();
+        if (Q.outline) {   // alte Karte: Umriss und zwei Schraffurstriche auf der Schattenseite
+          g.strokeStyle = Q.outline; g.lineWidth = Math.max(0.7, TS / 36); g.lineJoin = 'round';
+          g.beginPath(); g.moveTo(cx - w, by); g.lineTo(cx, by - h); g.lineTo(cx + w, by);
+          g.moveTo(cx + w * 0.28, by - h * 0.5); g.lineTo(cx + w * 0.18, by); g.moveTo(cx + w * 0.58, by - h * 0.24); g.lineTo(cx + w * 0.5, by); g.stroke();
+        }
         if (el > 0.8 && Q.cap) {
           g.fillStyle = Q.cap;
           g.beginPath(); g.moveTo(cx - w * 0.32, by - h * 0.68); g.lineTo(cx, by - h); g.lineTo(cx + w * 0.32, by - h * 0.68);
@@ -659,6 +777,7 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
       g.beginPath(); g.ellipse(cx + TS * 0.04, by + TS * 0.02, TS * 0.3, TS * 0.08, 0, 0, 7); g.fill();
       g.fillStyle = Q.hill;
       g.beginPath(); g.ellipse(cx, by, TS * 0.28, TS * 0.2, 0, Math.PI, 0); g.fill();
+      if (Q.outline) { g.strokeStyle = Q.outline; g.lineWidth = Math.max(0.7, TS / 36); g.stroke(); }
       g.fillStyle = 'rgba(255,255,255,0.12)';
       g.beginPath(); g.ellipse(cx - TS * 0.06, by - TS * 0.05, TS * 0.12, TS * 0.07, 0, Math.PI, 0); g.fill();
     } else if (el > 0.14 && el < 0.56 && r() < Q.treeP) {
@@ -697,6 +816,7 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
         g.beginPath(); g.ellipse(tx + tr * 0.3, ty + tr * 0.8, tr, tr * 0.45, 0, 0, 7); g.fill();
         g.fillStyle = Q.tree[0];
         g.beginPath(); g.arc(tx, ty, tr, 0, 7); g.fill();
+        if (Q.outline) { g.strokeStyle = Q.outline; g.lineWidth = Math.max(0.6, TS / 44); g.stroke(); }
         g.fillStyle = Q.tree[1];
         g.beginPath(); g.arc(tx - tr * 0.3, ty - tr * 0.3, tr * 0.5, 0, 7); g.fill();
       }

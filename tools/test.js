@@ -446,7 +446,7 @@ test('Landschaft: gehört zur Partie, folgt der Kartennummer, übersteht Speiche
   for (let n = 1; n <= 80; n++) { newGame('klein', 'normal', 'inseln', n * 7919, 1); ok(START_LANDS.includes(S.land), 'Startlandschaft ist eine der erlaubten'); seen.add(S.land); }
   eq(seen.size, START_LANDS.length, 'alle Startlandschaften kommen vor');
   eq([START_LANDS.length, DEFAULT_LAND, FIRST_LAND], [6, 'zonen', 'zonen'], 'ohne Wahl: Zufall über alle der Inselwelt (Simulationen); Standard und erste Partie: Klimazonen');
-  eq(LAND_KEYS.filter(k => !START_LANDS.includes(k)), ['asteroiden', 'eis', 'eisen', 'kristall', 'guertel'], 'Asteroiden (Weltraum-Set) wählbar, aber nie zufällig');
+  eq(LAND_KEYS.filter(k => !START_LANDS.includes(k)), ['asteroiden', 'eis', 'eisen', 'kristall', 'guertel', 'altkarte', 'altwueste', 'altpolar', 'alttropen', 'altzonen'], 'Weltraum und Segelzeit wählbar, aber nie zufällig');
   newGame('klein', 'normal', 'inseln', 4242, 1); const a = S.land;
   newGame('klein', 'normal', 'inseln', 4242, 1); eq(S.land, a, 'gleiche Kartennummer, gleiche Landschaft');
   newGame('klein', 'normal', 'inseln', 4242, 1, 'lava'); eq(S.land, 'lava', 'gewählte Landschaft gilt');

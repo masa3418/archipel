@@ -205,7 +205,7 @@ function gfxUnits(body) {
     bar.append(b);
   });
   bar.append(gfxEl('span', 'muted', tt('Set:', 'Set:')));   // Grafik-Set: beim Öffnen das der laufenden Partie
-  for (const [set, label] of [['insel', tt('Inselwelt', 'Island world')], ['weltraum', tt('Weltraum', 'Space')]]) bar.append(gfxButton(label, { gset: set }, set === gfx.set));
+  for (const [set, label] of [['insel', tt('Inselwelt', 'Island world')], ['weltraum', tt('Weltraum', 'Space')], ['segel', tt('Segelzeit', 'Age of sail')]]) bar.append(gfxButton(label, { gset: set }, set === gfx.set));
   body.append(bar);
   const grid = gfxEl('div', 'gfx-grid fix');
   grid.style.setProperty('--cw', '148px');
@@ -330,13 +330,16 @@ async function gfxCopy(text) {
 // Reiter „Städte und Gelände“
 function gfxLand(body) {
   const sp = !!landscape().space;   // Weltraum-Set: Raumstationen und Asteroiden – die Texte beschreiben, was zu sehen ist
+  const sail = gfxSet() === 'segel';
   const cg = gfxSection(body, tt('Städte', 'Cities'), sp
     ? tt('Raumstationen: Sockel der Glaskuppeln und Fahne in der Farbe des Besitzers; zwei Anordnungen wechseln sich ab.', 'Space stations: dome bases and flag in the owner\'s colour; two layouts alternate.')
+    : sail ? tt('Festungsstädte: Mauer mit Tor und Zinnen, Turm und Häuser; Dächer und Fahne in der Farbe des Besitzers, zwei Anordnungen wechseln sich ab.', 'Fortified towns: wall with gate and battlements, tower and houses; roofs and flag in the owner\'s colour, two layouts alternate.')
     : tt('Dächer und Fahne in der Farbe des Besitzers; zwei Anordnungen der Häuser wechseln sich ab.', 'Roofs and flag in the owner\'s colour; two layouts of the houses alternate.'));
   [[-1, tt('Neutral', 'Neutral')], ...PLAYERS.map((p, k) => [k, p.name])].forEach(([ow, name]) =>
     cg.append(gfxCard(gfxPic(['....', '.CC.', '....'], 56, null, { crop: [1, 1, 2, 1], cities: [ow, ow] }), name)));
 
-  const tg = gfxSection(body, tt('Gelände', 'Terrain'), sp ? tt('Asteroiden im All: Licht von links oben, um die Felsen schimmert Staub, dazwischen Sterne und Nebelschleier. Krater, Hügel, Felsbrocken und Eiskristalle folgen der Höhe – sie sind nur Bild und ändern nichts an den Regeln.',
+  const tg = gfxSection(body, tt('Gelände', 'Terrain'), sail ? tt('Wie auf einer alten, von Hand kolorierten Karte: Wellen und Küsten in Tinte, Wald, Hügel und Berge umrandet. Alles folgt der Höhe und ist nur Bild – die Regeln sind dieselben.',
+    'Like an old hand-coloured map: waves and coasts in ink, forest, hills and mountains outlined. Everything follows the height and is only a picture – the rules are the same.') : sp ? tt('Asteroiden im All: Licht von links oben, um die Felsen schimmert Staub, dazwischen Sterne und Nebelschleier. Krater, Hügel, Felsbrocken und Eiskristalle folgen der Höhe – sie sind nur Bild und ändern nichts an den Regeln.',
     'Asteroids in space: light from the top left, dust shimmering around the rocks, stars and nebulae in between. Craters, hills, boulders and ice crystals follow the height – they are only pictures and do not change the rules.') : tt('Das Wasser wird dunkler, je weiter das Land entfernt ist; an der Küste schimmert Flachwasser. Wald, Hügel und Berge folgen der Höhe – sie sind nur Bild und ändern nichts an den Regeln.',
     'The water gets darker the further away land is; shallow water shimmers along the coast. Forest, hills and mountains follow the height – they are only pictures and do not change the rules.'));
   const pano = gfxPic(['~~~~~..ffhhmmMM', '~~~~...ffhhmmMM', '~~~~~..ffhhmmMM', '~~~~~~.ffhhmmMM', '~~~~~..ffhhmmMM'], 40);
@@ -539,9 +542,17 @@ $('bGfx').onclick = () => { closeModals(); openGfx(); };   // aus dem Fenster �
 // Landschaft der laufenden Partie (S.land, LANDSCAPES in gfx.js): nur die Farben der Karte. Wird mit der Partie gespeichert.
 const LAND_NAMES = { gruen: tt('Grüne Inseln', 'Green islands'), wueste: tt('Wüste', 'Desert'), schnee: tt('Schnee', 'Snow'), lava: tt('Lava', 'Lava'), alien: tt('Fremder Planet', 'Alien planet'), zonen: tt('Klimazonen', 'Climate zones'),
   asteroiden: tt('Asteroiden', 'Asteroids'), eis: tt('Eis-Asteroiden', 'Ice asteroids'), eisen: tt('Eisen-Asteroiden', 'Iron asteroids'),
-  kristall: tt('Kristall-Asteroiden', 'Crystal asteroids'), guertel: tt('Asteroidengürtel', 'Asteroid belt') };
+  kristall: tt('Kristall-Asteroiden', 'Crystal asteroids'), guertel: tt('Asteroidengürtel', 'Asteroid belt'), altkarte: tt('Alte Karte', 'Old map'),
+  altwueste: tt('Alte Karte · Wüste', 'Old map · desert'), altpolar: tt('Alte Karte · Eismeer', 'Old map · polar sea'), alttropen: tt('Alte Karte · Tropen', 'Old map · tropics'),
+  altzonen: tt('Alte Karte · Klimazonen', 'Old map · climate zones') };
 // Grafik-Sets: Landschaften nach Set gruppiert (Einstellungen: optgroup, „Ansicht“: Überschrift). Die Asteroiden bringen eigene Einheitenbilder mit.
-const LAND_GROUPS = [['insel', tt('Inselwelt', 'Island world')], ['weltraum', tt('Weltraum – Raumschiffe und Raumstationen', 'Space – spaceships and space stations')]];
+const LAND_GROUPS = [['insel', tt('Inselwelt', 'Island world')], ['weltraum', tt('Weltraum – Raumschiffe und Raumstationen', 'Space – spaceships and space stations')],
+  ['segel', tt('Segelzeit – Segelschiffe, Kavallerie und Festungen', 'Age of sail – sailing ships, cavalry and forts')]];
+const SET_HEAD = { insel: tt('Landschaft', 'Landscape'), weltraum: tt('Weltraum', 'Space'), segel: tt('Segelzeit', 'Age of sail') };   // Überschriften unter „Ansicht“
+const SET_TIP = {   // Hinweistext der Landschaften mit eigenen Einheitenbildern
+  weltraum: tt('Mit eigenen Einheitenbildern: Raumschiffe statt Schiffe, Raumstationen statt Städte – Regeln und Namen bleiben gleich', 'With its own unit pictures: spaceships instead of ships, space stations instead of cities – rules and names stay the same'),
+  segel: tt('Mit eigenen Einheitenbildern: Segelschiffe, Kavallerie und Festungsstädte – Regeln und Namen bleiben gleich', 'With its own unit pictures: sailing ships, cavalry and fortified towns – rules and names stay the same'),
+};
 const landsOf = set => Object.keys(LANDSCAPES).filter(k => (LANDSCAPES[k].set || 'insel') === set);
 // Die Landschaft ist EINE Einstellung (Wunsch des Nutzers – eine für die laufende und eine für neue Partien war umständlich): Umschalten über
 // „Ansicht“ oder die Einstellungen gilt sofort für die laufende Partie und bleibt für alle neuen eingestellt (archipel-landscape, Vorgabe
@@ -576,7 +587,7 @@ const BORDER_SW = {   // Farbfeld in der Liste „Ansicht“
 };
 // Der Rand wird je Grafik-Set gemerkt (Set = Einheitenbilder + Landschaft + Rand, Wunsch des Nutzers): Inselwelt in archipel-border (Vorgabe
 // Offenes Meer), Weltraum in archipel-border-weltraum (Vorgabe Weltall). Wechselt die Landschaft das Set, wechselt der Rand mit; frei wählbar bleibt er.
-const BORDER_DEFAULT = { insel: 'meer', weltraum: 'weltall' };
+const BORDER_DEFAULT = { insel: 'meer', weltraum: 'weltall', segel: 'seekarte' };
 const borderPrefs = Object.assign({}, BORDER_DEFAULT);
 const borderStore = set => (set === 'insel' ? 'archipel-border' : 'archipel-border-' + set);
 try { for (const set in borderPrefs) { const v = localStorage.getItem(borderStore(set)); if (BORDER_KEYS.includes(v)) borderPrefs[set] = v; } } catch (e) {}
@@ -729,11 +740,12 @@ function renderViewMenu() {
   const cur = (S && S.land) || 'gruen', rgb = c => `rgb(${c.join()})`;
   viewMenu.innerHTML = `<h4>${tt('Anzeigen', 'Show')}</h4>`
     + VIEW_SW.map(([k, label, get, , kbd]) => `<button class="mi${get() ? ' on' : ''}" data-view="${k}" role="menuitemcheckbox" aria-checked="${get()}"><span class="ck">${get() ? '✓' : ''}</span>${label}${kbd ? `<kbd>${kbd}</kbd>` : ''}</button>`).join('')
-    + LAND_GROUPS.map(([set]) => `<h4>${set === 'insel' ? tt('Landschaft', 'Landscape') : tt('Weltraum', 'Space')}</h4>` + landsOf(set).map(k => { const L = LANDSCAPES[k], m = L.mini;
+    + LAND_GROUPS.map(([set]) => `<h4>${SET_HEAD[set]}</h4>` + landsOf(set).map(k => { const L = LANDSCAPES[k], m = L.mini;
       const bg = L.belt ? 'linear-gradient(90deg, #ffd59a 0 10%, #96624a 10% 37%, #8c8680 37% 64%, #c6d6e4 64% 90%, #79ffd4 90%)'   // Sonne, Eisen, Gestein, Eis, Kristall
+        : L.zones && L.zoneKeys ? (([a, b, c]) => `linear-gradient(180deg, ${c} 0 22%, ${a} 22% 40%, ${b} 40% 60%, ${a} 60% 78%, ${c} 78%)`)(L.zoneKeys.map(z => rgb(LANDSCAPES[z].mini[0])))   // Zonen aus den Farbsätzen
         : L.zones ? 'linear-gradient(180deg, #eef3f8 0 22%, #6ea84e 22% 40%, #e2c27e 40% 60%, #6ea84e 60% 78%, #eef3f8 78%)'
         : (L.space ? 'radial-gradient(1px 1px at 15px 4px, #fff, transparent), radial-gradient(1px 1px at 19px 10px, #fff, transparent), ' : '') + `linear-gradient(135deg, ${rgb(m[0])} 0 55%, ${rgb(m[1])} 55%)`;
-      const tip = L.set ? ` title="${esc(tt('Mit eigenen Einheitenbildern: Raumschiffe statt Schiffe, Raumstationen statt Städte – Regeln und Namen bleiben gleich', 'With its own unit pictures: spaceships instead of ships, space stations instead of cities – rules and names stay the same'))}"` : '';
+      const tip = SET_TIP[L.set] ? ` title="${esc(SET_TIP[L.set])}"` : '';
       return `<button class="mi${k === cur ? ' on' : ''}" data-land="${k}"${tip}><span class="sw" style="background:${bg}"></span>${esc(LAND_NAMES[k] || k)}</button>`; }).join('')).join('')
     + `<h4>${tt('Kartenrand', 'Around the map')}</h4>` + BORDER_KEYS.map(k =>
       `<button class="mi${k === curBorder() ? ' on' : ''}" data-border="${k}"><span class="sw" style="background:${BORDER_SW[k]}"></span>${esc(BORDER_NAMES[k])}</button>`).join('');
