@@ -241,17 +241,46 @@ window.UiTest = (() => {
   }
   // Kartenrand: jede Wahl setzt die Gestaltung, der Schmuck liegt neben der Karte (nie darauf), Auswahl unter „Ansicht“ und gemerkt
   function borderCheck() {
-    const keep = borderPref, mx0 = pad.x, my0 = pad.y, mx1 = pad.x + cv.width, my1 = pad.y + cv.height;
+    const keep = curBorder(), mx0 = pad.x, my0 = pad.y, mx1 = pad.x + cv.width, my1 = pad.y + cv.height;
+    const store = gfxSet() === 'insel' ? 'archipel-border' : 'archipel-border-' + gfxSet();
     for (const k of BORDER_KEYS) {
       setBorder(k);
       const deco = [...$('padDeco').children], onMap = deco.filter(d => { const x = parseFloat(d.style.left), y = parseFloat(d.style.top); return x > mx0 && x < mx1 && y > my0 && y < my1; });
-      check($('mapPad').classList.contains('b-' + k) && localStorage.getItem('archipel-border') === k, `Kartenrand ${k}: gesetzt und gemerkt`);
+      check($('mapPad').classList.contains('b-' + k) && localStorage.getItem(store) === k, `Kartenrand ${k}: gesetzt und gemerkt`);
       check(k === 'seekarte' ? deco.length >= 4 : k === 'weltall' ? deco.length > 0 : deco.length === 0, `Kartenrand ${k}: Schmuck (${deco.length})`);
       check(!onMap.length, `Kartenrand ${k}: kein Schmuck auf der Karte`);
     }
     openViewMenu(); const item = viewMenu.querySelector('[data-border="weltall"]'); item.click();
-    check(borderPref === 'weltall' && viewMenu.querySelector('[data-border="weltall"]').classList.contains('on'), 'Kartenrand: Auswahl unter „Ansicht“');
+    check(curBorder() === 'weltall' && viewMenu.querySelector('[data-border="weltall"]').classList.contains('on'), 'Kartenrand: Auswahl unter „Ansicht“');
     closeViewMenu(); setBorder(keep);
+  }
+  // Grafik-Sets: Die Landschaft „Asteroiden“ bringt Weltraum-Bilder für Einheiten und Städte mit; der Kartenrand wird je Set gemerkt,
+  // die Partie speichert die Landschaft (und damit das Set) mit
+  function spaceSet() {
+    const keepLand = landPref, keepS = S.land, keepB = Object.assign({}, borderPrefs);
+    const keepStore = ['archipel-border', 'archipel-border-weltraum'].map(k => [k, localStorage.getItem(k)]);
+    setLandscape('gruen');
+    const ship = unitSprite('crs', 0, 30), city = citySprite(0, 30, 0), icon = iconUrl('u', 'crs');   // (Bildspeicher wird beim Neuzeichnen geleert: Bilder über toDataURL vergleichen)
+    setLandscape('asteroiden');
+    check(gfxSet() === 'weltraum' && S.land === 'asteroiden', 'Grafik-Set: Asteroiden gehören zum Weltraum');
+    check(unitSprite('crs', 0, 30).toDataURL() !== ship.toDataURL() && citySprite(0, 30, 0).toDataURL() !== city.toDataURL() && iconUrl('u', 'crs') !== icon, 'Grafik-Set: eigene Bilder für Einheiten, Städte und Seitenleiste');
+    check(UNIT_ORDER.every(k => ICON_SPACE[k] && unitSvg(k, 0, true, '', 'weltraum') !== unitSvg(k, 0, true, '', 'insel')), 'Grafik-Set: jede Einheit hat ein Weltraum-Bild (auch als SVG)');
+    check($('mapPad').classList.contains('b-' + borderPrefs.weltraum) && $('borderSel').value === borderPrefs.weltraum, 'Grafik-Set: Kartenrand des Weltraums');
+    setBorder('holz');
+    check(localStorage.getItem('archipel-border-weltraum') === 'holz' && borderPrefs.insel === keepB.insel, 'Grafik-Set: Rand je Set gemerkt');
+    setLandscape('gruen');
+    check(gfxSet() === 'insel' && $('mapPad').classList.contains('b-' + keepB.insel) && $('borderSel').value === keepB.insel && unitSprite('crs', 0, 30).toDataURL() === ship.toDataURL(), 'Grafik-Set: zurück zur Inselwelt, Bilder und Rand wie vorher');
+    openViewMenu(); viewMenu.querySelector('[data-land="asteroiden"]').click();
+    check(gfxSet() === 'weltraum' && viewMenu.querySelector('[data-land="asteroiden"]').classList.contains('on') && viewMenu.querySelector('[data-border="holz"]').classList.contains('on'), 'Grafik-Set: Auswahl unter „Ansicht“, Rand folgt');
+    closeViewMenu();
+    check(!!$('landSel').querySelector('optgroup option[value="asteroiden"]') && $('landSel').value === 'asteroiden', 'Grafik-Set: Einstellungen nach Sets gruppiert');
+    const save = serialize(); S.land = 'gruen'; deserialize(save);
+    check(S.land === 'asteroiden', 'Grafik-Set: die Partie speichert die Landschaft mit');
+    for (const k of ['land', 'units']) { gfx.tab = k; openGfx(); }
+    check(gfx.set === 'weltraum' && !!$('mGfx').querySelector('[data-gset="weltraum"].on'), 'Grafik-Set: Grafik-Übersicht zeigt das Set der Partie');
+    closeModals(); gfx.tab = 'units';
+    Object.assign(borderPrefs, keepB); for (const [k, v] of keepStore) { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); }
+    setLandscape(keepLand); S.land = keepS; buildTerrainCache(); refresh();
   }
   // Gestauchte Wiedergabe (lange Gegnerzüge): Auch versenkte Einheiten verschwinden im gestauchten Takt – vorher blieben sie bis zu ihrem
   // ungestauchten Zeitpunkt stehen (ein Kreuzer fuhr auf das Feld des versenkten Zerstörers, der erst danach verschwand)
@@ -720,7 +749,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); goneScale(); smoothZoomCheck(); borderCheck(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); goneScale(); smoothZoomCheck(); borderCheck(); spaceSet(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters

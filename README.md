@@ -87,6 +87,8 @@ on GitHub) and open it via ☰ Menu → Saved games → Load from file.*
 - Sechs Landschaften für dieselbe Karte – grüne Inseln, Wüste, Schnee, Lava, fremder Planet und Klimazonen (Schnee im Norden und Süden,
   Wüste in der Mitte, vereinzelt Lava) –, jederzeit umschaltbar, auch mitten im Spiel; dazu fünf Kartenränder für das, was außerhalb der Karte
   liegt: schlicht, offenes Meer, alte Seekarte mit Windrose und Seeungeheuern, Holztisch oder Weltall
+- Weltraum-Set: Mit der Landschaft „Asteroiden“ wird das Meer zum All mit Sternen und Nebeln, das Land zu Felsbrocken mit Kratern, die Städte zu
+  Raumstationen und die Einheiten zu Raumsoldaten, Rovern, Raumjägern und Raumschiffen – gleiche Regeln, nur ein anderes Bild
 - Nebel des Krieges, Städte erobern (50 % Chance, die ersten beiden neutralen sicher; der Eroberer geht in der Stadt auf) und Produktion wählen
 - Neun Einheiten: Infanterie, Panzer, Jäger (mit Treibstoff), Transporter, Zerstörer,
   U-Boot, Kreuzer, Träger, Schlachtschiff

@@ -123,7 +123,7 @@ function drawOn(g, ts, fn) {
   ctx = g; TS = ts;
   try { fn(); } finally { ctx = c0; TS = t0; }
 }
-const gfx = { tab: 'units', owner: 0, svg: null, badge: true, raf: 0, live: [], scenes: [], appSvg: null };
+const gfx = { tab: 'units', owner: 0, set: 'insel', svg: null, badge: true, raf: 0, live: [], scenes: [], appSvg: null };
 const gfxEl = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 // Leinwand für w × h Felder zu je ts CSS-Pixeln, gezeichnet in Gerätepixeln (scharf auch auf hochauflösenden Bildschirmen)
 function gfxCanvas(w, h, ts) {
@@ -204,12 +204,14 @@ function gfxUnits(body) {
     b.append(dot, p.name);
     bar.append(b);
   });
+  bar.append(gfxEl('span', 'muted', tt('Set:', 'Set:')));   // Grafik-Set: beim Öffnen das der laufenden Partie
+  for (const [set, label] of [['insel', tt('Inselwelt', 'Island world')], ['weltraum', tt('Weltraum', 'Space')]]) bar.append(gfxButton(label, { gset: set }, set === gfx.set));
   body.append(bar);
   const grid = gfxEl('div', 'gfx-grid fix');
   grid.style.setProperty('--cw', '148px');
   body.append(grid);
   for (const k of UNIT_ORDER) {
-    const c = gfxCanvas(1, 1, 80), spr = unitSprite(k, gfx.owner, Math.round(c.ts * 0.8));
+    const c = gfxCanvas(1, 1, 80), spr = unitSprite(k, gfx.owner, Math.round(c.ts * 0.8), gfx.set);
     c.getContext('2d').drawImage(spr, (c.width - spr.width) / 2, (c.height - spr.height) / 2);
     const on = gfx.svg && gfx.svg.kind === 'unit' && gfx.svg.type === k;
     grid.append(gfxCard(c, UT[k].name, UNIT_ROLE[k], gfxButton(tt('SVG-Code', 'SVG code'), { gsvg: k }, on)));
@@ -280,8 +282,8 @@ function gfxSvgCode() {
   const s = gfx.svg;
   if (s.kind === 'unit') {
     const name = UT[s.type].name;
-    return { title: name, file: `archipel-${s.type}${gfx.badge ? '-' + (EN ? ['blue', 'red', 'yellow', 'purple'] : ['blau', 'rot', 'gelb', 'violett'])[gfx.owner] : ''}.svg`,
-      code: unitSvg(s.type, gfx.owner, gfx.badge, `Archipel – ${name}${gfx.badge ? ' (' + PLAYERS[gfx.owner].name + ')' : ''}`) };
+    return { title: name, file: `archipel-${gfx.set === 'insel' ? '' : gfx.set + '-'}${s.type}${gfx.badge ? '-' + (EN ? ['blue', 'red', 'yellow', 'purple'] : ['blau', 'rot', 'gelb', 'violett'])[gfx.owner] : ''}.svg`,
+      code: unitSvg(s.type, gfx.owner, gfx.badge, `Archipel – ${name}${gfx.badge ? ' (' + PLAYERS[gfx.owner].name + ')' : ''}`, gfx.set) };
   }
   if (s.id === 'focus') return { title: tt('Zentrieren', 'Centre'), file: 'archipel-zentrieren.svg', code: gfxFocusSvg() };
   gfxLoadAppSvg();
@@ -327,22 +329,26 @@ async function gfxCopy(text) {
 
 // Reiter „Städte und Gelände“
 function gfxLand(body) {
-  const cg = gfxSection(body, tt('Städte', 'Cities'), tt('Dächer und Fahne in der Farbe des Besitzers; zwei Anordnungen der Häuser wechseln sich ab.',
-    'Roofs and flag in the owner\'s colour; two layouts of the houses alternate.'));
+  const sp = !!landscape().space;   // Weltraum-Set: Raumstationen und Asteroiden – die Texte beschreiben, was zu sehen ist
+  const cg = gfxSection(body, tt('Städte', 'Cities'), sp
+    ? tt('Raumstationen: Sockel der Glaskuppeln und Fahne in der Farbe des Besitzers; zwei Anordnungen wechseln sich ab.', 'Space stations: dome bases and flag in the owner\'s colour; two layouts alternate.')
+    : tt('Dächer und Fahne in der Farbe des Besitzers; zwei Anordnungen der Häuser wechseln sich ab.', 'Roofs and flag in the owner\'s colour; two layouts of the houses alternate.'));
   [[-1, tt('Neutral', 'Neutral')], ...PLAYERS.map((p, k) => [k, p.name])].forEach(([ow, name]) =>
     cg.append(gfxCard(gfxPic(['....', '.CC.', '....'], 56, null, { crop: [1, 1, 2, 1], cities: [ow, ow] }), name)));
 
-  const tg = gfxSection(body, tt('Gelände', 'Terrain'), tt('Das Wasser wird dunkler, je weiter das Land entfernt ist; an der Küste schimmert Flachwasser. Wald, Hügel und Berge folgen der Höhe – sie sind nur Bild und ändern nichts an den Regeln.',
+  const tg = gfxSection(body, tt('Gelände', 'Terrain'), sp ? tt('Asteroiden im All: Licht von links oben, um die Felsen schimmert Staub, dazwischen Sterne und Nebelschleier. Krater, Hügel, Felsbrocken und Eiskristalle folgen der Höhe – sie sind nur Bild und ändern nichts an den Regeln.',
+    'Asteroids in space: light from the top left, dust shimmering around the rocks, stars and nebulae in between. Craters, hills, boulders and ice crystals follow the height – they are only pictures and do not change the rules.') : tt('Das Wasser wird dunkler, je weiter das Land entfernt ist; an der Küste schimmert Flachwasser. Wald, Hügel und Berge folgen der Höhe – sie sind nur Bild und ändern nichts an den Regeln.',
     'The water gets darker the further away land is; shallow water shimmers along the coast. Forest, hills and mountains follow the height – they are only pictures and do not change the rules.'));
   const pano = gfxPic(['~~~~~..ffhhmmMM', '~~~~...ffhhmmMM', '~~~~~..ffhhmmMM', '~~~~~~.ffhhmmMM', '~~~~~..ffhhmmMM'], 40);
   const wrapP = gfxEl('div', 'gfx-card');
   const leg = gfxEl('div', 'gfx-legend');
-  const cols = [[4, tt('Meer', 'Sea')], [3, tt('Küste und Wiese', 'Coast and meadow')], [2, tt('Wald', 'Forest')], [2, tt('Hügel', 'Hills')], [2, tt('Berge', 'Mountains')], [2, tt('Gipfel', 'Peaks')]];
+  const cols = sp ? [[4, tt('All', 'Space')], [3, tt('Ufer und Ebene', 'Shore and plain')], [2, tt('Krater', 'Craters')], [2, tt('Hügel', 'Hills')], [2, tt('Felsbrocken', 'Boulders')], [2, tt('Eiskristalle', 'Ice crystals')]]
+    : [[4, tt('Meer', 'Sea')], [3, tt('Küste und Wiese', 'Coast and meadow')], [2, tt('Wald', 'Forest')], [2, tt('Hügel', 'Hills')], [2, tt('Berge', 'Mountains')], [2, tt('Gipfel', 'Peaks')]];
   leg.style.gridTemplateColumns = cols.map(([n]) => n * 40 + 'px').join(' ');
   for (const [, t] of cols) leg.append(gfxEl('span', null, t));
   wrapP.append(pano, leg);
   tg.append(wrapP);
-  tg.append(gfxCard(gfxPic(['..~~~', '..~~~', '~~...'], 40), tt('Steg über Eck', 'Corner bridge'),
+  tg.append(gfxCard(gfxPic(['..~~~', '..~~~', '~~...'], 40), sp ? tt('Röhre über Eck', 'Corner tube') : tt('Steg über Eck', 'Corner bridge'),
     tt('Land, das sich nur an einer Ecke berührt: Bodentruppen gehen hinüber, Schiffe fahren darunter durch. Auf dem Festland sind das die Brücken über die Flüsse.',
       'Land touching only at a corner: land units cross, ships sail underneath. On the mainland these are the bridges over the rivers.')));
 
@@ -363,7 +369,7 @@ function gfxLand(body) {
     'What lies outside the map when you scroll to its edge – selectable under “View”. Compass rose and sea serpent belong to the old sea chart; in outer space some stars twinkle.'));
   for (const k of BORDER_KEYS) {
     const d = gfxEl('div'); borderVars(d, k); d.append(gfxEl('div', 'gfx-pad-map'));
-    bd.append(gfxCard(d, BORDER_NAMES[k], k === borderPref ? tt('eingestellt', 'selected') : ''));
+    bd.append(gfxCard(d, BORDER_NAMES[k], k === curBorder() ? tt('eingestellt', 'selected') : ''));
   }
   for (const [src, t] of [[compassImg(), tt('Windrose', 'Compass rose')], [serpentImg(), tt('Seeungeheuer', 'Sea serpent')]]) {
     const d = gfxEl('div'); borderVars(d, 'seekarte');
@@ -528,10 +534,14 @@ function renderGfx() {
   body.scrollTop = keep;
   if (!gfx.raf) gfx.raf = requestAnimationFrame(gfxLoop);
 }
-function openGfx() { Sfx.unlock(); gfx.svg = null; renderGfx(); openModal('mGfx'); }
+function openGfx() { Sfx.unlock(); gfx.svg = null; gfx.set = gfxSet(); renderGfx(); openModal('mGfx'); }
 $('bGfx').onclick = () => { closeModals(); openGfx(); };   // aus dem Fenster „Einstellungen“
 // Landschaft der laufenden Partie (S.land, LANDSCAPES in gfx.js): nur die Farben der Karte. Wird mit der Partie gespeichert.
-const LAND_NAMES = { gruen: tt('Grüne Inseln', 'Green islands'), wueste: tt('Wüste', 'Desert'), schnee: tt('Schnee', 'Snow'), lava: tt('Lava', 'Lava'), alien: tt('Fremder Planet', 'Alien planet'), zonen: tt('Klimazonen', 'Climate zones') };
+const LAND_NAMES = { gruen: tt('Grüne Inseln', 'Green islands'), wueste: tt('Wüste', 'Desert'), schnee: tt('Schnee', 'Snow'), lava: tt('Lava', 'Lava'), alien: tt('Fremder Planet', 'Alien planet'), zonen: tt('Klimazonen', 'Climate zones'),
+  asteroiden: tt('Asteroiden', 'Asteroids') };
+// Grafik-Sets: Landschaften nach Set gruppiert (Einstellungen: optgroup, „Ansicht“: Überschrift). Die Asteroiden bringen eigene Einheitenbilder mit.
+const LAND_GROUPS = [['insel', tt('Inselwelt', 'Island world')], ['weltraum', tt('Weltraum – Raumschiffe und Raumstationen', 'Space – spaceships and space stations')]];
+const landsOf = set => Object.keys(LANDSCAPES).filter(k => (LANDSCAPES[k].set || 'insel') === set);
 // Die Landschaft ist EINE Einstellung (Wunsch des Nutzers – eine für die laufende und eine für neue Partien war umständlich): Umschalten über
 // „Ansicht“ oder die Einstellungen gilt sofort für die laufende Partie und bleibt für alle neuen eingestellt (archipel-landscape, Vorgabe
 // DEFAULT_LAND). Gespeicherte Partien zeigen beim Laden die Landschaft, mit der sie gespeichert wurden (S.land) – das ändert die Einstellung nicht.
@@ -541,9 +551,11 @@ function setLandscape(v) {
   if (!LANDSCAPES[v]) v = DEFAULT_LAND;
   landPref = v; $('landSel').value = v;
   try { localStorage.setItem('archipel-landscape', v); } catch (e) {}
-  if (S) { S.land = v; buildTerrainCache(); refresh(); }
+  if (S) { S.land = v; buildTerrainCache(); refresh(); }   // buildTerrainCache → applyBorder: wechselt das Set, wechselt der Rand mit
+  else applyBorder();
 }
-$('landSel').innerHTML = Object.keys(LANDSCAPES).map(k => `<option value="${k}">${esc(LAND_NAMES[k] || k)}</option>`).join('');
+$('landSel').innerHTML = LAND_GROUPS.map(([set, label]) => `<optgroup label="${esc(label)}">`
+  + landsOf(set).map(k => `<option value="${k}">${esc(LAND_NAMES[k] || k)}</option>`).join('') + '</optgroup>').join('');
 try { localStorage.removeItem('archipel-land'); } catch (e) {}   // kurze Zwischenfassung: Landschaft als Einstellung
 $('landSel').onchange = e => setLandscape(e.target.value);
 
@@ -561,8 +573,13 @@ const BORDER_SW = {   // Farbfeld in der Liste „Ansicht“
   seekarte: 'linear-gradient(135deg, #e2d0a6, #c4ad7e)', holz: 'repeating-linear-gradient(90deg, #6a4428 0 7px, #4a2e18 7px 8px)',
   weltall: 'radial-gradient(1px 1px at 6px 5px, #fff, transparent), radial-gradient(1px 1px at 18px 11px, #fff, transparent), linear-gradient(135deg, #1a1440, #04050b)',
 };
-let borderPref = 'meer';
-try { const v = localStorage.getItem('archipel-border'); if (BORDER_KEYS.includes(v)) borderPref = v; } catch (e) {}
+// Der Rand wird je Grafik-Set gemerkt (Set = Einheitenbilder + Landschaft + Rand, Wunsch des Nutzers): Inselwelt in archipel-border (Vorgabe
+// Offenes Meer), Weltraum in archipel-border-weltraum (Vorgabe Weltall). Wechselt die Landschaft das Set, wechselt der Rand mit; frei wählbar bleibt er.
+const BORDER_DEFAULT = { insel: 'meer', weltraum: 'weltall' };
+const borderPrefs = Object.assign({}, BORDER_DEFAULT);
+const borderStore = set => (set === 'insel' ? 'archipel-border' : 'archipel-border-' + set);
+try { for (const set in borderPrefs) { const v = localStorage.getItem(borderStore(set)); if (BORDER_KEYS.includes(v)) borderPrefs[set] = v; } } catch (e) {}
+function curBorder() { return borderPrefs[gfxSet()] || 'meer'; }
 const borderImg = {};   // erzeugte Bilder (data-Adressen), je eins
 const INK = 'rgba(92,58,24,0.85)', PAPER = 'rgba(232,214,170,0.95)';
 function borderCanvas(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); return c.toDataURL(); }
@@ -636,9 +653,10 @@ function serpentImg() {   // Seeungeheuer: Buckel über den Wellen, Schwanz link
   }));
 }
 function setBorder(v) {
-  if (!BORDER_KEYS.includes(v)) v = 'meer';
-  borderPref = v; $('borderSel').value = v;
-  try { localStorage.setItem('archipel-border', v); } catch (e) {}
+  const set = gfxSet();
+  if (!BORDER_KEYS.includes(v)) v = BORDER_DEFAULT[set] || 'meer';
+  borderPrefs[set] = v;
+  try { localStorage.setItem(borderStore(set), v); } catch (e) {}
   applyBorder();
 }
 function borderVars(el, k) {   // Farben und erzeugte Bilder eines Kartenrands an ein Element hängen (Karte und Grafik-Übersicht)
@@ -650,11 +668,12 @@ function borderVars(el, k) {   // Farben und erzeugte Bilder eines Kartenrands a
   el.style.setProperty('--stars', k === 'weltall' ? `url(${starsImg()})` : 'none');
 }
 function applyBorder() {
-  borderVars($('mapPad'), borderPref);
+  $('borderSel').value = curBorder();
+  borderVars($('mapPad'), curBorder());
   placeBorderDeco();
 }
 function placeBorderDeco() {
-  const box = $('padDeco'), k = borderPref;
+  const box = $('padDeco'), k = curBorder();
   box.textContent = '';
   if (k !== 'seekarte' && k !== 'weltall') return;
   const W = cv.width + pad.x * 2, H = cv.height + pad.y * 2, mx0 = pad.x, my0 = pad.y, mx1 = pad.x + cv.width, my1 = pad.y + cv.height;
@@ -682,7 +701,6 @@ function placeBorderDeco() {
   }
 }
 $('borderSel').innerHTML = BORDER_KEYS.map(k => `<option value="${k}">${esc(BORDER_NAMES[k])}</option>`).join('');
-$('borderSel').value = borderPref;
 $('borderSel').onchange = e => setBorder(e.target.value);
 applyBorder();
 // Knopf „Ansicht“ in der Kopfzeile (bei Zoom und Zentrieren): EIN Symbol für alles, was die Anzeige der Karte betrifft – drei Schalter
@@ -702,11 +720,13 @@ function renderViewMenu() {
   const cur = (S && S.land) || 'gruen', rgb = c => `rgb(${c.join()})`;
   viewMenu.innerHTML = `<h4>${tt('Anzeigen', 'Show')}</h4>`
     + VIEW_SW.map(([k, label, get, , kbd]) => `<button class="mi${get() ? ' on' : ''}" data-view="${k}" role="menuitemcheckbox" aria-checked="${get()}"><span class="ck">${get() ? '✓' : ''}</span>${label}${kbd ? `<kbd>${kbd}</kbd>` : ''}</button>`).join('')
-    + `<h4>${tt('Landschaft', 'Landscape')}</h4>` + Object.keys(LANDSCAPES).map(k => { const m = LANDSCAPES[k].mini;
-      const bg = LANDSCAPES[k].zones ? 'linear-gradient(180deg, #eef3f8 0 22%, #6ea84e 22% 40%, #e2c27e 40% 60%, #6ea84e 60% 78%, #eef3f8 78%)' : `linear-gradient(135deg, ${rgb(m[0])} 0 55%, ${rgb(m[1])} 55%)`;
-      return `<button class="mi${k === cur ? ' on' : ''}" data-land="${k}"><span class="sw" style="background:${bg}"></span>${esc(LAND_NAMES[k] || k)}</button>`; }).join('')
+    + LAND_GROUPS.map(([set]) => `<h4>${set === 'insel' ? tt('Landschaft', 'Landscape') : tt('Weltraum', 'Space')}</h4>` + landsOf(set).map(k => { const L = LANDSCAPES[k], m = L.mini;
+      const bg = L.zones ? 'linear-gradient(180deg, #eef3f8 0 22%, #6ea84e 22% 40%, #e2c27e 40% 60%, #6ea84e 60% 78%, #eef3f8 78%)'
+        : (L.space ? 'radial-gradient(1px 1px at 15px 4px, #fff, transparent), radial-gradient(1px 1px at 19px 10px, #fff, transparent), ' : '') + `linear-gradient(135deg, ${rgb(m[0])} 0 55%, ${rgb(m[1])} 55%)`;
+      const tip = L.set ? ` title="${esc(tt('Mit eigenen Einheitenbildern: Raumschiffe statt Schiffe, Raumstationen statt Städte – Regeln und Namen bleiben gleich', 'With its own unit pictures: spaceships instead of ships, space stations instead of cities – rules and names stay the same'))}"` : '';
+      return `<button class="mi${k === cur ? ' on' : ''}" data-land="${k}"${tip}><span class="sw" style="background:${bg}"></span>${esc(LAND_NAMES[k] || k)}</button>`; }).join('')).join('')
     + `<h4>${tt('Kartenrand', 'Around the map')}</h4>` + BORDER_KEYS.map(k =>
-      `<button class="mi${k === borderPref ? ' on' : ''}" data-border="${k}"><span class="sw" style="background:${BORDER_SW[k]}"></span>${esc(BORDER_NAMES[k])}</button>`).join('');
+      `<button class="mi${k === curBorder() ? ' on' : ''}" data-border="${k}"><span class="sw" style="background:${BORDER_SW[k]}"></span>${esc(BORDER_NAMES[k])}</button>`).join('');
 }
 function closeViewMenu() { if (viewMenu.hidden) return; viewMenu.hidden = true; $('bView').classList.remove('open'); $('bView').setAttribute('aria-expanded', 'false'); }
 function openViewMenu() {
@@ -767,6 +787,7 @@ $('mGfx').addEventListener('click', async e => {
   const d = b.dataset;
   if (d.gtab) { if (gfx.tab !== d.gtab) { gfx.tab = d.gtab; gfx.svg = null; renderGfx(); } return; }
   if (d.gowner != null) { gfx.owner = +d.gowner; renderGfx(); return; }
+  if (d.gset) { gfx.set = d.gset; renderGfx(); return; }
   if (d.gsvg || d.gicon) {
     const next = d.gsvg ? { kind: 'unit', type: d.gsvg } : { kind: 'icon', id: d.gicon };
     const same = gfx.svg && gfx.svg.kind === next.kind && (gfx.svg.type || gfx.svg.id) === (next.type || next.id);

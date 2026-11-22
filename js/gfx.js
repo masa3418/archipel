@@ -53,10 +53,68 @@ const ICON_SRC = {
     cut: ['M44 21 H52 V24 H44 Z'],
   },
 };
-const ICONS = {};
-for (const [k, v] of Object.entries(ICON_SRC)) {
-  ICONS[k] = { fill: v.fill.map(p => new Path2D(p)), cut: (v.cut || []).map(p => new Path2D(p)) };
+// Weltraum-Set (Landschaft „Asteroiden“): dieselben neun Einheiten als Raumsoldat, Rover, Raumjäger, Frachter, Korvette, Tarnkappenschiff,
+// Kreuzer, Mutterschiff und Schlachtschiff. Nur das Bild wechselt – Regeln und Namen bleiben (Entscheidung des Nutzers). Schiffe von der Seite,
+// Bug rechts, wie im Inselset; Flossen oben und unten statt Wasserlinie, Rangpunkte unten wie bei Zerstörer, Kreuzer und Schlachtschiff.
+const DOT = cx => `M${cx - 3.6} 89 a3.6 3.6 0 1 0 7.2 0 a3.6 3.6 0 1 0 -7.2 0 Z`;
+const ICON_SPACE = {
+  inf: {   // Raumsoldat: runder Helm mit Visier, Rückentornister, Blaster nach vorn
+    fill: [circ(47, 24, 13), 'M24 40 H33 V64 H24 Z',
+      'M33 39 Q47 34 61 39 L63 60 H57 L57 90 H50 L48 68 L46 90 H39 V60 H33 Z',
+      'M55 45 H86 V51.5 H66 L63 59 H56 Z'],
+    cut: ['M38 21 Q47 16 57 21 L56 28 Q47 31.5 39 28 Z'],
+  },
+  tank: {   // Rover mit Geschützkuppel auf sechs Rädern (drei sichtbar), Antenne
+    fill: ['M12 50 H84 L92 60 H6 Z', 'M6 60 H94 V67 H6 Z', circ(20, 73, 9.5), circ(50, 73, 9.5), circ(80, 73, 9.5),
+      'M36 50 Q36 36 51 36 Q65 36 65 50 Z', 'M60 40 H96 V46 H60 Z', 'M23 50 L18 27 H21.5 L27.5 50 Z', circ(19.5, 25, 3.2)],
+    cut: [circ(20, 73, 3.6), circ(50, 73, 3.6), circ(80, 73, 3.6), 'M41 44 H54 V46.5 H41 Z'],
+  },
+  ftr: {   // Raumjäger von oben: Pfeilflügel, Bordkanonen an den Flügelspitzen
+    fill: ['M50 4 L57 30 L58 46 L82 60 L84 75 L60 70 L58 85 L50 80 L42 85 L40 70 L16 75 L18 60 L42 46 L43 30 Z',
+      'M80 34 H85.5 V72 H80 Z', 'M14.5 34 H20 V72 H14.5 Z'],
+    cut: ['M47.5 20 L50 12 L52.5 20 L52.5 33 L47.5 33 Z'],
+  },
+  trn: {   // Frachter mit Containern und Landebeinen
+    fill: ['M8 56 H82 L96 64 L82 72 H8 Z', 'M2 58.5 H9 V69.5 H2 Z',
+      'M12 44 H27 V55 H12 Z', 'M29 44 H44 V55 H29 Z', 'M46 44 H61 V55 H46 Z', 'M20 32 H35 V43 H20 Z', 'M37 32 H52 V43 H37 Z',
+      'M64 44 H78 L84 56 H64 Z', 'M22 71 L16 83 H25 L30 71 Z', 'M66 71 L60 83 H69 L74 71 Z'],
+    cut: ['M68 47.5 H79 V51 H68 Z'],
+  },
+  dst: {   // Korvette: schlanker Pfeil mit Flossen oben und unten, ein Geschütz
+    fill: ['M10 58 L32 54 H68 L96 61 L68 68 H32 L10 64 Z', 'M17 56.5 L6 41 H17 L31 54.5 Z', 'M17 65.5 L6 81 H17 L31 67.5 Z',
+      'M42 54 V47 H56 V54 Z', 'M54 48.5 H69 V51 H54 Z', DOT(50)],
+  },
+  sub: {   // Tarnkappenschiff: flacher, kantiger Keil mit Facetten
+    fill: ['M4 63 L24 49 L62 46 L96 60 L62 74 L24 77 Z', 'M28 49.5 L21 35 H32 L41 48.5 Z'],
+    cut: ['M40 49 L60 60.3 L40 74 L36.5 74 L55.5 60.3 L36.5 49 Z', 'M10 61.5 H22 V64 H10 Z'],
+  },
+  crs: {   // Kreuzer: Aufbau mit Turm, Geschütz vorn und hinten, Kielflosse
+    fill: ['M8 56 H78 L96 64 L78 72 H8 Z', 'M2 58.5 H9 V69.5 H2 Z', 'M34 46 H62 L66 56 H30 Z', 'M43 36 H53 V46 H43 Z',
+      'M70 49 H79 V56 H70 Z', 'M78 50.5 H93 V53 H78 Z', 'M15 49 H24 V56 H15 Z', 'M4 50.5 H16 V53 H4 Z',
+      'M28 71 L22 81 H38 L42 71 Z', DOT(43), DOT(57)],
+    cut: ['M45 39 H51 V42 H45 Z'],
+  },
+  car: {   // Mutterschiff: großer Rumpf mit Hangaröffnung am Bug, Brückenturm, Kielflosse
+    fill: ['M2 50 H86 L98 60 L86 77 H10 L2 69 Z', 'M58 31 H72 V50 H58 Z', 'M63.5 22 H66.5 V31 H63.5 Z', 'M26 76 L20 85 H40 L44 76 Z'],
+    cut: ['M70 61 H92 V67.5 H70 Z', 'M8 54 H18 V55.8 H8 Z', 'M22 54 H32 V55.8 H22 Z', 'M36 54 H46 V55.8 H36 Z', 'M61 35 H69 V38 H61 Z'],
+  },
+  bat: {   // Schlachtschiff: Stufenturm, Doppelgeschütze vorn und hinten, Kielflosse
+    fill: ['M2 54 H76 L99 64 L76 78 H10 L2 70 Z', 'M30 54 V44 H37 V33 H44 V20 H54 V33 H61 V44 H68 V54 Z',
+      'M76 46 H86 V54 H76 Z', 'M85 47.5 H99 V49.7 H85 Z', 'M85 51 H99 V53.2 H85 Z', 'M13 46 H23 V54 H13 Z', 'M1 47.5 H14 V49.7 H1 Z', 'M1 51 H14 V53.2 H1 Z',
+      'M30 77 L25 84 H41 L45 77 Z', DOT(36), DOT(50), DOT(64)],
+    cut: ['M46 24 H52 V27 H46 Z'],
+  },
+};
+// Grafik-Sets (Wunsch des Nutzers): Einheitenbilder, Landschaft und Kartenrand gehören zusammen. Das Set folgt aus der Landschaft
+// (LANDSCAPES[…].set, ohne Angabe 'insel') – wer „Asteroiden“ wählt, sieht Raumschiffe; der Kartenrand wird je Set gemerkt (ui-schau.js).
+const ICON_SETS = { insel: ICON_SRC, weltraum: ICON_SPACE };
+const ICONS_OF = {};
+for (const [s, src] of Object.entries(ICON_SETS)) {
+  ICONS_OF[s] = {};
+  for (const [k, v] of Object.entries(src)) ICONS_OF[s][k] = { fill: v.fill.map(p => new Path2D(p)), cut: (v.cut || []).map(p => new Path2D(p)) };
 }
+const ICONS = ICONS_OF.insel;
+function gfxSet() { return landscape().set || 'insel'; }
 
 // Zeichen „besetzt“ für fremde Städte: Schild mit Fragezeichen (unitSprite('garrison', besitzer, größe); wer die Stadt verteidigt,
 // zeigt sich erst im Kampf – garrisonHidden in ui-karte.js). Keine Einheit, deshalb nicht in ICON_SRC (dort stehen nur die Einheitentypen).
@@ -70,9 +128,9 @@ const spriteCache = new Map();
 function clearSprites() { spriteCache.clear(); }
 
 // Rundes Abzeichen in Spielerfarbe mit weißem Symbol
-function unitSprite(type, owner, size) {
+function unitSprite(type, owner, size, set = gfxSet()) {
   size = Math.max(8, Math.round(size));
-  const key = `u|${type}|${owner}|${size}`;
+  const key = `u|${set}|${type}|${owner}|${size}`;
   let c = spriteCache.get(key);
   if (c) return c;
   const pad = Math.ceil(size * 0.1);
@@ -90,7 +148,7 @@ function unitSprite(type, owner, size) {
   g.lineWidth = Math.max(1, size * 0.045); g.strokeStyle = pal.dark; g.stroke();
   g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = Math.max(0.8, size * 0.025);
   g.beginPath(); g.arc(cx, cy, r * 0.86, 0, 7); g.stroke();
-  const ic = ICONS[type], s = r * 1.5 / 100;
+  const ic = (ICONS_OF[set] || ICONS)[type] || ICONS[type], s = r * 1.5 / 100;   // „besetzt“ (garrison) gibt es nur einmal
   g.save();
   g.translate(cx - 50 * s, cy - 50 * s); g.scale(s, s);
   g.shadowColor = 'rgba(0,0,0,0.5)'; g.shadowOffsetY = Math.max(0.5, size * 0.02); g.shadowBlur = Math.max(0.5, size * 0.03);
@@ -107,8 +165,8 @@ function unitSprite(type, owner, size) {
 
 // SVG-Code eines Einheiten-Abzeichens (Grafik-Übersicht): dieselben Pfade und Maße wie unitSprite bei Größe 100.
 // badge = false: nur das Symbol im 100×100-Raster (Aussparungen als Maske, Farbe currentColor – schwarz, wenn nichts anderes gilt).
-function unitSvg(type, owner, badge = true, title = '') {
-  const src = ICON_SRC[type], pal = PLAYERS[owner], cut = src.cut || [];
+function unitSvg(type, owner, badge = true, title = '', set = gfxSet()) {
+  const src = (ICON_SETS[set] || ICON_SRC)[type], pal = PLAYERS[owner], cut = src.cut || [];
   const xml = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const n = v => String(+v.toFixed(2));
   const paths = (list, ind, attr = '') => list.map(d => `${ind}<path d="${d}"${attr}/>`).join('\n');
@@ -147,9 +205,9 @@ function roundRectPath(g, x, y, w, h, r) {
 // Stadt: Platz, Häuser mit Dächern in Besitzerfarbe, Fahne. Auch der Platz trägt die Farbe des Besitzers
 // (Wunsch des Nutzers: Mit Dächern und Fähnchen allein sahen die Städte aller Parteien fast gleich aus – der beige Platz überwog).
 // Neutrale Städte behalten den beigen Platz mit schmalem Rand und heben sich so von allen Parteien ab.
-function citySprite(owner, size, variant) {
+function citySprite(owner, size, variant, set = gfxSet()) {
   size = Math.round(size);
-  const key = `c|${owner}|${size}|${variant}`;
+  const key = `c|${set}|${owner}|${size}|${variant}`;
   let c = spriteCache.get(key);
   if (c) return c;
   c = document.createElement('canvas');
@@ -171,21 +229,39 @@ function citySprite(owner, size, variant) {
   }
   g.fillStyle = 'rgba(255,255,255,0.18)';
   g.fillRect(s * 0.12, s * 0.52, s * 0.76, s * 0.06);
-  const layouts = [
-    [[0.30, 0.38, 0.26, 0.2], [0.14, 0.58, 0.26, 0.22], [0.48, 0.6, 0.3, 0.2]],
-    [[0.16, 0.42, 0.24, 0.2], [0.46, 0.36, 0.24, 0.22], [0.28, 0.62, 0.32, 0.2]],
-  ];
-  const houses = layouts[variant % layouts.length].slice().sort((a, b) => a[1] - b[1]);
-  for (const [x, y, w, h] of houses) {
-    g.fillStyle = '#f2ead8'; g.strokeStyle = '#8d806a'; g.lineWidth = Math.max(0.8, s * 0.02);
-    g.fillRect(s * x, s * y, s * w, s * h); g.strokeRect(s * x, s * y, s * w, s * h);
-    g.fillStyle = '#5b6b80';
-    g.fillRect(s * (x + w * 0.2), s * (y + h * 0.35), s * w * 0.18, s * h * 0.3);
-    g.fillRect(s * (x + w * 0.6), s * (y + h * 0.35), s * w * 0.18, s * h * 0.3);
-    g.beginPath();
-    g.moveTo(s * (x - 0.03), s * y); g.lineTo(s * (x + w / 2), s * (y - 0.15)); g.lineTo(s * (x + w + 0.03), s * y); g.closePath();
-    g.fillStyle = pal.color; g.fill();
-    g.strokeStyle = pal.dark; g.lineWidth = Math.max(0.8, s * 0.025); g.stroke();
+  if (set === 'weltraum') {
+    // Raumstation: Glaskuppeln mit Sockel in Besitzerfarbe (statt der Dächer), dazwischen ein Verbindungsgang; Fahne wie bei den Städten
+    const domes = [[[0.3, 0.6, 0.17], [0.62, 0.7, 0.13], [0.52, 0.44, 0.11]], [[0.66, 0.58, 0.16], [0.3, 0.7, 0.13], [0.34, 0.42, 0.11]]][variant % 2];
+    g.fillStyle = '#9aa6b4'; g.strokeStyle = '#4b5563'; g.lineWidth = Math.max(0.6, s * 0.015);
+    g.fillRect(s * 0.22, s * 0.6, s * 0.48, s * 0.06); g.strokeRect(s * 0.22, s * 0.6, s * 0.48, s * 0.06);
+    for (const [x, y, r] of domes.slice().sort((a, b) => a[1] - b[1])) {
+      const X = s * x, Y = s * y, R = s * r;
+      g.fillStyle = pal.color; g.strokeStyle = pal.dark; g.lineWidth = Math.max(0.8, s * 0.02);
+      g.fillRect(X - R * 1.08, Y - R * 0.05, R * 2.16, R * 0.34); g.strokeRect(X - R * 1.08, Y - R * 0.05, R * 2.16, R * 0.34);
+      const gr = g.createRadialGradient(X - R * 0.35, Y - R * 0.6, R * 0.08, X, Y, R * 1.05);
+      gr.addColorStop(0, '#f4fbff'); gr.addColorStop(0.55, '#b9dcef'); gr.addColorStop(1, '#6f9bb8');
+      g.fillStyle = gr; g.beginPath(); g.arc(X, Y, R, Math.PI, 0); g.closePath(); g.fill();
+      g.strokeStyle = '#3f5a70'; g.lineWidth = Math.max(0.8, s * 0.02); g.stroke();
+      g.strokeStyle = 'rgba(63,90,112,0.55)'; g.lineWidth = Math.max(0.6, s * 0.012);   // Streben der Kuppel
+      g.beginPath(); g.moveTo(X, Y - R); g.lineTo(X, Y); g.moveTo(X - R * 0.7, Y - R * 0.7); g.quadraticCurveTo(X - R * 0.25, Y - R * 0.4, X - R * 0.35, Y); g.stroke();
+    }
+  } else {
+    const layouts = [
+      [[0.30, 0.38, 0.26, 0.2], [0.14, 0.58, 0.26, 0.22], [0.48, 0.6, 0.3, 0.2]],
+      [[0.16, 0.42, 0.24, 0.2], [0.46, 0.36, 0.24, 0.22], [0.28, 0.62, 0.32, 0.2]],
+    ];
+    const houses = layouts[variant % layouts.length].slice().sort((a, b) => a[1] - b[1]);
+    for (const [x, y, w, h] of houses) {
+      g.fillStyle = '#f2ead8'; g.strokeStyle = '#8d806a'; g.lineWidth = Math.max(0.8, s * 0.02);
+      g.fillRect(s * x, s * y, s * w, s * h); g.strokeRect(s * x, s * y, s * w, s * h);
+      g.fillStyle = '#5b6b80';
+      g.fillRect(s * (x + w * 0.2), s * (y + h * 0.35), s * w * 0.18, s * h * 0.3);
+      g.fillRect(s * (x + w * 0.6), s * (y + h * 0.35), s * w * 0.18, s * h * 0.3);
+      g.beginPath();
+      g.moveTo(s * (x - 0.03), s * y); g.lineTo(s * (x + w / 2), s * (y - 0.15)); g.lineTo(s * (x + w + 0.03), s * y); g.closePath();
+      g.fillStyle = pal.color; g.fill();
+      g.strokeStyle = pal.dark; g.lineWidth = Math.max(0.8, s * 0.025); g.stroke();
+    }
   }
   // Fahne
   g.strokeStyle = '#3b3b3b'; g.lineWidth = Math.max(1, s * 0.03);
@@ -239,6 +315,17 @@ const LANDSCAPES = {
   },
 };
 LANDSCAPES.zonen = Object.assign({}, LANDSCAPES.gruen, { zones: true, mini: [[150, 170, 120], [34, 92, 146]] });
+// Asteroiden (Weltraum-Set, eigene Einheitenbilder): Das Meer ist das All – dunkelblau mit Sternen statt Wellen und violetten Nebelschleiern
+// (nebula), an den Felsen ein Staubschimmer statt Brandung. Land = Gestein mit Kratern statt Wald (crater), Licht von links oben und Schatten
+// rechts unten an jeder Kante (bevel), Stege als Metallröhren (steg). Das All bleibt deutlich heller als der unerforschte Nebel (fast schwarz).
+LANDSCAPES.asteroiden = {
+  set: 'weltraum', space: true, fogDim: 135,
+  water: [[52, 58, 92], [40, 45, 78], [33, 37, 68], [29, 32, 61], [26, 29, 56], [24, 27, 52]], nebula: [74, 44, 104], sand: [150, 144, 138],
+  stops: [[0, [160, 153, 145]], [0.1, [140, 134, 127]], [0.42, [120, 115, 109]], [0.7, [104, 100, 96]], [1, [132, 128, 125]]],
+  surf: 'rgb(122,117,111)', glow: 'rgba(176,188,228,0.4)', wave: null,   // surf liegt unter dem Gestein: grau, sonst scheinen die Kachelgrenzen dunkel durch
+  mount: ['#a29b94', '#625d5a'], cap: '#c4e8ff', hill: '#8e8882', tree: ['#5a5551', '#aaa39c'], treeP: 0.5, crater: true, bevel: true,
+  steg: ['#8e99a8', '#363e4c', 'rgba(36,44,58,0.6)', '#bfe3ff'], grid: 'rgba(170,190,235,0.05)', mini: [[132, 126, 120], [30, 33, 58]],
+};
 function landscape() { return LANDSCAPES[typeof S !== 'undefined' && S && S.land] || LANDSCAPES.gruen; }
 
 // Klimazonen (Landschaft „zonen“, Wunsch des Nutzers): je Feld eine der Landschaften Grün, Wüste, Schnee, Lava – nach der Lage wie auf einer
@@ -308,6 +395,15 @@ function tileLandscape(i) {
   return L.zones ? LANDSCAPES[ZONE_KEYS[zoneMap()[i]]] : L;
 }
 
+// Weiches Rauschen 0…1 auf einem Gitter der Weite cell (Nebelschleier im All)
+function valueNoise(x, y, cell, seed) {
+  const hash = (a, b) => mulberry32((Math.imul(a + 1, 73856093) ^ Math.imul(b + 1, 19349663) ^ Math.imul(seed, 83492791)) >>> 0)();
+  const fx = x / cell, fy = y / cell, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+  const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+  const a = hash(ix, iy), b = hash(ix + 1, iy), c = hash(ix, iy + 1), d = hash(ix + 1, iy + 1);
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+}
+
 function landColor(e, stops = landscape().stops) {
   let k = 0;
   while (k < stops.length - 2 && e > stops[k + 1][0]) k++;
@@ -337,8 +433,12 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   const wg = wc.getContext('2d'), wi = wg.createImageData(W, H);
   const lc = document.createElement('canvas'); lc.width = W; lc.height = H;
   const lg = lc.getContext('2d'), li = lg.createImageData(W, H);
+  // Nebelschleier im All: weiches Rauschen nach der Lage auf der Karte (Lupe und Karte gleich), Startwert aus der Kartennummer
+  const nseed = (typeof S !== 'undefined' && S && (st === S || st.ox != null) ? S.seed || 7 : 7) >>> 0;
+  const neb = L.nebula ? (x, y) => { const v = valueNoise(x + ox, y + oy, 7, nseed); return Math.max(0, Math.min(1, (v - 0.45) / 0.4)) * 0.75; } : null;
   for (let i = 0; i < W * H; i++) {
-    const wcol = st.terrain[i] ? WATER_COL[0] : WATER_COL[Math.min(WATER_COL.length - 1, st.depth[i] - 1)];
+    let wcol = st.terrain[i] ? WATER_COL[0] : WATER_COL[Math.min(WATER_COL.length - 1, st.depth[i] - 1)];
+    if (neb && !st.terrain[i]) { const f = neb(i % W, (i / W) | 0); if (f > 0) wcol = wcol.map((v, j) => v + (L.nebula[j] - v) * f); }
     const P = pal(i % W, (i / W) | 0), lcol = st.terrain[i] ? landColor(st.elev[i], P.stops) : (Z ? P.sand : SAND);
     for (let j = 0; j < 3; j++) { wi.data[i * 4 + j] = wcol[j]; li.data[i * 4 + j] = lcol[j]; }
     wi.data[i * 4 + 3] = 255; li.data[i * 4 + 3] = 255;
@@ -347,9 +447,24 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
   g.drawImage(wc, 0, 0, W * TS, H * TS);
 
+  // Sterne im All (statt Wellen): je Feld bis zu zwei, ab und zu ein heller mit Strahlenkreuz
+  if (L.space) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (st.terrain[y * W + x]) continue;
+    seedAt(x, y, 1);
+    const n = r() < 0.6 ? (r() < 0.3 ? 2 : 1) : 0;
+    for (let k = 0; k < n; k++) {
+      const sx = (x + r()) * TS, sy = (y + r()) * TS, big = r() < 0.1, a = 0.35 + r() * 0.6, tint = ['255,255,255', '205,220,255', '255,236,205'][Math.floor(r() * 3)];
+      const rad = Math.max(0.55, TS * (big ? 0.045 : 0.014 + r() * 0.02));
+      g.fillStyle = `rgba(${tint},${a.toFixed(2)})`; g.beginPath(); g.arc(sx, sy, rad, 0, 7); g.fill();
+      if (big) {
+        g.strokeStyle = `rgba(${tint},${(a * 0.5).toFixed(2)})`; g.lineWidth = Math.max(0.5, TS / 70);
+        g.beginPath(); g.moveTo(sx - rad * 3.5, sy); g.lineTo(sx + rad * 3.5, sy); g.moveTo(sx, sy - rad * 3.5); g.lineTo(sx, sy + rad * 3.5); g.stroke();
+      }
+    }
+  }
   // Wellen
-  g.strokeStyle = L.wave; g.lineWidth = Math.max(1, TS / 18); g.lineCap = 'round';
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+  g.strokeStyle = L.wave || 'transparent'; g.lineWidth = Math.max(1, TS / 18); g.lineCap = 'round';
+  if (L.wave) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     seedAt(x, y, 1);
     if (st.terrain[y * W + x] || st.depth[y * W + x] < 2 || r() > 0.22) continue;
     const cx = (x + 0.2 + r() * 0.6) * TS, cy = (y + 0.2 + r() * 0.6) * TS, w = TS * 0.18;
@@ -384,6 +499,27 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   g.save();
   g.clip(land);
   g.drawImage(lc, 0, 0, W * TS, H * TS);
+  // Asteroiden: Licht von links oben – Schatten an den Kanten zum All rechts und unten, Glanz links und oben. Je Stufe ein Pfad aus Streifen,
+  // die sich um 1 px überlappen und einmal gefüllt werden: Streifen, die genau aneinanderstoßen (oder das Land als verschobener Pfad),
+  // ließen an den Kachelgrenzen feine Nähte. Die Abrundung der Ecken übernimmt der Zuschnitt aufs Land.
+  if (L.bevel) {
+    const band = (b, shade, col) => {
+      const p = new Path2D(), o = 1;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (isW(x, y)) continue;
+        const X = x * TS, Y = y * TS;
+        if (shade) {
+          if (isW(x + 1, y)) p.rect(X + TS - b, Y - o, b + o + 1, TS + 2 * o);
+          if (isW(x, y + 1)) p.rect(X - o, Y + TS - b, TS + 2 * o, b + o + 1);
+        } else {
+          if (isW(x - 1, y)) p.rect(X - o - 1, Y - o, b + o + 1, TS + 2 * o);
+          if (isW(x, y - 1)) p.rect(X - o, Y - o - 1, TS + 2 * o, b + o + 1);
+        }
+      }
+      g.fillStyle = col; g.fill(p);
+    };
+    band(TS * 0.07, true, 'rgba(0,0,0,0.3)'); band(TS * 0.17, true, 'rgba(0,0,0,0.16)'); band(TS * 0.07, false, 'rgba(255,255,255,0.16)');
+  }
 
   // Bodenstruktur
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -392,6 +528,11 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
     for (let k = 0; k < 4; k++) {
       g.fillStyle = r() < 0.5 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
       g.beginPath(); g.arc((x + r()) * TS, (y + r()) * TS, TS * (0.04 + r() * 0.05), 0, 7); g.fill();
+    }
+    if (L.space) for (let k = 0; k < 5; k++) {   // Asteroiden: kleine Einschläge (nach den Flecken gewürfelt – die Inseln bleiben, wie sie sind)
+      const px = (x + 0.08 + r() * 0.84) * TS, py = (y + 0.08 + r() * 0.84) * TS, pr = Math.max(0.6, TS * (0.018 + r() * 0.03));
+      g.fillStyle = 'rgba(255,255,255,0.16)'; g.beginPath(); g.arc(px + pr * 0.35, py + pr * 0.35, pr, 0, 7); g.fill();
+      g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.arc(px, py, pr, 0, 7); g.fill();
     }
   }
   // Wälder, Hügel, Berge
@@ -402,7 +543,26 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
     const X = x * TS, Y = y * TS;
     seedAt(x, y, 3);
     const Q = pal(x, y);
-    if (el > 0.68) {
+    if (el > 0.68 && Q.space) {
+      const n = el > 0.82 ? 3 : 2, rocks = [];
+      for (let k = 0; k < n; k++) rocks.push([X + TS * (0.28 + r() * 0.44), Y + TS * (0.36 + r() * 0.36), TS * (0.15 + r() * 0.09)]);
+      rocks.sort((a, b) => a[1] - b[1]);
+      for (const [cx, cy, rr0] of rocks) {
+        const pts = [];
+        for (let j = 0; j < 8; j++) { const a = j / 8 * Math.PI * 2, d = rr0 * (0.78 + r() * 0.32); pts.push([cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.82]); }
+        const poly = (dx, dy, f) => { g.beginPath(); pts.forEach(([px, py], j) => { const qx = cx + (px - cx) * f + dx, qy = cy + (py - cy) * f + dy; if (j) g.lineTo(qx, qy); else g.moveTo(qx, qy); }); g.closePath(); };
+        g.fillStyle = 'rgba(0,0,0,0.3)'; poly(rr0 * 0.22, rr0 * 0.3, 1); g.fill();      // Schatten
+        g.fillStyle = Q.mount[1]; poly(0, 0, 1); g.fill();                              // Brocken
+        g.fillStyle = Q.mount[0]; poly(-rr0 * 0.14, -rr0 * 0.16, 0.7); g.fill();        // Licht von links oben
+      }
+      if (el > 0.8 && Q.cap) for (let k = 0; k < 3; k++) {   // Eiskristalle
+        const cx = X + TS * (0.3 + r() * 0.4), by = Y + TS * (0.55 + r() * 0.25), h = TS * (0.18 + r() * 0.14), w = TS * 0.06, tilt = (r() - 0.5) * 0.6;
+        g.save(); g.translate(cx, by); g.rotate(tilt);
+        g.fillStyle = Q.cap; g.beginPath(); g.moveTo(-w, 0); g.lineTo(0, -h); g.lineTo(w, 0); g.lineTo(0, h * 0.15); g.closePath(); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.75)'; g.beginPath(); g.moveTo(-w * 0.5, -h * 0.1); g.lineTo(0, -h); g.lineTo(0, 0); g.closePath(); g.fill();
+        g.restore();
+      }
+    } else if (el > 0.68) {
       const peaks = el > 0.82 ? 2 : 1;
       for (let k = 0; k < peaks; k++) {
         const cx = X + TS * (peaks === 1 ? 0.5 : 0.32 + k * 0.38) + (r() - 0.5) * TS * 0.1;
@@ -428,6 +588,16 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
       g.fillStyle = 'rgba(255,255,255,0.12)';
       g.beginPath(); g.ellipse(cx - TS * 0.06, by - TS * 0.05, TS * 0.12, TS * 0.07, 0, Math.PI, 0); g.fill();
     } else if (el > 0.14 && el < 0.56 && r() < Q.treeP) {
+      if (Q.crater) {
+        // Krater (Asteroiden statt Wald): heller Rand, nach rechts unten versetzt, darüber die dunkle Mulde
+        const n = r() < 0.45 ? 2 : 1;
+        for (let k = 0; k < n; k++) {
+          const cr = TS * (0.08 + r() * 0.1), cx = X + TS * (0.24 + r() * 0.52), cy = Y + TS * (0.24 + r() * 0.52);
+          g.fillStyle = Q.tree[1]; g.beginPath(); g.ellipse(cx + cr * 0.12, cy + cr * 0.14, cr * 1.1, cr * 0.9, 0, 0, 7); g.fill();
+          g.fillStyle = Q.tree[0]; g.beginPath(); g.ellipse(cx - cr * 0.06, cy - cr * 0.05, cr * 0.86, cr * 0.68, 0, 0, 7); g.fill();
+        }
+        continue;
+      }
       const n = 3 + Math.floor(r() * 3);
       const trees = [];
       for (let k = 0; k < n; k++) trees.push([X + TS * (0.2 + r() * 0.6), Y + TS * (0.25 + r() * 0.55)]);
@@ -446,19 +616,20 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   g.restore();
 
   // Stege über Eck: Land, das sich nur diagonal berührt, ist für Bodentruppen verbunden; Schiffe fahren darunter durch
+  const SC = L.steg || ['#a8804e', '#4f381f', 'rgba(70,46,22,0.6)', '#e3c898'];   // Holz; Asteroiden: Metallröhre
   const steg = (cx, cy, dir) => {
     const hl = TS * 0.36, hw = TS * 0.105, lw = Math.max(1, TS / 30);
     g.save();
     g.translate(cx, cy); g.rotate(dir * Math.PI / 4);   // Längsachse entlang der Land-Diagonale
     g.fillStyle = 'rgba(10,30,50,0.28)';                 // Schatten auf dem Wasser
     g.fillRect(-hl * 0.8, -hw + TS * 0.07, hl * 1.6, hw * 2);
-    g.fillStyle = '#a8804e'; g.strokeStyle = '#4f381f'; g.lineWidth = lw;
+    g.fillStyle = SC[0]; g.strokeStyle = SC[1]; g.lineWidth = lw;
     roundRectPath(g, -hl, -hw, hl * 2, hw * 2, hw * 0.35); g.fill(); g.stroke();
-    g.strokeStyle = 'rgba(70,46,22,0.6)'; g.lineWidth = Math.max(0.75, TS / 44);   // Planken
+    g.strokeStyle = SC[2]; g.lineWidth = Math.max(0.75, TS / 44);   // Planken (Asteroiden: Ringe der Röhre)
     g.beginPath();
     for (let px = -hl + TS * 0.09; px < hl - TS * 0.04; px += TS * 0.09) { g.moveTo(px, -hw); g.lineTo(px, hw); }
     g.stroke();
-    g.strokeStyle = '#e3c898'; g.lineWidth = lw;                                   // Geländer
+    g.strokeStyle = SC[3]; g.lineWidth = lw;                                       // Geländer
     g.beginPath(); g.moveTo(-hl * 0.92, -hw * 0.62); g.lineTo(hl * 0.92, -hw * 0.62); g.moveTo(-hl * 0.92, hw * 0.62); g.lineTo(hl * 0.92, hw * 0.62); g.stroke();
     g.restore();
   };
@@ -469,7 +640,7 @@ function buildTerrain(TS, st = S) {   // st: Kartenstück der Grafik-Übersicht,
   }
 
   // feines Raster zur Orientierung
-  g.strokeStyle = 'rgba(0,0,0,0.07)'; g.lineWidth = 1;
+  g.strokeStyle = L.grid || 'rgba(0,0,0,0.07)'; g.lineWidth = 1;   // im dunklen All hell
   g.beginPath();
   for (let x = 1; x < W; x++) { g.moveTo(x * TS + 0.5, 0); g.lineTo(x * TS + 0.5, H * TS); }
   for (let y = 1; y < H; y++) { g.moveTo(0, y * TS + 0.5); g.lineTo(W * TS, y * TS + 0.5); }

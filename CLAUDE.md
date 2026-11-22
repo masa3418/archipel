@@ -68,7 +68,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `js/map.js` | Kartengenerator: Weltarten `WORLDS` (data.js) – Inselwelten aus geplanten Inseln + Rauschen (getrennt mit `split`), Festland (`festland`: Küstensaum, Binnenmeere, Flüsse mit Brücken); Städte, faire Startpositionen (ab drei Spielern `pickStarts`) |
 | `js/game.js` | Regeln: Bewegung `moveStep`, Kampf `combatSpec`/`attackOdds`/`winProb`, Eroberung `captureChance`/`cityDefenders`, Unterstützung `fireSupport`/`airCover`, Produktion, Sicht `computeVision`/`canSee`, Wegsuche `bfs`/`findPath`/`explorePath`, Befehle `runGoto`/`runPatrol`/`runExplore`, Rundenwechsel `nextRound`/`runStandingOrders`, Kräfteverhältnis `strength`, Speichern/Laden inkl. `sanitizeState` |
 | `js/ai.js` | Computergegner: taktische Regeln je Einheit, Produktion inkl. Konter (`counterPick`), Erkundung, Bedrohungskarte (`threatMap`), Landung im Hinterland auf dem Festland (`hinterInfo`); Können `aiSkill(p)` (0 einfach, 1 umsichtig: Zielverteilung `spreadField`, Lagebild `buildPlan`, Jäger-Jagd, vorsichtige Transporter) |
-| `js/gfx.js` | Gelände-Rendering (`buildTerrain(TS, st)`), Einheiten-Abzeichen (SVG-Pfade `ICON_SRC` → Sprites, als SVG-Code `unitSvg`), Stadtgrafik |
+| `js/gfx.js` | Gelände-Rendering (`buildTerrain(TS, st)`), Einheiten-Abzeichen (SVG-Pfade `ICON_SRC`, Weltraum `ICON_SPACE` → Sprites, als SVG-Code `unitSvg`), Stadtgrafik, Grafik-Sets (`gfxSet`) |
 | `js/sfx.js` | Web-Audio-Synthese: Effekte, Klangteppiche je Einheitentyp (Pegel `LOOP_LEVEL`/`MOVE_LEVEL` nach gehörter Lautheit in LUFS abgestimmt, nicht nach der Spitze – Messweg im Kommentar dort), Klangtest |
 | `js/ui-karte.js` | Oberfläche 1: Grundlagen (`$`, `view`, `pad`), Aufzeichnung der Animationen (`anim`, `hooks`), Kamera, Zeichnen der Karte (`render`, `drawToken`, `drawEffect` …), Produktions- und Wegeansicht |
 | `js/ui-zug.js` | Oberfläche 2: Landung, Auswahl (`select`, `needsOrders`), automatisches Rundenende, Aktionen (`doMove`, `doGoto`, `act…`), Patrouille, Klick auf die Karte (`onTileClick`), Wegvorschau (`hoverRoute`), `endHumanTurn` |
@@ -431,7 +431,22 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Strand, Land nach Höhe, Brandung, Berge, Gipfel, Hügel, „Wald“ – in der Lava glühende Tümpel, auf dem Planeten magentafarbene Gewächse –,
   Farben der Übersichtskarte); Formen und Zufallsfolge in `buildTerrain` sind für alle gleich, feste Farben dort immer über `L.…` holen. Der
   Zeitraffer bleibt bei seinen eigenen Farben (er färbt das Land ohnehin nach Besitzer). Lava: erst war das Meer heller als das Land – jetzt
-  dunkles Meer, helleres warmes Land. Eigene Formen je Landschaft (Palmen, Tannen, Eisschollen) gibt es bewusst noch nicht.
+  dunkles Meer, helleres warmes Land. Eigene Formen je Landschaft (Palmen, Tannen, Eisschollen) gibt es bewusst noch nicht – außer im Weltraum-Set (unten).
+  **Grafik-Sets** (Wunsch des Nutzers: Einheitenbilder + Landschaft + Kartenrand als ein Set; gfx.js `gfxSet()`, `ICON_SETS`, `ICON_SPACE`): Das Set folgt aus der
+  Landschaft (`LANDSCAPES[k].set`, ohne Angabe `insel`) – kein eigener Schalter, kein neues Feld im Spielstand (`S.land` reicht). Entscheidungen des Nutzers:
+  nur Bilder, **Namen und Regeln bleiben** (ein U-Boot heißt weiter U-Boot); Wahl über die Landschaft (Liste „Ansicht“ und Einstellungen nach Sets gruppiert,
+  `LAND_GROUPS`, `landsOf`); vorerst eine Landschaft im Weltraum. **Weltraum** = Landschaft `asteroiden` (`space: true`, nie zufällig: `START_LANDS` ohne sie):
+  All statt Meer (dunkelblau, Nebelschleier `nebula` über `valueNoise`, Sterne statt Wellen), Staubschimmer statt Brandung, Gestein mit Einschlägen, Krater
+  statt Wald (`crater`), Felsbrocken und Eiskristalle statt Bergen, Licht von links oben (`bevel`: Streifen an den Kanten zum All, die sich um 1 px
+  überlappen – ein verschobener Landpfad oder bündige Streifen ließen an jeder Kachelgrenze feine Nähte; ebenso muss `surf` grau sein, er liegt unter dem
+  Gestein und schien sonst an den Kachelgrenzen durch), Stege als Metallröhren (`steg`), helles Raster (`grid`), stärker abgedunkelter Nebel für
+  „erforscht, nicht in Sicht“ (`fogDim` 135 statt 105 in `drawFog` – im dunklen All sah man den Unterschied sonst kaum). Städte = Raumstationen
+  (`citySprite(…, set)`: Glaskuppeln mit Sockel in Besitzerfarbe, Platz und Fahne wie bei den Städten). Einheiten: Raumsoldat, Rover, Raumjäger, Frachter,
+  Korvette, Tarnkappenschiff, Kreuzer, Mutterschiff, Schlachtschiff (Rangpunkte wie im Inselset). Zufallsfolge der Inseln unverändert (Bildvergleich alt/neu
+  aller sechs Landschaften: nur die üblichen ±1-Abweichungen, die auch alt/alt auftreten). Bildspeicher je Set (`unitSprite`/`citySprite`/`iconUrl` mit Set
+  im Schlüssel). Farbprüfung Asteroiden: Parteien ≥ 37 (Violett auf Nebel 37, Blau auf Nebel 42), neutraler Platz auf flachem Gestein 20 (Rand trägt).
+  Kartenrand je Set gemerkt (siehe „Kartenrand“). Grafik-Übersicht: Umschalter „Set“ im Reiter Einheiten (`gfx.set`, beim Öffnen das der Partie), Texte im
+  Reiter Städte und Gelände folgen dem Set. Klänge bleiben gleich. Neues Set: Eintrag in `ICON_SETS`, Landschaft mit `set`, `BORDER_DEFAULT`, `LAND_GROUPS`.
   **Klimazonen** (`zonen`, Wunsch des Nutzers statt „je Insel zufällig“): je Feld einer der Farbsätze Grün/Wüste/Schnee/Lava nach der Lage
   (`zoneMap`, `ZONE_KEYS`, `tileLandscape` in gfx.js): Abstand zur Mitte oben/unten mit welligem Rauschen – über `ZONE_SNOW` (0,78) Schnee, unter `ZONE_DESERT` (0,17) Wüste (Grün übergewichtet, Wunsch des Nutzers: Land mittel über alle Welten Grün/Wüste/Schnee/Lava 63/17/15/6 %, vorher mit 0,62/0,28 34/27/36/4 %),
   dazwischen Grün; Inseln unter 15 % des Landes einheitlich nach der **Rangfolge** ihrer Mitte von Nord nach Süd (`ISL_SNOW` je 10 % im Norden und Süden Schnee, `ISL_DESERT` die
@@ -449,8 +464,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   `.padbg.b-…`): was außerhalb der Karte liegt (`#mapPad`, der Rand aus `pad`). Schlicht (Streifen wie früher), Offenes Meer (Vorgabe; tiefes Wasser der
   gewählten Landschaft über `--sea1`/`--sea2`, nach außen dunkler), Alte Seekarte (Pergament mit Fasern `paperImg`, Gitter, Doppelrahmen um die Karte,
   Windrose `compassImg`, Seeungeheuer `serpentImg`, „Terra incognita“ / „Hic sunt dracones“), Holztisch (Bretter, Karte wie ein Spielbrett mit Schatten),
-  Weltall (Sternenfeld `starsImg`, Nebel, funkelnde Sterne `.twinkle`, bei reduzierter Bewegung still). Eine Einstellung für alle Partien
-  (`archipel-border`), wählbar unter „Ansicht“ (Liste „Kartenrand“) und in den Einstellungen → Anzeige; gehört nicht zum Spielstand. Bilder entstehen im Code
+  Weltall (Sternenfeld `starsImg`, Nebel, funkelnde Sterne `.twinkle`, bei reduzierter Bewegung still). Eine Einstellung für alle Partien, **je Grafik-Set**
+  (`borderPrefs`, `curBorder()`; Inselwelt `archipel-border`, Vorgabe Offenes Meer; Weltraum `archipel-border-weltraum`, Vorgabe Weltall – wechselt die Landschaft
+  das Set, wechselt der Rand mit), wählbar unter „Ansicht“ (Liste „Kartenrand“) und in den Einstellungen → Anzeige; gehört nicht zum Spielstand. Bilder entstehen im Code
   (kleine Leinwände → data-Adresse, einmal je Art). Schmuck in `#padDeco` (über dem Rand, unter der Karte), gesetzt in `placeBorderDeco` – aufgerufen aus
   `applyPad` (Fenstergröße) und `applyBorder` (aus `buildTerrainCache`: Zoom, Landschaft, neue Partie). `#mapPad` hat `overflow: hidden`. Neue Ränder: Klasse
   in index.html, Eintrag in `BORDER_KEYS`/`BORDER_NAMES`/`BORDER_SW`; Grafik-Übersicht (Reiter Städte und Gelände) zeigt alle.
@@ -476,7 +492,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 817 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 827 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

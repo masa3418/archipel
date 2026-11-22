@@ -15,7 +15,7 @@ function unitChip(o) {
 
 const iconCache = {};
 function iconUrl(kind, v) {
-  const key = kind + v;
+  const key = kind + v + gfxSet();   // Grafik-Set (Inselwelt, Weltraum) folgt der Landschaft
   if (!iconCache[key]) {
     const c = kind === 'u' ? unitSprite(v, 0, 40) : citySprite(0, 40, v);
     iconCache[key] = c.toDataURL();

@@ -377,10 +377,11 @@ function viewNow(rel, playing) {
 
 // st: Kartenstück (Grafik-Übersicht), sonst die laufende Partie
 function drawFog(P = S.players[0], st = S) {
+  const dim = landscape().fogDim || 105;   // erforscht, nicht in Sicht: abgedunkelt (im dunklen All stärker, sonst sähe man den Unterschied kaum)
   if (fogC.width !== st.W || fogC.height !== st.H) { fogC.width = st.W; fogC.height = st.H; }
   const img = fogG.createImageData(st.W, st.H);
   for (let i = 0; i < st.W * st.H; i++) {
-    const a = st.over ? 0 : !P.seen[i] ? 255 : !P.vis[i] ? 105 : 0;
+    const a = st.over ? 0 : !P.seen[i] ? 255 : !P.vis[i] ? dim : 0;
     img.data[i * 4] = 7; img.data[i * 4 + 1] = 10; img.data[i * 4 + 2] = 18; img.data[i * 4 + 3] = a;
   }
   fogG.putImageData(img, 0, 0);

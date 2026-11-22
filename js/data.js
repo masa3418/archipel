@@ -53,9 +53,9 @@ const PLAYERS = [
 // keine Regel. Standard ist DEFAULT_LAND (Klimazonen, Wunsch des Nutzers: die Inseln sehen nicht mehr alle gleich aus) – vorgewählt im Fenster
 // „Neues Spiel“ und für die allererste Partie (FIRST_LAND). Bis 1.8.3 war die Vorauswahl zufällig und die erste Partie grün. START_LANDS gilt nur
 // noch, wenn niemand wählt (Simulationen): aus der Kartennummer (FIRST_LAND);
-// in den Einstellungen sind jederzeit alle wählbar.
-const LAND_KEYS = ['gruen', 'wueste', 'schnee', 'lava', 'alien', 'zonen'];
-const START_LANDS = LAND_KEYS, DEFAULT_LAND = 'zonen', FIRST_LAND = DEFAULT_LAND;
+// in den Einstellungen sind jederzeit alle wählbar. „asteroiden“ gehört zum Weltraum-Set (eigene Einheitenbilder, gfx.js) und wird nie zufällig gewählt.
+const LAND_KEYS = ['gruen', 'wueste', 'schnee', 'lava', 'alien', 'zonen', 'asteroiden'];
+const START_LANDS = ['gruen', 'wueste', 'schnee', 'lava', 'alien', 'zonen'], DEFAULT_LAND = 'zonen', FIRST_LAND = DEFAULT_LAND;
 const NEUTRAL = { color: '#9aa0a6', light: '#d7dadd', dark: '#55595e' };
 
 // Schwierigkeitsgrade. Sie wirken nur auf den Computergegner (und den Start):

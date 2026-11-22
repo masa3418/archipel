@@ -445,11 +445,13 @@ test('Landschaft: gehört zur Partie, folgt der Kartennummer, übersteht Speiche
   const seen = new Set();
   for (let n = 1; n <= 80; n++) { newGame('klein', 'normal', 'inseln', n * 7919, 1); ok(START_LANDS.includes(S.land), 'Startlandschaft ist eine der erlaubten'); seen.add(S.land); }
   eq(seen.size, START_LANDS.length, 'alle Startlandschaften kommen vor');
-  eq([START_LANDS.length, DEFAULT_LAND, FIRST_LAND], [LAND_KEYS.length, 'zonen', 'zonen'], 'ohne Wahl: Zufall über alle (Simulationen); Standard und erste Partie: Klimazonen');
+  eq([START_LANDS.length, DEFAULT_LAND, FIRST_LAND], [LAND_KEYS.length - 1, 'zonen', 'zonen'], 'ohne Wahl: Zufall über alle der Inselwelt (Simulationen); Standard und erste Partie: Klimazonen');
+  ok(LAND_KEYS.includes('asteroiden') && !START_LANDS.includes('asteroiden'), 'Asteroiden (Weltraum-Set) wählbar, aber nie zufällig');
   newGame('klein', 'normal', 'inseln', 4242, 1); const a = S.land;
   newGame('klein', 'normal', 'inseln', 4242, 1); eq(S.land, a, 'gleiche Kartennummer, gleiche Landschaft');
   newGame('klein', 'normal', 'inseln', 4242, 1, 'lava'); eq(S.land, 'lava', 'gewählte Landschaft gilt');
   newGame('klein', 'normal', 'inseln', 4242, 1, 'gibtsnicht'); eq(S.land, a, 'unbekannte Wahl: wie ohne Wahl');
+  S.land = 'asteroiden'; deserialize(serialize()); eq(S.land, 'asteroiden', 'Asteroiden werden gespeichert (und damit das Weltraum-Set)');
   S.land = 'alien'; const txt = serialize(); S.land = 'gruen'; deserialize(txt); eq(S.land, 'alien', 'gewählte Landschaft wird gespeichert');
   const o = JSON.parse(txt); (o.S || o).land = '<b>x'; deserialize(JSON.stringify(o)); eq(S.land, 'gruen', 'unbekannte Landschaft im Spielstand wird zu Grün');
 });
