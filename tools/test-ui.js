@@ -573,7 +573,7 @@ window.UiTest = (() => {
       const keepS = serialize(), pct0 = offerPct; offerPct = 20; closeModals();
       const P = S.players[0], own = S.cities.map(c => c.owner), known0 = P.knownOwner.slice();
       const arm = () => { S.turn = Math.max(S.turn, 40); S.offerPause = 0; S.over = null; S.hist = Array.from({ length: 6 }, (_, k) => ({ t: S.turn - 5 + k, c: S.players.map((_, p) => (p === 0 ? 9 : p === 1 ? 1 : 0)), n: 0 })); closeModals(); };
-      const offered = () => { maybeOfferEnd(); const o = shown('mOffer'); closeModals(); return o; };
+      const offered = () => { maybeOfferEnd(); const o = shown('mEnd'); closeModals(); return o; };
       // 1) fast alles neutral (wie im Spielstand des Nutzers: Runde 38, 84 %, 47 von 56 Städten neutral)
       S.cities.forEach((c, k) => { c.owner = k < 3 ? 0 : k === 3 ? 1 : -1; }); P.knownOwner.fill(-1); arm();
       let ok = !offered();

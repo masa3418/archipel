@@ -441,6 +441,23 @@
   .cap-dlg.plain .cap-kicker { color: var(--muted); }
   .cap-dlg.plain .cap-head h2 { color: var(--text); }
   .cap-dlg.plain .cap-progress i { background: var(--accent); }
+  /* Angebot zum vorzeitigen Ende: golden wie das Eroberungsfenster, beim Aufgeben rot; die Rechnung zum Aufklappen */
+  .end-dlg { max-width: 460px; text-align: center; }
+  .end-dlg .cap-head p { font-size: 15px; }
+  .end-btns { justify-content: center; margin-top: 16px; }
+  .end-btns button { min-width: 140px; }
+  .end-dlg.lose { border-color: #7a2a26; box-shadow: 0 0 0 1px #3a1715, 0 20px 60px rgba(0,0,0,.5), 0 0 60px rgba(217,67,59,.16); }
+  .end-dlg.lose .cap-head { background: radial-gradient(ellipse at 50% 0%, rgba(217,67,59,.22), transparent 70%); }
+  .end-dlg.lose .cap-kicker { color: #ff8a80; }
+  .end-dlg.lose .cap-head h2 { color: #ffd2cd; }
+  .end-why { margin-top: 16px; font-size: 12px; color: var(--muted); }
+  .end-why summary { cursor: pointer; list-style: none; }
+  .end-why summary::-webkit-details-marker { display: none; }
+  .end-why summary::before { content: '▸ '; }
+  .end-why[open] summary::before { content: '▾ '; }
+  .end-why div { text-align: left; margin-top: 8px; padding: 8px 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; }
+  .end-why p { margin: 0 0 6px; } .end-why p:last-child { margin-bottom: 0; }
+  .end-why b { color: var(--text); }
   /* Kontextmenü (Rechtsklick auf eigene Einheit/Stadt) */
   .ctx { position: fixed; z-index: 20; min-width: 220px; max-width: 290px; background: var(--panel); border: 1px solid #3d4b5e;
     border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.55); padding: 5px; font-size: 13px; }
@@ -1297,6 +1314,20 @@
     <h2 id="offerTitle"></h2>
     <p id="offerText"></p>
     <div class="row" style="justify-content:center"><button class="primary" id="offerYes"></button><button id="offerNo"></button></div>
+  </div>
+</div>
+
+<!-- Angebot zum vorzeitigen Ende (maybeOfferEnd): Kopf wie beim Eroberungsfenster, die Rechnung zum Aufklappen -->
+<div id="mEnd" class="modal" hidden>
+  <div class="dlg cap-dlg end-dlg" id="endDlg">
+    <div class="cap-head">
+      <div class="cap-badge">🏳️</div>
+      <div class="cap-kicker" id="endKicker"></div>
+      <h2 id="endTitle"></h2>
+      <p id="endText"></p>
+    </div>
+    <div class="row end-btns"><button class="primary" id="endYes"></button><button id="endNo"></button></div>
+    <details class="end-why" id="endWhyBox"><summary id="endWhySum"></summary><div id="endWhy"></div></details>
   </div>
 </div>
 

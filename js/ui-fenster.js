@@ -289,29 +289,55 @@ function maybeOfferEnd() {
   const P = S.players[0], known = P.real ? P.real.knownOwner : P.knownOwner;
   if (high && !S.cities.some(c => known[c.id] >= 1)) return;
   S.offerPause = S.turn + OFFER_PAUSE;      // gilt auch, wenn der Dialog einfach geschlossen wird
-  const pct = Math.round(shareOf(last[last.length - 1]) * 100);
-  const a = strength(0);
-  const facts = tt(`Du: ${a.cities} ${a.cities === 1 ? 'Stadt' : 'Städte'}, ${a.units} ${a.units === 1 ? 'Einheit' : 'Einheiten'}`, `You: ${a.cities} ${a.cities === 1 ? 'city' : 'cities'}, ${a.units} ${a.units === 1 ? 'unit' : 'units'}`);
+  showEndOffer(low);
+}
+// Das Fenster dazu (eigenes Fenster #mEnd; Wunsch des Nutzers): eher Bestätigung als Rechnung – wer so weit vorn liegt, weiß meist schon, dass er
+// kaum noch zu stoppen ist. Oben Flagge, Stichwort, Überschrift und ein Satz (welche Gegner aufgeben, in ihren Farben), darunter die Knöpfe;
+// die Rechnung (Anteil gegen den stärksten Gegner, Städte aller Parteien, Schwelle) steht zum Aufklappen darunter. Vorher nannte das Fenster nur
+// „über 80 % (jetzt 81 %)“ und die eigene Städtezahl – neben dem Balken mit 60 % (alle Städte, auch neutrale) war das nicht nachvollziehbar.
+function showEndOffer(low) {
+  const n = nPlayers(), multi = n > 2, { c, n: neutral } = cityCounts(), top = strongestEnemy();
+  const pct = Math.round(cityShares({ c, n: neutral }).vs * 100);
+  const foes = []; for (let p = 1; p < n; p++) if (!(S.outAt && S.outAt[p]) && isAlive(p)) foes.push(p);
+  const nm = p => `<b style="color:${PLAYERS[p].light}">${esc(pname(p))}</b>`;
+  const list = (ps, and) => (ps.length < 2 ? ps.map(nm).join('') : ps.slice(0, -1).map(nm).join(', ') + and + nm(ps[ps.length - 1]));
+  const names = list(foes, tt(' und ', ' and '));
+  // Städte aller Parteien, die Gegner nach Größe, der stärkste markiert
+  const parts = [`${tt('Du', 'You')} <b>${c[0]}</b>`].concat(foes.slice().sort((a, b) => c[b] - c[a]).map(p => `${nm(p)} <b>${c[p]}</b>` + (multi && p === top ? tt(' (stärkster Gegner)', ' (strongest enemy)') : '')))
+    .concat(neutral ? [`${tt('neutral', 'neutral')} <b>${neutral}</b>`] : []);
+  const topName = multi ? tt(`dein stärkster Gegner ${nm(top)}`, `your strongest enemy ${nm(top)}`) : tt('der Gegner', 'the enemy');
+  const why = (lt, lim) => `<p>${tt(`Seit ${OFFER_TURNS} Runden hast du ${lt ? 'unter' : 'über'} <b>${lim} %</b> der Städte, die du und ${topName} zusammen habt – jetzt <b>${pct} %</b>.`,
+      `For ${OFFER_TURNS} turns you have held ${lt ? 'less' : 'more'} than <b>${lim} %</b> of the cities that you and ${topName} own together – now <b>${pct} %</b>.`)}</p>`
+    + `<p>${tt('Städte', 'Cities')}: ${parts.join(' · ')}</p>`
+    + `<p>${tt(`Die Schwelle (${offerPct} %) stellst du in den Einstellungen unter „Spielablauf“ ein.`, `You can set the threshold (${offerPct} %) in the settings under “Game flow”.`)}</p>`;
+  $('endDlg').classList.toggle('lose', low);
+  $('endWhyBox').open = false;
+  $('endWhySum').textContent = tt('Wie das Spiel das entscheidet', 'How the game decides');
   if (low) {
-    $('offerTitle').textContent = tt('Die Lage ist aussichtslos', 'The situation is hopeless');
-    const vsTop = nPlayers() > 2 ? tt(' im Vergleich zum stärksten Gegner', ' compared with the strongest enemy') : '';
-    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt dein Anteil an den Städten${vsTop} unter ${offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>Willst du aufgeben?`,
-      `For ${OFFER_TURNS} turns your share of the cities${vsTop} has been below ${offerPct} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>Do you want to surrender?`);
-    $('offerYes').textContent = tt('Aufgeben', 'Surrender');
-    $('offerNo').textContent = tt('Weiterkämpfen', 'Keep fighting');
-    $('offerYes').onclick = () => { closeModals(); S.over = 'lose'; S.overReason = 'surrender'; saveGame(); showGameOver(); };
+    $('endKicker').textContent = tt('Aussichtslos', 'Hopeless');
+    $('endTitle').textContent = tt('Die weiße Flagge hissen?', 'Raise the white flag?');
+    $('endText').innerHTML = (multi ? tt(`${nm(top)} hat dich weit zurückgedrängt.`, `${nm(top)} has pushed you far back.`) : tt('Der Gegner hat dich weit zurückgedrängt.', 'The enemy has pushed you far back.'))
+      + ' ' + tt('Du kannst aufgeben – oder weiterkämpfen und auf eine Wende hoffen.', 'You can surrender – or fight on and hope for a turn of the tide.');
+    $('endWhy').innerHTML = why(true, offerPct);
+    $('endYes').textContent = tt('Aufgeben', 'Surrender');
+    $('endNo').textContent = tt('Weiterkämpfen', 'Fight on');
+    $('endYes').onclick = () => { closeModals(); S.over = 'lose'; S.overReason = 'surrender'; saveGame(); showGameOver(); };
   } else {
-    $('offerTitle').textContent = tt('Der Sieg ist dir sicher', 'Victory is yours');
-    const multi = nPlayers() > 2, vsTop = multi ? tt(' selbst im Vergleich zum stärksten Gegner', ' even compared with the strongest enemy') : '';
-    $('offerText').innerHTML = tt(`Seit ${OFFER_TURNS} Runden liegt dein Anteil an den Städten${vsTop} über ${100 - offerPct} % (jetzt ${pct} %).<br><span class="muted">${facts}</span><br><br>${multi ? 'Deine Gegner bieten die Kapitulation an' : 'Der Gegner bietet die Kapitulation an'}. Sieg annehmen?`,
-      `For ${OFFER_TURNS} turns your share of the cities${vsTop} has been above ${100 - offerPct} % (now ${pct} %).<br><span class="muted">${facts}</span><br><br>${multi ? 'Your enemies offer to surrender' : 'The enemy offers to surrender'}. Accept victory?`);
-    $('offerYes').textContent = tt('Sieg annehmen', 'Accept victory');
-    $('offerNo').textContent = tt('Weiterspielen', 'Play on');
-    $('offerYes').onclick = () => { closeModals(); S.over = 'win'; S.overReason = 'capitulation'; saveGame(); showGameOver(); };
+    $('endKicker').textContent = tt('Kapitulation', 'Surrender');
+    $('endTitle').textContent = foes.length > 1 ? tt('Deine Gegner kapitulieren!', 'Your enemies surrender!')
+      : multi ? tt(`${pname(foes[0] || top)} kapituliert!`, `${pname(foes[0] || top)} surrenders!`) : tt('Der Gegner kapituliert!', 'The enemy surrenders!');
+    $('endText').innerHTML = (foes.length > 1 ? tt(`${names} strecken vor deiner Übermacht die Waffen.`, `${names} lay down their arms before your might.`)
+      : multi ? tt(`${names} streckt vor deiner Übermacht die Waffen.`, `${names} lays down its arms before your might.`)
+      : tt('Er streckt vor deiner Übermacht die Waffen.', 'It lays down its arms before your might.'))
+      + ' ' + tt('Nimm den Sieg an – oder spiel weiter bis zur letzten Stadt.', 'Accept victory – or play on to the last city.');
+    $('endWhy').innerHTML = why(false, 100 - offerPct);
+    $('endYes').textContent = '🏆 ' + tt('Sieg annehmen', 'Accept victory');
+    $('endNo').textContent = tt('Weiterspielen', 'Play on');
+    $('endYes').onclick = () => { closeModals(); S.over = 'win'; S.overReason = 'capitulation'; saveGame(); showGameOver(); };
   }
-  $('offerNo').onclick = () => { closeModals(); saveGame(); };
+  $('endNo').onclick = () => { closeModals(); saveGame(); };
   Sfx.play(low ? 'lost' : 'capture');
-  openModal('mOffer');
+  openModal('mEnd');
 }
 
 // Abschlussfenster (Sieg oder Niederlage): Kopf wie beim Eroberungsfenster, links der Zeitraffer der ganzen Partie (spielt von selbst),
