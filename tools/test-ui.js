@@ -228,6 +228,13 @@ window.UiTest = (() => {
     zoomCommit();
     const p1 = at();
     check(TS > 30 && TS < 36 && zoomG.s === 1 && Math.abs(p1[0] - p0[0]) < 0.05 && Math.abs(p1[1] - p0[1]) < 0.05, 'Stufenloser Zoom: neu gezeichnet, Punkt unter der Maus bleibt');
+    // Kein Zurückfahren: Jede Raste endet auf genau der Größe, die danach gezeichnet wird (vorher bei der Hälfte der Stufen bis 2 % kleiner)
+    const off = [];
+    for (const dy of [-100, 100]) for (let ts = ZOOM_MIN; ts <= ZOOM_MAX; ts++) {
+      setZoom(ts); wheel(dy); const end = TS * zoomG.s; zoomCommit();
+      if (Math.abs(end - TS) > 1e-6) off.push(ts + (dy < 0 ? '+' : '−'));
+    }
+    check(!off.length, 'Stufenloser Zoom: Mausrad gleitet genau auf die gezeichnete Größe' + (off.length ? ' – nicht bei ' + off.join(' ') : ''));
     smoothZoom = false; setZoom(30); wheel(-100);
     check(TS === 34, 'Stufenloser Zoom aus: Viererschritte wie bisher');
     smoothZoom = keep; setZoom(z0);

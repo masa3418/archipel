@@ -232,16 +232,31 @@ function setZoom(nts, ax = wrap.clientWidth / 2, ay = wrap.clientHeight / 2) {
 // Stufenloser Zoom (Wunsch des Nutzers; nach seinem Test so festgeschrieben – Vorgabe an, abschaltbar): Mausrad, Spreizgeste und die Zoomknöpfe ändern die Feldgröße fließend statt in Viererschritten.
 // Während des Zoomens vergrößert nur CSS das fertige Bild (sofort, ohne Ruckeln; Anker = Mausposition zu Beginn der Geste), erst wenn ZOOM_IDLE ms
 // nichts mehr kommt, zeichnet setZoom die Karte in der neuen ganzen Feldgröße neu (große Karte ca. 40–55 ms – für jedes Rad-Ereignis zu viel).
-// Mauskoordinaten rechnen solange mit TS × zoomG.s (tileFromEvent). Abschaltbar in den Einstellungen (archipel-smoothzoom): dann wie bisher ±4.
+// Abschaltbar in den Einstellungen (archipel-smoothzoom): dann wie bisher ±4.
+// Ganze Feldgrößen: Gezeichnet wird nur in ganzen Pixeln je Feld. Endete das Gleiten auf einer krummen Größe (33,8), rundete das Neuzeichnen
+// sie – bei der Hälfte der Stufen nach unten, das Bild fuhr nach dem Hineinzoomen bis zu 2 % zurück (dem Nutzer aufgefallen). Jetzt: zoomG.raw =
+// gewünschter Faktor, zoomTarget() rundet ihn in Zoomrichtung auf eine ganze Feldgröße. Große Schritte (Mausrad, + / −) gleiten gleich dorthin;
+// die Spreizgeste folgt den Fingern stufenlos und gleitet nach dem Neuzeichnen in derselben Richtung das Reststück weiter (zoomCommit).
 const ZOOM_IDLE = 160, ZOOM_MIN = 14, ZOOM_MAX = 48, ZOOM_KEY = 1.2;   // ZOOM_KEY: Faktor je Druck auf + / − (Taste oder Knopf)
 let smoothZoom = true;
 try { smoothZoom = localStorage.getItem('archipel-smoothzoom') !== '0'; } catch (e) {}
-const zoomG = { s: 1, ax: 0, ay: 0, timer: 0 };
+const zoomG = { s: 1, raw: 1, dir: 0, anim: false, ax: 0, ay: 0, timer: 0 };   // s = gezeigte Vergrößerung, raw = gewünschte, dir = Zoomrichtung
+// nearest: große Schritte (Mausrad, + / −) – nächste ganze Größe, aber mindestens ein Pixel in Zoomrichtung; sonst (Spreizgeste) in Zoomrichtung gerundet
+function zoomTarget(nearest = false) {
+  const v = TS * zoomG.raw;
+  let t = nearest ? Math.round(v) : zoomG.dir > 0 ? Math.ceil(v - 1e-6) : Math.floor(v + 1e-6);
+  if (nearest && zoomG.dir > 0 && t <= TS && v > TS) t = TS + 1;
+  if (nearest && zoomG.dir < 0 && t >= TS && v < TS) t = TS - 1;
+  return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, t));
+}
 function zoomBy(f, ax = wrap.clientWidth / 2, ay = wrap.clientHeight / 2, animate = false) {
   if (!S) return;
   if (!smoothZoom) { setZoom(TS + (f > 1 ? 4 : -4), ax, ay); return; }
-  if (zoomG.s === 1) { zoomG.ax = ax; zoomG.ay = ay; }
-  const s = Math.max(ZOOM_MIN / TS, Math.min(ZOOM_MAX / TS, zoomG.s * f));
+  if (zoomG.raw === 1 && zoomG.s === 1) { zoomG.ax = ax; zoomG.ay = ay; }   // neue Geste: Anker hier
+  zoomG.raw = Math.max(ZOOM_MIN / TS, Math.min(ZOOM_MAX / TS, zoomG.raw * f));
+  zoomG.dir = f > 1 ? 1 : -1;
+  const s = animate ? zoomTarget(true) / TS : zoomG.raw;
+  zoomG.anim = animate;
   if (Math.abs(s - zoomG.s) < 1e-4) return;
   zoomG.s = s;
   cam.active = false;
@@ -251,16 +266,25 @@ function zoomBy(f, ax = wrap.clientWidth / 2, ay = wrap.clientHeight / 2, animat
   clearTimeout(zoomG.timer);
   zoomG.timer = setTimeout(zoomCommit, animate ? ZOOM_IDLE + 40 : ZOOM_IDLE);
 }
-function zoomReset() { clearTimeout(zoomG.timer); zoomG.s = 1; cv.style.transition = ''; cv.style.transform = ''; }
+function zoomReset() { clearTimeout(zoomG.timer); zoomG.s = 1; zoomG.raw = 1; zoomG.dir = 0; cv.style.transition = ''; cv.style.transform = ''; }
 function zoomCommit() {
-  if (zoomG.s === 1) return;
-  const nts = Math.round(TS * zoomG.s), { ax, ay } = zoomG;
+  if (zoomG.s === 1 && zoomG.raw === 1) return;
+  const nts = zoomG.anim ? Math.round(TS * zoomG.s) : zoomTarget(), shown = TS * zoomG.s, { ax, ay } = zoomG;   // große Schritte: genau das Ziel des Gleitens
   zoomReset();
   setZoom(nts, ax, ay);
+  // Spreizgeste: Die gezeigte Größe lag zwischen zwei ganzen – von dort sanft auf die neue gleiten (in Zoomrichtung), statt zu springen
+  const k = shown / TS;
+  if (Math.abs(k - 1) > 0.002) {
+    cv.style.transformOrigin = `${view.x + ax}px ${view.y + ay}px`;
+    cv.style.transform = `scale(${k})`;
+    void cv.offsetWidth;   // Ausgangswert festhalten, sonst greift der Übergang nicht
+    cv.style.transition = 'transform .12s ease-out';
+    cv.style.transform = '';
+  }
 }
 
 function resizeCanvas() {
-  if (zoomG.s !== 1) zoomReset();   // neue Partie, Laden … während einer Zoomgeste: Vergrößerung verwerfen
+  if (zoomG.s !== 1 || zoomG.raw !== 1) zoomReset();   // neue Partie, Laden … während einer Zoomgeste: Vergrößerung verwerfen
   cv.width = S.W * TS; cv.height = S.H * TS;
   applyPad();
   buildTerrainCache();
