@@ -458,7 +458,10 @@ LANDSCAPES.alttropen = Object.assign({}, OLD, {   // Tropen: sattes Grün, dicht
 // Klimazonen der alten Karte: dieselbe Verteilung wie bei den Inseln (zoneMap: Eismeer im Norden und Süden, Wüste in der Mitte, dazwischen
 // gemäßigt, vereinzelt Tropen – an der Stelle, wo die Inseln Lava haben)
 LANDSCAPES.altzonen = Object.assign({}, OLD, { zones: true, zoneKeys: ['altkarte', 'altwueste', 'altpolar', 'alttropen'], mini: [[206, 198, 146], [156, 186, 180]] });
-function landscape() { return LANDSCAPES[typeof S !== 'undefined' && S && S.land] || LANDSCAPES.gruen; }
+// Die Grafik-Übersicht (ui-schau.js) zeichnet zeitweise mit der Landschaft eines anderen Sets (withLandscape), ohne die Partie zu ändern
+let LAND_FORCE = null;
+function withLandscape(k, fn) { const k0 = LAND_FORCE; LAND_FORCE = LANDSCAPES[k] ? k : null; try { return fn(); } finally { LAND_FORCE = k0; } }
+function landscape() { return LANDSCAPES[LAND_FORCE || (typeof S !== 'undefined' && S && S.land)] || LANDSCAPES.gruen; }
 
 // Klimazonen (Landschaft „zonen“, Wunsch des Nutzers): je Feld eine der Landschaften Grün, Wüste, Schnee, Lava – nach der Lage wie auf einer
 // Weltkarte: oben und unten Schnee, in der Mitte Wüste, dazwischen Grün, mit welligen Grenzen; vereinzelt Lava. Kleinere Inseln bekommen

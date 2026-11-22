@@ -377,6 +377,8 @@
   .gfx-colors { display: flex; gap: 6px; align-items: center; margin: 10px 0; flex-wrap: wrap; font-size: 13px; }
   .gfx-colors button { padding: 3px 10px; font-size: 13px; margin: 0; display: inline-flex; align-items: center; gap: 6px; }
   .gfx-colors button i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .gfx-sets { margin: 4px 0 8px; }   /* Grafik-Set der Übersicht (alle Reiter) */
+  .gfx-sets button i { width: 22px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,.25); }
   .gfx-colors button.on i { box-shadow: 0 0 0 1.5px #fff; }
   .gfx-colors button.on, .gfx-seg button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
   .gfx-svg { margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--bg); }
@@ -1213,6 +1215,7 @@
     <h2 data-en="Graphics">Grafiken</h2>
     <p data-lang="de" class="muted gfx-intro">Alle Bilder und Animationen des Spiels – gezeichnet mit denselben Bausteinen wie die Karte, ohne Bilddateien. Die Einheitensymbole sind SVG-Pfade: „SVG-Code“ zeigt sie zum Kopieren oder Speichern.</p>
     <p data-lang="en" class="muted gfx-intro">All pictures and animations of the game – drawn with the same building blocks as the map, without image files. The unit symbols are SVG paths: “SVG code” shows them to copy or save.</p>
+    <div class="gfx-colors gfx-sets" id="gfxSets"></div>
     <nav class="help-tabs gfx-tabs" id="gfxTabs">
       <button data-gtab="units" data-en="Units">Einheiten</button>
       <button data-gtab="land" data-en="Cities and terrain">Städte und Gelände</button>

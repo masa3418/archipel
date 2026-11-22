@@ -289,6 +289,11 @@ window.UiTest = (() => {
     check(S.land === 'asteroiden', 'Grafik-Set: die Partie speichert die Landschaft mit');
     for (const k of ['land', 'units']) { gfx.tab = k; openGfx(); }
     check(gfx.set === 'weltraum' && !!$('mGfx').querySelector('[data-gset="weltraum"].on'), 'Grafik-Set: Grafik-Übersicht zeigt das Set der Partie');
+    { const land0 = S.land, txt = {}; gfx.tab = 'land';
+      for (const k of SET_KEYS) { $('mGfx').querySelector('[data-gset="' + k + '"]').click(); txt[k] = $('gfxBody').textContent; }
+      $('gfxTabs').querySelector('[data-gtab="anim"]').click(); const pl = $('gfxBody').querySelector('[data-gplay]'); if (pl) pl.click(); gfxLoop(performance.now() + 500);
+      check($('gfxSets').querySelectorAll('[data-gset]').length === 3 && txt.insel !== txt.weltraum && txt.weltraum !== txt.segel && S.land === land0 && LAND_FORCE === null && landscape() === LANDSCAPES[land0],
+        'Grafik-Übersicht: Set oben gilt für alle Reiter, die Partie bleibt unverändert'); }
     closeModals(); gfx.tab = 'units';
     // Asteroidengürtel: alle vier Arten auf einer Karte, Eisen nahe der Sonne, Eis gegenüber, gleiche Nummer = gleiches Bild; Sonne neben der Karte
     setLandscape('guertel'); setBorder('weltall');

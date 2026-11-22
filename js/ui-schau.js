@@ -206,8 +206,6 @@ function gfxUnits(body) {
     b.append(dot, p.name);
     bar.append(b);
   });
-  bar.append(gfxEl('span', 'muted', tt('Set:', 'Set:')));   // Grafik-Set: beim Öffnen das der laufenden Partie
-  for (const [set, label] of [['insel', tt('Inselwelt', 'Island world')], ['weltraum', tt('Weltraum', 'Space')], ['segel', tt('Segelzeit', 'Age of sail')]]) bar.append(gfxButton(label, { gset: set }, set === gfx.set));
   body.append(bar);
   const grid = gfxEl('div', 'gfx-grid fix');
   grid.style.setProperty('--cw', '148px');
@@ -525,8 +523,10 @@ function gfxAnims(body) {
 function gfxLoop(now) {
   gfx.raf = 0;
   if ($('mGfx').hidden) return;
-  for (const f of gfx.live) f(now);
-  for (const sc of gfx.scenes) if (!sc.done) sc.frame(now);
+  withLandscape(SET_LAND[gfx.set], () => {   // laufende Bilder ebenfalls mit dem gewählten Set (auch die Klänge der Animationen)
+    for (const f of gfx.live) f(now);
+    for (const sc of gfx.scenes) if (!sc.done) sc.frame(now);
+  });
   gfx.raf = requestAnimationFrame(gfxLoop);
 }
 function renderGfx() {
@@ -535,7 +535,11 @@ function renderGfx() {
   for (const b of $('gfxTabs').querySelectorAll('button')) b.classList.toggle('on', b.dataset.gtab === gfx.tab);
   body.textContent = '';
   body.dataset.tab = gfx.tab;
-  ({ units: gfxUnits, land: gfxLand, marks: gfxMarks, anim: gfxAnims })[gfx.tab](body);
+  // Grafik-Set oben im Fenster (Wunsch des Nutzers): gilt für alle Reiter – Einheiten, Städte und Gelände, Markierungen, Animationen. Gezeichnet wird
+  // mit der gemischten Landschaft des Sets (withLandscape in gfx.js), die Partie bleibt unverändert. Beim Öffnen das Set der Partie.
+  $('gfxSets').innerHTML = `<span class="muted">${tt('Grafik-Set:', 'Graphics set:')}</span>` + SET_KEYS.map(k =>
+    `<button data-gset="${k}" class="${k === gfx.set ? 'on' : ''}"><i style="background:${landSwatch(SET_LAND[k])}"></i>${esc(SET_NAMES[k])}</button>`).join('');
+  withLandscape(SET_LAND[gfx.set], () => ({ units: gfxUnits, land: gfxLand, marks: gfxMarks, anim: gfxAnims })[gfx.tab](body));
   body.scrollTop = keep;
   if (!gfx.raf) gfx.raf = requestAnimationFrame(gfxLoop);
 }
@@ -841,7 +845,7 @@ $('mGfx').addEventListener('click', async e => {
   const d = b.dataset;
   if (d.gtab) { if (gfx.tab !== d.gtab) { gfx.tab = d.gtab; gfx.svg = null; renderGfx(); } return; }
   if (d.gowner != null) { gfx.owner = +d.gowner; renderGfx(); return; }
-  if (d.gset) { gfx.set = d.gset; renderGfx(); return; }
+  if (d.gset) { gfx.set = d.gset; gfx.svg = null; renderGfx(); return; }
   if (d.gsvg || d.gicon) {
     const next = d.gsvg ? { kind: 'unit', type: d.gsvg } : { kind: 'icon', id: d.gicon };
     const same = gfx.svg && gfx.svg.kind === next.kind && (gfx.svg.type || gfx.svg.id) === (next.type || next.id);

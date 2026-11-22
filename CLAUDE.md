@@ -482,7 +482,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Landschaften unter „Ansicht“ aus den `mini`-Farben der Zonen (Klimazonen der Inseln behalten ihr festes Farbfeld).
   Farbprüfung: Parteien ≥ 32 (am knappsten Gelb auf Wüste, wie bei den Inseln); neutraler Platz auf dem Eismeer 12–24, dort trägt der Rand (49+). Menü: Überschriften `SET_HEAD`, Hinweistexte `SET_TIP`; Grafik-Übersicht mit drittem Knopf
   und eigenen Texten. Reihenfolge in `LANDSCAPES` und `LAND_KEYS` muss gleich sein (Durchlauf im Oberflächentest prüft das).
-  Kartenrand je Set gemerkt (siehe „Kartenrand“). Grafik-Übersicht: Umschalter „Set“ im Reiter Einheiten (`gfx.set`, beim Öffnen das der Partie), Texte im
+  Kartenrand je Set gemerkt (siehe „Kartenrand“). Grafik-Übersicht: Umschalter „Grafik-Set“ oben im Fenster für alle Reiter (`#gfxSets`, `gfx.set`, beim Öffnen das der
+  Partie; Wunsch des Nutzers). `renderGfx` und `gfxLoop` zeichnen in `withLandscape(SET_LAND[gfx.set], …)` (gfx.js `LAND_FORCE`: `landscape()` liefert
+  zeitweise die Landschaft des Sets, die Partie bleibt unverändert) – Einheiten, Städte, Gelände, Markierungen, Animationen samt Klängen. Texte im
   Reiter Städte und Gelände folgen dem Set. **Klänge je Set** (Wunsch des Nutzers; sfx.js `KIND_SET`, `kindOf` über `gfxSet()`): Weltraum – Raumschiffe `sdrive` (pulsierendes Triebwerk,
   kein Wasser), Tarnschiff `cloak` (dunkles Summen, Schimmern), Raumjäger `jet` (Düse), Rover `rover` (Elektromotor, Servos, Geröll); Segelzeit –
   Kavallerie `hooves` (Galopp, drei Pferde), Ballon `burner` (Brennerstöße, Wind, Korb), alle Schiffe einschließlich Piratenschiff `sail` (Wellen, Wind,
@@ -539,7 +541,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 848 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 849 Prüfungen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine
