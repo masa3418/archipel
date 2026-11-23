@@ -85,6 +85,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `tools/test.js` | Automatische Regeltests ohne Browser: `node tools/test.js` (nicht im Release) |
 | `tools/test-ui.js` | Oberflächentest im Browser: Wegvorschau gegen Klick, Klick-Abläufe, Einstiegstipps (nicht im Release). In erzeugten Skriptcode (Ladereihenfolge) keinen Text einsetzen – die Attrappen melden nur [Skriptnummer, eigener Name], der Meldungstext entsteht außerhalb. Text mit JSON.stringify einzusetzen löste CodeQL-Meldungen aus (#7, #8 „Improper code sanitization“; die Maskierung danach #9 „Incomplete string escaping“) |
 | `manifest.webmanifest`, `sw.js` | Installierbare App für die Online-Fassung (nur GitHub Pages, nicht im Release) |
+| `docs/konzept-kampagne.md` | Konzept Kampagne „Jenseits des Horizonts“ (drei Kapitel, Karte öffnet sich) – mit dem Nutzer abgestimmt, noch nicht umgesetzt; er greift es später auf. Nächster Schritt dort: Prototyp |
 | `.github/workflows/release.yml` | Legt bei einem Tag `vX.Y.Z` den Release mit der Offline-Fassung an – erst nach bestandenen Regeltests |
 | `.github/workflows/tests.yml` | Lässt bei jedem Push auf `main` (und bei Pull Requests) Syntaxprüfung und `node tools/test.js` laufen |
 
