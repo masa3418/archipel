@@ -103,6 +103,12 @@ function landingStep(now) {
   openLandingDialog(u);
 }
 
+// Klangteppich der gewählten Einheit – nicht, solange nach dem Rundenende die Wiedergabe läuft: Die nächste Einheit ist dann schon
+// gewählt, ist aber erst danach dran (dem Nutzer aufgefallen: Ihr Klang lief, während die eigenen Einheiten ihre Befehle ausführten)
+function selLoopType(now) {
+  const su = S.over || enemyPlaybackRunning(now) ? null : selUnit();
+  return su ? su.type : null;
+}
 function loop(now) {
   updateBanner(now);
   requestAnimationFrame(loop);
@@ -112,8 +118,7 @@ function loop(now) {
     autoEndStep(now);
     playAnimSounds(now);
     camStep(now);
-    const su = S.over ? null : selUnit();
-    Sfx.setLoop(su ? su.type : null);
+    Sfx.setLoop(selLoopType(now));
   }
   if (!S) return;
   if (loupeOn) drawLoupe();

@@ -267,7 +267,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Tempo: Einstellung „Wiedergabe der Züge“ (`replay`, `REPLAY`, `archipel-replay2`: slow 2,6× / normal 1,8× / fast 1× / off; Vorgabe off bei
   prefers-reduced-motion) skaliert `animBegin`-Tempo, Kamerafahrten (`anim.camMs`) und die Obergrenze in `animEnd`; „off“ setzt die Zeitleiste
   sofort auf den Endstand. Kamerabewegungen außerhalb der Zeitleiste immer über `pan()` (bei „off“ ohne Schwenk), nicht direkt `camTo`.
-  Während der Wiedergabe nach dem Rundenende bleibt die Karte stehen; erst danach geht es zur nächsten eigenen Einheit.
+  Während der Wiedergabe nach dem Rundenende bleibt die Karte stehen; erst danach geht es zur nächsten eigenen Einheit. Ebenso schweigt
+  bis dahin der Klangteppich der schon gewählten nächsten Einheit (`selLoopType` in ui-zug.js; dem Nutzer aufgefallen: Ihr Klang lief, während die eigenen
+  Einheiten ihre Befehle ausführten).
   `S.units` kennt während der Wiedergabe nur den Endstand: Was an einer Einheit hängt (Feuerschutz, Luftdeckung), richtet sich nach ihrer gezeigten Lage
   (`shownAt` in `render`: Startfeld bis zu ihrem Zug, unterwegs ausgeblendet bzw. beim Ring der Luftdeckung mitfahrend) – dem Nutzer fiel der Ring am Zielort auf.
   **Fremde Einheiten nur, wo du sie siehst** (ui-karte.js `animAlpha`; dem Nutzer aufgefallen): `hooks.move` zeichnet einen Schritt auf, wenn der Mensch die
@@ -586,7 +588,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 894 Prüfungen; in einem kleinen Fenster scheitern einige Lageprüfungen – Tastenlegende, Kartenrand, Taste F –, im eigenen Reiter in voller Größe laufen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 898 Prüfungen; in einem kleinen Fenster scheitern einige Lageprüfungen – Tastenlegende, Kartenrand, Taste F –, im eigenen Reiter in voller Größe laufen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, Auftauchen fremder Einheiten in der Wiedergabe, Feuerunterstützung an Truppen, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

@@ -417,6 +417,26 @@ window.UiTest = (() => {
       check(ringAt(mv.t0 + mv.dur + 5) === `car@${a[0] + 1},${a[1]} trn@${a[0] + 2},${a[1]}`, `Luftdeckung: am Ziel, Transporter daneben geschützt (${ringAt(mv.t0 + mv.dur + 5)})`);
     } finally { drawToken = o; skipAnim(); replay = 'off'; killUnit(trn); }
   }
+  // Klangteppich der gewählten Einheit (selLoopType): nicht, solange nach dem Rundenende die Wiedergabe läuft – dem Nutzer aufgefallen: Der Klang
+  // der nächsten Einheit lief schon, während die eigenen Einheiten ihre Befehle ausführten. Danach wieder der Klang der gewählten Einheit.
+  function loopSound() {
+    reset();
+    const spots = all((x, y) => seen(x, y) && land(x, y) && free(x, y) && !S.cities.some(c => cheb(c.x, c.y, x, y) <= 1));
+    const m = createUnit('inf', 0, ...spots[0]);
+    const goal = spots.find(([x, y]) => cheb(x, y, m.x, m.y) >= 3 && cheb(x, y, m.x, m.y) <= 6 && findPath(m, x, y, false));
+    const w = createUnit('tank', 0, ...spots.find(([x, y]) => cheb(x, y, m.x, m.y) >= 2 && !(goal && x === goal[0] && y === goal[1])));
+    if (!goal) { check(false, 'Klangteppich: kein Marschziel gefunden'); return; }
+    m.order = { type: 'goto', x: goal[0], y: goal[1] };
+    computeVision(0); select(w, false);
+    check(selLoopType(performance.now()) === 'tank', 'Klangteppich: gewählte Einheit klingt (Gegenprobe)');
+    replay = 'normal'; endHumanTurn();
+    try {
+      const now = performance.now();
+      check(enemyPlaybackRunning(now) && anim.ownFrom != null, 'Klangteppich: Wiedergabe mit eigenen Befehlen läuft');
+      check(!!selUnit() && selLoopType(now) === null, `Klangteppich: während der Wiedergabe still, obwohl schon ${selUnit() && T(selUnit()).name} gewählt ist`);
+      check(selLoopType(anim.end + 100) === (selUnit() && selUnit().type), 'Klangteppich: nach der Wiedergabe der Klang der gewählten Einheit');
+    } finally { skipAnim(); replay = 'off'; closeModals(); }
+  }
   // Fremde Einheiten in der Wiedergabe erst zeigen, wo der Spieler sie sieht (animAlpha; dem Nutzer aufgefallen): Ein getauchtes U-Boot stand
   // schon auf seinem Startfeld 2 Felder vor dem Kreuzer, der es erst auf dem Nachbarfeld ortet. Ebenso ein Zerstörer, der aus dem Nebel kommt.
   function revealInReplay() {
@@ -949,7 +969,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); tiredClick(); locator(); garrison(); coverRing(); goneScale(); revealInReplay(); supportMarks(); smoothZoomCheck(); borderCheck(); spaceSet(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); tiredClick(); locator(); garrison(); coverRing(); goneScale(); revealInReplay(); loopSound(); supportMarks(); smoothZoomCheck(); borderCheck(); spaceSet(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters
