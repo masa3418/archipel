@@ -26,8 +26,9 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Einzige Ausnahmen: `favicon.svg`, `docs/seeschlacht.gif` (README, aus dem Teaser `docs/videos/seeschlacht.mp4` erzeugt) und die
   Erklärvideos `docs/videos/*.mp4` – sie gehören nicht zum Spiel und nicht in den Release. Ebenso die Beispiel-Spielstände
   `docs/spielstaende/*.json` (im README aufgeführt): erzeugt mit `node tools/beispiele.js` (die KI spielt beide Seiten, gespeichert wird,
-  sobald eine gewünschte Lage erreicht ist; Zeitraffer und Kurve ab Runde 1). Nach Regeländerungen oder Änderungen am Spielstand neu
-  erzeugen und die Tabelle im README (Runden, Städte) anpassen. Online lädt das Handbuch sie direkt (Reiter „Über das Spiel“,
+  sobald eine gewünschte Lage erreicht ist; Zeitraffer und Kurve ab Runde 1). Nach Regeländerungen, die den Verlauf spürbar ändern, oder
+  Änderungen am Spielstand neu erzeugen und die Tabelle im README (Runden, Städte) anpassen. Bewusst nicht nach Tempo 3 für Schlachtschiff und
+  Träger (Entscheidung des Nutzers: Die Dateien laden weiter, in allen sieben Beispielen gab es nur 3 Schlachtschiffe und 4 Träger). Online lädt das Handbuch sie direkt (Reiter „Über das Spiel“,
   `EXAMPLES` in ui.js – Dateinamen, Runden und Städte dort und im README gleich halten; je Beispiel eine Zeile zum Aufklappen mit Eckdaten, darin eine Schilderung der Lage und erst dann der Laden-Knopf; Hinweis mit Sprung dorthin in „Erste Schritte“ per `data-helpanchor`);
   die Offline-Fassung (`file://`) lädt nichts aus dem Internet und zeigt stattdessen den Link zu GitHub. `tools/pack.js` ist kein Build für den Betrieb,
   sondern verpackt nur den Release; `dist/` gehört nicht ins Repository.
