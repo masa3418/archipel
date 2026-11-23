@@ -3,6 +3,33 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.9.2
+
+Schlachtschiff und Träger schneller, ihre Wirkung auf der Karte sichtbar.
+
+- **Schlachtschiff und Träger fahren 3 statt 2 Felder:** Sie halten mit einem beladenen Transporter Schritt und kommen nicht
+  mehr erst an, wenn der Kampf um eine Insel schon entschieden ist. Die Schwierigkeitsstufen bleiben laut Messung gleich.
+- **Feuerunterstützung auf der Karte:** Gegner an Land neben deinem Schlachtschiff tragen Eckwinkel – deine Bodentruppen
+  treffen sie dort zu 67 %. Es zählt das Feld, das angegriffen wird, nicht der Standort deiner Truppe. Truppen neben einem
+  Schlachtschiff ihres Besitzers tragen einen Zinnenkranz und werden nur zu 33 % getroffen – deine wie die des Gegners;
+  geschützte Städte umgibt eine Stadtmauer. Alles bleibt im eigenen Feld, Einheiten und Städte mit Zeichen sind dafür etwas kleiner.
+- **Luftdeckung auf der Karte:** Schiffe neben einem Träger mit Jägern an Bord tragen einen hellen Schirmring an ihrer Marke
+  statt eines Rings um das Feld.
+- **Gegnerzüge:** In der Wiedergabe erscheinen fremde Einheiten erst dort, wo du sie tatsächlich siehst – vorher stand etwa ein
+  getauchtes U-Boot schon sichtbar auf seinem Startfeld.
+- **Gegner ab Schwer:** Seine Schiffe sehen nach jedem Feld neu hin und weichen einer überlegenen Einheit aus, die sie unterwegs
+  entdecken.
+- **Grafiken:** Das Piratenschiff der Segelzeit trägt eine große schwarze Flagge mit Totenkopf. Die Grafik-Übersicht erklärt bei
+  Weltraum und Segelzeit, was jedes Bild zeigt, und öffnet sich jetzt über ☰ Menü → Hilfe → Grafiken.
+
+*English:* battleships and carriers now move 3 tiles instead of 2, so they keep up with a loaded transport; difficulty levels
+measured unchanged. The map shows fire support: enemies on land next to your battleship get corner brackets, troops next to a
+battleship of their own side get a ring of battlements, protected cities a city wall; ships under a carrier's air cover get a
+light ring around their marker. Marked units and cities are drawn slightly smaller so everything stays inside its tile. In the
+replay of enemy moves, foreign units only appear where you actually see them. From Hard upwards, enemy ships look around after
+every tile and steer clear of superior units they discover. The pirate ship flies a large black skull-and-crossbones flag, and
+the graphics overview (☰ Menu → Help → Graphics) explains the pictures of the space and age-of-sail sets.
+
 ## 1.9.1
 
 Viel mehr Platz für Spielstände.
