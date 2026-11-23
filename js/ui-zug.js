@@ -475,10 +475,18 @@ function doMove(u, x, y) {
   animBegin(120);
   const r = sailStep(u, x, y);   // wie moveStep; ein Transporter nimmt beim Auslaufen die wartenden Truppen der Stadt mit
   animEnd();
-  if (!r.ok) { toast(r.msg); Sfx.play('error'); }
-  else if (r.picked) { toast(tt(`${r.picked === 1 ? '1 Einheit' : r.picked + ' Einheiten'} aus der Stadt mitgenommen (${cargoOf(u).length}/${T(u).capacity})`, `${r.picked === 1 ? '1 unit' : r.picked + ' units'} taken along from the city (${cargoOf(u).length}/${T(u).capacity})`)); Sfx.play('clank'); }
-  else if (r.boarded) Sfx.play('clank');
-  afterAction(u);
+  if (!r.ok) {
+    // Abgelehnt (keine Züge, kann dort nicht hin, kann nicht angreifen): Es hat sich nichts bewegt, die Auswahl bleibt. Vorher sprang sie
+    // still zur nächsten wartenden Einheit – dem Nutzer passiert: Kreuzer ohne Züge, Klick auf den Zerstörer abgelehnt, gewählt war jetzt die
+    // Infanterie daneben, und der nächste Klick aufs selbe Ziel ließ sie angreifen (und untergehen).
+    toast(u.moves <= 0 ? r.msg + tt(' – weiter mit N', ' – N for the next unit') : r.msg, 2600); Sfx.play('error');
+    computeVision(0);   // Sonarkontakt: das U-Boot ist jetzt geortet
+    refresh();
+  } else {
+    if (r.picked) { toast(tt(`${r.picked === 1 ? '1 Einheit' : r.picked + ' Einheiten'} aus der Stadt mitgenommen (${cargoOf(u).length}/${T(u).capacity})`, `${r.picked === 1 ? '1 unit' : r.picked + ' units'} taken along from the city (${cargoOf(u).length}/${T(u).capacity})`)); Sfx.play('clank'); }
+    else if (r.boarded) Sfx.play('clank');
+    afterAction(u);
+  }
   const found = locatedSubs().filter(o => !before.has(o.id));
   if (found.length) {
     addLog(tt('Sonarkontakt: feindliches U-Boot geortet.', 'Sonar contact: enemy submarine located.'), 'bad', found[0].x, found[0].y);
@@ -588,8 +596,9 @@ function actUnload(landOnly = false) {
   animBegin(120);
   const n = unloadAll(u);
   animEnd();
-  if (!n) Sfx.play('error');
-  toast(n ? tt(`${n} Einheit(en) ausgeladen`, `${n} unit${n === 1 ? '' : 's'} unloaded`) : tt('Kein freies Feld zum Ausladen', 'No free tile to unload'));
+  // Nichts ausgeladen: Es hat sich nichts geändert, die Auswahl bleibt (wie bei einem abgelehnten Zug in doMove)
+  if (!n) { Sfx.play('error'); toast(tt('Kein freies Feld zum Ausladen', 'No free tile to unload')); refresh(); return; }
+  toast(tt(`${n} Einheit(en) ausgeladen`, `${n} unit${n === 1 ? '' : 's'} unloaded`));
   afterAction(u);
 }
 // Heimkehr: Marsch zur nächsten erreichbaren eigenen Stadt (Schiffe: Hafenstadt)

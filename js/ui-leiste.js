@@ -407,7 +407,13 @@ function updateHover() {
     const foes = su ? cityDefenders(su, c, en).filter(o => canStrike(su, o)) : en;   // Schiffe im Hafen verteidigen nicht gegen Bodentruppen; Schiffe ohne Beschuss greifen kein Land an
     const ships = en.length - foes.length;
     const sinkTxt = ships ? tt(' · Schiffe im Hafen gehen mit der Stadt unter', ' · ships in port are lost with the city') : '';   // ohne Anzahl (bleibt verborgen)
-    if (hid) {
+    // Keine Züge mehr und Ziel direkt daneben: Der Klick würde abgelehnt – dann keine Chance zeigen, die nach „jetzt angreifen“ aussieht
+    // (dem Nutzer passiert: „Siegchance 98 %“ am Kreuzer ohne Züge). Für entfernte Ziele bleibt sie stehen: Der Klick gibt dort einen Marschbefehl.
+    const tired = su && su.owner === 0 && su.moves <= 0 && !landingPending(su) && cheb(su.x, su.y, x, y) === 1
+      && (foes.length || (c && c.owner !== 0 && T(su).capture));
+    if (tired) {
+      s += tt(` · ${uname(su)} hat in dieser Runde keine Züge mehr`, ` · ${uname(su)} has no moves left this turn`);
+    } else if (hid) {
       if (su && T(su).capture) {
         const [pc, why] = capInfo(c);
         s += tt(` · siegt deine Einheit, fällt die Stadt zu ${pc} %${why}`, ` · if your unit wins, the city falls ${pc} % of the time${why}`);

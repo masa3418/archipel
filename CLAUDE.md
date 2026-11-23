@@ -292,6 +292,10 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   (`afterAction` gibt sie mit – gefallen oder in einer eroberten Stadt aufgegangen), zu Rundenbeginn die Mitte des bisherigen Ausschnitts. N geht je
   Durchgang jede Einheit einmal durch (`nextCycle`), dann von vorn. Vorher N nach Nummer und ohne Bezugspunkt die älteste: Sprungweite über einen ganzen
   Durchgang mit N in den Beispielen 162 → 75, 628 → 148, 762 → 191 Felder; nach dem Fall einer Einheit im Schnitt 17–20 → 1,7 Felder bis zur nächsten.
+  **Abgelehnter Zug** (`doMove`, ebenso `actUnload` ohne freies Feld; dem Nutzer passiert): Lehnt die Regel einen Zug ab (keine Züge, kann dort nicht hin, kann nicht angreifen),
+  bleibt die Auswahl – kein Sprung zur nächsten Einheit. Vorher sprang sie still weiter: Kreuzer ohne Züge, Klick auf den Zerstörer abgelehnt, gewählt
+  war nun die Infanterie daneben, der nächste Klick ließ sie angreifen. Hat die gewählte Einheit keine Züge, zeigen Hinweiszeile und Karte an einem
+  Ziel daneben keine Siegchance und keinen roten Rahmen, sondern „… hat in dieser Runde keine Züge mehr“ (`tired` in `updateHover` und `render`).
 - **Schwierigkeit** wirkt auf alle Computergegner (Spieler ≥ 1: `aiKnowsMap`, `aiMistake`, `aiSkill`). In Simulationen spielt die KI auch
   Spieler 0 – dort ohne Fehler und ohne Kartenwissen.
 - **Mehrere Gegner** (jeder gegen jeden): `newGame(size, diff, world, seed, nAi)`, Spieler 0 = Mensch, 1 … nAi = Computer
@@ -582,7 +586,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 870 Prüfungen; in einem kleinen Fenster scheitern einige Lageprüfungen – Tastenlegende, Kartenrand, Taste F –, im eigenen Reiter in voller Größe laufen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 894 Prüfungen; in einem kleinen Fenster scheitern einige Lageprüfungen – Tastenlegende, Kartenrand, Taste F –, im eigenen Reiter in voller Größe laufen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, Auftauchen fremder Einheiten in der Wiedergabe, Feuerunterstützung an Truppen, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

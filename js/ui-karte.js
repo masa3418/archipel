@@ -1202,8 +1202,11 @@ function render(now = performance.now()) {
     // fremde Stadt mit verborgener Besatzung: rot für jede Einheit, die dort angreifen oder erobern kann (ob nur Schiffe im Hafen liegen,
     // bleibt offen), aber keine Siegchance
     const hid = seen.length > 0 && garrisonHidden(hx, hy);
-    drawHoverFrame(hx, hy, en.length > 0 || (hid && !!T(su).capture));
-    if (!hid && en.length && canAttack(su.type) && cheb(su.x, su.y, hx, hy) <= 1) drawOdds(hx, hy, attackOdds(su, pickDefender(en), hx, hy));
+    // Keine Züge mehr und Ziel daneben: kein roter Rahmen und keine Chance – der Klick würde abgelehnt (wie in der Hinweiszeile; dem Nutzer
+    // passiert: „98 %“ am Kreuzer ohne Züge)
+    const tired = !!su && su.moves <= 0 && !landingPending(su) && cheb(su.x, su.y, hx, hy) === 1;
+    drawHoverFrame(hx, hy, !tired && (en.length > 0 || (hid && !!T(su).capture)));
+    if (!tired && !hid && en.length && canAttack(su.type) && cheb(su.x, su.y, hx, hy) <= 1) drawOdds(hx, hy, attackOdds(su, pickDefender(en), hx, hy));
   }
 }
 

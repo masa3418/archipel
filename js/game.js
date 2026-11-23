@@ -454,7 +454,7 @@ function moveStep(u, nx, ny) {
   const t = T(u);
   if (!inb(nx, ny)) return { ok: false, msg: tt('Kartenrand', 'Edge of the map') };
   if (cheb(u.x, u.y, nx, ny) !== 1) return { ok: false, msg: tt('Feld ist nicht benachbart', 'Tile is not adjacent') };
-  if (u.moves <= 0) return { ok: false, msg: tt('Keine Bewegungspunkte mehr', 'No moves left') };
+  if (u.moves <= 0) return { ok: false, msg: tt(`${uname(u)} hat in dieser Runde keine Züge mehr`, `${uname(u)} has no moves left this turn`) };
   const city = cityAt(nx, ny);
   const here = topUnitsAt(nx, ny);
   const enemies = here.filter(o => o.owner !== u.owner);

@@ -145,6 +145,58 @@ window.UiTest = (() => {
     check(hoverRoute(u) != null, 'Vorschau abgeschaltet: die Wegsuche für den Klick läuft weiter');
     showRoute = wasOn;
   }
+  // Einheit ohne Züge greift ein Ziel daneben an (dem Nutzer passiert): Der Klick wird abgelehnt, die Auswahl bleibt – vorher sprang sie still
+  // zur Infanterie neben dem Ziel, und der nächste Klick ließ sie angreifen. Die Hinweiszeile zeigt dann keine Siegchance, sondern den Grund.
+  function tiredClick() {
+    reset();
+    let p = null;
+    for (const [lx, ly] of all((x, y) => seen(x, y) && land(x, y) && free(x, y))) {
+      for (const [dx, dy] of DIRS) {
+        const D = [lx + dx, ly + dy];
+        if (!inb(...D) || !seen(...D) || land(...D) || !free(...D)) continue;
+        const C = DIRS.map(([ex, ey]) => [D[0] + ex, D[1] + ey]).find(([x, y]) => inb(x, y) && seen(x, y) && !land(x, y) && free(x, y) && cheb(x, y, lx, ly) >= 2);
+        if (C) { p = { L: [lx, ly], D, C }; break; }
+      }
+      if (p) break;
+    }
+    check(!!p, 'Zuglos: Testlage gefunden');
+    if (!p) return;
+    const inf = createUnit('inf', 0, ...p.L), foe = createUnit('dst', 1, ...p.D), crs = createUnit('crs', 0, ...p.C);
+    computeVision(0);
+    const line = () => { hover = [...p.D]; updateHover(); return $('hover').textContent; };
+    const mapOdds = () => {   // zeichnet die Karte die Siegchance am Ziel?
+      const od0 = drawOdds; let n = 0; drawOdds = (...a) => { n++; return od0(...a); };
+      try { hover = [...p.D]; dirty = true; render(performance.now()); } finally { drawOdds = od0; }
+      return n;
+    };
+    select(crs, false);
+    check(/Siegchance|Win chance/.test(line()), 'Zuglos: mit Zügen zeigt die Hinweiszeile die Siegchance (Gegenprobe)');
+    check(mapOdds() > 0, 'Zuglos: mit Zügen zeigt die Karte die Siegchance (Gegenprobe)');
+    crs.moves = 0; select(crs, false);
+    const l0 = line();
+    check(/keine Züge|no moves/.test(l0) && !/Siegchance|Win chance/.test(l0), `Zuglos: Hinweiszeile nennt den Grund statt der Siegchance („${l0}“)`);
+    check(mapOdds() === 0, 'Zuglos: keine Siegchance auf der Karte');
+    $('toast').textContent = '';
+    onTileClick(...p.D, false); skipAnim();
+    check(sel === crs.id, 'Zuglos: abgelehnter Klick – der Kreuzer bleibt gewählt');
+    check(/keine Züge|no moves/.test($('toast').textContent), 'Zuglos: Meldung nennt den Grund');
+    onTileClick(...p.D, false); skipAnim();
+    check(alive(inf) && alive(foe) && alive(crs), 'Zuglos: auch der zweite Klick löst keinen Angriff aus');   // Kampf geht bis zum Untergang einer Seite
+    // Dasselbe für jede Einheitenart: ohne Züge neben dem Zerstörer (Bodentruppen an Land, alle anderen auf See), dazu eine wartende Infanterie
+    for (const ty of UNIT_ORDER) {
+      reset();
+      const helper = createUnit('inf', 0, ...p.L), f = createUnit('dst', 1, ...p.D);
+      const u = createUnit(ty, 0, ...(UT[ty].domain === 'land' ? DIRS.map(([dx, dy]) => [p.D[0] + dx, p.D[1] + dy]).find(([x, y]) => inb(x, y) && land(x, y) && free(x, y)) || p.L : p.C));
+      const keep = u.x !== helper.x || u.y !== helper.y;
+      if (!keep) killUnit(helper);
+      u.moves = 0; computeVision(0); select(u, false);
+      const l = line(), can = canAttack(ty) && canStrike(u, f);
+      onTileClick(...p.D, false); skipAnim(); onTileClick(...p.D, false); skipAnim();
+      check(sel === u.id && alive(u) && alive(f) && (!keep || alive(helper)), `Zuglos, ${UT[ty].name}: Auswahl bleibt, kein Angriff`);
+      if (can) check(/keine Züge|no moves/.test(l) && mapOdds() === 0, `Zuglos, ${UT[ty].name}: Grund statt Siegchance („${l}“)`);
+    }
+    hover = null;
+  }
   // Suchring und Kamera: Wechselt das Spiel von selbst zur nächsten Einheit (oder Taste F), zeigt der Suchring auf sie (render),
   // nach einem Klick auf die Einheit nicht. Am Rand oder unter der Tastenlegende gilt eine Einheit nicht als gut sichtbar (wellInView).
   function locator() {
@@ -897,7 +949,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); locator(); garrison(); coverRing(); goneScale(); revealInReplay(); supportMarks(); smoothZoomCheck(); borderCheck(); spaceSet(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); tiredClick(); locator(); garrison(); coverRing(); goneScale(); revealInReplay(); supportMarks(); smoothZoomCheck(); borderCheck(); spaceSet(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters
