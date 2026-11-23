@@ -907,6 +907,7 @@ function knownCapture(c) {
 // Die Marke eines Feldes: welche der Einheiten dort gezeigt wird und mit welchen Zeichen. x, y = Feld, an dem gezeichnet wird (Karte: das Feld
 // selbst; Lupe: seine Lage im Ausschnitt). rv = Verteidiger, der sich gerade im Kampf zeigt (sonst bei verborgener Besatzung das Zeichen).
 let coverIds = new Set();   // Schiffe unter Luftdeckung (Nummern; in render je Bild aus der gezeigten Lage von Schiffen und Trägern)
+let cityMarksNow = new Map();   // Stadt-Nr. → { wall, fire } aus render (auch für die Lupe)
 let supportAt = new Map();   // Besitzer → Felder neben seinen gezeigten Schlachtschiffen (in render je Bild aus der gezeigten Lage der Schiffe)
 // Zeichen der Feuerunterstützung an einer Truppe auf Feld i (nicht in Städten – dort zeigt es die Stadt), oder null:
 // fort = neben einem Schlachtschiff ihres Besitzers (Zinnenkranz, wird nur zu 1/3 getroffen) – deine und, wenn du das Schiff siehst, die des
@@ -956,7 +957,8 @@ function drawGarrison(owner, px, py, size) {
 // Taste O gedrückt halten (Wunsch des Nutzers: mehr Zoom ist nur zum Anschauen – dafür eine Lupe statt größerer Zoomstufen): ein runder
 // Ausschnitt unter der Maus, etwa 2,5-fach vergrößert und scharf – Gelände, Städte, Nebel und Einheiten werden für den Ausschnitt in der
 // größeren Stufe neu gezeichnet (buildTerrain mit einem Kartenstück wie in der Grafik-Übersicht, drawOn), nicht hochskaliert. Sie zeigt
-// dasselbe wie die Karte, nicht mehr: Nebel bleibt Nebel. Ohne Marker, Wege und Effekte; während der Wiedergabe der Züge ist sie aus.
+// dasselbe wie die Karte, nicht mehr: Nebel bleibt Nebel. Ohne Zugmarker, Wege und Effekte – die Zeichen der Unterstützung (Stadtmauer, Eckwinkel, Zinnen, Schirmring) zeigt sie wie die Karte;
+// während der Wiedergabe der Züge ist sie aus.
 const LOUPE_D = 300;
 let loupeOn = false, loupeXY = null, loupeBg = null;
 window.addEventListener('mousemove', e => { loupeXY = [e.clientX, e.clientY]; });
@@ -985,11 +987,19 @@ function drawLoupe() {
   g.translate(Math.round(el.width / 2 - (fx - x0) * ts), Math.round(el.height / 2 - (fy - y0) * ts));
   g.drawImage(loupeBg.img, 0, 0);
   drawOn(g, ts, () => {
-    for (const c of S.cities) {
-      if (c.x < x0 || c.x > x1 || c.y < y0 || c.y > y1 || (!P.seen[idx(c.x, c.y)] && !S.over)) continue;
-      ctx.drawImage(citySprite(S.over ? c.owner : shownOwner(c, 0, false), TS, c.id % 2), (c.x - x0) * TS, (c.y - y0) * TS);
+    // Städte wie auf der Karte: mit Zeichen der Feuerunterstützung kleiner, danach (über dem Nebel) Mauer und Eckwinkel – dem Nutzer fehlten sie
+    const shown = S.cities.filter(c => c.x >= x0 && c.x <= x1 && c.y >= y0 && c.y <= y1 && (P.seen[idx(c.x, c.y)] || S.over));
+    for (const c of shown) {
+      const m = cityMarksNow.get(c.id);
+      drawCityImg(ctx, S.over ? c.owner : shownOwner(c, 0, false), c.id % 2, c.x - x0, c.y - y0, TS, !m ? 1 : m.wall ? CITY_K.wall : CITY_K.fire);
     }
     drawFog({ seen: sub(P.seen, Uint8Array), vis: sub(P.vis, Uint8Array) }, loupeBg.st);
+    for (const c of shown) {
+      const m = cityMarksNow.get(c.id);
+      if (!m) continue;
+      if (m.wall) drawCityWall(c.x - x0, c.y - y0);
+      for (const col of m.fire) drawSupportMark(c.x - x0, c.y - y0, false, col);
+    }
     const groups = new Map(), su = S.over ? null : selUnit();
     for (const u of S.units) {
       if (u.carrier != null || u.x < x0 || u.x > x1 || u.y < y0 || u.y > y1) continue;
@@ -1029,7 +1039,7 @@ function render(now = performance.now()) {
   // Feuerunterstützung: Städte neben einem sichtbaren Schlachtschiff markieren.
   // Eckwinkel = unter Feuer (fällt zu 75 %), Stadtmauer mit Zinnen = Feuerschutz (fällt nur zu 25 %). Die Stadt wird dann etwas kleiner
   // gezeichnet, damit das Zeichen ins Feld passt (dem Nutzer aufgefallen: es ragte heraus, bei eng stehenden Einheiten unübersichtlich).
-  const batsNow = [], cityMarks = new Map();   // Stadt-Nr. → { wall, fire: [Farben] }
+  const batsNow = [], cityMarks = cityMarksNow = new Map();   // Stadt-Nr. → { wall, fire: [Farben] }
   for (const b of S.units) {
     if (prodView || b.type !== 'bat' || b.carrier != null) continue;
     const bp = shownAt(b);

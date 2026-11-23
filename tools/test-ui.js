@@ -551,6 +551,12 @@ window.UiTest = (() => {
       const d = el.getContext('2d').getImageData(0, 0, el.width, el.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 90) n++;
       check(n > el.width * el.height * 0.3, 'Lupe: zeigt ein Bild (' + n + ' helle Punkte)');
       check(Math.abs(parseFloat(el.style.left) + LOUPE_D / 2 - loupeXY[0]) <= 1, 'Lupe: sitzt unter der Maus');
+      // Zeichen der Unterstützung wie auf der Karte: eigene Stadt neben dem Schlachtschiff mit Mauer (dem Nutzer fehlte sie in der Lupe)
+      const b = createUnit('bat', 0, ...base.s), ow = drawCityWall, ok0 = drawCityImg, walls = [], ks = [];
+      drawCityWall = function (x, y) { walls.push([x, y]); return ow(x, y); };
+      drawCityImg = function (g, o, v, x, y, t, k = 1) { if (k < 1) ks.push(k); return ok0(g, o, v, x, y, t, k); };
+      try { render(); walls.length = ks.length = 0; drawLoupe(); } finally { drawCityWall = ow; drawCityImg = ok0; killUnit(b); render(); }
+      check(walls.length === 1 && ks.includes(CITY_K.wall), `Lupe: Stadt neben dem Schlachtschiff mit Mauer und verkleinert (${walls.length}, ${ks.join('/')})`);
     }
     loupeXY = [wr.right + 60, wr.top + 60]; drawLoupe(); check(el.hidden, 'Lupe: außerhalb der Karte unsichtbar');
     loupeXY = at(...base.l); key('keyup', 'o');
