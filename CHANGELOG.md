@@ -3,6 +3,23 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.9.3
+
+Zwei Korrekturen.
+
+- **Einheit ohne Züge:** Klickst du mit einer Einheit, die in dieser Runde keine Züge mehr hat, auf ein Ziel daneben, bleibt sie
+  ausgewählt, und die Meldung nennt den Grund. Vorher sprang die Auswahl still zur nächsten wartenden Einheit – stand die direkt
+  neben demselben Ziel, griff beim nächsten Klick sie an, etwa eine Infanterie einen Zerstörer. Hinweiszeile und Karte zeigen an
+  einem Ziel daneben keine Siegchance und keinen roten Rahmen mehr, solange die gewählte Einheit keine Züge hat. Dasselbe gilt für
+  „Ausladen“, wenn kein Feld frei ist.
+- **Lupe (Taste O):** Städte tragen auch unter der Lupe Stadtmauer und Eckwinkel wie auf der Karte.
+
+*English:* clicking a target next to a unit that has no moves left this turn now keeps that unit selected and says why. Before,
+the selection silently jumped to the next waiting unit – if that one stood next to the same target, your next click made it
+attack, for example an infantry attacking a destroyer. While the selected unit has no moves, the info line and the map no longer
+show a win chance or a red frame on targets next to it; the same applies to “Unload” when no tile is free. The magnifier (key O)
+now shows city walls and corner brackets on cities, as the map does.
+
 ## 1.9.2
 
 Schlachtschiff und Träger schneller, ihre Wirkung auf der Karte sichtbar.
