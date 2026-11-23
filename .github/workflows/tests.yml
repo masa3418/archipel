@@ -15,7 +15,7 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Syntax prüfen
         run: for f in js/*.js tools/*.js tools/video/*.js sw.js; do node --check "$f"; done

@@ -775,7 +775,7 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   (`stepAlong`) wird die Sicht erneuert, wenn ein noch ungesehener Gegner in seiner Sichtweite steht; die Bedrohungskarte wird neu gezeichnet, sobald
   sich ändert, welche Gegner sichtbar sind oder wie viel Kraft sie haben (auch nach jeder Einheit). Grenze, gewollt: Ein Zerstörer sieht 2 Felder, ein
   Kreuzer erreicht 3 – was erst mit dem letzten Feld auftaucht, kann er nicht mehr meiden. Nachgestellte Lagen (Kreuzer 4–6 Felder entfernt, außer
-  Sicht, 300 Lagen mittlere Karte): Zerstörer endet in Reichweite 36–38 → 18, die übrigen alle mit Entdeckung erst auf dem letzten Feld. Direkter
+  Sicht, 300 Lagen mittlere Karte): Zerstörer endet in Reichweite 36–38 → 18, die übrigen ohne Ausweg (meist Entdeckung erst auf dem letzten Feld, selten zwei Felder vor dem Kreuzer mit einem Zug übrig – der Test zählte das anfangs als Fehler und scheiterte in etwa jedem 50. Lauf, so auch beim ersten Release-Lauf von 1.9.2). Direkter
   Vergleich (Können 1 beide, ohne Fehler, beide Sitze, je 400 Partien über alle fünf Welten, klein): Variante gewinnt 59 % der entschiedenen (451 : 316;
   Inselreich 55, Gemischt 62, Festland 53, Kontinente 66, Binnenmeer 57 %), offen 33 von 800, verlorene Schiffe je Partie ca. 15 % weniger. Stufen
   (Platz 0 einfach, je 192 über die drei alten Welten, ohne → mit): Schwer 13 → 9 %, Brutal 2 → 2 %; Leicht und Normal unberührt. Zeit je

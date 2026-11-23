@@ -456,8 +456,10 @@ test('KI: Schiffe sehen unterwegs hin (ab Schwer) und weichen einem Kreuzer aus,
     eq(!!threatMap(d)[idx(d.x, d.y)], want, `${level}, AI_LOOK ${on}: Feld des Zerstörers bedroht`);
     AI_LOOK[1] = true;
   }
-  // Ganze Züge, 200 Lagen: Kreuzer 4–6 Felder vom Zerstörer, anfangs außer Sicht. Endet der Zerstörer in Reichweite des Kreuzers, darf er
-  // ihn erst mit seinem letzten Feld entdeckt haben (dann blieb kein Zug zum Ausweichen). Ohne AI_LOOK fuhr er oft daran vorbei.
+  // Ganze Züge, 200 Lagen: Kreuzer 4–6 Felder vom Zerstörer, anfangs außer Sicht. Endet der Zerstörer in Reichweite des Kreuzers, darf ihm
+  // nach der Entdeckung kein Ausweg geblieben sein: mit den restlichen Zügen kein unbedrohtes Feld erreichbar (meist entdeckt er ihn erst mit
+  // dem letzten Feld; selten zwei Felder vor dem Kreuzer mit einem Zug übrig – vorher zählte der Test das als Fehler, der Release 1.9.2
+  // scheiterte daran, je nach Zufall der KI in etwa jedem 50. Lauf). Ohne AI_LOOK fuhr er oft daran vorbei.
   for (const on of [true, false]) {
     board('inseln', 4711, 1, 'schwer');
     AI_LOOK[1] = on;
@@ -474,13 +476,16 @@ test('KI: Schiffe sehen unterwegs hin (ab Schwer) und weichen einem Kreuzer aus,
       if (canSee(1, k)) continue;
       lagen++;
       threatCache = new Map(); lookSig = ''; aiPlan = buildPlan(1);
-      const steps = [], mv = moveStep;
-      moveStep = (u, x, y) => { const res = mv(u, x, y); if (u === d && res.ok) steps.push(cheb(d.x, d.y, kx, ky)); return res; };
+      const steps = [], at = [], mv = moveStep;   // je Schritt: Abstand zum Kreuzer, Feld und Restzüge danach
+      moveStep = (u, x, y) => { const res = mv(u, x, y); if (u === d && res.ok) { steps.push(cheb(d.x, d.y, kx, ky)); at.push([d.x, d.y, d.moves]); } return res; };
       try { aiWarship(d); } finally { moveStep = mv; }
       computeVision(1); threatCache = new Map();
       if (!alive(d) || !canSee(1, k) || !threatMap(d)[idx(d.x, d.y)]) continue;
       const first = steps.findIndex(x => x <= T(d).vision);
-      if (first >= 0 && first < steps.length - 1) bad++;
+      if (first < 0 || first === steps.length - 1) continue;   // erst mit dem letzten Feld entdeckt
+      const tm = threatMap(d), [sx, sy, left] = at[first];
+      const sea = (x, y, i) => S.terrain[i] === 0 && !topUnitsAt(x, y).some(o => o !== d);
+      if (left > 0 && bfs(sx, sy, sea, (x, y, i) => sea(x, y, i) && !tm[i], left)) bad++;   // Ausweg gehabt, aber nicht genommen
     }
     eq(lagen, 200, 'genug Lagen');
     if (on) eq(bad, 0, 'mit AI_LOOK: nie an einem gesehenen Kreuzer vorbei in dessen Reichweite');
