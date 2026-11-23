@@ -622,12 +622,14 @@ Kleine Karte, „Siege“ des einfachen KI-Spielers auf Platz 0, je 96 Partien �
 **Neuester Stand (nach 1.8.6, Transporter: Truppen handeln nach der Fahrt, Zuflucht ab Schwer – siehe „KI messen“), in Prozent:** Leicht 100,
 Normal 61 (192 Partien), Schwer 11, Brutal 1; offen 0 / 2 / 1 / 0. Unmittelbar davor im selben Lauf: Leicht 100, Normal 62 (288), Schwer 17, Brutal 3.
 Danach „Hinsehen unterwegs“ (nur ab Schwer, je 192 Partien, ohne → mit): Schwer 13 → 9, Brutal 2 → 2; offen 2 → 1 bzw. 1 → 0.
+Danach Schlachtschiff und Träger 3 statt 2 Felder (siehe „Tempo von Schlachtschiff und Träger“, ohne → mit): Leicht 100 → 100 % (96), Normal 60 → 60 % (288),
+Schwer 8 → 8 %, Brutal 2 → 1 % (je 96).
 Die Tabelle darunter ist der Stand seit dem sicheren Anfang.
 Stand **seit dem sicheren Anfang (1.8.1)**; davor: Leicht 96, Normal 56, Schwer 24, Brutal 5 (offen 0 / 3 / 4 / 1) – Schwer und Brutal sind also
 etwas härter geworden, weil die KI dort die Karte kennt und den schnelleren Start besser nutzt. Die älteren Messreihen weiter unten und bei den
 einzelnen Regeln (meist „alt → neu“) stammen aus der Zeit davor und sind untereinander vergleichbar, aber nicht mit dieser Tabelle.
 Die neuen Welten stehen bei ihrer Beschreibung (Binnenmeer, Kontinente). Früher: Mit einem Träger von 3 statt 2 Feldern waren es auf Schwer/Brutal
-12 bzw. 2 Siege, der schnelle Träger nützte der KI spürbar:
+12 bzw. 2 Siege, der schnelle Träger nützte der KI spürbar (inzwischen fahren Träger und Schlachtschiff wieder 3, gemessen ohne Wirkung auf die Stufen):
 
 | Stufe | Siege | unentschieden nach 350 Runden | Bonus des Gegners |
 |---|---|---|---|
@@ -788,6 +790,15 @@ Was die bisherigen Messreihen (rund 20 000 Partien) ergeben haben:
   ohne Variante, vorne 65-mal statt erwartet 74 – eher schlechter (erste Stichprobe mit je 36 ebenso). Grund vermutlich: Kurze Wege heißen mehr
   Landungen, fremde Städte sind kaum besetzt (Angriff schlägt Verteidigung), und jede eroberte fremde Stadt schwächt zugleich einen Gegner.
   Nicht wieder versuchen, solange die Eroberungsregeln gleich bleiben.
+- **Tempo von Schlachtschiff und Träger** (Vermutung des Nutzers: mit 2 Feldern kamen sie an, wenn der Kampf um eine Insel schon entschieden war –
+  der beladene Transporter fährt 3; gemessen, dann auf Wunsch des Nutzers beide auf 3 Felder gesetzt, `UT` in data.js). Schalter im Messskript: zu Rundenbeginn 3 Züge für Schlachtschiff und Träger eines
+  Platzes bzw. `UT.bat.move`/`UT.car.move` = 3 für alle. Direktvergleich (Können 1 beide, ohne Fehler, beide Sitze, je 400 Partien über alle fünf Welten,
+  klein): ohne Änderung 192 : 193, schnelle Seite 209 : 175 bzw. 190 : 187 – zusammen 52 % der entschiedenen, im Rauschen. Die KI nutzt beide kaum: je Seite
+  und Partie 0,5 Schlachtschiffe und 0,7 Träger, 0,3 von rund 37 Eroberungen mit Feuerunterstützung (mit 3 Feldern 0,45), Luftdeckung fing in keiner
+  Partie einen Jäger ab; Festland und Binnenmeer praktisch ohne Schlachtschiffe. Stufen mit 3 Feldern für alle (Platz 0 einfach, klein, drei alte Welten,
+  ohne → mit): Leicht 100 → 100 % (96), Normal 60 → 60 % (288; erste Stichprobe mit 96: 56 → 50 %), Schwer 8 → 8 %, Brutal 2 → 1 % (je 96); offen auf
+  Normal 9 → 5 von 288, Partien dort ca. 6 Runden kürzer. Für die KI also folgenlos; ob es dem Menschen hilft, zeigt keine Simulation. Das Schlachtschiff verliert damit seinen Nachteil gegenüber dem Kreuzer
+  (Tempo), behält die höheren Baukosten (40 statt 30).
 - **Kapitulation** (siehe „Mehrere Gegner“; `CAPITULATE.turns = 1e9` schaltet sie für Messungen ab). Vorher (168 Partien, Platz 0 einfach, Normal):
   Von 232 Computer-Parteien, die von ≥ 4 auf ≤ 2 Städte fielen, kamen 3 zurück auf ≥ 5; Ausscheiden im Mittel 9 (klein, 2 Gegner) bzw. 6 Runden
   (mittel, 3 Gegner) danach, jede zehnte hielt sich über 30 Runden. Mit/ohne (klein 2 Gegner je 120, mittel 3 Gegner je 72 Partien): Siege
