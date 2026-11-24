@@ -674,8 +674,15 @@ test('Spielstand: kaputte Dateien werden abgelehnt', () => {
   const o = JSON.parse(good);
   o.units.push({ id: 99999, type: 'gibtsnicht', owner: 0, x: 1, y: 1 }, { id: 99998, type: 'inf', owner: 7, x: -5, y: 9999 });
   o.unbekanntesFeld = '<script>';
+  // Namen, die jedes Objekt mitbringt: UT[…] ist für sie wahr – eine Einheit „constructor“ legte das Spiel lahm (Sicherheitsprüfung nach 1.9.4)
+  const proto = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf'];
+  proto.forEach((t, i) => o.units.push({ id: 99990 - i, type: t, owner: 0, x: o.cities[0].x, y: o.cities[0].y, hp: 1 }));
+  o.cities[0].prod = 'hasOwnProperty'; o.cities[1].prod = 'constructor';
+  o.players[0].intel = { 5: 'constructor', 6: '__proto__', 7: 'inf' };
   deserialize(JSON.stringify(o));
-  ok(S.units.every(u => UT[u.type] && inb(u.x, u.y) && u.owner < nPlayers()), 'unsinnige Einheiten wurden nicht verworfen');
+  ok(S.units.every(u => UNIT_ORDER.includes(u.type) && inb(u.x, u.y) && u.owner < nPlayers()), 'unsinnige Einheiten wurden nicht verworfen');
+  ok(S.cities.every(c => c.prod === null || UNIT_ORDER.includes(c.prod)), 'unsinnige Produktion wurde übernommen');
+  eq(JSON.stringify(S.players[0].intel), '{"7":"inf"}', 'unsinnige Einheitenart im Wissen über den Gegner wurde übernommen');
   ok(S.unbekanntesFeld === undefined, 'unbekanntes Feld wurde übernommen');
 });
 test('Spielstand: automatisch und benannt speichern, laden, löschen', async () => {

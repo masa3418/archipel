@@ -79,7 +79,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 | `js/ui-schau.js` | Oberfläche 6: Statistik, Klangtest, Grafik-Übersicht (`openGfx`), Einstellungen, Beispiel-Spielstände |
 | `js/ui-start.js` | Oberfläche 7: Spielstände, Sprache (`applyLang`), Willkommensfenster, Start des Spiels – muss als Letztes geladen werden |
 | `index.html` | Layout, CSS, Dialoge (Handbuch, Statistik, Spielstände, Klangtest …) |
-| `tools/serve.js` | Mini-Webserver für die Entwicklung |
+| `tools/serve.js` | Mini-Webserver für die Entwicklung. Lauscht nur auf 127.0.0.1 (vorher auf allen Anschlüssen – mit der Firewall-Freigabe für Node war der Projektordner samt `.git` im selben Netz lesbar), Pfade über `inside()` wie in `recv.js` (der bloße Vergleich des Anfangs ließ Nachbarordner mit gleichem Namensanfang durch), kaputte Adresse → 400 statt Absturz |
 | `tools/pack.js` | Verpackt die Offline-Fassung nach `dist/` (Einzeldatei `archipel-offline.html`, Release-Text; ohne Manifest-Verweis). Seit 1.8.6 kein eigenes ZIP mehr (Wunsch des Nutzers): Die einzelnen Dateien liefert GitHub als „Source code“ zu jedem Release; bis 1.8.5 hieß die Datei `archipel.html`. Die Skripte werden samt Kommentaren eingebettet – bewusst (Entscheidung des Nutzers, nach 1.9.2: kein Bedarf; erst angehen, wenn die Größe einmal drückt). Gemessen bei 1.9.2: Kommentare ≈ 155 kB von 692 kB Skript (23 %; `data.js` 38 %, `ui-zug.js` 34 %), dazu 4 kB CSS-Kommentare – Datei ≈ 830 → 670 kB (−19 %); Einrückung danach nur noch 27 kB. Probelauf mit einem eigenen Entferner (achtet auf Zeichenketten, Template-Literale, reguläre Ausdrücke): alle Skripte `node --check` fehlerfrei, `tools/test.js` 38/38 grün, Oberfläche im Browser nicht geprüft. Falls umgesetzt: in `pack.js`, und `release.yml` müsste die Tests auch mit der bereinigten Fassung laufen lassen |
 | `tools/beispiele.js` | Erzeugt die Beispiel-Spielstände `docs/spielstaende/*.json` (nicht im Release) |
 | `tools/test.js` | Automatische Regeltests ohne Browser: `node tools/test.js` (nicht im Release) |
@@ -261,6 +261,11 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
 - **Neues Feld im Spielzustand** → in `sanitizeState` (game.js) aufnehmen, sonst wird es beim
   Laden verworfen. Spielstände aus Dateien sind nicht vertrauenswürdig (siehe `SECURITY.md`);
   Werte aus `S` nie ungeprüft per `innerHTML` ausgeben, Texte mit `esc()` maskieren.
+  **Sicherheitsprüfung nach 1.9.4** (alle etwa 60 `innerHTML`-Stellen sauber, im Browser mit Schadcode in Städtenamen, Meldungen und
+  Spielstandnamen nachgestellt): Einheitenarten aus Spielständen nur mit `isType` (`UNIT_ORDER.includes`) prüfen, nie mit `UT[v]` – das ist auch
+  für `constructor`, `toString`, `__proto__` wahr; eine Datei mit solch einer Einheit legte das Spiel lahm, auch nach dem Neuladen (Test
+  „kaputte Dateien“). Spielstände immer über `loadGuarded(load, msg)` (ui-start.js) laden: Scheitert das Laden oder danach `afterSlotLoad`,
+  kehrt die bisherige Partie zurück – vorher blieb der kaputte Stand trotz Fehlermeldung stehen und landete im automatischen Spielstand.
 - **Animationen**: Regeln melden Bewegungen/Kämpfe/Eroberungen über `hooks` (game.js); `ui.js`
   zeichnet sie zwischen `animBegin()`/`animEnd()` als Zeitleiste auf. Gegnerzüge sind
   überspringbar, die Kamera folgt (`recCam`).

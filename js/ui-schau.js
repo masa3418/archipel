@@ -1014,9 +1014,7 @@ $('helpExamples').addEventListener('click', async e => {
     const r = await fetch(`docs/spielstaende/${ex[0]}.json`);
     if (!r.ok) throw new Error(String(r.status));
     const text = await r.text();
-    const backup = S;
-    try { deserialize(text); } catch (err) { S = backup; buildCityGrid(); throw err; }
-    afterSlotLoad(tt(`Beispiel geladen: ${ex[1]}`, `Example loaded: ${ex[1]}`));
+    if (!(await loadGuarded(() => deserialize(text), tt(`Beispiel geladen: ${ex[1]}`, `Example loaded: ${ex[1]}`)))) throw new Error('load');
   } catch (err) { toast(tt('Beispiel konnte nicht geladen werden – dafür ist eine Internetverbindung nötig.', 'The example could not be loaded – this needs an internet connection.')); Sfx.play('error'); }
   finally { b.disabled = false; }
 });

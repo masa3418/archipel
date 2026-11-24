@@ -1580,6 +1580,9 @@ function sanitizeState(o) {
   const int = (v, d = 0, lo = -1e9, hi = 1e9) => Math.trunc(num(v, d, lo, hi));
   const str = (v, max = 80) => (typeof v === 'string' ? v.slice(0, max) : '');
   const oneOf = (v, list, d) => (list.includes(v) ? v : d);
+  // Einheitenart nur aus der Liste – nicht mit UT[v] prüfen: Das ist auch für Namen wahr, die jedes Objekt mitbringt („constructor“,
+  // „toString“, „__proto__“). Eine Datei mit solch einer Einheit legte das Spiel lahm, auch nach dem Neuladen (Sicherheitsprüfung nach 1.9.4).
+  const isType = v => UNIT_ORDER.includes(v);
   const W = int(o.W, 0), H = int(o.H, 0);
   if (W < 8 || H < 8 || W > 300 || H > 300) throw new Error(tt('Ungültige Kartengröße', 'Invalid map size'));
   const N = W * H;
@@ -1616,14 +1619,14 @@ function sanitizeState(o) {
     const x = int(c.x, -1), y = int(c.y, -1);
     if (!inMap(x, y)) throw new Error(tt('Ungültige Stadt', 'Invalid city'));
     return { id: i, x, y, name: str(c.name, 40) || 'Stadt ' + (i + 1), owner: owner(c.owner, -1),
-      prod: UT[c.prod] ? c.prod : null, progress: num(c.progress, 0, 0, 1000), coastal: !!c.coastal,
+      prod: isType(c.prod) ? c.prod : null, progress: num(c.progress, 0, 0, 1000), coastal: !!c.coastal,
       rally: c.owner === 0 ? pt(c.rally) : null };
   });
 
   const units = [];
   const seenIds = new Set();
   for (const u of Array.isArray(o.units) ? o.units.slice(0, 20000) : []) {
-    if (!u || !UT[u.type]) continue;
+    if (!u || !isType(u.type)) continue;
     const t = UT[u.type], x = int(u.x, -1), y = int(u.y, -1), id = int(u.id, 0, 1, 1e9);
     if (!inMap(x, y) || !id || seenIds.has(id)) continue;
     seenIds.add(id);
@@ -1705,7 +1708,7 @@ function sanitizeState(o) {
     if (P.knownOwner) for (let i = 0; i < ko.length && i < P.knownOwner.length; i++) ko[i] = Math.min(nP - 1, Math.max(-2, P.knownOwner[i]));
     for (let i = 0; i < N; i++) P.seen[i] = P.seen[i] ? 1 : 0;
     const intel = {};
-    if (P.intel && typeof P.intel === 'object') for (const [k, v] of Object.entries(P.intel).slice(0, 20000)) if (UT[v] && /^\d+$/.test(k)) intel[k] = v;
+    if (P.intel && typeof P.intel === 'object') for (const [k, v] of Object.entries(P.intel).slice(0, 20000)) if (isType(v) && /^\d+$/.test(k)) intel[k] = v;
     return { seen: P.seen, vis: new Uint8Array(N), sonar: new Uint8Array(N), knownOwner: ko, intel };
   });
   return s;

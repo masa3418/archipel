@@ -97,6 +97,18 @@ function afterSlotLoad(msg) {
   toast(msg); Sfx.play('select');
   if (S.over) showGameOver();
 }
+// Lädt einen Spielstand: load() ersetzt S (deserialize, loadGame, loadSlot) und liefert false, wenn es nichts zu laden gab. Liefert true bei Erfolg.
+// Scheitert das Laden oder danach das Einrichten der Oberfläche, kehrt die bisherige Partie zurück. Vorher blieb ein Stand, an dem die Oberfläche
+// scheiterte, trotz der Meldung „kein gültiger Spielstand“ stehen und landete beim Schließen der Seite im automatischen Spielstand – das Spiel
+// startete danach nicht mehr (Sicherheitsprüfung nach 1.9.4). Die Aufrufer melden den Fehler selbst.
+async function loadGuarded(load, msg) {
+  const before = S;
+  try {
+    if ((await load()) !== false) { afterSlotLoad(msg); return true; }
+  } catch (err) { console.warn('Laden fehlgeschlagen:', err); }
+  if (before && S !== before) { S = before; try { buildCityGrid(); afterLoad(); } catch (e) { console.warn(e); } }
+  return false;
+}
 $('bSaves').onclick = openSaves;
 $('saveNew').onclick = () => trySave($('saveName').value.trim() || `${tt('Runde', 'Turn')} ${S.turn}`);
 $('saveName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('saveNew').click(); } });
@@ -114,9 +126,8 @@ $('mSaves').addEventListener('click', async e => {
     return;
   }
   if (d.load) {
-    let ok = false;
-    try { ok = d.load === 'auto' ? loadGame() : await loadSlot(d.load); } catch (err) { ok = false; }
-    if (ok) afterSlotLoad(tt('Spielstand geladen', 'Game loaded')); else { toast(tt('Laden fehlgeschlagen', 'Loading failed')); Sfx.play('error'); }
+    const ok = await loadGuarded(() => (d.load === 'auto' ? loadGame() : loadSlot(d.load)), tt('Spielstand geladen', 'Game loaded'));
+    if (!ok) { toast(tt('Laden fehlgeschlagen', 'Loading failed')); Sfx.play('error'); }
   } else if (d.over) {
     const m = listSlots().find(x => x.id === d.over);
     if (m && confirm(tt(`„${m.name}“ mit dem aktuellen Spiel (Runde ${S.turn}) überschreiben?`, `Overwrite “${m.name}” with the current game (turn ${S.turn})?`))) await trySave(m.name, m.id);
@@ -143,12 +154,12 @@ importPick.type = 'file'; importPick.accept = '.json,application/json';
 importPick.onchange = async () => {
   const f = importPick.files[0]; importPick.value = '';
   if (!f) return;
+  let ok = false;
   try {
     const text = await unpackFile(await f.text());   // gepackte Datei (ab 1.9.1) oder ungepackte früherer Versionen
-    const backup = S;
-    try { deserialize(text); } catch (err) { S = backup; buildCityGrid(); throw err; }
-    afterSlotLoad(tt('Spielstand aus Datei geladen', 'Game loaded from file'));
-  } catch (err) { toast(tt('Datei ist kein gültiger Spielstand', 'File is not a valid saved game')); Sfx.play('error'); }
+    ok = await loadGuarded(() => deserialize(text), tt('Spielstand aus Datei geladen', 'Game loaded from file'));
+  } catch (err) { ok = false; }
+  if (!ok) { toast(tt('Datei ist kein gültiger Spielstand', 'File is not a valid saved game')); Sfx.play('error'); }
 };
 $('saveImport').onclick = () => importPick.click();
 // Ältere, ungepackte benannte Spielstände einmal nachträglich packen (kurz nach dem Start, im Hintergrund; mit Gegenprobe je Stand)
