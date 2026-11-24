@@ -3,6 +3,25 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.9.5
+
+Ruhigere Einstiegstipps und robustere Spielstände.
+
+- **Einstiegstipps:** Ein neuer Tipp erscheint nur noch zu Beginn deiner Runde, nachdem die Gegnerzüge abgespielt sind – höchstens
+  einer je Runde. Er bleibt stehen, bis du „Verstanden“ klickst oder drei Runden vergangen sind. Vorher konnte ein Tipp mitten im
+  Lesen verschwinden, von einem anderen verdrängt werden oder später wiederkommen, und nach „Verstanden“ kam mal sofort der nächste,
+  mal nicht. Nach „Verstanden“ bleibt die Karte jetzt bis zur nächsten Runde zu; Neuladen der Seite beginnt die drei Runden nicht neu.
+- **Spielstände:** Eine präparierte Spielstanddatei konnte das Spiel dauerhaft lahmlegen, auch nach dem Neuladen. Einheiten in
+  Spielständen werden jetzt streng geprüft, und scheitert ein Spielstand beim Laden, kehrt die bisherige Partie zurück.
+- **Entwicklung:** Der kleine Webserver zum Ausprobieren (`tools/serve.js`, nicht Teil des Spiels) ist nur noch vom eigenen Rechner
+  aus erreichbar.
+
+*English:* a new tip now appears only at the start of your turn, after the enemy moves have been replayed – at most one per turn.
+It stays until you click “Got it” or three turns have passed. Before, a tip could vanish while you were reading it, be pushed
+aside by another one or come back later, and after “Got it” the next one sometimes appeared at once and sometimes not. Saved games
+are checked more strictly: a crafted save file could break the game permanently, and if a save fails to load, your current game
+now comes back. The small development web server (`tools/serve.js`, not part of the game) only answers on your own computer.
+
 ## 1.9.4
 
 Zwei kleine Korrekturen.
