@@ -877,6 +877,7 @@ function endHumanTurn() {
     view.x = startScroll[0]; view.y = startScroll[1];
   } else if (!su && home) centerOn(home.x, home.y);
   anim.after = () => {
+    updateTips();   // neuer Einstiegstipp erst jetzt, nach der Wiedergabe (während sie lief, hielt updateTips still)
     // Erkennung über Schlüsselwörter der Meldungen (game.js) – in beiden Sprachen
     if (fresh.some(t => t.toLowerCase().includes(tt('feindkontakt', 'enemy contact')))) Sfx.play('alarm');
     else if (fresh.some(t => t.toLowerCase().includes(tt('fertiggestellt', 'completed')))) Sfx.play('built');

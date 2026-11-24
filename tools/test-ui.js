@@ -670,38 +670,56 @@ window.UiTest = (() => {
     const t = $('hover').textContent;
     check(/100 %/.test(t) && /ersten beiden neutralen Städte/.test(t) && !/Schlachtschiff/.test(t), 'Sicherer Anfang: Hinweiszeile nennt 100 % und den Grund – „' + t + '“');
   }
-  // 4) Einstiegstipps: jeder Auslöser einzeln
+  // 4) Einstiegstipps: jeder Auslöser einzeln. Neue Tipps kommen nur zu Rundenbeginn – turn() stellt den nach (Runde weiter, refresh).
   function tipsCheck() {
-    const wasOn = tips.on, done0 = [...tips.done];
-    const fresh = keep => { startNew('klein', 'normal', 'inseln', 4711, 1); replay = 'off'; setTips(true); for (const t of TIPS) if (!keep.includes(t.id)) tips.done.add(t.id); $('tipBox').dataset.id = ''; refresh(); return S.cities.find(c => c.owner === 0); };
+    const wasOn = tips.on, done0 = [...tips.done], cur0 = localStorage.getItem('archipel-tips-cur');
+    const fresh = keep => { startNew('klein', 'normal', 'inseln', 4711, 1); replay = 'off'; anim.after = null; setTips(true); for (const t of TIPS) if (!keep.includes(t.id)) tips.done.add(t.id); tipsRestart(); refresh(); return S.cities.find(c => c.owner === 0); };
     const cur = () => (tips.cur && !$('tipBox').hidden ? tips.cur.id : null);
+    const turn = () => { S.turn++; refresh(); };
+    const ok = () => document.querySelector('#tipBox [data-tip="ok"]').click();
     let c = fresh(['start']); check(cur() === 'start', 'Tipp „start“ in Runde 1');
-    document.querySelector('#tipBox [data-tip="ok"]').click(); check(cur() === null && tips.done.has('start'), '„Verstanden“ blendet den Tipp aus');
+    ok(); check(cur() === null && tips.done.has('start'), '„Verstanden“ blendet den Tipp aus');
     c = fresh(['mouse']); check(cur() === null, 'Tipp „mouse“ noch nicht in Runde 1'); S.turn = 2; refresh(); check(cur() === 'mouse', 'Tipp „mouse“ ab Runde 2');
-    for (const k of UNIT_ORDER.filter(k => k !== 'inf')) { c = fresh(['u-' + k]); const before = cur(); createUnit(k, 0, c.x, c.y); refresh(); check(before === null && cur() === 'u-' + k, 'Tipp zur ersten Einheit: ' + UT[k].name); }
-    c = fresh(['won']); killUnit(createUnit('inf', 1, c.x + 1, c.y), 0); refresh(); check(cur() === 'won', 'Tipp „Erster Sieg“');
-    c = fresh(['lost']); killUnit(createUnit('ftr', 0, c.x, c.y), -1); refresh(); check(cur() === null, 'Jägerabsturz ist kein „Erster Verlust“');
-    killUnit(createUnit('inf', 0, c.x, c.y), 1); refresh(); check(cur() === 'lost', 'Tipp „Erster Verlust“');
-    c = fresh(['crash']); killUnit(createUnit('ftr', 0, c.x, c.y), -1); refresh(); check(cur() === 'crash', 'Tipp „Jäger abgestürzt“');
+    for (const k of UNIT_ORDER.filter(k => k !== 'inf')) { c = fresh(['u-' + k]); const before = cur(); createUnit(k, 0, c.x, c.y); refresh(); const mid = cur(); turn(); check(before === null && mid === null && cur() === 'u-' + k, 'Tipp zur ersten Einheit: ' + UT[k].name + ' (erst zu Rundenbeginn)'); }
+    c = fresh(['won']); killUnit(createUnit('inf', 1, c.x + 1, c.y), 0); turn(); check(cur() === 'won', 'Tipp „Erster Sieg“');
+    c = fresh(['lost']); killUnit(createUnit('ftr', 0, c.x, c.y), -1); turn(); check(cur() === null, 'Jägerabsturz ist kein „Erster Verlust“');
+    killUnit(createUnit('inf', 0, c.x, c.y), 1); turn(); check(cur() === 'lost', 'Tipp „Erster Verlust“');
+    c = fresh(['crash']); killUnit(createUnit('ftr', 0, c.x, c.y), -1); turn(); check(cur() === 'crash', 'Tipp „Jäger abgestürzt“');
     c = fresh(['sunk', 'lost']); const sea = DIRS.map(([dx, dy]) => [c.x + dx, c.y + dy]).find(([x, y]) => inb(x, y) && !S.terrain[idx(x, y)]);
-    let t = createUnit('trn', 0, ...sea); createUnit('inf', 0, ...sea).carrier = t.id; refresh(); killUnit(t, 1); refresh(); check(cur() === 'sunk', 'Tipp „Transporter versenkt“');
-    document.querySelector('#tipBox [data-tip="ok"]').click(); check(tips.done.has('lost') && cur() === null, '… gilt zugleich als „Erster Verlust“');
-    c = fresh(['sunk', 'lost']); t = createUnit('trn', 0, ...sea); refresh(); killUnit(t, 1); refresh(); check(cur() === 'lost', 'leerer Transporter: nur „Erster Verlust“');
-    c = fresh(['citylost']); let n = S.cities.filter(k => k.owner < 0)[0]; captureCity(n, 0, createUnit('inf', 0, n.x, n.y)); closeModals(); refresh(); captureCity(n, 1, createUnit('inf', 1, n.x, n.y)); closeModals(); refresh(); check(cur() === 'citylost', 'Tipp „Stadt verloren“');
-    c = fresh(['foecity']); n = S.cities.filter(k => k.owner < 0)[0]; captureCity(n, 0, createUnit('inf', 0, n.x, n.y)); closeModals(); refresh(); check(cur() === null, 'neutrale Stadt ist keine „Stadt des Gegners“');
-    n = S.cities.filter(k => k.owner < 0)[0]; captureCity(n, 1, createUnit('inf', 1, n.x, n.y)); closeModals(); refresh(); captureCity(n, 0, createUnit('inf', 0, n.x, n.y)); closeModals(); refresh(); check(cur() === 'foecity', 'Tipp „Stadt des Gegners erobert“');
-    c = fresh(['home']); const f = createUnit('ftr', 0, c.x, c.y); refresh(); check(cur() === null, 'voller Jäger in der Stadt: kein Tipp');
+    let t = createUnit('trn', 0, ...sea); createUnit('inf', 0, ...sea).carrier = t.id; refresh(); killUnit(t, 1); turn(); check(cur() === 'sunk', 'Tipp „Transporter versenkt“');
+    ok(); check(tips.done.has('lost') && cur() === null, '… gilt zugleich als „Erster Verlust“');
+    c = fresh(['sunk', 'lost']); t = createUnit('trn', 0, ...sea); refresh(); killUnit(t, 1); turn(); check(cur() === 'lost', 'leerer Transporter: nur „Erster Verlust“');
+    c = fresh(['citylost']); let n = S.cities.filter(k => k.owner < 0)[0]; captureCity(n, 0, createUnit('inf', 0, n.x, n.y)); closeModals(); refresh(); captureCity(n, 1, createUnit('inf', 1, n.x, n.y)); closeModals(); turn(); check(cur() === 'citylost', 'Tipp „Stadt verloren“');
+    c = fresh(['foecity']); n = S.cities.filter(k => k.owner < 0)[0]; captureCity(n, 0, createUnit('inf', 0, n.x, n.y)); closeModals(); turn(); check(cur() === null, 'neutrale Stadt ist keine „Stadt des Gegners“');
+    n = S.cities.filter(k => k.owner < 0)[0]; captureCity(n, 1, createUnit('inf', 1, n.x, n.y)); closeModals(); refresh(); captureCity(n, 0, createUnit('inf', 0, n.x, n.y)); closeModals(); turn(); check(cur() === 'foecity', 'Tipp „Stadt des Gegners erobert“');
+    c = fresh(['home']); const f = createUnit('ftr', 0, c.x, c.y); turn(); check(cur() === null, 'voller Jäger in der Stadt: kein Tipp');
     let far = null; for (let r = 9; r > 3 && !far; r--) for (const [dx, dy] of DIRS) { const x = c.x + dx * r, y = c.y + dy * r; if (inb(x, y) && !cityAt(x, y)) { far = [x, y]; break; } }
-    f.x = far[0]; f.y = far[1]; f.fuel = distHome(0, f.x, f.y) + 2; refresh(); check(cur() === 'home', 'Tipp „Treibstoff wird knapp“');
-    c = fresh(['sentry']); for (let k = 0; k < 4; k++) createUnit('inf', 0, c.x, c.y); refresh(); check(cur() === null, 'Wache-Tipp nicht vor Runde 8'); S.turn = 8; refresh(); check(cur() === 'sentry', 'Tipp „Viele Einheiten warten“');
+    f.x = far[0]; f.y = far[1]; f.fuel = distHome(0, f.x, f.y) + 2; turn(); check(cur() === 'home', 'Tipp „Treibstoff wird knapp“');
+    c = fresh(['sentry']); for (let k = 0; k < 4; k++) createUnit('inf', 0, c.x, c.y); turn(); check(cur() === null, 'Wache-Tipp nicht vor Runde 8'); S.turn = 8; refresh(); check(cur() === 'sentry', 'Tipp „Viele Einheiten warten“');
+    // bleibt stehen, auch wenn seine Bedingung nicht mehr gilt (vorher verschwand er, sobald die Einheiten gezogen hatten)
+    for (const u of S.units.filter(u => u.owner === 0 && u.type === 'inf')) u.order = { type: 'sentry' };
+    refresh(); check(cur() === 'sentry', 'Tipp bleibt stehen, wenn seine Bedingung entfällt'); turn(); check(cur() === 'sentry', '… auch zu Beginn der nächsten Runde');
     c = fresh(['rally', 'plan']); const got = [];
-    for (const k of S.cities.filter(k => k.owner < 0).slice(0, 5)) { captureCity(k, 0, createUnit('inf', 0, k.x, k.y)); closeModals(); refresh(); got.push(cur()); const b = document.querySelector('#tipBox [data-tip="ok"]'); if (b && !$('tipBox').hidden) b.click(); }
+    for (const k of S.cities.filter(k => k.owner < 0).slice(0, 5)) { captureCity(k, 0, createUnit('inf', 0, k.x, k.y)); closeModals(); turn(); got.push(cur()); if (cur()) ok(); }
     check(got.join() === ',,rally,,plan', 'Marschziel ab 4, Überblick ab 6 Städten (' + got.join() + ')');
+    // kein Verdrängen: Ein wichtigerer Tipp wartet, bis der gezeigte erledigt ist; nach „Verstanden“ kommt er erst in der nächsten Runde
+    c = fresh(['u-tank', 'won']); killUnit(createUnit('inf', 1, c.x + 1, c.y), 0); turn(); const w1 = cur();
+    createUnit('tank', 0, c.x, c.y); refresh(); const w2 = cur(); turn(); const w3 = cur(); ok(); const w4 = cur(); refresh(); const w5 = cur(); turn();
+    check([w1, w2, w3, w4, w5, cur()].join() === 'won,won,won,,,u-tank', 'kein Verdrängen, nächster Tipp erst in der nächsten Runde (' + [w1, w2, w3, w4, w5, cur()].join() + ')');
     // unbeachteter Tipp macht nach drei Runden Platz
-    c = fresh(['mouse', 'sentry']); S.turn = 8; for (let k = 0; k < 4; k++) createUnit('inf', 0, c.x, c.y); refresh(); const first = cur(); S.turn = 11; refresh();
-    check(first === 'mouse' && cur() === 'sentry', 'unbeachteter Tipp macht nach drei Runden Platz');
+    c = fresh(['mouse', 'sentry']); S.turn = 8; for (let k = 0; k < 4; k++) createUnit('inf', 0, c.x, c.y); refresh(); const first = cur(); S.turn = 10; refresh(); const third = cur(); S.turn = 11; refresh();
+    check(first === 'mouse' && third === 'mouse' && cur() === 'sentry', 'unbeachteter Tipp steht drei Runden, dann kommt der nächste');
+    // Neuladen: gezeigter Tipp und sein Zähler bleiben (gemerkt in archipel-tips-cur)
+    const held0 = JSON.stringify(tips.held); tips.held = null; tips.pick = null; loadTipsCur(); refresh();
+    check(cur() === 'sentry' && JSON.stringify(tips.held) === held0, 'Neuladen behält Tipp und Zähler (' + held0 + ')');
+    // während der Wiedergabe nach dem Rundenende kein neuer Tipp – erst an ihrem Ende
+    c = fresh(['won']); killUnit(createUnit('inf', 1, c.x + 1, c.y), 0); refresh(); const r0 = cur(); endHumanTurn(); const r1 = cur(), after = anim.after; anim.after = null;
+    if (after) after(); autoEndAt = 0; closeModals();
+    check(r0 === null && r1 === null && !!after && cur() === 'won', 'neuer Tipp erst nach der Wiedergabe (' + [r0, r1, cur()].join() + ')');
     document.querySelector('#tipBox [data-tip="off"]').click(); check(!tips.on && $('tipBox').hidden, '„Tipps ausschalten“ schaltet ab');
-    tips.on = wasOn; tips.done = new Set(done0); $('tipsChk').checked = wasOn; saveTips(); $('tipBox').dataset.id = ''; refresh();
+    tips.on = wasOn; tips.done = new Set(done0); $('tipsChk').checked = wasOn; saveTips(); tipsRestart();
+    if (cur0 === null) localStorage.removeItem('archipel-tips-cur'); else localStorage.setItem('archipel-tips-cur', cur0);
+    loadTipsCur(); refresh();
   }
 
   // 5) Ladereihenfolge: Die Skripte werden nacheinander geladen. Code, der beim Laden sofort läuft, darf keine Funktion aus einem

@@ -409,10 +409,19 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Transporter (`tips.sunk`: `updateTips` merkt sich die beladenen eigenen Transporter und sieht nach, ob einer fehlt; gilt zugleich als „erster Verlust“, `also`). Die erste eroberte Stadt deckt der Grundtipp `build` ab („Erste Stadt erobert!“), die erste
   verlorene `citylost` (`tips.cityLost`, eigene Städte ebenso verfolgt), die erste einem Gegner abgenommene `foecity` (`tips.foeTaken`). Befehle kommen in der Lage, in der sie helfen: Heimkehr `home` (Jäger mit
   knappem Treibstoff), Wache `sentry` (ab Runde 8 mit ≥ 4 Wartenden), Marschziel `rally` (ab 4 Städten), Produktionsansicht und Statistik `plan`
-  (ab 6 Städten). Patrouille bleibt bewusst im Handbuch. Mit jedem weiteren Tipp steigt die Gefahr, dass sie nur weggeklickt werden – sparsam bleiben. Ein Tipp, der drei Runden unbeachtet stehen bleibt, gilt als erledigt und
-  macht Platz (`tips.shown`) – sonst blockierte er alle folgenden. Kopfzeile ohne Zähler („1 / 7“ zählte nur die Grundtipps und verwirrte). Ein neuer Tipp gleitet herein, leuchtet dreimal gelb auf (`.tip-new`, bei reduzierter Bewegung nur ein Rahmen) und gibt einen leisen Ton – oben links wurde er sonst übersehen (Wunsch des Nutzers); Gelb statt Blau hebt ihn von der Oberfläche ab.
+  (ab 6 Städten). Patrouille bleibt bewusst im Handbuch. Mit jedem weiteren Tipp steigt die Gefahr, dass sie nur weggeklickt werden – sparsam bleiben.
+  **Ablauf** (Wunsch des Nutzers: Tipps erschienen „mal so, mal so“): Ein neuer Tipp kommt **nur zu Beginn einer eigenen Runde, nach der Wiedergabe**,
+  höchstens einer je Runde (`tips.pick` = Partie:Runde der letzten Wahl; während `anim.after` wartet, hält `updateTips` still, `anim.after` in
+  `endHumanTurn` ruft es danach auf). Er **bleibt stehen** (`tips.held` = { Partie, Kennung, Runde }), bis „Verstanden“ oder drei Runden um sind – auch
+  wenn seine Bedingung nicht mehr gilt oder ein anderer fällig wird; nach drei Runden gilt er als erledigt und macht Platz (sonst blockierte er alle
+  folgenden). Nach „Verstanden“ bleibt die Karte bis zur nächsten Runde zu. Gezeigter Tipp und `pick` sind in `archipel-tips-cur` gemerkt (Neuladen
+  beginnt den Zähler nicht neu). Vorher wählte jeder `refresh()` neu den ersten fälligen nach Listenplatz – gemessen (12 Partien, 80 Runden, nie
+  geklickt): 27 % der Tipps verschwanden mitten im Lesen, 18 % wurden verdrängt, 40 von 254 Auftritten waren Wiederholungen („Viele Einheiten warten“
+  pendelte drei Runden lang), ≈ 5 Tipps je Partie wurden still abgehakt; nach „Verstanden“ kam in 22 % sofort der nächste. Jetzt 0 / 0 / 0 / 0, alle
+  211 Auftritte zu Rundenbeginn. Folge: Ereignistipps (Erster Sieg, Treibstoff knapp …) kommen zu Beginn der nächsten Runde, nicht im selben Augenblick.
+  Kopfzeile ohne Zähler („1 / 7“ zählte nur die Grundtipps und verwirrte). Ein neuer Tipp gleitet herein, leuchtet dreimal gelb auf (`.tip-new`, bei reduzierter Bewegung nur ein Rahmen) und gibt einen leisen Ton – oben links wurde er sonst übersehen (Wunsch des Nutzers); Gelb statt Blau hebt ihn von der Oberfläche ab.
   „Verstanden“ blendet aus, „Tipps ausschalten“ oder Einstellungen → Spielablauf (`tipsChk`) schaltet ab; Einschalten beginnt von vorn.
-  `archipel-tips-on` / `archipel-tips` (erledigte, über alle Partien). Vorgabe: an nur beim allerersten Besuch. Bewusst wenige und kurze Texte –
+  `archipel-tips-on` / `archipel-tips` (erledigte, über alle Partien) / `archipel-tips-cur` (gezeigter Tipp). Vorgabe: an nur beim allerersten Besuch. Bewusst wenige und kurze Texte –
   nicht zum Regelwerk ausbauen, dafür ist das Handbuch da. Probelauf (KI spielt, 4 Karten): Tipps kamen in sinnvoller Reihenfolge (R1, 4, 5–22, 22–57 …).
 - **Produktionsansicht** (ui.js): `prodView`, umgeschaltet mit `setProdView(on)` (Schalter in der Seitenleiste, Taste V).
   `render()` zeichnet dann nach dem Nebel nur `drawProdView()` (Symbol, Fortschrittsring, Restzeit je eigener Stadt) und
@@ -594,7 +603,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 903 Prüfungen; in einem kleinen Fenster scheitern einige Lageprüfungen – Tastenlegende, Kartenrand, Taste F –, im eigenen Reiter in voller Größe laufen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 908 Prüfungen; in einem kleinen Fenster scheitern einige Lageprüfungen – Tastenlegende, Kartenrand, Taste F –, im eigenen Reiter in voller Größe laufen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, Auftauchen fremder Einheiten in der Wiedergabe, Feuerunterstützung an Truppen, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

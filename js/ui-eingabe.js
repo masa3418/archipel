@@ -527,17 +527,34 @@ $('routeChk').onchange = e => setShowRoute(e.target.checked);
 
 // ------------------------------------------------------------------ Einstiegstipps
 // Kleine Hinweise für die ersten Runden (Wunsch des Nutzers: Ein Erstspieler wusste am Anfang nicht, was zu tun ist). Je Tipp eine
-// Karte oben links über der Karte, ausgelöst vom Spielstand (when), jeder nur einmal – „Verstanden“ blendet ihn aus, der nächste kommt,
-// sobald seine Bedingung zutrifft. Bewusst wenige und kurze: nur die Schritte, um ins Spiel zu kommen. Abschaltbar (Karte und
-// Einstellungen → Spielablauf); Einschalten beginnt von vorn. Gemerkt in archipel-tips-on / archipel-tips (erledigte Tipps, über alle
-// Partien). Vorgabe: an beim allerersten Besuch, sonst aus (wer das Spiel kennt, bekommt nichts Neues eingeblendet).
-const tips = { on: false, done: new Set(), cur: null, cache: null, shown: {} };
+// Karte oben links über der Karte, ausgelöst vom Spielstand (when), jeder nur einmal. Bewusst wenige und kurze: nur die Schritte, um ins
+// Spiel zu kommen. Abschaltbar (Karte und Einstellungen → Spielablauf); Einschalten beginnt von vorn. Gemerkt in archipel-tips-on /
+// archipel-tips (erledigte Tipps, über alle Partien). Vorgabe: an beim allerersten Besuch, sonst aus (wer das Spiel kennt, bekommt
+// nichts Neues eingeblendet).
+// Ablauf (Wunsch des Nutzers – vorher wählte jede Aktion neu, Tipps verschwanden mitten im Lesen, verdrängten sich und kamen wieder):
+// Ein neuer Tipp kommt nur zu Beginn einer eigenen Runde, nach der Wiedergabe, höchstens einer je Runde (tips.pick = Partie:Runde der
+// letzten Wahl). Er bleibt stehen (tips.held = { g: Partie, id, from: Runde }), bis „Verstanden“ oder drei Runden um sind – auch wenn
+// seine Bedingung inzwischen nicht mehr gilt oder ein anderer Tipp fällig wird. Nach „Verstanden“ bleibt die Karte bis zur nächsten
+// Runde zu. Beides gemerkt in archipel-tips-cur, damit Neuladen den Zähler nicht neu beginnt.
+const tips = { on: false, done: new Set(), cur: null, cache: null, held: null, pick: null };
 try {
   const v = localStorage.getItem('archipel-tips-on');
   if (v === null && !welcomeSeen()) { tips.on = true; localStorage.setItem('archipel-tips-on', '1'); }
   else tips.on = v === '1';
   tips.done = new Set(JSON.parse(localStorage.getItem('archipel-tips') || '[]'));
 } catch (e) {}
+// Gezeigten Tipp und Runde der letzten Wahl einlesen (TIPS gibt es hier noch nicht – ob die Kennung passt, prüft updateTips)
+function loadTipsCur() {
+  tips.held = null; tips.pick = null;
+  try {
+    const o = JSON.parse(localStorage.getItem('archipel-tips-cur') || 'null');
+    if (!o || typeof o !== 'object') return;
+    const h = o.held;
+    if (h && typeof h === 'object' && typeof h.g === 'string' && typeof h.id === 'string' && Number.isFinite(h.from)) tips.held = { g: h.g, id: h.id, from: h.from };
+    if (typeof o.pick === 'string') tips.pick = o.pick;
+  } catch (e) {}
+}
+loadTipsCur();
 // Lage für die Bedingungen – nur neu berechnet, wenn sich Runde, Städte oder bekannte Städte ändern (Wegsuche)
 function tipState() {
   const P = S.players[0], mine = S.cities.filter(c => c.owner === 0);
@@ -664,17 +681,24 @@ function updateTips() {
     tips.loaded = new Set(S.units.filter(u => u.owner === 0 && u.type === 'trn' && cargoOf(u).length).map(u => u.id));
   }
   if (tips.on && S && !S.over) {
-    // Ein Tipp, der drei Runden unbeachtet stehen blieb, macht Platz (gilt als erledigt) – sonst blockierte er alle folgenden,
-    // und wer nie auf „Verstanden“ klickt, sähe das ganze Spiel über denselben ersten Tipp.
-    const s = tipState();
-    for (let guard = 0; guard < TIPS.length; guard++) {
-      tips.cur = TIPS.find(t => !tips.done.has(t.id) && t.when(s)) || null;
-      if (!tips.cur) break;
-      const k = S.gameId + ':' + tips.cur.id;
-      if (tips.shown[k] == null) tips.shown[k] = S.turn;
-      if (S.turn - tips.shown[k] < 3) break;
-      tips.done.add(tips.cur.id); saveTips();
+    const h = tips.held;
+    // gezeigter Tipp gehört zu einer anderen Partie, ist erledigt oder unbekannt: weg (er kommt wieder, wenn er in einer Partie fällig ist)
+    if (h && (h.g !== S.gameId || tips.done.has(h.id) || !TIPS.some(t => t.id === h.id))) tips.held = null;
+    else if (h && S.turn < h.from) h.from = S.turn;   // älterer Stand derselben Partie geladen
+    // Rundenbeginn: einmal je Runde, nicht während der Wiedergabe (endHumanTurn ruft updateTips nach ihrem Ende noch einmal auf)
+    const key = S.gameId + ':' + S.turn;
+    if (!anim.after && tips.pick !== key) {
+      tips.pick = key;
+      // Ein Tipp, der drei Runden unbeachtet stehen blieb, macht Platz (gilt als erledigt) – sonst blockierte er alle folgenden,
+      // und wer nie auf „Verstanden“ klickt, sähe das ganze Spiel über denselben ersten Tipp
+      if (tips.held && S.turn - tips.held.from >= 3) { tipDone(TIPS.find(t => t.id === tips.held.id)); tips.held = null; }
+      if (!tips.held) {
+        const s = tipState(), t = TIPS.find(t => !tips.done.has(t.id) && t.when(s));
+        if (t) tips.held = { g: S.gameId, id: t.id, from: S.turn };
+      }
+      saveTips();
     }
+    if (tips.held) tips.cur = TIPS.find(t => t.id === tips.held.id);
   }
   box.hidden = !tips.cur;
   if (!tips.cur || box.dataset.id === tips.cur.id) return;
@@ -688,11 +712,20 @@ function updateTips() {
   box.innerHTML = `<div class="tip-h">${head}</div><div class="tip-t">${tips.cur.text}</div>`
     + `<div class="tip-b"><button class="primary" data-tip="ok">${tt('Verstanden', 'Got it')}</button><button data-tip="off">${tt('Tipps ausschalten', 'Switch tips off')}</button></div>`;
 }
-function saveTips() { try { localStorage.setItem('archipel-tips-on', tips.on ? '1' : '0'); localStorage.setItem('archipel-tips', JSON.stringify([...tips.done])); } catch (e) {} }
+function saveTips() {
+  try {
+    localStorage.setItem('archipel-tips-on', tips.on ? '1' : '0'); localStorage.setItem('archipel-tips', JSON.stringify([...tips.done]));
+    localStorage.setItem('archipel-tips-cur', JSON.stringify({ held: tips.held, pick: tips.pick }));
+  } catch (e) {}
+}
+// erledigt – samt den Tipps, die er mit abdeckt (also: „Transporter versenkt“ gilt zugleich als „Erster Verlust“)
+function tipDone(t) { if (!t) return; tips.done.add(t.id); for (const id of t.also || []) tips.done.add(id); }
+// Gezeigten Tipp vergessen, die nächste Wahl darf sofort kommen (Einschalten, Tests)
+function tipsRestart() { tips.held = null; tips.pick = null; $('tipBox').dataset.id = ''; }
 function setTips(on) {
   tips.on = !!on;
-  if (tips.on) { tips.done.clear(); tips.shown = {}; }   // einschalten = von vorn
-  $('tipBox').dataset.id = '';
+  if (tips.on) tips.done.clear();   // einschalten = von vorn, der erste fällige Tipp kommt gleich
+  tipsRestart();
   $('tipsChk').checked = tips.on;
   saveTips(); updateTips();
 }
@@ -700,7 +733,7 @@ $('tipBox').addEventListener('click', e => {
   const b = e.target.closest('[data-tip]');
   if (!b || !tips.cur) return;
   if (b.dataset.tip === 'off') { setTips(false); toast(tt('Tipps aus – wieder einschalten unter ☰ Menü → Einstellungen → Spielablauf', 'Tips off – switch them on again under ☰ Menu → Settings → Game flow'), 3200); return; }
-  tips.done.add(tips.cur.id); for (const id of tips.cur.also || []) tips.done.add(id);
+  tipDone(tips.cur); tips.held = null;   // der nächste Tipp kommt erst zu Beginn der nächsten Runde
   saveTips(); Sfx.play('tick'); updateTips();
 });
 $('tipsChk').checked = tips.on;
