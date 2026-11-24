@@ -145,6 +145,25 @@ window.UiTest = (() => {
     check(hoverRoute(u) != null, 'Vorschau abgeschaltet: die Wegsuche für den Klick läuft weiter');
     showRoute = wasOn;
   }
+  // Jäger und eigene Stadt außer Reichweite (dem Nutzer aufgefallen): Der erste Klick hielt den roten Weg fest, erst der zweite meldete
+  // „Treibstoff reicht nicht“. Jetzt lehnt schon der erste ab, und ein vorher festgehaltener Weg zu einer anderen Stadt verschwindet.
+  function fuelClick() {
+    reset();
+    const fuel = UT.ftr.fuel, o = base.c, d = c => cheb(c.x, c.y, o[0], o[1]);
+    let far = S.cities.find(c => c.owner === 0 && d(c) > fuel + 2);
+    if (!far) { far = S.cities.filter(c => c.owner !== 0).sort((a, b) => d(b) - d(a))[0]; far.owner = 0; S.players[0].knownOwner[far.id] = 0; }
+    const near = S.cities.find(c => c.owner === 0 && c !== far && d(c) >= 2 && d(c) <= fuel - 2);
+    const f = createUnit('ftr', 0, ...o); computeVision(0);
+    check(d(far) > fuel && preview(f, far.x, far.y).includes('[far]'), 'Jäger: Vorschau zur fernen eigenen Stadt warnt (Gegenprobe)');
+    check(click(f, far.x, far.y) === 'abgelehnt' && !gotoPreview, 'Jäger: erster Klick auf eine eigene Stadt außer Reichweite lehnt ab, nichts festgehalten');
+    check(!!near, 'Jäger: eigene Stadt in Reichweite gefunden');
+    if (near) {
+      select(f, false); gotoPreview = null; onTileClick(near.x, near.y, false);
+      const held = !!gotoPreviewFor(f);
+      onTileClick(far.x, far.y, false);
+      check(held && !gotoPreview && !f.order && f.x === o[0] && f.y === o[1], 'Jäger: festgehaltener Weg verschwindet beim Klick auf ein Ziel außer Reichweite');
+    }
+  }
   // Einheit ohne Züge greift ein Ziel daneben an (dem Nutzer passiert): Der Klick wird abgelehnt, die Auswahl bleibt – vorher sprang sie still
   // zur Infanterie neben dem Ziel, und der nächste Klick ließ sie angreifen. Die Hinweiszeile zeigt dann keine Siegchance, sondern den Grund.
   function tiredClick() {
@@ -969,7 +988,7 @@ window.UiTest = (() => {
     save = await (await fetch('docs/spielstaende/beispiel-2-inselreich-seekrieg.json')).text();
     deserialize(save); afterLoad(); closeModals();
     const keepReplay = replay;
-    build(); farMatrix(); nearMatrix(); flows(); tiredClick(); locator(); garrison(); coverRing(); goneScale(); revealInReplay(); loopSound(); supportMarks(); smoothZoomCheck(); borderCheck(); spaceSet(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
+    build(); farMatrix(); nearMatrix(); flows(); fuelClick(); tiredClick(); locator(); garrison(); coverRing(); goneScale(); revealInReplay(); loopSound(); supportMarks(); smoothZoomCheck(); borderCheck(); spaceSet(); unitOrder(); orders(); threat(); lupe(); safeStartLine(); tipsCheck();
     await walkthrough();
     landPref = pref0; if (prefStore0 === null) localStorage.removeItem('archipel-landscape'); else localStorage.setItem('archipel-landscape', prefStore0);
     replay = keepReplay; skipAnim(); closeModals(); startNew('klein', null, null, null, 0, landPref); closeModals(); refresh();   // am Ende eine frische Partie statt des Abschlussfensters

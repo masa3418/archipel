@@ -329,7 +329,8 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
   Klick die Stadt in der Seitenleiste („Stadt · Ziel“) und hält den Weg fest („… · noch einmal klicken“), der zweite schickt los; Esc, Rechtsklick,
   andere Auswahl oder ein Klick woandershin verwerfen das. Zwei Klicks für jeden Marsch waren kurz gebaut – unnötig, seit die Linie warnt.
   Jäger (`fuelState`, dieselben Regeln wie `doGoto`): Linie und Schild orange „kein Rückweg!“, wenn der Treibstoff hin, aber nicht mehr zur nächsten
-  Stadt/zum Träger reicht, rot „Treibstoff reicht nicht“, wenn das Ziel außer Reichweite liegt. Kein Weg: durchgestrichener Kreis und der Grund
+  Stadt/zum Träger reicht, rot „Treibstoff reicht nicht“, wenn das Ziel außer Reichweite liegt. Auch bei einer eigenen Stadt lehnt dann schon der erste Klick ab, statt
+  den Weg festzuhalten (dem Nutzer aufgefallen: Der rote Weg blieb stehen, erst der zweite Klick meldete den Grund). Kein Weg: durchgestrichener Kreis und der Grund
   („Bodentruppen kommen nicht übers Wasser …“, „Schiffe fahren nicht an Land“, sonst „Kein Weg dorthin“). Achtung: `findPath` lässt jedes Zielfeld zu
   (Angriff, an Bord gehen) – ob die Einheit das Feld betreten kann, prüft `hoverRoute` mit `canEnterTerrain`, nur für erforschte Felder.
   Auch auf dem Nachbarfeld steht der Grund, wenn die Einheit dort nichts tun kann (kein Zugmarker aus `moveHints`: Schiff neben Land, Bodentruppen
@@ -588,7 +589,7 @@ Repository: https://github.com/masa3418/archipel · Online: https://masa3418.git
      Eroberung 50/75/25 %, Gelände, Transporter, Treibstoff und Jäger-Marsch, U-Boot-Ortung, Ausscheiden, Spielstand (stabil, kaputte Dateien,
      alle Beispiele) und drei ganze KI-Partien mit Prüfung nach jeder 10. Runde (`invariants`: niemand im falschen Gelände, eine Einheit je Feld
      außerhalb von Städten …). `node tools/test.js kampf` = nur Tests mit dem Wort im Namen.
-   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 898 Prüfungen; in einem kleinen Fenster scheitern einige Lageprüfungen – Tastenlegende, Kartenrand, Taste F –, im eigenen Reiter in voller Größe laufen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
+   - Im Browser (localhost:8765): `eval(await (await fetch('tools/test-ui.js')).text()); await UiTest.run()` (ca. 10 s, 903 Prüfungen; in einem kleinen Fenster scheitern einige Lageprüfungen – Tastenlegende, Kartenrand, Taste F –, im eigenen Reiter in voller Größe laufen) – Ladereihenfolge der Skripte, Durchlauf aller Fenster, Tasten, Ansichten und des Zeichnens (`walkthrough`), 9 Einheiten
      × 15 Fernziele und × 9 Nachbarziele, je Vorschau gegen Klick-Ergebnis, dazu Klick-Abläufe, Suchring, verborgene Besatzung, Luftdeckung und gestauchte Wiedergabe, Auftauchen fremder Einheiten in der Wiedergabe, Feuerunterstützung an Truppen, stufenloser Zoom, Kartenrand, Reihenfolge der Einheiten und jeder Tipp-Auslöser. Ersetzt die laufende Partie.
    GitHub lässt die Regeltests bei jedem Push laufen (`tests.yml`, rotes Kreuz am Commit und Mail bei Fehler) und als Sperre vor dem Release
    (`release.yml`). Die Online-Fassung baut unabhängig davon aus `main` – ein Fehler dort wird gemeldet, aber nicht verhindert. Bewusst keine

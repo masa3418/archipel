@@ -506,7 +506,7 @@ function doGoto(u, x, y) {
     const p = findPath(u, x, y, false);
     if (p && p.length > u.fuel) {
       toast(tt(`Treibstoff reicht nicht: Ziel ${p.length} Felder entfernt, Treibstoff für ${u.fuel}`, `Not enough fuel: target ${p.length} tiles away, fuel for ${u.fuel}`), 2600);
-      Sfx.play('error'); return;
+      Sfx.play('error'); refresh(); return;   // refresh: ein eben verworfener festgehaltener Weg verschwindet sofort
     }
     const c = cityAt(x, y);
     if (p && !(c && c.owner === 0) && u.fuel - p.length < distHome(0, x, y))
@@ -707,6 +707,9 @@ function onTileClick(x, y, shift) {
     // Umschalt + Klick heißt ausdrücklich „marschieren“ – dann ohne den Zwischenschritt
     const path = ownCity && !shift && !(pv && pv.x === x && pv.y === y) ? findPath(u, x, y, false, true) : null;
     if (!path || !path.length) { gotoPreview = null; doGoto(u, x, y); return; }   // auch ohne Weg: die Meldung dazu kommt vom Marschbefehl
+    // Jäger außer Reichweite der Stadt: nichts festhalten, gleich ablehnen wie beim Marschbefehl (dem Nutzer aufgefallen: Der rote Weg blieb
+    // nach dem ersten Klick stehen, erst der zweite meldete „Treibstoff reicht nicht“)
+    if (fuelState(u, x, y, path.length) === 'far') { gotoPreview = null; doGoto(u, x, y); return; }
     gotoPreview = { id: u.id, ox: u.x, oy: u.y, x, y, path };
     selCity = city.id;
     Sfx.play('tick'); refresh();
