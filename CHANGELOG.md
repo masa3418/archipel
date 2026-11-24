@@ -3,6 +3,19 @@
 Alle veröffentlichten Versionen von Archipel. Die Offline-Fassung jeder Version gibt es unter
 [Releases](https://github.com/masa3418/archipel/releases).
 
+## 1.9.4
+
+Zwei kleine Korrekturen.
+
+- **Klang nach dem Rundenende:** Während die Gegner ziehen und deine Einheiten ihre Befehle ausführen, ist der Klang der nächsten
+  Einheit, die du von Hand ziehst, nicht mehr zu hören. Er setzt erst ein, wenn die Wiedergabe vorbei ist.
+- **Jäger und ferne eigene Stadt:** Liegt eine eigene Stadt außerhalb der Reichweite des Jägers, lehnt schon der erste Klick mit
+  „Treibstoff reicht nicht“ ab. Vorher blieb der rote Weg nach dem ersten Klick stehen, und erst der zweite Klick meldete den Grund.
+
+*English:* while the enemies move and your units carry out their orders after the end of the turn, the sound of the next unit
+you will move by hand no longer plays; it starts once the replay is over. Clicking one of your own cities that a fighter cannot
+reach now refuses at once with “Not enough fuel”, instead of leaving the red route on the map until a second click.
+
 ## 1.9.3
 
 Zwei Korrekturen.
